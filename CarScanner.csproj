@@ -76,9 +76,10 @@
 		<!-- App icon: Platforms/Android/Resources/mipmap-*/ic_gcar_light / ic_gcar_dark
 		     (light and dark variants, switched by Services/AppIconSwitcher). -->
 		<!-- Generate the Apple asset catalog without replacing Android's existing icons. -->
-		<MauiIcon Include="Resources\Splash\gcar_splash.png"
-		          Color="#000817"
-		          Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" />
+		<MauiIcon Include="Resources\AppIcon\gcar_splash.png"
+          BaseSize="1024,1024"
+          Color="#000817"
+          Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" />
 
 		<MauiSplashScreen Include="Resources\Splash\gcar_splash.png" Color="#000817" BaseSize="240,240" />
 
@@ -90,10 +91,6 @@
 		<!-- The DTC catalog is packaged Brotli-compressed (DtcCatalog.sqlite.br) and unpacked on first launch. -->
 		<MauiAsset Remove="Resources\Raw\DtcCatalog.sqlite" />
 
-	</ItemGroup>
-
-	<ItemGroup>
-		<!-- Test source files must not be compiled into the app project. Tests live in the Tests project. -->
 	</ItemGroup>
 
 
