@@ -175,7 +175,10 @@
 	<!-- ========================================================= -->
 
 	<PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-ios'">
-		<RuntimeIdentifiers>ios-arm64;iossimulator-arm64</RuntimeIdentifiers>
+		<!-- App Store/TestFlight artifacts always target a physical iPhone/iPad.
+		     Listing a simulator RID here makes the .NET 10 Apple SDK classify the
+		     entire publish as a simulator build before the CLI RID is evaluated. -->
+		<RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
 		<CodesignEntitlements>Platforms\iOS\Entitlements.plist</CodesignEntitlements>
 		<MtouchUseLlvm>true</MtouchUseLlvm>
 		<MtouchLink>SdkOnly</MtouchLink>
