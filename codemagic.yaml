@@ -19,43 +19,64 @@
         script: |
           git lfs pull
 
-      - name: Install .NET
+      - name: Install .NET SDK
         script: |
           IOS_TFM=$(grep -oE 'net[0-9]+\.[0-9]+-ios' CarScanner.csproj | head -1)
           DOTNET_CHANNEL=$(echo "$IOS_TFM" | sed -E 's/net([0-9]+\.[0-9]+)-ios/\1/')
-          echo "Using $IOS_TFM / .NET $DOTNET_CHANNEL"
+          echo "Target: $IOS_TFM"
+          echo "Installing .NET $DOTNET_CHANNEL"
           curl -sSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh
           chmod +x dotnet-install.sh
           ./dotnet-install.sh --channel "$DOTNET_CHANNEL" --install-dir "$DOTNET_PATH"
 
       - name: Install MAUI iOS workload
         script: |
+          $DOTNET nuget locals all --clear
           $DOTNET workload install ios maui
 
-      - name: Prepare Apple signing
+      - name: Prepare iOS signing
         script: |
           keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+          app-store-connect fetch-signing
+
+
+
+-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
           keychain add-certificates
 
+      - name: Build GCar360 IPA
+        script: |
+          IOS_TFM=$(grep -oE 'net[0-9]+\.[0-9]+-ios' CarScanner.csproj | head -1)
+
+          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || true)
+
+          if [ -z "$LATEST_BUILD_NUMBER" ]; then
+            UPDATED_BUILD_NUMBER=$BUILD_NUMBER
  
 
 
 
 
-     - name: Build GCar360 IPA
-        script: |
-          IOS_TFM=$(grep -oE 'net[0-9]+\.[0-9]+-ios' CarScanner.csproj | head -1)
 
-          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || true)
-          if [ -z "$LATEST_BUILD_NUMBER" ]; then
-            UPDATED_BUILD_NUMBER=$BUILD_NUMBER
-          else
+
+
+
+
+
+
+
+         else
             UPDATED_BUILD_NUMBER=$((LATEST_BUILD_NUMBER + 1))
           fi
 
           CERT_NAME=$(keychain list-certificates | jq -r '.[] | .common_name' | head -1)
-          PROFILE_NAME=$(find ~/Library/MobileDevice/Provisioning\ Profiles 
+
+          PROFILE_NAME=$(find ~/Library/MobileDevice/Provisioning\ Profiles \
+            -name "*.mobileprovision" \
+            -execdir sh -c '/usr/libexec/PlistBuddy -c "print :Name" /dev/stdin <<< $(security cms -D -i {})' \; \
+ 
 
 
 
@@ -64,18 +85,13 @@
 
 
 
-
-
-
--name "*.mobileprovision" -execdir sh -c '/usr/libexec/PlistBuddy -c "print :Name" /dev/stdin <<< $(security cms -D -i {})' \; | head -1)
+           | head -1)
 
           $DOTNET publish CarScanner.csproj \
             -f "$IOS_TFM" \
             -c Release \
             -p:BuildIpa=True \
             -p:RuntimeIdentifier=ios-arm64 \
-            -p:ApplicationId="$BUNDLE_ID" \
-            -p:ApplicationDisplayVersion="1.0" \
  
 
 
@@ -83,23 +99,27 @@
 
 
 
-
-
-           -p:ApplicationVersion="$UPDATED_BUILD_NUMBER" \
+           -p:ApplicationId="$BUNDLE_ID" \
+            -p:ApplicationDisplayVersion="1.0" \
+            -p:ApplicationVersion="$UPDATED_BUILD_NUMBER" \
             -p:CodesignKey="$CERT_NAME" \
             -p:CodesignProvision="$PROFILE_NAME" \
             -o "$CM_BUILD_DIR/artifacts"
 
+
+
+
+
+
+
     artifacts:
       - artifacts/*.ipa
 
-
-
-
-
-
-
-
     publishing:
-      app_store_connect:
+ 
+
+
+
+
+     app_store_connect:
         auth: integration
