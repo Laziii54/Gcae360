@@ -1,0 +1,37 @@
+
+.vs/
+bin/
+obj/
+*.user
+*.suo
+# Build artifacts
+.vs/
+bin/
+obj/
+
+# Local user files
+*.csproj.user
+
+# Backend secrets
+Backend/CarScanner.Api/appsettings.json
+
+# Store signing secrets and generated release packages
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+StoreRelease/secrets/
+StoreRelease/output/
+
+# Environment and local secrets
+.env
+.env.*
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/secrets.json
+*.pfx
+*.key
+aapt-log.txt
+aapt-verbose.txt
+
+Backend/CarScanner.Api/Properties/launchSettings.json

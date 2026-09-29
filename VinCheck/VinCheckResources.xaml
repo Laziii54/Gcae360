@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- Styles of the VIN Check section only. Merged into VIN pages, never into the rest of the app. -->
+<ResourceDictionary
+    x:Class="CarScanner.VinCheck.VinCheckResources"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:views="clr-namespace:CarScanner.VinCheck.Views">
+
+    <!-- GCar360 blue (same as the app icon). -->
+    <Color x:Key="Accent">#1D5BD6</Color>
+    <Color x:Key="AccentSoft">#1F1D5BD6</Color>
+    <Color x:Key="HeroTop">#1D5BD6</Color>
+    <Color x:Key="HeroBottom">#1D5BD6</Color>
+    <Color x:Key="PageBgLight">#F4F5F3</Color>
+    <Color x:Key="PageBgDark">#090D12</Color>
+    <Color x:Key="CardBgLight">#FFFFFF</Color>
+    <Color x:Key="CardBgDark">#141A22</Color>
+    <Color x:Key="TextLight">#1B1D20</Color>
+    <Color x:Key="TextDark">#F8FAFC</Color>
+    <Color x:Key="MutedLight">#5D636B</Color>
+    <Color x:Key="MutedDark">#94A3B8</Color>
+    <Color x:Key="BorderLight">#DCDFE3</Color>
+    <Color x:Key="BorderDark">#273243</Color>
+
+    <views:NotNullConverter x:Key="NotNull" />
+    <views:NotEmptyConverter x:Key="NotEmpty" />
+    <views:StarConverter x:Key="Star" />
+    <views:AuctionImagesConverter x:Key="AuctionImages" />
+    <views:FirstPhotoConverter x:Key="FirstPhoto" />
+    <views:AllPhotosConverter x:Key="AllPhotos" />
+    <views:BrandLogoConverter x:Key="BrandLogo" />
+
+    <Style TargetType="Label">
+        <Setter Property="FontFamily" Value="NotoSansGeorgian" />
+        <Setter Property="TextColor" Value="{DynamicResource TextColor}" />
+    </Style>
+    <Style x:Key="Title" TargetType="Label">
+        <Setter Property="TextColor" Value="{DynamicResource TextColor}" />
+        <Setter Property="FontFamily" Value="NotoSansGeorgian" />
+        <Setter Property="FontSize" Value="28" />
+        <Setter Property="FontAttributes" Value="Bold" />
+    </Style>
+    <Style x:Key="SectionTitle" TargetType="Label">
+        <Setter Property="TextColor" Value="{DynamicResource TextColor}" />
+        <Setter Property="FontFamily" Value="NotoSansGeorgian" />
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="Margin" Value="2,14,0,0" />
+    </Style>
+    <Style x:Key="Muted" TargetType="Label">
+        <Setter Property="FontFamily" Value="NotoSansGeorgian" />
+        <Setter Property="TextColor" Value="{DynamicResource SubTextColor}" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+    <Style x:Key="Card" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="{DynamicResource CardBg}" />
+        <Setter Property="Stroke" Value="{DynamicResource BorderColor}" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="Padding" Value="16" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 20" />
+    </Style>
+    <Style x:Key="Chip" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="#26FFFFFF" />
+        <Setter Property="StrokeThickness" Value="0" />
+        <Setter Property="Padding" Value="10,5" />
+        <Setter Property="Margin" Value="0,0,6,6" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 12" />
+    </Style>
+    <Style x:Key="FactLabel" TargetType="Label">
+        <Setter Property="FontFamily" Value="NotoSansGeorgian" />
+        <Setter Property="TextColor" Value="{DynamicResource SubTextColor}" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style x:Key="FactValue" TargetType="Label">
+        <Setter Property="FontFamily" Value="NotoSansGeorgian" />
+        <Setter Property="TextColor" Value="{DynamicResource TextColor}" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontAttributes" Value="Bold" />
+    </Style>
+    <Style x:Key="PrimaryButton" TargetType="Button">
+        <Setter Property="FontFamily" Value="NotoSansGeorgian" />
+        <Setter Property="BackgroundColor" Value="{StaticResource Accent}" />
+        <Setter Property="TextColor" Value="White" />
+        <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="HeightRequest" Value="56" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontAttributes" Value="Bold" />
+    </Style>
+    <Style x:Key="ChipButton" TargetType="Button">
+        <Setter Property="FontFamily" Value="NotoSansGeorgian" />
+        <Setter Property="BackgroundColor" Value="{DynamicResource CardBg}" />
+        <Setter Property="TextColor" Value="{DynamicResource TextColor}" />
+        <Setter Property="BorderColor" Value="{DynamicResource BorderColor}" />
+        <Setter Property="BorderWidth" Value="1" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="HeightRequest" Value="44" />
+    </Style>
+</ResourceDictionary>

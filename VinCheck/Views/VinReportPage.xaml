@@ -1,0 +1,540 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage x:Class="CarScanner.VinCheck.Views.VinReportPage"
+             x:Name="Page"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vc="clr-namespace:CarScanner.VinCheck"
+             xmlns:views="clr-namespace:CarScanner.VinCheck.Views"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="{DynamicResource PageBg}">
+    <ContentPage.Resources>
+        <vc:VinCheckResources />
+    </ContentPage.Resources>
+
+    <RefreshView IsRefreshing="{Binding IsRefreshing}" Command="{Binding RefreshCommand}" RefreshColor="{DynamicResource Primary}">
+        <ScrollView>
+            <VerticalStackLayout Padding="16,12,16,40" Spacing="12">
+
+                <!-- ===== Top bar ===== -->
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                    <Button Text="‹" FontSize="24" Padding="0" Clicked="BackClicked" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="12" WidthRequest="40" HeightRequest="40" MinimumHeightRequest="40" />
+                    <Label Grid.Column="1" Text="{Binding ReportTitle}" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
+                           HorizontalTextAlignment="Center" VerticalTextAlignment="Center" LineBreakMode="TailTruncation" />
+                    <Button Grid.Column="2" Text="{Binding IsFavorite,Converter={StaticResource Star}}" Command="{Binding ToggleFavoriteCommand}"
+                            BackgroundColor="{DynamicResource CardBg}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="12"
+                            TextColor="#C98A1A" WidthRequest="40" HeightRequest="40" MinimumHeightRequest="40" FontSize="20" Padding="0" />
+                </Grid>
+
+                <!-- ===== Vehicle card: photo, facts, VIN ===== -->
+                <Border Style="{StaticResource ListCardStyle}"
+                        IsVisible="{Binding Report,Converter={StaticResource NotNull}}">
+                    <Grid RowDefinitions="Auto,Auto">
+                        <Image Source="{Binding Report.VehicleImageUrl}" Aspect="AspectFill" HeightRequest="200"
+                               IsVisible="{Binding Report.VehicleImageUrl,Converter={StaticResource NotNull}}" />
+
+                        <VerticalStackLayout Grid.Row="1" Padding="16,14,16,16" Spacing="12">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                                <Border BackgroundColor="White" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 10"
+                                        WidthRequest="48" HeightRequest="48" Padding="7" VerticalOptions="Center"
+                                        IsVisible="{Binding HasBrandLogo}">
+                                    <Image Source="{Binding BrandLogo}" Aspect="AspectFit" />
+                                </Border>
+                                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                                    <Label Text="{Binding Report.DisplayName}" TextColor="{DynamicResource TextColor}" FontSize="22" FontAttributes="Bold" LineBreakMode="WordWrap" />
+                                    <Label Text="{Binding Report.Subtitle}" TextColor="{DynamicResource SubTextColor}" FontSize="13" />
+                                </VerticalStackLayout>
+                            </Grid>
+
+                            <FlexLayout Wrap="Wrap" BindableLayout.ItemsSource="{Binding HeroChips}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BackgroundColor="{DynamicResource PageBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 8" Padding="9,4" Margin="0,0,6,6">
+                                            <Label Text="{Binding .}" TextColor="{DynamicResource TextColor}" FontSize="12" />
+                                        </Border>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </FlexLayout>
+
+                            <Border BackgroundColor="{DynamicResource PageBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 10" Padding="14,10">
+                                <VerticalStackLayout Spacing="1">
+                                    <Label Text="VIN" TextColor="{DynamicResource SubTextColor}" FontSize="11" FontAttributes="Bold" CharacterSpacing="2" />
+                                    <Label Text="{Binding Report.Vin}" TextColor="{DynamicResource TextColor}" FontSize="16" FontFamily="monospace" FontAttributes="Bold" CharacterSpacing="1" />
+                                </VerticalStackLayout>
+                            </Border>
+
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                                <Button Text="{Binding CopyVinText}" Command="{Binding CopyVinCommand}" BackgroundColor="Transparent"
+                                        TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" FontSize="13" CornerRadius="12" HeightRequest="42" />
+                                <Button Grid.Column="1" Text="{Binding ShareText}" Command="{Binding ShareCommand}" BackgroundColor="Transparent"
+                                        TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" FontSize="13" FontAttributes="Bold" CornerRadius="12" HeightRequest="42" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Grid>
+                </Border>
+
+                <Label Text="{Binding QuotaText}" IsVisible="{Binding ShowQuota}" TextColor="{DynamicResource SubTextColor}"
+                       FontSize="13" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+
+                <!-- ===== Locked history (PRO) ===== -->
+                <Border Style="{StaticResource ListCardStyle}" Padding="16" IsVisible="{Binding ShowUnlockCard}">
+                    <VerticalStackLayout Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                            <Label Text="{Binding LockedTitleText}" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalTextAlignment="Center" />
+                            <Border Grid.Column="1" Style="{StaticResource ProBadgeStyle}">
+                                <Label Text="PRO" Style="{StaticResource ProBadgeTextStyle}" />
+                            </Border>
+                        </Grid>
+                        <Grid HeightRequest="130">
+                            <VerticalStackLayout Spacing="10" Opacity="0.5">
+                                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8" HeightRequest="66">
+                                    <BoxView Color="{DynamicResource DividerColor}" CornerRadius="8" />
+                                    <BoxView Grid.Column="1" Color="{DynamicResource DividerColor}" CornerRadius="8" />
+                                    <BoxView Grid.Column="2" Color="{DynamicResource DividerColor}" CornerRadius="8" />
+                                </Grid>
+                                <BoxView HeightRequest="10" WidthRequest="220" HorizontalOptions="Start" Color="{DynamicResource DividerColor}" CornerRadius="5" />
+                                <BoxView HeightRequest="10" WidthRequest="160" HorizontalOptions="Start" Color="{DynamicResource DividerColor}" CornerRadius="5" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="6">
+                                <Path Data="M6,11 L18,11 L18,21 L6,21 Z M8.5,11 L8.5,7.5 C8.5,3.5 15.5,3.5 15.5,7.5 L15.5,11" Style="{StaticResource RowIconStyle}" WidthRequest="28" HeightRequest="28" HorizontalOptions="Center" />
+                                <Label Text="{Binding LockedFoundText}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" />
+                            </VerticalStackLayout>
+                        </Grid>
+                        <Label Text="{Binding LockedHintText}" FontSize="13" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                        <Button Text="{Binding UnlockButtonText,StringFormat='{0} · PRO'}" Command="{Binding UnlockCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" />
+                        <ActivityIndicator IsRunning="{Binding IsUnlocking}" IsVisible="{Binding IsUnlocking}" Color="{DynamicResource Primary}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border Style="{StaticResource ListCardStyle}" Padding="14,12" IsVisible="{Binding ShowHistoryUnavailable}">
+                    <Label Text="{Binding HistoryUnavailableText}" FontSize="13" TextColor="{DynamicResource SubTextColor}" />
+                </Border>
+
+                <!-- ===== At a glance (status tiles, colors from the view model) ===== -->
+                <VerticalStackLayout Spacing="8" IsVisible="{Binding Report.Alerts,Converter={StaticResource NotEmpty}}">
+                    <Label Text="{Binding AtAGlanceText}" Style="{StaticResource SectionCaptionStyle}" />
+                    <FlexLayout Wrap="Wrap" JustifyContent="SpaceBetween" BindableLayout.ItemsSource="{Binding Report.Alerts}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate>
+                                <Border FlexLayout.Basis="48.5%" Margin="0,0,0,10" BackgroundColor="{Binding TileColor}"
+                                        StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="14,12">
+                                    <VerticalStackLayout Spacing="6">
+                                        <Border BackgroundColor="{Binding Color}" StrokeThickness="0" StrokeShape="RoundRectangle 12"
+                                                WidthRequest="24" HeightRequest="24" HorizontalOptions="Start">
+                                            <Label Text="{Binding Icon}" TextColor="White" FontSize="13" FontAttributes="Bold"
+                                                   HorizontalOptions="Center" VerticalOptions="Center" />
+                                        </Border>
+                                        <Label Text="{Binding Label}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                        <Label Text="{Binding Detail}" FontSize="12" TextColor="{DynamicResource SubTextColor}" MaxLines="3" LineBreakMode="TailTruncation" />
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </FlexLayout>
+                </VerticalStackLayout>
+
+                <!-- ===== Not found on auctions ===== -->
+                <Border Style="{StaticResource ListCardStyle}" Padding="14,13" IsVisible="{Binding ShowNoAuction}">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                        <Path Data="M3,10 A7,7 0 1 0 17,10 A7,7 0 1 0 3,10 M15.5,15.5 L21,21" Style="{StaticResource RowIconStyle}" VerticalOptions="Start" Margin="0,2,0,0" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="3">
+                            <Label Text="{Binding NoAuctionTitleText}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                            <Label Text="{Binding NoAuctionHintText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                        </VerticalStackLayout>
+                    </Grid>
+                </Border>
+
+                <!-- ===== Auction history ===== -->
+                <VerticalStackLayout Spacing="8" IsVisible="{Binding Report.AuctionRecords,Converter={StaticResource NotEmpty}}">
+                    <Label Text="{Binding AuctionHistoryText}" Style="{StaticResource SectionCaptionStyle}" />
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding Report.AuctionRecords}" Spacing="12">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource ListCardStyle}">
+                                    <VerticalStackLayout>
+                                        <!-- main photo -->
+                                        <!-- slides by itself every 2 s, loops; tap opens the photos (static) -->
+                                        <Grid HeightRequest="200" IsVisible="{Binding HasImages}">
+                                            <CarouselView ItemsSource="{Binding .,Converter={StaticResource AllPhotos}}"
+                                                          Loop="True" HorizontalScrollBarVisibility="Never"
+                                                          PeekAreaInsets="0">
+                                                <CarouselView.Behaviors>
+                                                    <views:AutoAdvanceBehavior IntervalSeconds="2" />
+                                                </CarouselView.Behaviors>
+                                                <CarouselView.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Grid>
+                                                            <Image Source="{Binding Url}" Aspect="AspectFill" />
+                                                            <Grid.GestureRecognizers>
+                                                                <TapGestureRecognizer
+                                                                    Command="{Binding Source={x:Reference Page},Path=BindingContext.OpenAuctionPhotoCommand}"
+                                                                    CommandParameter="{Binding Selection}" />
+                                                            </Grid.GestureRecognizers>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </CarouselView.ItemTemplate>
+                                            </CarouselView>
+                                            <Border BackgroundColor="#B3000000" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="9,3"
+                                                    HorizontalOptions="End" VerticalOptions="End" Margin="10" InputTransparent="True">
+                                                <Label Text="{Binding PhotoCountText}" TextColor="White" FontSize="11" FontAttributes="Bold" />
+                                            </Border>
+                                        </Grid>
+                                        <!-- thumbnails -->
+                                        <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never" Margin="14,10,14,0" IsVisible="{Binding HasImages}">
+                                            <HorizontalStackLayout Spacing="6" BindableLayout.ItemsSource="{Binding .,Converter={StaticResource AuctionImages}}">
+                                                <BindableLayout.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border WidthRequest="72" HeightRequest="54" Padding="0" StrokeThickness="0" StrokeShape="RoundRectangle 8">
+                                                            <Grid>
+                                                                <Image Source="{Binding Url}" Aspect="AspectFill" />
+                                                                <BoxView Color="#99000000" IsVisible="{Binding Overlay,Converter={StaticResource NotEmpty}}" />
+                                                                <Label Text="{Binding Overlay}" TextColor="White" FontSize="15" FontAttributes="Bold"
+                                                                       HorizontalOptions="Center" VerticalOptions="Center" />
+                                                                <Button BackgroundColor="Transparent" BorderWidth="0"
+                                                                        Command="{Binding Source={x:Reference Page},Path=BindingContext.OpenAuctionPhotoCommand}"
+                                                                        CommandParameter="{Binding Selection}" />
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </BindableLayout.ItemTemplate>
+                                            </HorizontalStackLayout>
+                                        </ScrollView>
+
+                                        <VerticalStackLayout Padding="14,12,14,14" Spacing="10">
+                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                                <VerticalStackLayout Spacing="1">
+                                                    <Label Text="{Binding AuctionTitle}" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                                    <Label Text="{Binding SaleDateText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                                                </VerticalStackLayout>
+                                                <VerticalStackLayout Grid.Column="1" IsVisible="{Binding HasPrice}" HorizontalOptions="End">
+                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.SoldForText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="End" />
+                                                    <Label Text="{Binding PriceText}" TextColor="{DynamicResource TextColor}" FontSize="18" FontAttributes="Bold" HorizontalTextAlignment="End" />
+                                                </VerticalStackLayout>
+                                            </Grid>
+                                            <Label Text="{Binding Location}" FontSize="12" TextColor="{DynamicResource SubTextColor}" IsVisible="{Binding Location,Converter={StaticResource NotEmpty}}" />
+
+                                            <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" />
+
+                                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="12">
+                                                <VerticalStackLayout>
+                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.PrimaryLabel}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                                    <Label Text="{Binding DamageValue}" FontSize="14" FontAttributes="Bold" TextColor="#B3361F" />
+                                                </VerticalStackLayout>
+                                                <VerticalStackLayout Grid.Column="1">
+                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.SecondaryLabel}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                                    <Label Text="{Binding SecondaryValue}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                                </VerticalStackLayout>
+                                                <VerticalStackLayout Grid.Row="1">
+                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.OdometerLabel}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                                    <Label Text="{Binding OdometerText}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                                </VerticalStackLayout>
+                                                <VerticalStackLayout Grid.Row="1" Grid.Column="1">
+                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.TitleLabel}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                                    <Label Text="{Binding TitleValue}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                                </VerticalStackLayout>
+                                                <VerticalStackLayout Grid.Row="2">
+                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.KeysLabel}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                                    <Label Text="{Binding KeysValue}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                                </VerticalStackLayout>
+                                                <VerticalStackLayout Grid.Row="2" Grid.Column="1">
+                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.RunsLabel}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                                    <Label Text="{Binding RunValue}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                                </VerticalStackLayout>
+                                                <VerticalStackLayout Grid.Row="3">
+                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.LotLabel}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                                    <Label Text="{Binding LotValue}" FontSize="14" FontAttributes="Bold" FontFamily="monospace" TextColor="{DynamicResource TextColor}" />
+                                                </VerticalStackLayout>
+                                            </Grid>
+                                        </VerticalStackLayout>
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+
+                <!-- ===== Photos from the open web ===== -->
+                <VerticalStackLayout Spacing="6" IsVisible="{Binding HasWebPhotos}">
+                    <Label Text="{Binding WebPhotosTitleText}" Style="{StaticResource SectionCaptionStyle}" />
+                    <Label Text="{Binding WebPhotosHintText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" Margin="4,0,0,2" />
+                    <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+                        <HorizontalStackLayout Spacing="8" BindableLayout.ItemsSource="{Binding WebThumbs}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate>
+                                    <Border WidthRequest="190" HeightRequest="140" Padding="0" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 12">
+                                        <Grid>
+                                            <Image Source="{Binding Url}" Aspect="AspectFill" />
+                                            <Border BackgroundColor="#B3000000" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="8,3"
+                                                    HorizontalOptions="Start" VerticalOptions="End" Margin="8" InputTransparent="True"
+                                                    IsVisible="{Binding Overlay,Converter={StaticResource NotEmpty}}">
+                                                <Label Text="{Binding Overlay}" TextColor="White" FontSize="11" />
+                                            </Border>
+                                            <Grid.GestureRecognizers>
+                                                <TapGestureRecognizer Command="{Binding Source={x:Reference Page},Path=BindingContext.OpenAuctionPhotoCommand}"
+                                                                      CommandParameter="{Binding Selection}" />
+                                            </Grid.GestureRecognizers>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </HorizontalStackLayout>
+                    </ScrollView>
+                </VerticalStackLayout>
+
+                <!-- Google image search for this VIN (always works) -->
+                <Button Text="{Binding SearchGoogleText}" Command="{Binding SearchGoogleCommand}"
+                        IsVisible="{Binding Report,Converter={StaticResource NotNull}}"
+                        BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="48" FontSize="14" />
+
+                <!-- ===== Paid full history: offer ===== -->
+                <Border Style="{StaticResource ListCardStyle}" Padding="16" IsVisible="{Binding ShowFullOffer}">
+                    <VerticalStackLayout Spacing="10">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                            <Path Data="M6,2 L14,2 L19,7 L19,22 L6,22 Z M14,2 L14,7 L19,7 M9,12 L16,12 M9,16 L16,16" Style="{StaticResource RowIconStyle}" />
+                            <Label Grid.Column="1" Text="{Binding FullTitleText}" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                        </Grid>
+                        <Label Text="{Binding FullOfferHintText}" FontSize="13" TextColor="{DynamicResource SubTextColor}" />
+                        <Label Text="{Binding FullIncludesText}" FontSize="14" TextColor="{DynamicResource TextColor}" LineHeight="1.2" />
+                        <Label Text="{Binding FullNoPhotosText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                        <Button Text="{Binding FullBuyText}" Command="{Binding BuyFullCommand}"
+                                Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- ===== Paid full history: waiting for the bank / report ===== -->
+                <Border Style="{StaticResource ListCardStyle}" Padding="14,13" IsVisible="{Binding ShowFullPending}">
+                    <VerticalStackLayout Spacing="10">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                            <ActivityIndicator IsRunning="True" Color="{DynamicResource Primary}" WidthRequest="22" HeightRequest="22" />
+                            <Label Grid.Column="1" Text="{Binding FullStatusText}" FontSize="14" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                        </Grid>
+                        <Button Text="{Binding FullRefreshText}" Command="{Binding RefreshFullCommand}"
+                                BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="42" FontSize="13" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- ===== Paid full history: the report ===== -->
+                <VerticalStackLayout Spacing="8" IsVisible="{Binding ShowFullReport}">
+                    <Label Text="{Binding FullTitleText}" Style="{StaticResource SectionCaptionStyle}" />
+                    <Border Style="{StaticResource ListCardStyle}" Padding="14,12">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="{Binding FullReport.Summary}" FontSize="14" FontAttributes="Bold" TextColor="{Binding FullSummaryColor}" />
+                            <Label Text="{Binding FullOdometerText}" IsVisible="{Binding HasFullOdometer}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding FullSections}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource ListCardStyle}">
+                                    <VerticalStackLayout Spacing="0">
+                                        <Label Text="{Binding Title}" FontAttributes="Bold" FontSize="14" TextColor="{DynamicResource TextColor}" Padding="14,12,14,10" />
+                                        <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding Items}">
+                                            <BindableLayout.ItemTemplate>
+                                                <DataTemplate>
+                                                    <VerticalStackLayout Spacing="0">
+                                                        <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" Margin="14,0,0,0" />
+                                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="14,10">
+                                                            <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                                                                <Label Text="{Binding Title}" FontSize="14" TextColor="{DynamicResource TextColor}" />
+                                                                <Label Text="{Binding Detail}" IsVisible="{Binding HasDetail}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                                                            </VerticalStackLayout>
+                                                            <Label Grid.Column="1" Text="{Binding Date}" IsVisible="{Binding HasDate}" FontSize="12" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
+                                                        </Grid>
+                                                    </VerticalStackLayout>
+                                                </DataTemplate>
+                                            </BindableLayout.ItemTemplate>
+                                        </VerticalStackLayout>
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+
+                <!-- ===== Mileage timeline ===== -->
+                <VerticalStackLayout Spacing="8" IsVisible="{Binding Report.MileageRecords,Converter={StaticResource NotEmpty}}">
+                    <Label Text="{Binding MileageHistoryText}" Style="{StaticResource SectionCaptionStyle}" />
+                    <Border Style="{StaticResource ListCardStyle}">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Report.MileageRecords}" Spacing="0" Margin="0,-1,0,0">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate>
+                                    <VerticalStackLayout Spacing="0">
+                                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                                        <Grid ColumnDefinitions="20,*,Auto" Padding="14,11" ColumnSpacing="12">
+                                            <BoxView Color="{DynamicResource Primary}" WidthRequest="8" HeightRequest="8" CornerRadius="4" VerticalOptions="Center" HorizontalOptions="Center" />
+                                            <Label Grid.Column="1" Text="{Binding ValueText}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                                            <VerticalStackLayout Grid.Column="2" VerticalOptions="Center">
+                                                <Label Text="{Binding DateText}" FontSize="13" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="End" />
+                                                <Label Text="{Binding Source}" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="End" />
+                                            </VerticalStackLayout>
+                                        </Grid>
+                                    </VerticalStackLayout>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- ===== Title records ===== -->
+                <VerticalStackLayout Spacing="8" IsVisible="{Binding Report.TitleRecords,Converter={StaticResource NotEmpty}}">
+                    <Label Text="{Binding TitleHistoryText}" Style="{StaticResource SectionCaptionStyle}" />
+                    <FlexLayout Wrap="Wrap" BindableLayout.ItemsSource="{Binding Report.TitleRecords}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource ListCardStyle}" Padding="12,9" Margin="0,0,8,8">
+                                    <VerticalStackLayout Spacing="1">
+                                        <Label Text="{Binding Status}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                        <Label Text="{Binding DateText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </FlexLayout>
+                </VerticalStackLayout>
+
+                <!-- ===== Accidents / owners / service (other providers) ===== -->
+                <VerticalStackLayout Spacing="8" IsVisible="{Binding Report.AccidentRecords,Converter={StaticResource NotEmpty}}">
+                    <Label Text="{Binding AccidentHistoryText}" Style="{StaticResource SectionCaptionStyle}" />
+                    <Border Style="{StaticResource ListCardStyle}">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Report.AccidentRecords}" Spacing="0" Margin="0,-1,0,0">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate>
+                                    <VerticalStackLayout Spacing="0">
+                                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                                        <Grid ColumnDefinitions="20,*" ColumnSpacing="12" Padding="14,11">
+                                            <BoxView Color="#B3361F" WidthRequest="8" HeightRequest="8" CornerRadius="4" VerticalOptions="Start" HorizontalOptions="Center" Margin="0,5,0,0" />
+                                            <VerticalStackLayout Grid.Column="1" Spacing="1">
+                                                <Label Text="{Binding DateText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                                                <Label Text="{Binding Description}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                                <Label Text="{Binding Impact}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                                                <Label Text="{Binding SeverityText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                                            </VerticalStackLayout>
+                                        </Grid>
+                                    </VerticalStackLayout>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="8" IsVisible="{Binding Report.OwnershipRecords,Converter={StaticResource NotEmpty}}">
+                    <Label Text="{Binding OwnershipHistoryText}" Style="{StaticResource SectionCaptionStyle}" />
+                    <Border Style="{StaticResource ListCardStyle}">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Report.OwnershipRecords}" Spacing="0" Margin="0,-1,0,0">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate>
+                                    <VerticalStackLayout Spacing="0">
+                                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                                        <Grid ColumnDefinitions="20,*" ColumnSpacing="12" Padding="14,11">
+                                            <Label Text="{Binding Number,StringFormat='#{0}'}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                                            <VerticalStackLayout Grid.Column="1" Spacing="1">
+                                                <Label Text="{Binding OwnerType}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                                <Label Text="{Binding State}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                                                <Label Text="{Binding Period}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                                            </VerticalStackLayout>
+                                        </Grid>
+                                    </VerticalStackLayout>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="8" IsVisible="{Binding Report.ServiceRecords,Converter={StaticResource NotEmpty}}">
+                    <Label Text="{Binding ServiceHistoryText}" Style="{StaticResource SectionCaptionStyle}" />
+                    <Border Style="{StaticResource ListCardStyle}">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Report.ServiceRecords}" Spacing="0" Margin="0,-1,0,0">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate>
+                                    <VerticalStackLayout Spacing="0">
+                                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,11">
+                                            <Path Data="M14,4 L20,10 L11,19 L5,19 L5,13 Z" Style="{StaticResource RowIconStyle}" VerticalOptions="Start" />
+                                            <VerticalStackLayout Grid.Column="1" Spacing="1">
+                                                <Label Text="{Binding DateText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                                                <Label Text="{Binding Description}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                                <Label Text="{Binding MileageText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                                            </VerticalStackLayout>
+                                        </Grid>
+                                    </VerticalStackLayout>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- ===== Recalls (tap to open) ===== -->
+                <VerticalStackLayout Spacing="6" IsVisible="{Binding Report.RecallRecords,Converter={StaticResource NotEmpty}}">
+                    <Label Text="{Binding RecallsText}" Style="{StaticResource SectionCaptionStyle}" />
+                    <Label Text="{Binding RecallHintText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" Margin="4,0,0,2" />
+                    <Border Style="{StaticResource ListCardStyle}">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Report.RecallRecords}" Spacing="0" Margin="0,-1,0,0">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate>
+                                    <VerticalStackLayout Spacing="0" BackgroundColor="Transparent">
+                                        <VerticalStackLayout.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding Source={x:Reference Page},Path=BindingContext.ToggleRecallCommand}" CommandParameter="{Binding .}" />
+                                        </VerticalStackLayout.GestureRecognizers>
+                                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,12">
+                                            <Path Data="M12,3 L22,20 L2,20 Z M12,9 L12,14 M12,17 L12,17.5" Style="{StaticResource RowIconStyle}" Stroke="#C98A1A" />
+                                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
+                                                <Label Text="{Binding CategoryText}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                                <Label Text="{Binding RecallId,StringFormat='NHTSA {0}'}" FontSize="12" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" />
+                                            </VerticalStackLayout>
+                                            <Label Grid.Column="2" Text="{Binding Chevron}" FontSize="12" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
+                                        </Grid>
+                                        <VerticalStackLayout Spacing="6" Padding="46,0,14,12" IsVisible="{Binding IsExpanded}">
+                                            <Label Text="{Binding Component}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                            <Label Text="{Binding Description}" FontSize="13" TextColor="{DynamicResource TextColor}" />
+                                            <Label Text="{Binding RemedyText}" FontSize="13" TextColor="{DynamicResource SubTextColor}" />
+                                        </VerticalStackLayout>
+                                    </VerticalStackLayout>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- ===== Specifications ===== -->
+                <VerticalStackLayout Spacing="8" IsVisible="{Binding Report.Specifications,Converter={StaticResource NotEmpty}}">
+                    <Label Text="{Binding SpecificationsText}" Style="{StaticResource SectionCaptionStyle}" />
+                    <Border Style="{StaticResource ListCardStyle}">
+                        <VerticalStackLayout Spacing="0">
+                            <VerticalStackLayout BindableLayout.ItemsSource="{Binding VisibleSpecs}" Spacing="0" Margin="0,-1,0,0">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate>
+                                        <VerticalStackLayout Spacing="0">
+                                            <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" Margin="14,0,0,0" />
+                                            <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Padding="14,11">
+                                                <Label Text="{Binding Label}" FontSize="13" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
+                                                <Label Grid.Column="1" Text="{Binding Value}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                            </Grid>
+                                        </VerticalStackLayout>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
+                            <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" IsVisible="{Binding HasMoreSpecs}" />
+                            <Button Text="{Binding SpecsToggleText}" Command="{Binding ToggleSpecsCommand}" IsVisible="{Binding HasMoreSpecs}"
+                                    BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderWidth="0" FontAttributes="Bold" FontSize="13" HeightRequest="44" />
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- ===== Owner only: data sources ===== -->
+                <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasSources}" Padding="14,12">
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="{Binding SourcesTitleText}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Report.Sources}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate>
+                                    <Label Text="{Binding Line}" Style="{StaticResource CaptionStyle}" />
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>

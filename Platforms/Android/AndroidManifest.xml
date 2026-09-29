@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+	<uses-permission android:name="android.permission.VIBRATE" />
+	<uses-permission android:name="android.permission.WAKE_LOCK" />
+	<uses-permission android:name="android.permission.INTERNET" />
+
+	<uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+	<uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+	<uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+	<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
+	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="30" />
+	<uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+
+	<!-- Performance Video (0–100 camera) -->
+	<uses-permission android:name="android.permission.CAMERA" />
+	<uses-permission android:name="android.permission.RECORD_AUDIO" />
+	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+	<uses-feature android:name="android.hardware.camera" android:required="false" />
+
+	<application
+		android:allowBackup="false"
+		android:usesCleartextTraffic="false"
+		android:supportsRtl="true"
+		android:icon="@mipmap/ic_gcar_light"
+		android:roundIcon="@mipmap/ic_gcar_light_round">
+
+		<!-- ML Kit text recognition model (VIN scanner) is downloaded with the app. -->
+		<meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="ocr" />
+
+		<!-- MainActivity is generated from its [Activity] attribute. The aliases may
+		     reference it regardless of declaration order. Declaring it again here
+		     would discard the generated MAUI theme and crash AppBarLayout inflation. -->
+		<!-- App icon: light (default) and dark. Services/AppIconSwitcher turns one on. -->
+		<activity-alias
+			android:name=".LauncherLight"
+			android:targetActivity="carscanner.MainActivity"
+			android:icon="@mipmap/ic_gcar_light"
+			android:roundIcon="@mipmap/ic_gcar_light_round"
+			android:enabled="true"
+			android:exported="true">
+			<intent-filter>
+				<action android:name="android.intent.action.MAIN" />
+				<category android:name="android.intent.category.LAUNCHER" />
+			</intent-filter>
+		</activity-alias>
+
+		<activity-alias
+			android:name=".LauncherDark"
+			android:targetActivity="carscanner.MainActivity"
+			android:icon="@mipmap/ic_gcar_dark"
+			android:roundIcon="@mipmap/ic_gcar_dark_round"
+			android:enabled="false"
+			android:exported="true">
+			<intent-filter>
+				<action android:name="android.intent.action.MAIN" />
+				<category android:name="android.intent.category.LAUNCHER" />
+			</intent-filter>
+		</activity-alias>
+	</application>
+
+</manifest>

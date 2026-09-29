@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    xmlns:models="clr-namespace:CarScanner.Models"
+    x:Class="CarScanner.Views.RepairCostPage"
+    x:DataType="vm:RepairCostViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="რამდენი დამიჯდება?">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,16,16,32" Spacing="12">
+            <VerticalStackLayout Spacing="2">
+                <Label Text="რამდენი დამიჯდება?" Style="{StaticResource PageTitleStyle}" />
+                <Label Text="{Binding VehicleTitle}" Style="{StaticResource CaptionStyle}" />
+            </VerticalStackLayout>
+
+            <Border Style="{StaticResource ListCardStyle}" Padding="12" BackgroundColor="{DynamicResource CardBg}">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <Label Text="ℹ" FontSize="18" TextColor="#F59E0B" VerticalTextAlignment="Start" />
+                    <Label Grid.Column="1" Text="ფასები სავარაუდოა და მოცემულია დიაპაზონად. ზუსტი თანხა დამოკიდებულია დადასტურებულ მიზეზზე, ნაწილის ბრენდზე და კონკრეტულ ხელოსანზე." FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                </Grid>
+            </Border>
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            <Label Text="{Binding SourceMessage}" IsVisible="{Binding HasEstimates}" Style="{StaticResource CaptionStyle}" Margin="2,0" />
+
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Estimates}" Spacing="12">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="models:RepairCostEstimate">
+                        <Border Style="{StaticResource ListCardStyle}" Padding="14">
+                            <VerticalStackLayout Spacing="11">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                    <VerticalStackLayout Spacing="2">
+                                        <Label Text="{Binding Code}" FontSize="18" FontAttributes="Bold" FontFamily="monospace" />
+                                        <Label Text="{Binding ProblemName}" FontSize="14" FontAttributes="Bold" LineBreakMode="WordWrap" />
+                                    </VerticalStackLayout>
+                                    <Border Grid.Column="1" Padding="9,4" Stroke="{Binding UrgencyColor}" BackgroundColor="Transparent" StrokeThickness="1" StrokeShape="RoundRectangle 9" VerticalOptions="Start">
+                                        <Label Text="{Binding UrgencyText}" TextColor="{Binding UrgencyColor}" FontSize="10" FontAttributes="Bold" />
+                                    </Border>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                                    <Border Padding="11,9" BackgroundColor="{DynamicResource PageBg}" Stroke="{DynamicResource BorderColor}" StrokeShape="RoundRectangle 10">
+                                        <VerticalStackLayout Spacing="2">
+                                            <Label Text="ნაწილი" Style="{StaticResource CaptionStyle}" />
+                                            <Label Text="{Binding PartPriceText}" FontSize="14" FontAttributes="Bold" />
+                                        </VerticalStackLayout>
+                                    </Border>
+                                    <Border Grid.Column="1" Padding="11,9" BackgroundColor="{DynamicResource PageBg}" Stroke="{DynamicResource BorderColor}" StrokeShape="RoundRectangle 10">
+                                        <VerticalStackLayout Spacing="2">
+                                            <Label Text="ხელობა" Style="{StaticResource CaptionStyle}" />
+                                            <Label Text="{Binding LaborPriceText}" FontSize="14" FontAttributes="Bold" />
+                                        </VerticalStackLayout>
+                                    </Border>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                    <Label Text="ჯამური სავარაუდო თანხა" FontSize="12" TextColor="{DynamicResource SubTextColor}" VerticalTextAlignment="Center" />
+                                    <Label Grid.Column="1" Text="{Binding TotalPriceText}" FontSize="16" FontAttributes="Bold" TextColor="#1D5BD6" />
+                                </Grid>
+                                <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" />
+                                <Label Text="{Binding Reason}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                                <Label Text="{Binding Source}" FontSize="10" TextColor="{DynamicResource SubTextColor}" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+
+            <Border IsVisible="{Binding HasNoEstimates}" Style="{StaticResource ListCardStyle}" Padding="16,24">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="{Binding EmptyMessage}" Style="{StaticResource CaptionStyle}" HorizontalTextAlignment="Center" />
+                    <Button Text="ხელახლა ცდა" Command="{Binding LoadCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderColor="{DynamicResource Primary}" BorderWidth="1" />
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

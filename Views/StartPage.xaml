@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="CarScanner.Views.StartPage"
+    BackgroundColor="{DynamicResource PageBg}"
+    Shell.NavBarIsVisible="False"
+    Title="GCar360">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20,28,20,32" Spacing="14">
+
+            <!-- Header -->
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Margin="0,0,0,20">
+                <Border
+                    BackgroundColor="{DynamicResource Primary}"
+                    StrokeThickness="0"
+                    StrokeShape="RoundRectangle 12"
+                    WidthRequest="46"
+                    HeightRequest="46"
+                    VerticalOptions="Center">
+                    <Label
+                        Text="360°"
+                        TextColor="White"
+                        FontSize="14"
+                        FontAttributes="Bold"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center" />
+                </Border>
+
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
+                    <Label Text="GCar360" FontSize="21" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                    <Label Text="რას შევამოწმებთ დღეს?" FontSize="13" TextColor="{DynamicResource SubTextColor}" />
+                </VerticalStackLayout>
+
+                <Button
+                    x:Name="LanguageButton"
+                    Grid.Column="2"
+                    AutomationId="DynamicTextLanguage"
+                    Text="EN"
+                    Clicked="OnLanguageClicked"
+                    BackgroundColor="{DynamicResource ButtonBg}"
+                    TextColor="{DynamicResource SubTextColor}"
+                    BorderColor="{DynamicResource BorderColor}"
+                    BorderWidth="1"
+                    CornerRadius="10"
+                    Padding="12,0"
+                    HeightRequest="36"
+                    MinimumWidthRequest="48"
+                    FontSize="13"
+                    VerticalOptions="Center" />
+            </Grid>
+
+            <!-- OBD scanner -->
+            <Border
+                BackgroundColor="{DynamicResource CardBg}"
+                Stroke="{DynamicResource BorderColor}"
+                StrokeThickness="1"
+                StrokeShape="RoundRectangle 14"
+                Padding="20"
+                MinimumHeightRequest="150">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnObdTapped" />
+                </Border.GestureRecognizers>
+                <Grid RowDefinitions="Auto,*,Auto,Auto">
+                    <Path
+                        Data="M7 12l5 5l-1.5 1.5a3.536 3.536 0 1 1 -5 -5l1.5 -1.5z M17 12l-5 -5l1.5 -1.5a3.536 3.536 0 1 1 5 5l-1.5 1.5z M3 21l2.5 -2.5 M18.5 5.5l2.5 -2.5 M10 11l-2 2 M13 14l-2 2"
+                        Stroke="{DynamicResource Primary}"
+                        StrokeThickness="2"
+                        StrokeLineCap="Round"
+                        StrokeLineJoin="Round"
+                        Aspect="Uniform"
+                        WidthRequest="38"
+                        HeightRequest="38"
+                        HorizontalOptions="Start" />
+                    <Border
+                        BackgroundColor="{DynamicResource PageBg}"
+                        StrokeThickness="0"
+                        StrokeShape="RoundRectangle 12"
+                        WidthRequest="36"
+                        HeightRequest="36"
+                        HorizontalOptions="End"
+                        VerticalOptions="Start">
+                        <Path
+                            Data="M5 12h14 M13 18l6 -6 M13 6l6 6"
+                            Stroke="{DynamicResource TextColor}"
+                            StrokeThickness="2"
+                            StrokeLineCap="Round"
+                            StrokeLineJoin="Round"
+                            Aspect="Uniform"
+                            WidthRequest="16"
+                            HeightRequest="16"
+                            HorizontalOptions="Center"
+                            VerticalOptions="Center" />
+                    </Border>
+                    <Label Grid.Row="2" Text="OBD სკანერი" FontSize="23" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" Margin="0,22,0,2" />
+                    <Label Grid.Row="3" Text="დიაგნოსტიკა მანქანიდან" FontSize="14" TextColor="{DynamicResource SubTextColor}" />
+                </Grid>
+            </Border>
+
+            <!-- VIN Check -->
+            <Border
+                BackgroundColor="{DynamicResource CardBg}"
+                Stroke="{DynamicResource BorderColor}"
+                StrokeThickness="1"
+                StrokeShape="RoundRectangle 14"
+                Padding="20"
+                MinimumHeightRequest="150">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnVinTapped" />
+                </Border.GestureRecognizers>
+                <Grid RowDefinitions="Auto,*,Auto,Auto">
+                    <Path
+                        Data="M14 3v4a1 1 0 0 0 1 1h4 M12 21h-5a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v4.5 M14 17.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0 M18.5 19.5l2.5 2.5"
+                        Stroke="{DynamicResource Primary}"
+                        StrokeThickness="2"
+                        StrokeLineCap="Round"
+                        StrokeLineJoin="Round"
+                        Aspect="Uniform"
+                        WidthRequest="38"
+                        HeightRequest="38"
+                        HorizontalOptions="Start" />
+                    <Border
+                        BackgroundColor="{DynamicResource PageBg}"
+                        StrokeThickness="0"
+                        StrokeShape="RoundRectangle 12"
+                        WidthRequest="36"
+                        HeightRequest="36"
+                        HorizontalOptions="End"
+                        VerticalOptions="Start">
+                        <Path
+                            Data="M5 12h14 M13 18l6 -6 M13 6l6 6"
+                            Stroke="{DynamicResource TextColor}"
+                            StrokeThickness="2"
+                            StrokeLineCap="Round"
+                            StrokeLineJoin="Round"
+                            Aspect="Uniform"
+                            WidthRequest="16"
+                            HeightRequest="16"
+                            HorizontalOptions="Center"
+                            VerticalOptions="Center" />
+                    </Border>
+                    <Label Grid.Row="2" Text="VIN Check" FontSize="23" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" Margin="0,22,0,2" />
+                    <Label Grid.Row="3" Text="მანქანის ისტორია VIN-ით" FontSize="14" TextColor="{DynamicResource SubTextColor}" />
+                </Grid>
+            </Border>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

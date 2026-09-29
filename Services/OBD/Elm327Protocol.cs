@@ -1,0 +1,1940 @@
+using System;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+using CarScanner.Models;
+using CarScanner.Services.UDS;
+using Microsoft.Extensions.Logging;
+
+namespace CarScanner.Services.OBD
+{
+    public enum ObdProtocol
+    {
+        Unknown = 0,
+        Automatic = 1,
+        SAE_J1850_PWM = 2,
+        SAE_J1850_VPW = 3,
+        ISO_9141_2 = 4,
+        ISO_14230_4_KWP_5BAUD = 5,
+        ISO_14230_4_KWP_FAST = 6,
+        ISO_15765_4_CAN_11BIT_500K = 7,
+        ISO_15765_4_CAN_29BIT_500K = 8,
+        ISO_15765_4_CAN_11BIT_250K = 9,
+        ISO_15765_4_CAN_29BIT_250K = 10,
+        SAE_J1939_CAN = 11
+    }
+
+    public sealed class Elm327InitializationException : Exception
+    {
+        public Elm327InitializationException(string message) : base(message) { }
+        public Elm327InitializationException(string message, Exception inner) : base(message, inner) { }
+    }
+
+    public sealed class Elm327TimeoutException : Exception
+    {
+        public Elm327TimeoutException(string message) : base(message) { }
+    }
+
+    public sealed class Elm327CommandException : Exception
+    {
+        public string RawResponse { get; }
+
+        public Elm327CommandException(string message, string rawResponse) : base(message)
+        {
+            RawResponse = rawResponse ?? string.Empty;
+        }
+    }
+
+    public sealed class Elm327NotConnectedException : Exception
+    {
+        public Elm327NotConnectedException(string message) : base(message) { }
+    }
+
+    /// <summary>
+    /// Production-grade ELM327 protocol handler built directly on top of the existing
+    /// IBluetoothService. Responsible ONLY for adapter initialization, reset, command
+    /// send/receive with retry + timeout, response cleaning, status-token detection,
+    /// and protocol detection. Does NOT parse PIDs, VIN, or DTCs.
+    /// </summary>
+    public sealed class Elm327Protocol : IAsyncDisposable
+    {
+        #region Constants
+
+        private const string CMD_RESET = "ATZ";
+        private const string CMD_ECHO_OFF = "ATE0";
+        private const string CMD_LINEFEEDS_OFF = "ATL0";
+        private const string CMD_SPACES_ON = "ATS1";
+        private const string CMD_HEADERS_OFF = "ATH0";
+        private const string CMD_SET_PROTOCOL_AUTO = "ATSP0";
+        private const string CMD_ADAPTIVE_TIMING_2 = "ATAT2";
+        private const string CMD_SPACES_OFF = "ATS0";
+        private const string CMD_DESCRIBE_PROTOCOL_NUM = "ATDPN";
+        private const string CMD_DESCRIBE_PROTOCOL = "ATDP";
+        private const string CMD_TEST_PID_0100 = "0100";
+
+        private const string PROMPT_TERMINATOR = ">";
+
+        private static readonly TimeSpan DefaultCommandTimeout = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan ResetCommandTimeout = TimeSpan.FromSeconds(8);
+        private static readonly TimeSpan InitCommandTimeout = TimeSpan.FromSeconds(6);
+        private static readonly TimeSpan ProtocolSearchTimeout = TimeSpan.FromSeconds(12);
+        private static readonly TimeSpan PostResetSettleDelay = TimeSpan.FromMilliseconds(600);
+
+        private const int DefaultMaxRetries = 3;
+        private static readonly TimeSpan RetryBaseDelay = TimeSpan.FromMilliseconds(250);
+
+        private static readonly string[] NegativeStatusTokens =
+        {
+            "NO DATA",
+            "STOPPED",
+            "ERROR",
+            "UNABLE TO CONNECT",
+            "BUS INIT: ERROR",
+            "BUS INIT... ERROR",
+            "BUS BUSY",
+            "BUFFER FULL",
+            "CAN ERROR",
+            "FB ERROR",
+            "DATA ERROR",
+            "<DATA ERROR",
+            "ACT ALERT",
+            "LP ALERT",
+            "LV RESET",
+            "RX ERROR",
+            "?"
+        };
+
+        private static readonly string[] TransientStatusTokens =
+        {
+            "SEARCHING...",
+            "SEARCHING",
+            "BUS INIT...",
+            "BUS INIT",
+            "BUSINIT...",
+            "BUSINIT"
+        };
+
+        #endregion
+
+        #region Fields
+
+        private readonly IBluetoothService _bluetooth;
+        private readonly ILogger<Elm327Protocol> _logger;
+        // Serializes complete adapter modes/sessions. A sequence such as
+        // ATH1 -> ATSH -> ATCRA -> UDS request must be indivisible; otherwise
+        // a concurrent generic PID request can inherit the OEM header/filter.
+        private readonly SemaphoreSlim _sessionGate = new(1, 1);
+        private readonly SemaphoreSlim _commandGate = new(1, 1);
+
+        private volatile bool _isInitialized;
+        private volatile bool _disposed;
+        private ObdProtocol _currentProtocol = ObdProtocol.Unknown;
+        private string? _currentProtocolRawDescription;
+
+        #endregion
+
+        #region Public Properties
+
+        public bool IsInitialized => _isInitialized;
+
+        public ObdProtocol CurrentProtocol => _currentProtocol;
+
+        public string? CurrentProtocolDescription => _currentProtocolRawDescription;
+
+        #endregion
+
+        #region Constructor
+
+        public Elm327Protocol(
+            IBluetoothService bluetooth,
+            ILogger<Elm327Protocol> logger)
+        {
+            _bluetooth = bluetooth ?? throw new ArgumentNullException(nameof(bluetooth));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _bluetooth.ConnectionChanged += OnConnectionChanged;
+        }
+
+        #endregion
+
+        #region Public API
+
+        public async Task InitializeAsync(CancellationToken cancellationToken = default)
+        {
+            ThrowIfDisposed();
+            await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await InitializeCoreAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _sessionGate.Release();
+            }
+        }
+
+        private async Task InitializeCoreAsync(CancellationToken cancellationToken)
+        {
+            ThrowIfDisposed();
+            EnsureConnected();
+            if (_isInitialized)
+            {
+                _logger.LogDebug("ELM327 is already initialized; skipping reset/reinitialization.");
+                return;
+            }
+
+            _logger.LogInformation("Starting ELM327 initialization sequence...");
+            _isInitialized = false;
+            _currentProtocol = ObdProtocol.Unknown;
+            _currentProtocolRawDescription = null;
+
+            try
+            {
+                await ExecuteResetInternalAsync(cancellationToken).ConfigureAwait(false);
+
+                await SendInitCommandAsync(CMD_ECHO_OFF, "disable echo", cancellationToken).ConfigureAwait(false);
+                await SendInitCommandAsync(CMD_LINEFEEDS_OFF, "disable linefeeds", cancellationToken).ConfigureAwait(false);
+                await SendInitCommandAsync(CMD_SPACES_ON, "keep spaces in responses", cancellationToken).ConfigureAwait(false);
+                await SendInitCommandAsync(CMD_HEADERS_OFF, "disable headers", cancellationToken).ConfigureAwait(false);
+                await SendInitCommandAsync(CMD_SET_PROTOCOL_AUTO, "set protocol auto", cancellationToken).ConfigureAwait(false);
+                await SendInitCommandAsync(CMD_ADAPTIVE_TIMING_2, "adaptive timing 2", cancellationToken).ConfigureAwait(false);
+
+                var probeResponse = await SendCommandInternalAsync(
+                    CMD_TEST_PID_0100,
+                    ProtocolSearchTimeout,
+                    DefaultMaxRetries,
+                    treatNegativeStatusAsError: false,
+                    cancellationToken).ConfigureAwait(false);
+
+                ValidateInitialProbeResponse(probeResponse);
+
+                await DetectAndCacheProtocolAsync(cancellationToken).ConfigureAwait(false);
+
+                _isInitialized = true;
+                _logger.LogInformation(
+                    "ELM327 initialization completed successfully. Protocol: {Protocol} ({Description})",
+                    _currentProtocol, _currentProtocolRawDescription ?? "unknown");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("ELM327 initialization was cancelled.");
+                _isInitialized = false;
+                throw;
+            }
+            catch (Elm327InitializationException)
+            {
+                _isInitialized = false;
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _isInitialized = false;
+                _logger.LogError(ex, "Unexpected error during ELM327 initialization.");
+                throw new Elm327InitializationException(
+                    "Unexpected error during ELM327 initialization.", ex);
+            }
+        }
+
+
+        /// <summary>
+        /// Executes one ISO-TP/UDS request as an atomic ELM327 session. The
+        /// adapter supplies the ISO-TP PCI byte for the outgoing request and
+        /// automatically sends flow-control frames for a multi-frame reply.
+        /// Verified OEM addressing is mandatory at the call site.
+        /// </summary>
+        public async Task<string> SendCanIsoTpPayloadAsync(
+            ReadOnlyMemory<byte> payload,
+            int transmitCanId,
+            int receiveCanId,
+            bool extended29Bit,
+            TimeSpan timeout,
+            CancellationToken token = default)
+        {
+            if (payload.Length is < 1 or > 7)
+                throw new NotSupportedException(
+                    "This ELM327 transport safely supports ISO-TP requests up to 7 payload bytes. Larger requests require a verified adapter-specific segmented transmit implementation.");
+
+            if (timeout <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(timeout));
+
+            ValidateCanIdentifiers(transmitCanId, receiveCanId, extended29Bit);
+            ThrowIfDisposed();
+            EnsureConnected();
+
+            await _sessionGate.WaitAsync(token).ConfigureAwait(false);
+            try
+            {
+                if (!IsCanProtocol(_currentProtocol))
+                    throw new NotSupportedException(
+                        $"Active vehicle protocol '{_currentProtocol}' is not ISO 15765 CAN.");
+
+                if (extended29Bit != Is29BitCanProtocol(_currentProtocol))
+                    throw new NotSupportedException(
+                        $"Requested {(extended29Bit ? "29-bit" : "11-bit")} addressing does not match active protocol '{_currentProtocol}'.");
+
+                try
+                {
+                    await ConfigureCanCoreAsync(
+                        transmitCanId,
+                        receiveCanId,
+                        extended29Bit,
+                        automaticFormatting: true,
+                        token).ConfigureAwait(false);
+
+                    var command = string.Concat(payload.ToArray().Select(b => b.ToString("X2")));
+                    return await SendCommandInternalAsync(
+                        command,
+                        timeout,
+                        maxRetries: 1,
+                        treatNegativeStatusAsError: false,
+                        token).ConfigureAwait(false);
+                }
+                finally
+                {
+                    // Never expose a manufacturer-specific physical header or
+                    // receive filter to the next generic OBD request.
+                    await RestoreGenericCanSettingsCoreAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                _sessionGate.Release();
+            }
+        }
+
+        /// <summary>
+        /// Sends one physically addressed, read-only CAN diagnostic request.
+        /// Only UDS 0x19/0x22 are accepted. This path can temporarily switch
+        /// between 11-bit and 29-bit ISO-15765 at the already-detected bus
+        /// speed, then restores the original generic protocol/settings.
+        /// Optional ELM CAN extended addressing (ATCEA) is supported for
+        /// read-only BMW-style OBDb definitions.
+        /// </summary>
+        public Task<string> SendPhysicalCanReadOnlyPayloadAsync(
+            ReadOnlyMemory<byte> payload,
+            int transmitCanId,
+            TimeSpan timeout,
+            CancellationToken token = default) =>
+            SendPhysicalCanReadOnlyPayloadAsync(
+                payload,
+                transmitCanId,
+                receiveCanId: null,
+                extended29Bit: false,
+                extendedAddress: null,
+                timeout,
+                token);
+
+        public async Task<string> SendPhysicalCanReadOnlyPayloadAsync(
+            ReadOnlyMemory<byte> payload,
+            int transmitCanId,
+            int? receiveCanId,
+            bool extended29Bit,
+            byte? extendedAddress,
+            TimeSpan timeout,
+            CancellationToken token = default)
+        {
+            if (payload.Length is < 1 or > 7)
+                throw new NotSupportedException(
+                    "Read-only physical CAN requests are limited to 1-7 payload bytes.");
+            // 0x21 = KWP2000 ReadDataByLocalIdentifier (read-only, Toyota/Lexus).
+            if (payload.Span[0] is not (0x19 or 0x21 or 0x22))
+                throw new InvalidOperationException(
+                    "Only read-only diagnostic services 0x19, 0x21 and 0x22 are allowed by this path.");
+            if (timeout <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(timeout));
+
+            var maxCanId = extended29Bit ? 0x1FFFFFFF : 0x7FF;
+            if (transmitCanId is < 0 || transmitCanId > maxCanId)
+                throw new ArgumentOutOfRangeException(nameof(transmitCanId));
+            if (receiveCanId.HasValue &&
+                (receiveCanId.Value < 0 || receiveCanId.Value > maxCanId))
+                throw new ArgumentOutOfRangeException(nameof(receiveCanId));
+            if (extended29Bit && extendedAddress.HasValue)
+                throw new NotSupportedException(
+                    "CAN extended addressing is supported only on 11-bit BMW-style read definitions in this path.");
+
+            ThrowIfDisposed();
+            EnsureConnected();
+
+            await _sessionGate.WaitAsync(token).ConfigureAwait(false);
+            try
+            {
+                if (!IsCanProtocol(_currentProtocol))
+                    throw new NotSupportedException(
+                        $"Active vehicle protocol '{_currentProtocol}' is not ISO 15765 CAN.");
+
+                var originalProtocol = _currentProtocol;
+                var originalElmProtocolNumber = GetElmCanProtocolNumber(originalProtocol);
+                var requestedElmProtocolNumber = GetCompatibleElmCanProtocolNumber(
+                    originalProtocol,
+                    extended29Bit);
+                var switchedProtocol =
+                    Is29BitCanProtocol(originalProtocol) != extended29Bit;
+
+                try
+                {
+                    if (switchedProtocol)
+                    {
+                        await RequireOkInternalAsync(
+                            $"ATSP{requestedElmProtocolNumber}",
+                            token).ConfigureAwait(false);
+                    }
+
+                    await RequireOkInternalAsync("ATL0", token).ConfigureAwait(false);
+                    await RequireOkInternalAsync("ATS1", token).ConfigureAwait(false);
+                    await RequireOkInternalAsync("ATH1", token).ConfigureAwait(false);
+                    await RequireOkInternalAsync("ATCAF1", token).ConfigureAwait(false);
+                    await RequireOkInternalAsync("ATCFC1", token).ConfigureAwait(false);
+                    await RequireOkInternalAsync("ATD0", token).ConfigureAwait(false);
+
+                    if (extendedAddress.HasValue)
+                    {
+                        await RequireOkInternalAsync(
+                            $"ATCEA{extendedAddress.Value:X2}",
+                            token).ConfigureAwait(false);
+                    }
+
+                    var width = extended29Bit ? 8 : 3;
+                    await RequireOkInternalAsync(
+                        $"ATSH{transmitCanId.ToString($"X{width}")}",
+                        token).ConfigureAwait(false);
+
+                    if (receiveCanId.HasValue)
+                    {
+                        await RequireOkInternalAsync(
+                            $"ATCRA{receiveCanId.Value.ToString($"X{width}")}",
+                            token).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        // Clear any stale receive filter. The caller still
+                        // requires an exact 0x62 DID echo before accepting data.
+                        await RequireOkInternalAsync("ATCRA", token).ConfigureAwait(false);
+                    }
+
+                    var command = string.Concat(
+                        payload.ToArray().Select(value => value.ToString("X2")));
+
+                    return await SendCommandInternalAsync(
+                        command,
+                        timeout,
+                        maxRetries: 1,
+                        treatNegativeStatusAsError: false,
+                        token).ConfigureAwait(false);
+                }
+                finally
+                {
+                    // Extended addressing must never leak into normal OBD.
+                    if (extendedAddress.HasValue)
+                    {
+                        try
+                        {
+                            await SendCommandInternalAsync(
+                                "ATCEA",
+                                TimeSpan.FromSeconds(2),
+                                maxRetries: 1,
+                                treatNegativeStatusAsError: false,
+                                CancellationToken.None).ConfigureAwait(false);
+                        }
+                        catch
+                        {
+                            _isInitialized = false;
+                        }
+                    }
+
+                    if (switchedProtocol)
+                    {
+                        try
+                        {
+                            await RequireOkInternalAsync(
+                                $"ATSP{originalElmProtocolNumber}",
+                                CancellationToken.None).ConfigureAwait(false);
+                        }
+                        catch
+                        {
+                            _isInitialized = false;
+                        }
+                    }
+
+                    if (_isInitialized)
+                    {
+                        await RestoreGenericCanSettingsCoreAsync(
+                            CancellationToken.None).ConfigureAwait(false);
+                    }
+                }
+            }
+            finally
+            {
+                _sessionGate.Release();
+            }
+        }
+
+        /// <summary>
+        /// Runs several physically addressed diagnostic trouble-code requests
+        /// in one adapter session (much faster than configuring the adapter
+        /// for every module). Only DTC read services and the standard DTC
+        /// clear services are accepted; the generic OBD settings are always
+        /// restored afterwards.
+        /// </summary>
+        public async Task RunDtcModuleSessionAsync(
+            Func<IDtcModuleSession, Task> work,
+            CancellationToken token = default)
+        {
+            ArgumentNullException.ThrowIfNull(work);
+            ThrowIfDisposed();
+            EnsureConnected();
+
+            await _sessionGate.WaitAsync(token).ConfigureAwait(false);
+            try
+            {
+                if (!IsCanProtocol(_currentProtocol))
+                    throw new NotSupportedException(
+                        $"Active vehicle protocol '{_currentProtocol}' is not ISO 15765 CAN.");
+
+                var session = new DtcModuleSession(this, _currentProtocol);
+                try
+                {
+                    await session.PrepareAsync(token).ConfigureAwait(false);
+                    await work(session).ConfigureAwait(false);
+                }
+                finally
+                {
+                    await session.RestoreAsync().ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                _sessionGate.Release();
+            }
+        }
+
+        /// <summary>One adapter session for module DTC requests (see <see cref="RunDtcModuleSessionAsync"/>).</summary>
+        public interface IDtcModuleSession
+        {
+            /// <summary>ISO-TP request (the adapter adds the PCI byte). Returns frames as "HEADER+DATA" tokens.</summary>
+            Task<string> SendAsync(int transmitCanId, int receiveCanId, bool extended29Bit, byte[] payload, bool longWait, CancellationToken token, byte? extendedAddress = null);
+
+            /// <summary>GM (GMLAN) $A9 DTC request: single frame out, unsegmented frames back on <paramref name="uudtReceiveCanId"/>.</summary>
+            Task<string> SendGmlanDtcRequestAsync(int transmitCanId, int uudtReceiveCanId, byte[] payload, CancellationToken token);
+
+            /// <summary>
+            /// Waits for one periodic (broadcast) frame with the given 11-bit ID, e.g. the
+            /// odometer frame a car sends by itself. Only the standard "supported PIDs"
+            /// request (01 00) is sent; its reply is filtered out.
+            /// </summary>
+            Task<string> ListenBroadcastAsync(int canId, CancellationToken token);
+
+            /// <summary>
+            /// Monitors the bus ("ATMA", filtered to one ID) for the given time and returns
+            /// every frame the car broadcast with that ID. Nothing is sent to the car.
+            /// </summary>
+            Task<string> MonitorBroadcastAsync(int canId, bool extended29Bit, int milliseconds, CancellationToken token);
+        }
+
+        private sealed class DtcModuleSession : IDtcModuleSession
+        {
+            private readonly Elm327Protocol _elm;
+            private readonly ObdProtocol _originalProtocol;
+            private bool _is29Bit;
+            private bool _protocolSwitched;
+            private bool? _caf;
+            private string? _header;
+            private string? _receive;
+            private string? _timing;
+            private bool _flowControlSet;
+            private bool _flowControlSupported = true;
+            private string? _extendedAddress;
+            private string? _flowControlData;
+
+            public DtcModuleSession(Elm327Protocol elm, ObdProtocol originalProtocol)
+            {
+                _elm = elm;
+                _originalProtocol = originalProtocol;
+                _is29Bit = Is29BitCanProtocol(originalProtocol);
+            }
+
+            public async Task PrepareAsync(CancellationToken token)
+            {
+                await _elm.RequireOkInternalAsync("ATL0", token).ConfigureAwait(false);
+                // S0: every received frame becomes one token (header+data).
+                await _elm.RequireOkInternalAsync("ATS0", token).ConfigureAwait(false);
+                await _elm.RequireOkInternalAsync("ATH1", token).ConfigureAwait(false);
+                await _elm.RequireOkInternalAsync("ATD0", token).ConfigureAwait(false);
+                await _elm.RequireOkInternalAsync("ATCFC1", token).ConfigureAwait(false);
+            }
+
+            private static void EnsureReadOrClear(byte[] payload)
+            {
+                if (payload.Length is < 1 or > 7)
+                    throw new NotSupportedException("DTC requests are limited to 1-7 payload bytes.");
+
+                var ok = payload[0] switch
+                {
+                    // UDS ReadDTCInformation: number of DTC, DTC by status, snapshot, extended data.
+                    0x19 => payload.Length >= 2 && payload[1] is 0x01 or 0x02 or 0x03 or 0x04 or 0x06,
+                    // UDS ReadDataByIdentifier (read-only).
+                    0x22 => payload.Length == 3,
+                    // KWP ReadDataByLocalIdentifier / ReadEcuIdentification, GMLAN ReadDataByIdentifier (read-only).
+                    0x21 => payload.Length == 2,
+                    0x1A => payload.Length == 2,
+                    // KWP2000 ReadDTCByStatus (read-only).
+                    0x18 => true,
+                    // UDS / KWP ClearDiagnosticInformation.
+                    0x14 => true,
+                    // GMLAN ReadDiagnosticInformation.
+                    0xA9 => true,
+                    // GMLAN ClearDiagnosticInformation.
+                    0x04 => payload.Length == 1,
+                    _ => false
+                };
+
+                if (!ok)
+                    throw new InvalidOperationException(
+                        $"Service 0x{payload[0]:X2} is not allowed in a DTC module session.");
+            }
+
+            private async Task SetAsync(string command, CancellationToken token) =>
+                await _elm.RequireOkInternalAsync(command, token).ConfigureAwait(false);
+
+            private async Task<bool> TryAsync(string command, CancellationToken token)
+            {
+                try
+                {
+                    var response = await _elm.SendCommandInternalAsync(command, TimeSpan.FromSeconds(2), 1, false, token).ConfigureAwait(false);
+                    return IsAffirmativeAtResponse(response);
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            private async Task ConfigureAsync(int tx, int rx, bool ext29, bool caf, bool longWait, CancellationToken token, byte? extendedAddress = null)
+            {
+                if (ext29 && extendedAddress.HasValue)
+                    throw new NotSupportedException("CAN extended addressing is used only with 11-bit identifiers.");
+
+                if (ext29 != _is29Bit)
+                {
+                    var number = GetCompatibleElmCanProtocolNumber(_originalProtocol, ext29);
+                    await SetAsync($"ATSP{number}", token).ConfigureAwait(false);
+                    _is29Bit = ext29;
+                    _protocolSwitched = ext29 != Is29BitCanProtocol(_originalProtocol);
+                    _header = null;
+                    _receive = null;
+                }
+
+                if (_caf != caf)
+                {
+                    await SetAsync(caf ? "ATCAF1" : "ATCAF0", token).ConfigureAwait(false);
+                    _caf = caf;
+                }
+
+                var width = ext29 ? 8 : 3;
+                var header = tx.ToString($"X{width}");
+                if (_header != header)
+                {
+                    await SetAsync($"ATSH{header}", token).ConfigureAwait(false);
+                    _header = header;
+
+                    // Flow control must go to this module's request ID (not
+                    // "reply − 8", which is wrong for many OEM modules).
+                    if (_flowControlSupported)
+                    {
+                        _flowControlSupported =
+                            await TryAsync($"ATFCSH{header}", token).ConfigureAwait(false) &&
+                            (_flowControlSet ||
+                             (await TryAsync("ATFCSD300000", token).ConfigureAwait(false) &&
+                              await TryAsync("ATFCSM1", token).ConfigureAwait(false)));
+                        _flowControlSet = _flowControlSupported;
+                    }
+                }
+
+                var receive = rx.ToString($"X{width}");
+                if (_receive != receive)
+                {
+                    await SetAsync($"ATCRA{receive}", token).ConfigureAwait(false);
+                    _receive = receive;
+                }
+
+                // BMW-style CAN extended addressing (target address in the first data byte).
+                var extended = extendedAddress?.ToString("X2");
+                if (_extendedAddress != extended)
+                {
+                    if (extended is null)
+                        await TryAsync("ATCEA", token).ConfigureAwait(false);
+                    else
+                        await SetAsync($"ATCEA{extended}", token).ConfigureAwait(false);
+                    _extendedAddress = extended;
+                }
+
+                if (_flowControlSupported && caf)
+                {
+                    var fcData = extended is null ? "300000" : extended + "300000";
+                    if (_flowControlData != fcData)
+                    {
+                        if (await TryAsync($"ATFCSD{fcData}", token).ConfigureAwait(false))
+                            _flowControlData = fcData;
+                    }
+                }
+
+                // Answer window: 400 ms normally, ~1 s when the ECU asked for more time.
+                var timing = longWait ? "ATSTFF" : "ATST64";
+                if (_timing != timing)
+                {
+                    await SetAsync(timing, token).ConfigureAwait(false);
+                    _timing = timing;
+                }
+            }
+
+            public async Task<string> SendAsync(int transmitCanId, int receiveCanId, bool extended29Bit, byte[] payload, bool longWait, CancellationToken token, byte? extendedAddress = null)
+            {
+                EnsureReadOrClear(payload);
+                ValidateCanIdentifiers(transmitCanId, receiveCanId, extended29Bit);
+                await ConfigureAsync(transmitCanId, receiveCanId, extended29Bit, caf: true, longWait, token, extendedAddress).ConfigureAwait(false);
+                var command = string.Concat(payload.Select(b => b.ToString("X2")));
+                return await _elm.SendCommandInternalAsync(
+                    command,
+                    TimeSpan.FromSeconds(longWait ? 4 : 2.5),
+                    maxRetries: 1,
+                    treatNegativeStatusAsError: false,
+                    token).ConfigureAwait(false);
+            }
+
+            public async Task<string> MonitorBroadcastAsync(int canId, bool extended29Bit, int milliseconds, CancellationToken token)
+            {
+                var tx = extended29Bit ? 0x18DB33F1 : 0x7DF;
+                ValidateCanIdentifiers(tx, canId, extended29Bit);
+                await ConfigureAsync(tx, canId, extended29Bit, caf: false, longWait: false, token).ConfigureAwait(false);
+                return await _elm.SendCommandInternalAsync(
+                    ObdMonitorCommand.Create("ATMA", milliseconds),
+                    TimeSpan.FromMilliseconds(milliseconds + 4000),
+                    maxRetries: 1,
+                    treatNegativeStatusAsError: false,
+                    token).ConfigureAwait(false);
+            }
+
+            public async Task<string> ListenBroadcastAsync(int canId, CancellationToken token)
+            {
+                ValidateCanIdentifiers(0x7DF, canId, extended29Bit: false);
+                await ConfigureAsync(0x7DF, canId, ext29: false, caf: false, longWait: true, token).ConfigureAwait(false);
+
+                // Raw frame "02 01 00" (standard OBD request, harmless) + response count 1:
+                // the adapter returns as soon as the first frame with the wanted ID arrives.
+                return await _elm.SendCommandInternalAsync(
+                    "02010000000000001",
+                    TimeSpan.FromSeconds(3),
+                    maxRetries: 1,
+                    treatNegativeStatusAsError: false,
+                    token).ConfigureAwait(false);
+            }
+
+            public async Task<string> SendGmlanDtcRequestAsync(int transmitCanId, int uudtReceiveCanId, byte[] payload, CancellationToken token)
+            {
+                EnsureReadOrClear(payload);
+                if (payload[0] != 0xA9)
+                    throw new InvalidOperationException("Only GMLAN $A9 uses unsegmented replies.");
+                ValidateCanIdentifiers(transmitCanId, uudtReceiveCanId, extended29Bit: false);
+                await ConfigureAsync(transmitCanId, uudtReceiveCanId, ext29: false, caf: false, longWait: false, token).ConfigureAwait(false);
+
+                // Raw single frame: PCI + payload, padded to 8 bytes.
+                var frame = new byte[8];
+                frame[0] = (byte)payload.Length;
+                Array.Copy(payload, 0, frame, 1, payload.Length);
+                var command = string.Concat(frame.Select(b => b.ToString("X2")));
+                return await _elm.SendCommandInternalAsync(
+                    command,
+                    TimeSpan.FromSeconds(3),
+                    maxRetries: 1,
+                    treatNegativeStatusAsError: false,
+                    token).ConfigureAwait(false);
+            }
+
+            public async Task RestoreAsync()
+            {
+                try
+                {
+                    if (_timing is not null)
+                        await _elm.SendCommandInternalAsync("ATST32", TimeSpan.FromSeconds(2), 1, false, CancellationToken.None).ConfigureAwait(false);
+
+                    if (_flowControlSet)
+                        await _elm.SendCommandInternalAsync("ATFCSM0", TimeSpan.FromSeconds(2), 1, false, CancellationToken.None).ConfigureAwait(false);
+
+                    if (_extendedAddress is not null)
+                        await _elm.SendCommandInternalAsync("ATCEA", TimeSpan.FromSeconds(2), 1, false, CancellationToken.None).ConfigureAwait(false);
+
+                    if (_protocolSwitched || _is29Bit != Is29BitCanProtocol(_originalProtocol))
+                        await SetAsync($"ATSP{GetElmCanProtocolNumber(_originalProtocol)}", CancellationToken.None).ConfigureAwait(false);
+
+                    if (_elm._isInitialized)
+                        await _elm.RestoreGenericCanSettingsCoreAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+                catch
+                {
+                    _elm._isInitialized = false;
+                }
+            }
+        }
+
+        private static int GetCompatibleElmCanProtocolNumber(
+            ObdProtocol activeProtocol,
+            bool requested29Bit) => activeProtocol switch
+            {
+                ObdProtocol.ISO_15765_4_CAN_11BIT_500K or
+                ObdProtocol.ISO_15765_4_CAN_29BIT_500K => requested29Bit ? 7 : 6,
+
+                ObdProtocol.ISO_15765_4_CAN_11BIT_250K or
+                ObdProtocol.ISO_15765_4_CAN_29BIT_250K => requested29Bit ? 9 : 8,
+
+                _ => throw new NotSupportedException(
+                    $"Protocol '{activeProtocol}' cannot be converted to a CAN ISO-TP addressing width.")
+            };
+
+        private static int GetElmCanProtocolNumber(ObdProtocol protocol) => protocol switch
+        {
+            ObdProtocol.ISO_15765_4_CAN_11BIT_500K => 6,
+            ObdProtocol.ISO_15765_4_CAN_29BIT_500K => 7,
+            ObdProtocol.ISO_15765_4_CAN_11BIT_250K => 8,
+            ObdProtocol.ISO_15765_4_CAN_29BIT_250K => 9,
+            _ => throw new NotSupportedException(
+                $"Protocol '{protocol}' is not a supported ISO-15765 CAN protocol.")
+        };
+
+        /// <summary>
+        /// Runs a read-only adapter capability benchmark. Only ELM AT commands
+        /// plus standard Generic OBD requests 0100 and 0902 are sent. No OEM
+        /// ECU address, session-control, security, routine or write request is
+        /// used by this detector.
+        /// </summary>
+        public async Task<AdapterCapabilitySnapshot> DetectAdapterCapabilitiesAsync(
+            IProgress<AdapterTestProgress>? progress = null,
+            CancellationToken token = default)
+        {
+            ThrowIfDisposed();
+            EnsureConnected();
+            if (!_isInitialized)
+                throw new InvalidOperationException("ELM327 must be initialized before capability detection.");
+
+            await _sessionGate.WaitAsync(token).ConfigureAwait(false);
+            try
+            {
+                var checks = new List<AdapterCapabilityCheck>();
+                var latencies = new List<long>();
+                var attempted = 0;
+                var passed = 0;
+                var deviceDescription = "Unavailable";
+                var protocolNumber = "Unknown";
+
+                async Task<(bool Passed, string Response)> ProbeAtAsync(
+                    string id,
+                    string name,
+                    string command,
+                    int percent,
+                    Func<string, bool>? validator = null)
+                {
+                    progress?.Report(new AdapterTestProgress(percent, $"{name}…"));
+                    attempted++;
+                    try
+                    {
+                        var response = await SendCommandInternalAsync(
+                            command,
+                            TimeSpan.FromMilliseconds(1200),
+                            maxRetries: 1,
+                            treatNegativeStatusAsError: false,
+                            token).ConfigureAwait(false);
+                        var ok = validator?.Invoke(response) ?? IsMeaningfulCapabilityResponse(response);
+                        if (ok) passed++;
+                        checks.Add(new AdapterCapabilityCheck(
+                            id,
+                            name,
+                            ok ? AdapterCapabilityCheckState.Passed : AdapterCapabilityCheckState.NotSupported,
+                            ok ? $"'{command}' accepted by adapter." : $"'{command}' response: {SafeEvidence(response)}"));
+                        return (ok, response);
+                    }
+                    catch (OperationCanceledException) when (token.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        checks.Add(new AdapterCapabilityCheck(
+                            id,
+                            name,
+                            AdapterCapabilityCheckState.Failed,
+                            ex.Message));
+                        return (false, string.Empty);
+                    }
+                }
+
+                var identity = await ProbeAtAsync(
+                    "elm.identity",
+                    "ELM identity / firmware",
+                    "ATI",
+                    76).ConfigureAwait(false);
+                if (identity.Passed)
+                    deviceDescription = identity.Response;
+
+                var description = await ProbeAtAsync(
+                    "elm.description",
+                    "Adapter description",
+                    "AT@1",
+                    78).ConfigureAwait(false);
+                if (description.Passed)
+                    deviceDescription = description.Response;
+
+                var dpn = await ProbeAtAsync(
+                    "elm.protocol-number",
+                    "Protocol number",
+                    "ATDPN",
+                    80,
+                    response => !string.IsNullOrWhiteSpace(response) &&
+                                !ObdResponseParser.IsNegative(response)).ConfigureAwait(false);
+                if (dpn.Passed)
+                    protocolNumber = dpn.Response;
+
+                var longMessages = await ProbeAtAsync(
+                    "elm.long-messages",
+                    "Long message command",
+                    "ATAL",
+                    81,
+                    IsAffirmativeAtResponse).ConfigureAwait(false);
+                if (longMessages.Passed)
+                    await ProbeAtAsync("elm.normal-length", "Normal message restore", "ATNL", 82, IsAffirmativeAtResponse).ConfigureAwait(false);
+
+                await ProbeAtAsync(
+                    "elm.adaptive-timing",
+                    "Adaptive timing",
+                    "ATAT2",
+                    83,
+                    IsAffirmativeAtResponse).ConfigureAwait(false);
+
+                var addressing = "Not verified on active vehicle";
+                if (IsCanProtocol(_currentProtocol))
+                {
+                    var is29Bit = Is29BitCanProtocol(_currentProtocol);
+                    addressing = is29Bit ? "29-bit CAN verified" : "11-bit CAN verified";
+                    checks.Add(new AdapterCapabilityCheck(
+                        is29Bit ? "can.addressing-29" : "can.addressing-11",
+                        is29Bit ? "29-bit CAN addressing" : "11-bit CAN addressing",
+                        AdapterCapabilityCheckState.Passed,
+                        $"Active negotiated protocol: {_currentProtocolRawDescription ?? _currentProtocol.ToString()}"));
+                    checks.Add(new AdapterCapabilityCheck(
+                        is29Bit ? "can.addressing-11" : "can.addressing-29",
+                        is29Bit ? "11-bit CAN addressing" : "29-bit CAN addressing",
+                        AdapterCapabilityCheckState.NotVerified,
+                        "The inactive CAN identifier width cannot be proven on this vehicle without changing the negotiated bus protocol."));
+
+                    var headers = await ProbeAtAsync("can.headers", "CAN headers", "ATH1", 84, IsAffirmativeAtResponse).ConfigureAwait(false);
+                    var spaces = await ProbeAtAsync("can.spacing", "CAN response spacing", "ATS1", 85, IsAffirmativeAtResponse).ConfigureAwait(false);
+                    var dlc = await ProbeAtAsync("can.dlc", "CAN DLC display control", "ATD0", 86, IsAffirmativeAtResponse).ConfigureAwait(false);
+                    var formatting = await ProbeAtAsync("can.auto-format", "CAN automatic formatting", "ATCAF1", 87, IsAffirmativeAtResponse).ConfigureAwait(false);
+                    var flow = await ProbeAtAsync("can.flow-control", "ISO-TP automatic flow control", "ATCFC1", 88, IsAffirmativeAtResponse).ConfigureAwait(false);
+
+                    var functionalHeader = is29Bit ? "18DB33F1" : "7DF";
+                    var header = await ProbeAtAsync(
+                        "can.set-header",
+                        "CAN transmit header",
+                        $"ATSH{functionalHeader}",
+                        89,
+                        IsAffirmativeAtResponse).ConfigureAwait(false);
+                    var filterReset = await ProbeAtAsync(
+                        "can.receive-filter-command",
+                        "CAN receive filter command",
+                        "ATCRA",
+                        90,
+                        IsAffirmativeAtResponse).ConfigureAwait(false);
+
+                    if (headers.Passed && spaces.Passed && dlc.Passed &&
+                        formatting.Passed && flow.Passed && header.Passed && filterReset.Passed)
+                    {
+                        string firstProbeRaw = string.Empty;
+                        var successfulVehicleQueries = 0;
+                        string? genericProbeError = null;
+                        for (var sample = 0; sample < 3; sample++)
+                        {
+                            token.ThrowIfCancellationRequested();
+                            var clock = System.Diagnostics.Stopwatch.StartNew();
+                            attempted++;
+                            try
+                            {
+                                var raw = await SendCommandInternalAsync(
+                                    "0100",
+                                    TimeSpan.FromMilliseconds(1500),
+                                    maxRetries: 1,
+                                    treatNegativeStatusAsError: false,
+                                    token).ConfigureAwait(false);
+
+                                if (HasModeResponse(raw, 0x41, 0x00))
+                                {
+                                    passed++;
+                                    successfulVehicleQueries++;
+                                    if (string.IsNullOrEmpty(firstProbeRaw))
+                                        firstProbeRaw = raw;
+                                }
+                            }
+                            catch (OperationCanceledException) when (token.IsCancellationRequested)
+                            {
+                                throw;
+                            }
+                            catch (Exception ex)
+                            {
+                                genericProbeError = ex.Message;
+                            }
+                            finally
+                            {
+                                clock.Stop();
+                                latencies.Add(clock.ElapsedMilliseconds);
+                            }
+                        }
+
+                        checks.Add(new AdapterCapabilityCheck(
+                            "can.generic-request",
+                            "CAN request/response",
+                            successfulVehicleQueries == 3
+                                ? AdapterCapabilityCheckState.Passed
+                                : AdapterCapabilityCheckState.Failed,
+                            genericProbeError is null
+                                ? $"Standard 0100 responses: {successfulVehicleQueries}/3."
+                                : $"Standard 0100 responses: {successfulVehicleQueries}/3. Last error: {genericProbeError}"));
+
+                        var responseIds = ObdResponseParser.ExtractCanIdentifiers(firstProbeRaw);
+                        if (responseIds.Count > 0)
+                        {
+                            var responseId = responseIds[0];
+                            var width = is29Bit ? 8 : 3;
+                            var filter = await ProbeAtAsync(
+                                "can.receive-filter",
+                                "CAN receive filter",
+                                $"ATCRA{responseId.ToString($"X{width}")}",
+                                91,
+                                IsAffirmativeAtResponse).ConfigureAwait(false);
+
+                            if (filter.Passed)
+                            {
+                                attempted++;
+                                try
+                                {
+                                    var filteredRaw = await SendCommandInternalAsync(
+                                        "0100",
+                                        TimeSpan.FromMilliseconds(1500),
+                                        maxRetries: 1,
+                                        treatNegativeStatusAsError: false,
+                                        token).ConfigureAwait(false);
+                                    var filteredIds = ObdResponseParser.ExtractCanIdentifiers(filteredRaw);
+                                    var filterVerified = HasModeResponse(filteredRaw, 0x41, 0x00) &&
+                                                         filteredIds.Count > 0 &&
+                                                         filteredIds.All(id => id == responseId);
+                                    if (filterVerified) passed++;
+                                    checks.Add(new AdapterCapabilityCheck(
+                                        "can.receive-filter-verified",
+                                        "CAN receive filter verification",
+                                        filterVerified ? AdapterCapabilityCheckState.Passed : AdapterCapabilityCheckState.Failed,
+                                        filterVerified
+                                            ? $"Only ECU response ID 0x{responseId:X} passed the active filter."
+                                            : "The adapter accepted ATCRA but the filtered ECU response could not be verified."));
+                                }
+                                catch (OperationCanceledException) when (token.IsCancellationRequested)
+                                {
+                                    throw;
+                                }
+                                catch (Exception ex)
+                                {
+                                    checks.Add(new AdapterCapabilityCheck(
+                                        "can.receive-filter-verified",
+                                        "CAN receive filter verification",
+                                        AdapterCapabilityCheckState.Failed,
+                                        ex.Message));
+                                }
+                                finally
+                                {
+                                    await RequireOkInternalAsync("ATCRA", CancellationToken.None).ConfigureAwait(false);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            checks.Add(new AdapterCapabilityCheck(
+                                "can.receive-filter-verified",
+                                "CAN receive filter verification",
+                                AdapterCapabilityCheckState.NotVerified,
+                                "The standard ECU reply did not expose a response CAN ID."));
+                        }
+
+                        progress?.Report(new AdapterTestProgress(93, "ISO-TP multi-frame პასუხის შემოწმება (0902)…"));
+                        attempted++;
+                        try
+                        {
+                            var vinRaw = await SendCommandInternalAsync(
+                                "0902",
+                                TimeSpan.FromSeconds(3),
+                                maxRetries: 1,
+                                treatNegativeStatusAsError: false,
+                                token).ConfigureAwait(false);
+                            var isoTpVerified = HasCompleteMode09IsoTpResponse(vinRaw);
+                            if (isoTpVerified) passed++;
+                            checks.Add(new AdapterCapabilityCheck(
+                                "isotp.multiframe",
+                                "ISO-TP multi-frame response",
+                                isoTpVerified
+                                    ? AdapterCapabilityCheckState.Passed
+                                    : AdapterCapabilityCheckState.NotVerified,
+                                isoTpVerified
+                                    ? "A complete multi-frame Mode 09 response was reassembled and validated."
+                                    : "This ECU did not provide a complete multi-frame Mode 09 response; support is not assumed."));
+                        }
+                        catch (OperationCanceledException) when (token.IsCancellationRequested)
+                        {
+                            throw;
+                        }
+                        catch (Exception ex)
+                        {
+                            checks.Add(new AdapterCapabilityCheck(
+                                "isotp.multiframe",
+                                "ISO-TP multi-frame response",
+                                AdapterCapabilityCheckState.NotVerified,
+                                $"Mode 09 multi-frame test could not be completed: {ex.Message}"));
+                        }
+                    }
+                    else
+                    {
+                        checks.Add(new AdapterCapabilityCheck(
+                            "isotp.multiframe",
+                            "ISO-TP multi-frame response",
+                            AdapterCapabilityCheckState.NotSupported,
+                            "Required CAN formatting/header/flow-control commands were not all accepted."));
+                    }
+                }
+                else
+                {
+                    checks.Add(new AdapterCapabilityCheck(
+                        "can.transport",
+                        "CAN / ISO-TP transport",
+                        AdapterCapabilityCheckState.NotVerified,
+                        $"Active vehicle protocol is {_currentProtocol}; CAN cannot be proven on this connection."));
+
+                    if (IsLegacyPhysicalProtocol(_currentProtocol))
+                    {
+                        addressing = "Legacy ISO/KWP/J1850 active";
+                        checks.Add(new AdapterCapabilityCheck(
+                            "legacy.transport",
+                            "ISO 9141 / KWP2000 / J1850 transport",
+                            AdapterCapabilityCheckState.Passed,
+                            $"Active negotiated protocol: {_currentProtocolRawDescription ?? _currentProtocol.ToString()}"));
+                    }
+                }
+
+                var average = latencies.Count == 0 ? 0 : (long)Math.Round(latencies.Average());
+                var totalQueryMs = latencies.Sum();
+                var throughput = latencies.Count == 0 || totalQueryMs <= 0
+                    ? 0
+                    : latencies.Count / (totalQueryMs / 1000d);
+
+                progress?.Report(new AdapterTestProgress(94, "Adapter capability შედეგების დამუშავება…"));
+                return new AdapterCapabilitySnapshot
+                {
+                    DeviceDescription = SafeEvidence(deviceDescription),
+                    ProtocolNumber = SafeEvidence(protocolNumber),
+                    ActiveBus = _currentProtocolRawDescription ?? _currentProtocol.ToString(),
+                    Addressing = addressing,
+                    SafeCommandsAttempted = attempted,
+                    SafeCommandsPassed = passed,
+                    MinimumLatencyMs = latencies.Count == 0 ? 0 : latencies.Min(),
+                    AverageLatencyMs = average,
+                    MaximumLatencyMs = latencies.Count == 0 ? 0 : latencies.Max(),
+                    CommandThroughputPerSecond = throughput,
+                    Checks = checks.ToArray()
+                };
+            }
+            finally
+            {
+                try
+                {
+                    if (IsCanProtocol(_currentProtocol))
+                        await RestoreGenericCanSettingsCoreAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+                finally
+                {
+                    _sessionGate.Release();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sends one short, physically addressed request over the already
+        /// detected ISO 9141, KWP2000 or J1850 vehicle protocol. The caller
+        /// must supply a verified three-byte OEM header. A complete automatic
+        /// OBD session is rebuilt before this method releases the adapter.
+        /// </summary>
+        public async Task<string> SendLegacyPhysicalPayloadAsync(
+            ReadOnlyMemory<byte> payload,
+            int header,
+            TimeSpan timeout,
+            CancellationToken token = default)
+        {
+            if (payload.Length is < 1 or > 7)
+                throw new NotSupportedException(
+                    "Legacy ELM327 physical requests are limited to 1-7 verified payload bytes.");
+            if (header < 0 || header > 0xFFFFFF)
+                throw new ArgumentOutOfRangeException(nameof(header));
+            if (timeout <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(timeout));
+
+            ThrowIfDisposed();
+            EnsureConnected();
+
+            await _sessionGate.WaitAsync(token).ConfigureAwait(false);
+            var adapterModeChanged = false;
+            try
+            {
+                if (!IsLegacyPhysicalProtocol(_currentProtocol))
+                    throw new NotSupportedException(
+                        $"Active protocol '{_currentProtocol}' is not ISO 9141, KWP2000 or J1850.");
+
+                adapterModeChanged = true;
+                await RequireOkInternalAsync("ATL0", token).ConfigureAwait(false);
+                await RequireOkInternalAsync("ATS1", token).ConfigureAwait(false);
+                await RequireOkInternalAsync("ATH1", token).ConfigureAwait(false);
+                await RequireOkInternalAsync($"ATSH{header:X6}", token).ConfigureAwait(false);
+
+                var command = string.Concat(payload.ToArray().Select(b => b.ToString("X2")));
+                return await SendCommandInternalAsync(
+                    command,
+                    timeout,
+                    maxRetries: 1,
+                    treatNegativeStatusAsError: false,
+                    token).ConfigureAwait(false);
+            }
+            finally
+            {
+                try
+                {
+                    if (adapterModeChanged)
+                    {
+                        // Legacy default headers vary by protocol. A full reset
+                        // is safer than guessing which header to restore.
+                        await ResetCoreAsync(CancellationToken.None).ConfigureAwait(false);
+                        await InitializeCoreAsync(CancellationToken.None).ConfigureAwait(false);
+                    }
+                }
+                finally
+                {
+                    _sessionGate.Release();
+                }
+            }
+        }
+
+        public Task<string> GetAdapterVersionAsync(CancellationToken cancellationToken = default) => SendCommandAsync("ATI", cancellationToken);
+        public Task<string> GetAdapterVoltageAsync(CancellationToken cancellationToken = default) => SendCommandAsync("ATRV", cancellationToken);
+
+        public async Task ResetAsync(CancellationToken cancellationToken = default)
+        {
+            ThrowIfDisposed();
+            EnsureConnected();
+
+            await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await ResetCoreAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _sessionGate.Release();
+            }
+        }
+
+        /// <summary>Atomically resets and rebuilds the standard automatic OBD
+        /// session. Used as a recovery path after an interrupted OEM flow.</summary>
+        public async Task RestoreAutomaticObdSessionAsync(CancellationToken cancellationToken = default)
+        {
+            ThrowIfDisposed();
+            EnsureConnected();
+
+            await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await ResetCoreAsync(cancellationToken).ConfigureAwait(false);
+                await InitializeCoreAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _sessionGate.Release();
+            }
+        }
+
+        private async Task ResetCoreAsync(CancellationToken cancellationToken)
+        {
+
+            _logger.LogInformation("Resetting ELM327 adapter (ATZ)...");
+            _isInitialized = false;
+            _currentProtocol = ObdProtocol.Unknown;
+            _currentProtocolRawDescription = null;
+
+            await ExecuteResetInternalAsync(cancellationToken).ConfigureAwait(false);
+
+            _logger.LogInformation("ELM327 adapter reset complete. Re-initialization required before use.");
+        }
+
+        public Task<string> SendCommandAsync(string command, CancellationToken token = default)
+            => SendCommandAsync(command, DefaultCommandTimeout, DefaultMaxRetries, true, token);
+
+        public async Task<string> SendCommandAsync(string command, TimeSpan timeout, int retries, bool treatNegativeStatusAsError, CancellationToken token = default)
+        {
+            ThrowIfDisposed();
+
+            if (string.IsNullOrWhiteSpace(command))
+            {
+                throw new ArgumentException("Command must not be null or empty.", nameof(command));
+            }
+
+            EnsureConnected();
+
+            if (timeout <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
+            if (retries < 1) throw new ArgumentOutOfRangeException(nameof(retries));
+
+            await _sessionGate.WaitAsync(token).ConfigureAwait(false);
+            try
+            {
+                return await SendCommandInternalAsync(
+                    command.Trim(),
+                    timeout,
+                    retries,
+                    treatNegativeStatusAsError,
+                    token).ConfigureAwait(false);
+            }
+            finally
+            {
+                _sessionGate.Release();
+            }
+        }
+
+        private async Task ConfigureCanCoreAsync(
+            int transmitCanId,
+            int receiveCanId,
+            bool extended29Bit,
+            bool automaticFormatting,
+            CancellationToken token)
+        {
+            // Per the ELM327 data sheet: CAF1 creates the outgoing PCI byte;
+            // CFC1 automatically answers an ECU First Frame; H1 exposes the
+            // response PCI bytes so the app can independently validate and
+            // reassemble every segment.
+            await RequireOkInternalAsync("ATL0", token).ConfigureAwait(false);
+            await RequireOkInternalAsync("ATS1", token).ConfigureAwait(false);
+            await RequireOkInternalAsync("ATH1", token).ConfigureAwait(false);
+            await RequireOkInternalAsync(automaticFormatting ? "ATCAF1" : "ATCAF0", token).ConfigureAwait(false);
+            await RequireOkInternalAsync(automaticFormatting ? "ATCFC1" : "ATCFC0", token).ConfigureAwait(false);
+            await RequireOkInternalAsync("ATD0", token).ConfigureAwait(false);
+
+            var width = extended29Bit ? 8 : 3;
+            await RequireOkInternalAsync($"ATSH{transmitCanId.ToString($"X{width}")}", token).ConfigureAwait(false);
+            await RequireOkInternalAsync($"ATCRA{receiveCanId.ToString($"X{width}")}", token).ConfigureAwait(false);
+        }
+
+        private async Task RequireOkInternalAsync(string command, CancellationToken token)
+        {
+            var response = await SendCommandInternalAsync(
+                command,
+                TimeSpan.FromSeconds(3),
+                maxRetries: 2,
+                treatNegativeStatusAsError: false,
+                token).ConfigureAwait(false);
+
+            if (!IsAffirmativeAtResponse(response))
+                throw new Elm327CommandException(
+                    $"Adapter does not support required command '{command}'.",
+                    response);
+        }
+
+        private async Task RestoreGenericCanSettingsCoreAsync(CancellationToken token)
+        {
+            try
+            {
+                await RequireOkInternalAsync("ATCRA", token).ConfigureAwait(false);
+                await RequireOkInternalAsync("ATCAF1", token).ConfigureAwait(false);
+                await RequireOkInternalAsync("ATCFC1", token).ConfigureAwait(false);
+                await RequireOkInternalAsync("ATD0", token).ConfigureAwait(false);
+                await RequireOkInternalAsync("ATS1", token).ConfigureAwait(false);
+
+                var functionalHeader = Is29BitCanProtocol(_currentProtocol)
+                    ? "18DB33F1"
+                    : "7DF";
+                await RequireOkInternalAsync($"ATSH{functionalHeader}", token).ConfigureAwait(false);
+                await RequireOkInternalAsync("ATH0", token).ConfigureAwait(false);
+            }
+            catch
+            {
+                // The adapter state can no longer be trusted. Force the next
+                // normal OBD operation through a complete initialization.
+                _isInitialized = false;
+                throw;
+            }
+        }
+
+        private static void ValidateCanIdentifiers(int transmitCanId, int receiveCanId, bool extended29Bit)
+        {
+            var max = extended29Bit ? 0x1FFFFFFF : 0x7FF;
+            if (transmitCanId < 0 || transmitCanId > max)
+                throw new ArgumentOutOfRangeException(nameof(transmitCanId));
+            if (receiveCanId < 0 || receiveCanId > max)
+                throw new ArgumentOutOfRangeException(nameof(receiveCanId));
+        }
+
+        private static bool IsCanProtocol(ObdProtocol protocol) => protocol is
+            ObdProtocol.ISO_15765_4_CAN_11BIT_500K or
+            ObdProtocol.ISO_15765_4_CAN_29BIT_500K or
+            ObdProtocol.ISO_15765_4_CAN_11BIT_250K or
+            ObdProtocol.ISO_15765_4_CAN_29BIT_250K;
+
+        private static bool Is29BitCanProtocol(ObdProtocol protocol) => protocol is
+            ObdProtocol.ISO_15765_4_CAN_29BIT_500K or
+            ObdProtocol.ISO_15765_4_CAN_29BIT_250K;
+
+        private static bool IsLegacyPhysicalProtocol(ObdProtocol protocol) => protocol is
+            ObdProtocol.SAE_J1850_PWM or
+            ObdProtocol.SAE_J1850_VPW or
+            ObdProtocol.ISO_9141_2 or
+            ObdProtocol.ISO_14230_4_KWP_5BAUD or
+            ObdProtocol.ISO_14230_4_KWP_FAST;
+
+        private static bool IsMeaningfulCapabilityResponse(string response) =>
+            !string.IsNullOrWhiteSpace(response) &&
+            !ObdResponseParser.IsNegative(response) &&
+            !response.Contains("STOPPED", StringComparison.OrdinalIgnoreCase) &&
+            !response.Contains("UNABLE TO CONNECT", StringComparison.OrdinalIgnoreCase);
+
+        private static string SafeEvidence(string response)
+        {
+            if (string.IsNullOrWhiteSpace(response))
+                return "No response";
+
+            var oneLine = Regex.Replace(response, @"\s+", " ").Trim();
+            return oneLine.Length <= 120 ? oneLine : oneLine[..120] + "…";
+        }
+
+        private static bool HasModeResponse(string raw, byte positiveService, byte pid) =>
+            ObdResponseParser.ExtractPayload(raw, positiveService, pid).Length > 0;
+
+        private static bool HasCompleteMode09IsoTpResponse(string raw)
+        {
+            foreach (var canId in ObdResponseParser.ExtractCanIdentifiers(raw))
+            {
+                var frames = ObdResponseParser.ParseCanFrames(raw, canId);
+                for (var i = 0; i < frames.Count; i++)
+                {
+                    if (frames[i].Length < 2 || (frames[i][0] >> 4) != 1)
+                        continue;
+
+                    try
+                    {
+                        var payload = new IsoTpReassembler().Reassemble(frames.Skip(i));
+                        for (var p = 0; p + 1 < payload.Length; p++)
+                        {
+                            if (payload[p] == 0x49 && payload[p + 1] == 0x02)
+                                return true;
+                        }
+                    }
+                    catch
+                    {
+                        // Try another responding ECU; partial traffic is not a
+                        // successful ISO-TP capability result.
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        public void EnsureConnected()
+        {
+            if (!_bluetooth.IsConnected)
+            {
+                _logger.LogWarning("EnsureConnected check failed: Bluetooth service is not connected.");
+                throw new Elm327NotConnectedException("The Bluetooth service is not connected to an ELM327 device.");
+            }
+        }
+
+        #endregion
+
+        #region Initialization Helpers
+
+        private async Task SendInitCommandAsync(string command, string description, CancellationToken cancellationToken)
+        {
+            _logger.LogDebug("Init step: {Description} ({Command})", description, command);
+
+            try
+            {
+                var response = await SendCommandInternalAsync(
+                    command,
+                    InitCommandTimeout,
+                    DefaultMaxRetries,
+                    treatNegativeStatusAsError: false,
+                    cancellationToken).ConfigureAwait(false);
+
+                if (!IsAffirmativeAtResponse(response))
+                {
+                    _logger.LogWarning(
+                        "Init step '{Description}' ({Command}) returned unexpected response: '{Response}'. Continuing.",
+                        description, command, response);
+                }
+            }
+            catch (Elm327TimeoutException ex)
+            {
+                _logger.LogError(ex, "Init step '{Description}' ({Command}) timed out.", description, command);
+                throw new Elm327InitializationException(
+                    $"Initialization failed at step '{description}' ({command}): timed out.", ex);
+            }
+        }
+
+        private static bool IsAffirmativeAtResponse(string response)
+        {
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                return false;
+            }
+
+            var normalized = response.Trim().ToUpperInvariant();
+            return normalized.Contains("OK")
+                   || normalized.Contains("ELM327")
+                   || normalized.StartsWith("ATZ", StringComparison.Ordinal)
+                   || Regex.IsMatch(normalized, @"^[0-9A-F]+$");
+        }
+
+        private async Task ExecuteResetInternalAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var response = await SendCommandInternalAsync(
+                    CMD_RESET,
+                    ResetCommandTimeout,
+                    maxRetries: 1,
+                    treatNegativeStatusAsError: false,
+                    cancellationToken).ConfigureAwait(false);
+
+                _logger.LogDebug("ATZ response: '{Response}'", response);
+            }
+            catch (Elm327TimeoutException ex)
+            {
+                _logger.LogError(ex, "ATZ (reset) timed out.");
+                throw new Elm327InitializationException("ELM327 did not respond to reset (ATZ) in time.", ex);
+            }
+
+            await Task.Delay(PostResetSettleDelay, cancellationToken).ConfigureAwait(false);
+        }
+
+        private void ValidateInitialProbeResponse(string probeResponse)
+        {
+            if (string.IsNullOrWhiteSpace(probeResponse))
+            {
+                throw new Elm327InitializationException(
+                    "Vehicle probe (0100) returned an empty response. The vehicle may be off or the adapter is not seated correctly.");
+            }
+
+            var normalized = probeResponse.Trim().ToUpperInvariant();
+
+            if (ContainsToken(normalized, "UNABLE TO CONNECT"))
+            {
+                throw new Elm327InitializationException(
+                    "Unable to connect to the vehicle ECU. Check ignition is ON and the adapter is fully seated in the OBD-II port.");
+            }
+
+            if (ContainsToken(normalized, "BUS INIT") && ContainsToken(normalized, "ERROR"))
+            {
+                throw new Elm327InitializationException(
+                    "Bus initialization error while probing the vehicle. The vehicle bus may be unresponsive.");
+            }
+
+            if (ContainsToken(normalized, "NO DATA"))
+            {
+                throw new Elm327InitializationException(
+                    "No data received from vehicle for supported-PID probe (0100). Protocol could not be established.");
+            }
+
+            if (normalized.Contains("?"))
+            {
+                throw new Elm327InitializationException(
+                    "ELM327 did not understand the probe command (0100). Adapter may be malfunctioning or in an inconsistent state.");
+            }
+
+            if (!Regex.IsMatch(normalized, @"41\s*00"))
+            {
+                _logger.LogWarning(
+                    "0100 probe response did not contain expected '4100' header: '{Response}'. Proceeding cautiously.",
+                    probeResponse);
+            }
+        }
+
+        private async Task DetectAndCacheProtocolAsync(CancellationToken cancellationToken)
+        {
+            string? protocolNumberRaw = null;
+
+            try
+            {
+                protocolNumberRaw = await SendCommandInternalAsync(
+                    CMD_DESCRIBE_PROTOCOL_NUM,
+                    InitCommandTimeout,
+                    DefaultMaxRetries,
+                    treatNegativeStatusAsError: false,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (Elm327TimeoutException ex)
+            {
+                _logger.LogWarning(ex, "ATDPN (describe protocol number) timed out. Falling back to ATDP text description only.");
+            }
+
+            _currentProtocol = ParseProtocolNumber(protocolNumberRaw);
+
+            try
+            {
+                var description = await SendCommandInternalAsync(
+                    CMD_DESCRIBE_PROTOCOL,
+                    InitCommandTimeout,
+                    DefaultMaxRetries,
+                    treatNegativeStatusAsError: false,
+                    cancellationToken).ConfigureAwait(false);
+
+                _currentProtocolRawDescription = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+            }
+            catch (Elm327TimeoutException ex)
+            {
+                _logger.LogWarning(ex, "ATDP (describe protocol) timed out. Protocol description will be unavailable.");
+                _currentProtocolRawDescription = null;
+            }
+
+            if (_currentProtocol == ObdProtocol.Unknown && !string.IsNullOrWhiteSpace(_currentProtocolRawDescription))
+            {
+                _currentProtocol = InferProtocolFromDescription(_currentProtocolRawDescription!);
+            }
+
+            _logger.LogInformation(
+                "Detected OBD protocol: {Protocol} (raw number response: '{RawNumber}', description: '{Description}')",
+                _currentProtocol, protocolNumberRaw ?? "<none>", _currentProtocolRawDescription ?? "<none>");
+        }
+
+        private static ObdProtocol ParseProtocolNumber(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return ObdProtocol.Unknown;
+            }
+
+            var normalized = raw.Trim().Replace("\r", "").Replace("\n", "").Trim().ToUpperInvariant();
+            if (normalized.StartsWith("A", StringComparison.Ordinal) && normalized.Length > 1) normalized = normalized[1..];
+
+            return normalized switch
+            {
+                "0" => ObdProtocol.Automatic,
+                "1" => ObdProtocol.SAE_J1850_PWM,
+                "2" => ObdProtocol.SAE_J1850_VPW,
+                "3" => ObdProtocol.ISO_9141_2,
+                "4" => ObdProtocol.ISO_14230_4_KWP_5BAUD,
+                "5" => ObdProtocol.ISO_14230_4_KWP_FAST,
+                "6" => ObdProtocol.ISO_15765_4_CAN_11BIT_500K,
+                "7" => ObdProtocol.ISO_15765_4_CAN_29BIT_500K,
+                "8" => ObdProtocol.ISO_15765_4_CAN_11BIT_250K,
+                "9" => ObdProtocol.ISO_15765_4_CAN_29BIT_250K,
+                "A" => ObdProtocol.SAE_J1939_CAN,
+                "J1939" => ObdProtocol.SAE_J1939_CAN,
+                _ => ObdProtocol.Unknown
+            };
+        }
+
+        private static ObdProtocol InferProtocolFromDescription(string description)
+        {
+            var normalized = description.ToUpperInvariant();
+
+            if (normalized.Contains("CAN"))
+            {
+                if (normalized.Contains("29") && normalized.Contains("250"))
+                {
+                    return ObdProtocol.ISO_15765_4_CAN_29BIT_250K;
+                }
+                if (normalized.Contains("29"))
+                {
+                    return ObdProtocol.ISO_15765_4_CAN_29BIT_500K;
+                }
+                if (normalized.Contains("250"))
+                {
+                    return ObdProtocol.ISO_15765_4_CAN_11BIT_250K;
+                }
+                if (normalized.Contains("J1939"))
+                {
+                    return ObdProtocol.SAE_J1939_CAN;
+                }
+                return ObdProtocol.ISO_15765_4_CAN_11BIT_500K;
+            }
+
+            if (normalized.Contains("ISO 9141") || normalized.Contains("ISO9141"))
+            {
+                return ObdProtocol.ISO_9141_2;
+            }
+
+            if (normalized.Contains("KWP") || normalized.Contains("14230"))
+            {
+                return normalized.Contains("FAST")
+                    ? ObdProtocol.ISO_14230_4_KWP_FAST
+                    : ObdProtocol.ISO_14230_4_KWP_5BAUD;
+            }
+
+            if (normalized.Contains("J1850"))
+            {
+                return normalized.Contains("VPW")
+                    ? ObdProtocol.SAE_J1850_VPW
+                    : ObdProtocol.SAE_J1850_PWM;
+            }
+
+            return ObdProtocol.Unknown;
+        }
+
+        #endregion
+
+        #region Command Execution (Retry + Timeout + Cleaning)
+
+        private async Task<string> SendCommandInternalAsync(
+            string command,
+            TimeSpan timeout,
+            int maxRetries,
+            bool treatNegativeStatusAsError,
+            CancellationToken cancellationToken)
+        {
+            EnsureConnected();
+
+            Exception? lastException = null;
+
+            for (var attempt = 1; attempt <= maxRetries; attempt++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                await _commandGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    string rawResponse;
+
+                    try
+                    {
+                        rawResponse = await _bluetooth.SendCommandAsync(command, timeout).ConfigureAwait(false);
+                    }
+                    catch (TimeoutException)
+                    {
+                        throw new Elm327TimeoutException(
+                            $"Command '{command}' timed out after {timeout.TotalSeconds:F1}s on attempt {attempt}/{maxRetries}.");
+                    }
+                    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                    {
+                        throw new Elm327TimeoutException(
+                            $"Command '{command}' timed out after {timeout.TotalSeconds:F1}s on attempt {attempt}/{maxRetries}.");
+                    }
+
+                    var cleaned = CleanResponse(rawResponse);
+
+                    _logger.LogDebug(
+                        "Command '{Command}' attempt {Attempt}/{MaxRetries} raw='{Raw}' cleaned='{Cleaned}'",
+                        command, attempt, maxRetries, rawResponse, cleaned);
+
+                    if (ContainsTransientStatus(cleaned))
+                    {
+                        _logger.LogDebug(
+                            "Command '{Command}' returned transient status '{Cleaned}' on attempt {Attempt}. Retrying if attempts remain.",
+                            command, cleaned, attempt);
+
+                        lastException = new Elm327CommandException(
+                            $"Adapter reported transient status: {cleaned}", cleaned);
+
+                        if (attempt < maxRetries)
+                        {
+                            await DelayBeforeRetryAsync(attempt, cancellationToken).ConfigureAwait(false);
+                            continue;
+                        }
+
+                        if (treatNegativeStatusAsError)
+                        {
+                            throw lastException;
+                        }
+
+                        return cleaned;
+                    }
+
+                    if (treatNegativeStatusAsError && ContainsNegativeStatus(cleaned))
+                    {
+                        _logger.LogWarning(
+                            "Command '{Command}' returned negative status: '{Cleaned}'.", command, cleaned);
+                        throw new Elm327CommandException(
+                            $"Adapter/vehicle returned an error status: {cleaned}", cleaned);
+                    }
+
+                    return cleaned;
+                }
+                catch (Elm327CommandException)
+                {
+                    throw;
+                }
+                catch (Elm327TimeoutException ex)
+                {
+                    lastException = ex;
+
+                    _logger.LogWarning(
+                        "Command '{Command}' timed out on attempt {Attempt}/{MaxRetries} (timeout={TimeoutSeconds}s).",
+                        command, attempt, maxRetries, timeout.TotalSeconds);
+
+                    if (attempt < maxRetries)
+                    {
+                        await DelayBeforeRetryAsync(attempt, cancellationToken).ConfigureAwait(false);
+                        continue;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+
+                    _logger.LogError(
+                        ex,
+                        "Command '{Command}' failed with unexpected exception on attempt {Attempt}/{MaxRetries}.",
+                        command,
+                        attempt,
+                        maxRetries);
+
+                    if (attempt < maxRetries)
+                    {
+                        await DelayBeforeRetryAsync(attempt, cancellationToken).ConfigureAwait(false);
+                        continue;
+                    }
+                }
+                finally
+                {
+                    _commandGate.Release();
+                }
+            }
+
+            if (lastException is Elm327TimeoutException timeoutEx)
+            {
+                throw timeoutEx;
+            }
+
+            throw new Elm327TimeoutException(
+                $"Command '{command}' failed after {maxRetries} attempt(s).");
+        }
+
+        private static async Task DelayBeforeRetryAsync(int attempt, CancellationToken cancellationToken)
+        {
+            var delay = TimeSpan.FromMilliseconds(RetryBaseDelay.TotalMilliseconds * Math.Pow(2, attempt - 1));
+            await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+        }
+
+        #endregion
+
+        #region Response Cleaning & Status Detection
+
+        private static string CleanResponse(string raw)
+        {
+            if (string.IsNullOrEmpty(raw))
+            {
+                return string.Empty;
+            }
+
+            var text = raw
+                .Replace("\r\n", "\n", StringComparison.Ordinal)
+                .Replace('\r', '\n');
+
+            text = text.Replace(PROMPT_TERMINATOR, string.Empty);
+
+            var lines = text.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(l => l.Trim())
+                .Where(l => l.Length > 0)
+                .ToArray();
+
+            if (lines.Length == 0)
+            {
+                return string.Empty;
+            }
+
+            var joined = string.Join(" ", lines);
+            joined = Regex.Replace(joined, @"\s+", " ").Trim();
+
+            return joined;
+        }
+
+        private static bool ContainsToken(string normalizedUpperText, string token)
+        {
+            return normalizedUpperText.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool ContainsTransientStatus(string cleaned)
+        {
+            if (string.IsNullOrEmpty(cleaned))
+            {
+                return false;
+            }
+
+            var normalized = cleaned.ToUpperInvariant();
+            return TransientStatusTokens.Any(token => ContainsToken(normalized, token));
+        }
+
+        private static bool ContainsNegativeStatus(string cleaned)
+        {
+            if (string.IsNullOrEmpty(cleaned))
+            {
+                return true;
+            }
+
+            var normalized = cleaned.ToUpperInvariant();
+
+            if (normalized == "?" || normalized == "ERROR")
+            {
+                return true;
+            }
+
+            return NegativeStatusTokens.Any(token => ContainsToken(normalized, token));
+        }
+
+        #endregion
+
+        #region Connection state
+
+        private void OnConnectionChanged(object? sender, bool connected)
+        {
+            if (connected) return;
+            _isInitialized = false;
+            _currentProtocol = ObdProtocol.Unknown;
+            _currentProtocolRawDescription = null;
+            _logger.LogInformation("ELM327 state reset because Bluetooth connection was lost.");
+        }
+
+        #endregion
+
+        #region Disposal
+
+        private void ThrowIfDisposed()
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(Elm327Protocol));
+            }
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            if (_disposed)
+            {
+                return ValueTask.CompletedTask;
+            }
+
+            _disposed = true;
+            _bluetooth.ConnectionChanged -= OnConnectionChanged;
+            _sessionGate.Dispose();
+            _commandGate.Dispose();
+
+            _logger.LogDebug("Elm327Protocol disposed.");
+
+            return ValueTask.CompletedTask;
+        }
+
+        #endregion
+    }
+}

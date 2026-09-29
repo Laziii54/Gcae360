@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="CarScanner.Views.LoadingPage"
+    BackgroundColor="#000817"
+    Shell.NavBarIsVisible="False"
+    NavigationPage.HasNavigationBar="False">
+
+    <!-- Same colour as the splash screen, so the start is one smooth picture. -->
+    <Grid x:Name="Root" BackgroundColor="#000817">
+        <Image
+            x:Name="Logo"
+            Source="gcar_loading.gif"
+            IsAnimationPlaying="True"
+            Aspect="AspectFit"
+            WidthRequest="240"
+            HeightRequest="240"
+            HorizontalOptions="Center"
+            VerticalOptions="Center" />
+    </Grid>
+</ContentPage>

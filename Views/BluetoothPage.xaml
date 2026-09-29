@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<ContentPage
+    x:Name="RootPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    xmlns:m="clr-namespace:CarScanner.Models"
+    x:Class="CarScanner.Views.BluetoothPage"
+    x:DataType="vm:BluetoothViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="OBD კავშირი">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,14,16,32" Spacing="12">
+
+            <Label Text="OBD კავშირი" Style="{StaticResource PageTitleStyle}" />
+
+            <!-- Bluetooth / Wi-Fi segmented switch -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="3">
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="3">
+                    <Button
+                        Text="Bluetooth"
+                        Command="{Binding SelectBluetoothTabCommand}"
+                        BackgroundColor="Transparent"
+                        TextColor="{DynamicResource TextColor}"
+                        BorderWidth="0"
+                        CornerRadius="10"
+                        HeightRequest="38"
+                        MinimumHeightRequest="38"
+                        FontSize="13"
+                        FontAttributes="Bold">
+                        <Button.Triggers>
+                            <DataTrigger TargetType="Button" Binding="{Binding IsBluetoothTab}" Value="True">
+                                <Setter Property="BackgroundColor" Value="{DynamicResource Primary}" />
+                                <Setter Property="TextColor" Value="White" />
+                            </DataTrigger>
+                        </Button.Triggers>
+                    </Button>
+
+                    <Button
+                        Grid.Column="1"
+                        Text="Wi-Fi"
+                        Command="{Binding SelectWifiTabCommand}"
+                        BackgroundColor="Transparent"
+                        TextColor="{DynamicResource TextColor}"
+                        BorderWidth="0"
+                        CornerRadius="10"
+                        HeightRequest="38"
+                        MinimumHeightRequest="38"
+                        FontSize="13"
+                        FontAttributes="Bold">
+                        <Button.Triggers>
+                            <DataTrigger TargetType="Button" Binding="{Binding IsWifiTab}" Value="True">
+                                <Setter Property="BackgroundColor" Value="{DynamicResource Primary}" />
+                                <Setter Property="TextColor" Value="White" />
+                            </DataTrigger>
+                        </Button.Triggers>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Connection status -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,12">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                    <BoxView WidthRequest="10" HeightRequest="10" CornerRadius="5" Color="{Binding StatusColor}" VerticalOptions="Center" />
+                    <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                        <Label Text="კავშირის სტატუსი" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                        <Label
+                            AutomationId="ConnectionStatusLabel"
+                            Text="{Binding Status}"
+                            TextColor="{Binding StatusColor}"
+                            FontSize="15"
+                            FontAttributes="Bold" />
+                        <Label
+                            AutomationId="DynamicTextConnectedDevice"
+                            Text="{Binding ConnectedDeviceName}"
+                            TextColor="{DynamicResource SubTextColor}"
+                            FontSize="12"
+                            LineBreakMode="TailTruncation" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <!-- Bluetooth / BLE tab -->
+            <VerticalStackLayout IsVisible="{Binding IsBluetoothTab}" Spacing="12">
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                    <Button
+                        Text="ძებნა"
+                        Command="{Binding StartScanCommand}"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        CornerRadius="12"
+                        HeightRequest="48" />
+                    <Button
+                        Grid.Column="1"
+                        Text="გათიშვა"
+                        Command="{Binding DisconnectCommand}"
+                        BackgroundColor="Transparent"
+                        TextColor="{DynamicResource TextColor}"
+                        BorderColor="{DynamicResource TextColor}"
+                        BorderWidth="1.5"
+                        CornerRadius="12"
+                        HeightRequest="48"
+                        FontAttributes="Bold" />
+                </Grid>
+
+                <HorizontalStackLayout IsVisible="{Binding IsScanning}" Spacing="10" Padding="4,0">
+                    <ActivityIndicator
+                        IsRunning="{Binding IsScanning}"
+                        Color="{DynamicResource Primary}"
+                        HeightRequest="20"
+                        WidthRequest="20"
+                        VerticalOptions="Center" />
+                    <Label
+                        Text="ვეძებ OBD-II ადაპტერებს..."
+                        FontSize="13"
+                        TextColor="{DynamicResource SubTextColor}"
+                        VerticalOptions="Center" />
+                </HorizontalStackLayout>
+
+                <Border Style="{StaticResource ListCardStyle}">
+                    <!-- Negative top margin hides the first row's top divider under the card edge -->
+                    <CollectionView ItemsSource="{Binding Devices}" SelectionMode="None" Margin="0,-1,0,0">
+                        <CollectionView.EmptyView>
+                            <VerticalStackLayout Padding="16,24" Spacing="6">
+                                <Label
+                                    Text="OBD-II ადაპტერი ვერ მოიძებნა"
+                                    TextColor="{DynamicResource TextColor}"
+                                    FontSize="15"
+                                    FontAttributes="Bold"
+                                    HorizontalOptions="Center"
+                                    HorizontalTextAlignment="Center" />
+                                <Label
+                                    Text="ჩართე მანქანის კონტაქტი და დარწმუნდი, რომ OBD-II ადაპტერი შეერთებულია."
+                                    TextColor="{DynamicResource SubTextColor}"
+                                    FontSize="12"
+                                    HorizontalOptions="Center"
+                                    HorizontalTextAlignment="Center"
+                                    LineBreakMode="WordWrap" />
+                            </VerticalStackLayout>
+                        </CollectionView.EmptyView>
+
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="m:BleDeviceItem">
+                                <VerticalStackLayout Spacing="0">
+                                    <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" />
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,8">
+                                        <Path Data="M7,7 L17,17 L12,21 L12,3 L17,7 L7,17" Style="{StaticResource RowIconStyle}" />
+                                        <Label
+                                            Grid.Column="1"
+                                            Text="{Binding DisplayName}"
+                                            Style="{StaticResource RowTitleStyle}"
+                                            MinimumWidthRequest="150" />
+                                        <Button
+                                            Grid.Column="2"
+                                            Text="დაკავშირება"
+                                            Command="{Binding x:DataType=vm:BluetoothViewModel, Source={RelativeSource AncestorType={x:Type vm:BluetoothViewModel}}, Path=ConnectCommand}"
+                                            CommandParameter="{Binding .}"
+                                            BackgroundColor="Transparent"
+                                            TextColor="{DynamicResource Primary}"
+                                            BorderWidth="0"
+                                            Padding="6,0"
+                                            HeightRequest="36"
+                                            MinimumHeightRequest="36"
+                                            FontSize="13"
+                                            FontAttributes="Bold"
+                                            VerticalOptions="Center" />
+                                    </Grid>
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </Border>
+
+                <Label
+                    AutomationId="DynamicTextBluetoothInfo"
+                    Text="{Binding BluetoothInfoText}"
+                    TextColor="{DynamicResource SubTextColor}"
+                    FontSize="12"
+                    LineBreakMode="WordWrap"
+                    Margin="4,0" />
+
+                <ActivityIndicator
+                    IsRunning="{Binding IsScanning}"
+                    IsVisible="{Binding IsScanning}"
+                    Color="{DynamicResource Primary}"
+                    HorizontalOptions="Center" />
+            </VerticalStackLayout>
+
+            <!-- Wi-Fi ELM327 TCP tab -->
+            <VerticalStackLayout IsVisible="{Binding IsWifiTab}" Spacing="12">
+                <Label Text="Wi-Fi OBD ადაპტერი" Style="{StaticResource SectionCaptionStyle}" />
+
+                <Border Style="{StaticResource ListCardStyle}">
+                    <VerticalStackLayout Spacing="0">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,4">
+                            <Path Data="M3,9 C8,4 16,4 21,9 M6,12.5 C9.5,9 14.5,9 18,12.5 M9,16 C10.5,14.5 13.5,14.5 15,16 M12,19 L12,19.5" Style="{StaticResource RowIconStyle}" />
+                            <Label Grid.Column="1" Text="IP მისამართი" Style="{StaticResource RowTitleStyle}" />
+                            <Entry
+                                Grid.Column="2"
+                                Text="{Binding WifiIpAddress}"
+                                Placeholder="192.168.0.10"
+                                Keyboard="Text"
+                                IsEnabled="{Binding IsWifiConnecting, Converter={StaticResource InverseBoolConverter}}"
+                                TextColor="{DynamicResource TextColor}"
+                                PlaceholderColor="{DynamicResource SubTextColor}"
+                                BackgroundColor="Transparent"
+                                FontSize="14"
+                                FontFamily="monospace"
+                                HorizontalTextAlignment="End"
+                                MinimumWidthRequest="140" />
+                        </Grid>
+                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,4">
+                            <Path Data="M6,4 L6,20 M18,4 L18,20 M6,9 L18,9 M6,15 L18,15" Style="{StaticResource RowIconStyle}" />
+                            <Label Grid.Column="1" Text="TCP პორტი" Style="{StaticResource RowTitleStyle}" />
+                            <Entry
+                                Grid.Column="2"
+                                Text="{Binding WifiPort}"
+                                Placeholder="35000"
+                                Keyboard="Numeric"
+                                MaxLength="5"
+                                IsEnabled="{Binding IsWifiConnecting, Converter={StaticResource InverseBoolConverter}}"
+                                TextColor="{DynamicResource TextColor}"
+                                PlaceholderColor="{DynamicResource SubTextColor}"
+                                BackgroundColor="Transparent"
+                                FontSize="14"
+                                FontFamily="monospace"
+                                HorizontalTextAlignment="End"
+                                MinimumWidthRequest="90" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Label
+                    AutomationId="DynamicTextWifiStatus"
+                    Text="{Binding WifiConnectionStatus}"
+                    TextColor="{Binding WifiStatusColor}"
+                    FontSize="14"
+                    FontAttributes="Bold"
+                    Margin="4,0" />
+
+                <ActivityIndicator
+                    IsRunning="{Binding IsWifiConnecting}"
+                    IsVisible="{Binding IsWifiConnecting}"
+                    Color="{DynamicResource Primary}"
+                    HorizontalOptions="Center" />
+
+                <Button
+                    Text="დაკავშირება"
+                    Command="{Binding ConnectWifiCommand}"
+                    IsVisible="{Binding IsWifiConnected, Converter={StaticResource InverseBoolConverter}}"
+                    IsEnabled="{Binding IsWifiConnecting, Converter={StaticResource InverseBoolConverter}}"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    CornerRadius="12" />
+
+                <Button
+                    Text="გათიშვა"
+                    Command="{Binding DisconnectWifiCommand}"
+                    IsVisible="{Binding IsWifiConnected}"
+                    BackgroundColor="Transparent"
+                    TextColor="{DynamicResource TextColor}"
+                    BorderColor="{DynamicResource TextColor}"
+                    BorderWidth="1.5"
+                    CornerRadius="12"
+                    HeightRequest="48"
+                    FontAttributes="Bold" />
+            </VerticalStackLayout>
+
+            <Label
+                AutomationId="DynamicTextStatusMessage"
+                Text="{Binding StatusMessage}"
+                TextColor="{DynamicResource SubTextColor}"
+                FontSize="12"
+                LineBreakMode="WordWrap"
+                Margin="4,0" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,380 @@
+using CarScanner.Services;
+using CarScanner.Services.Localization;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Microsoft.Maui.Storage;
+
+namespace CarScanner.ViewModels;
+
+public partial class SettingsViewModel : BaseViewModel
+{
+    private readonly IBluetoothService _bluetooth;
+    private readonly DatabaseService _db;
+    private readonly SettingsService _settings;
+    private readonly UnitSystemService _units;
+    private readonly LocalizationService _localization;
+    private readonly ReminderNotificationService _notifications;
+
+    [ObservableProperty]
+    private string bluetoothStatus = "უცნობი";
+
+    [ObservableProperty]
+    private string themeOption = "Light";
+
+    [ObservableProperty]
+    private string languageOption = "ქართული";
+
+    [ObservableProperty]
+    private bool notificationsEnabled;
+
+    [ObservableProperty]
+    private bool autoReconnect = true;
+
+    [ObservableProperty]
+    private string unitOption = "Metric";
+
+    [ObservableProperty]
+    private string pollingOption = "Balanced";
+
+    public string[] ThemeOptions { get; } =
+    {
+        "Dark",
+        "Light",
+        "System"
+    };
+
+    public string[] LanguageOptions { get; } =
+    {
+        "ქართული",
+        "English"
+    };
+
+    public string[] UnitOptions { get; } =
+    {
+        "Metric",
+        "Imperial"
+    };
+
+    public string[] PollingOptions { get; } =
+    {
+        "Fast",
+        "Balanced",
+        "Low power"
+    };
+
+    public SettingsViewModel(
+        IBluetoothService bluetooth,
+        DatabaseService db,
+        SettingsService settings,
+        UnitSystemService units,
+        LocalizationService localization,
+        ReminderNotificationService notifications)
+    {
+        _bluetooth = bluetooth;
+        _db = db;
+        _settings = settings;
+        _units = units;
+        _localization = localization;
+        _notifications = notifications;
+
+        Title = "Settings";
+
+        ThemeOption =
+            Preferences.Default.Get(
+                "theme",
+                "Light");
+
+        LanguageOption =
+            Preferences.Default.Get(
+                "language",
+                "ქართული");
+
+        NotificationsEnabled =
+            Preferences.Default.Get(
+                "notifications",
+                false);
+
+        AutoReconnect =
+            Preferences.Default.Get(
+                "auto_reconnect",
+                true);
+
+        UnitOption = _units.DisplayName;
+
+        PollingOption =
+            Preferences.Default.Get(
+                "polling",
+                "Balanced");
+
+        UpdateStatus();
+        ApplyTheme();
+
+        _bluetooth.ConnectionChanged +=
+            (_, __) =>
+                MainThread.BeginInvokeOnMainThread(
+                    UpdateStatus);
+    }
+
+    private void UpdateStatus()
+    {
+        BluetoothStatus =
+            _localization.IsEnglish
+                ? (_bluetooth.IsConnected
+                    ? "Connected"
+                    : "Not connected")
+                : (_bluetooth.IsConnected
+                    ? "დაკავშირებულია"
+                    : "დაკავშირება არ არის");
+    }
+
+    partial void OnThemeOptionChanged(string value)
+    {
+        Preferences.Default.Set(
+            "theme",
+            value);
+
+        ApplyTheme();
+
+        _localization.ApplyCurrentPage();
+    }
+
+    partial void OnLanguageOptionChanged(string value)
+    {
+        _localization.SetLanguage(value);
+
+        UpdateStatus();
+    }
+
+    partial void OnNotificationsEnabledChanged(bool value)
+    {
+        _ = _notifications.SetEnabledAsync(value);
+    }
+
+    partial void OnAutoReconnectChanged(bool value)
+    {
+        Preferences.Default.Set(
+            "auto_reconnect",
+            value);
+    }
+
+    partial void OnUnitOptionChanged(string value)
+    {
+        _units.Set(value);
+        _ = _settings.SetAsync("units", _units.DisplayName);
+    }
+
+    partial void OnPollingOptionChanged(string value)
+    {
+        Preferences.Default.Set(
+            "polling",
+            value);
+    }
+
+    private void ApplyTheme()
+    {
+        if (Application.Current == null)
+            return;
+
+        var normalized =
+            ThemeOption switch
+            {
+                "Light" => "Light",
+                "System" => "System",
+                _ => "Dark"
+            };
+
+        if (ThemeOption != normalized)
+            ThemeOption = normalized;
+
+        Application.Current.UserAppTheme =
+            normalized switch
+            {
+                "Light" => AppTheme.Light,
+                "System" => AppTheme.Unspecified,
+                _ => AppTheme.Dark
+            };
+
+        MainThread.BeginInvokeOnMainThread(
+            async () =>
+            {
+                await Task.Yield();
+                _localization.ApplyCurrentPage();
+            });
+    }
+
+    [RelayCommand]
+    private async Task ClearHistory()
+    {
+        var yes =
+            _localization.IsEnglish
+                ? "Yes"
+                : "დიახ";
+
+        var no =
+            _localization.IsEnglish
+                ? "No"
+                : "არა";
+
+        var confirmed =
+            await Shell.Current.DisplayAlertAsync(
+                _localization.IsEnglish
+                    ? "Confirmation"
+                    : "დადასტურება",
+                _localization.IsEnglish
+                    ? "History will be deleted permanently."
+                    : "ისტორია სრულად წაიშლება.",
+                yes,
+                no);
+
+        if (!confirmed)
+            return;
+
+        await _db.ClearHistoryAsync();
+
+        await Shell.Current.DisplayAlertAsync(
+            _localization.IsEnglish
+                ? "Done"
+                : "შესრულდა",
+            _localization.IsEnglish
+                ? "History deleted."
+                : "ისტორია წაიშალა.",
+            "OK");
+    }
+
+    [RelayCommand]
+    private Task OpenHistory()
+    {
+        return Shell.Current.GoToAsync(
+            nameof(Views.HistoryPage));
+    }
+
+    [RelayCommand]
+    private Task OpenPro()
+    {
+        return Shell.Current.GoToAsync(
+            nameof(Views.ProPage));
+    }
+
+    [RelayCommand]
+    private Task OpenContact()
+    {
+        return Shell.Current.GoToAsync(
+            nameof(Views.ContactPage));
+    }
+
+    [RelayCommand]
+    private async Task PrivacyPolicy()
+    {
+        try
+        {
+            await StoreLinks.OpenAsync(StoreLinks.PrivacyPolicyUrl);
+        }
+        catch
+        {
+            await Shell.Current.DisplayAlertAsync(
+                _localization.IsEnglish
+                    ? "Error"
+                    : "შეცდომა",
+                _localization.IsEnglish
+                    ? "Privacy Policy could not be opened."
+                    : "კონფიდენციალურობის პოლიტიკის გახსნა ვერ მოხერხდა.",
+                "OK");
+        }
+    }
+
+    [RelayCommand]
+    private Task TermsOfUse() => StoreLinks.OpenAsync(StoreLinks.TermsOfUseUrl);
+
+    [RelayCommand]
+    private Task ManageSubscription() => StoreLinks.OpenAsync(StoreLinks.ManageSubscriptionUrl);
+
+    [RelayCommand]
+    private async Task DeleteVehicleData()
+    {
+        var yes =
+            _localization.IsEnglish
+                ? "Delete"
+                : "წაშლა";
+
+        var no =
+            _localization.IsEnglish
+                ? "Cancel"
+                : "გაუქმება";
+
+        var title =
+            _localization.IsEnglish
+                ? "Privacy"
+                : "კონფიდენციალურობა";
+
+        var message =
+            _localization.IsEnglish
+                ? "All local vehicle scans, history and mileage records will be deleted."
+                : "ადგილობრივი მანქანის მონაცემები, სკანები, ისტორია და გარბენის ჩანაწერები წაიშლება.";
+
+        var confirmed =
+            await Shell.Current.DisplayAlertAsync(
+                title,
+                message,
+                yes,
+                no);
+
+        if (!confirmed)
+            return;
+
+        await _db.DeleteAllVehicleDataAsync();
+
+        await Shell.Current.DisplayAlertAsync(
+            _localization.IsEnglish
+                ? "Done"
+                : "შესრულდა",
+            _localization.IsEnglish
+                ? "Local vehicle history was deleted."
+                : "ადგილობრივი მანქანის მონაცემები წაიშალა.",
+            "OK");
+    }
+
+    [RelayCommand]
+    private async Task ExportMyData()
+    {
+        try
+        {
+            var json = await _db.ExportDataJsonAsync();
+
+            var path =
+                Path.Combine(
+                    FileSystem.CacheDirectory,
+                    $"gcs-data-export-{DateTime.Now:yyyyMMdd-HHmmss}.json");
+
+            await File.WriteAllTextAsync(
+                path,
+                json);
+
+            await Share.Default.RequestAsync(
+                new ShareFileRequest
+                {
+                    Title = "Georgian Car Scanner data",
+                    File = new ShareFile(path)
+                });
+        }
+        catch
+        {
+            await Shell.Current.DisplayAlertAsync(
+                _localization.IsEnglish
+                    ? "Export error"
+                    : "ექსპორტის შეცდომა",
+                _localization.IsEnglish
+                    ? "The data export could not be completed."
+                    : "მონაცემების ექსპორტი ვერ შესრულდა.",
+                "OK");
+        }
+    }
+
+    [RelayCommand]
+    private async Task About()
+    {
+        await Shell.Current.DisplayAlertAsync(
+            "Georgian Car Scanner",
+            "Safe & Reliable OBD-II Diagnostics",
+            "OK");
+    }
+}

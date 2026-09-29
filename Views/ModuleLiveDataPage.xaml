@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    xmlns:m="clr-namespace:CarScanner.Models"
+    x:Class="CarScanner.Views.ModuleLiveDataPage"
+    x:DataType="vm:ModuleLiveDataViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="მოდულების მონაცემები">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,12,16,32" Spacing="12">
+
+            <VerticalStackLayout Spacing="2">
+                <Label AutomationId="DynamicTextModuleLiveTitle" Text="{Binding PageTitle}" Style="{StaticResource PageTitleStyle}" />
+                <Label AutomationId="DynamicTextModuleLiveVehicle" Text="{Binding VehicleName}"
+                       TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="TailTruncation" />
+            </VerticalStackLayout>
+
+            <!-- Start (primary) · Stop (outlined) -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <Button AutomationId="DynamicTextModuleLiveStart" Text="{Binding StartButtonText}"
+                        Command="{Binding StartCommand}" IsEnabled="{Binding IsNotRunning}"
+                        Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="48" />
+                <Button Grid.Column="1" AutomationId="DynamicTextModuleLiveStop" Text="{Binding StopButtonText}"
+                        Command="{Binding StopCommand}" IsEnabled="{Binding IsRunning}"
+                        BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}"
+                        BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12"
+                        HeightRequest="48" FontAttributes="Bold" />
+            </Grid>
+
+            <!-- Status -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,12">
+                <VerticalStackLayout Spacing="8">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                        <Path Data="M3,12 L7,12 L10,5 L14,19 L17,12 L21,12" Style="{StaticResource RowIconStyle}" />
+                        <Label Grid.Column="1" AutomationId="DynamicTextModuleLiveStatus" Text="{Binding StatusText}"
+                               TextColor="{DynamicResource TextColor}" FontSize="13" LineBreakMode="WordWrap" VerticalOptions="Center" />
+                    </Grid>
+                    <ProgressBar IsVisible="{Binding IsSearching}" Progress="{Binding SearchProgress}" ProgressColor="{DynamicResource Primary}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Groups: caption + list card of signal rows -->
+            <VerticalStackLayout Spacing="8" BindableLayout.ItemsSource="{Binding Groups}">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="m:ModuleLiveGroup">
+                        <VerticalStackLayout Spacing="6" Margin="0,0,0,4">
+                            <Label AutomationId="DynamicTextModuleLiveGroup" Text="{Binding Title}"
+                                   Style="{StaticResource SectionCaptionStyle}" />
+                            <Border Style="{StaticResource ListCardStyle}">
+                                <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding Signals}">
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate x:DataType="m:ModuleLiveSignal">
+                                            <VerticalStackLayout Spacing="0">
+                                                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6" Padding="14,12">
+                                                    <Label AutomationId="DynamicTextModuleLiveName" Text="{Binding Name}"
+                                                           TextColor="{DynamicResource TextColor}" FontSize="14"
+                                                           LineBreakMode="WordWrap" VerticalOptions="Center" />
+                                                    <Label Grid.Column="1" AutomationId="DynamicTextModuleLiveValue" Text="{Binding ValueText}"
+                                                           TextColor="{DynamicResource TextColor}" FontSize="15" FontAttributes="Bold"
+                                                           HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                    <Label Grid.Column="2" AutomationId="DynamicTextModuleLiveUnit" Text="{Binding Unit}"
+                                                           TextColor="{DynamicResource SubTextColor}" FontSize="12"
+                                                           VerticalOptions="Center" MinimumWidthRequest="28" />
+                                                </Grid>
+                                                <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                                            </VerticalStackLayout>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
+                                </VerticalStackLayout>
+                            </Border>
+                        </VerticalStackLayout>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+
+            <ActivityIndicator IsRunning="{Binding IsSearching}" IsVisible="{Binding IsSearching}"
+                               Color="{DynamicResource Primary}" Margin="0,6" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

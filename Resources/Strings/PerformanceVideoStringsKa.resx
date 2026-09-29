@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="PV_Title" xml:space="preserve">
+    <value>Performance ვიდეო</value>
+  </data>
+  <data name="PV_OpenCamera" xml:space="preserve">
+    <value>კამერის გახსნა (Performance ვიდეო)</value>
+  </data>
+  <data name="PV_StartRecording" xml:space="preserve">
+    <value>ჩაწერის დაწყება</value>
+  </data>
+  <data name="PV_StopRecording" xml:space="preserve">
+    <value>ჩაწერის შეჩერება</value>
+  </data>
+  <data name="PV_Rec" xml:space="preserve">
+    <value>REC</value>
+  </data>
+  <data name="PV_Close" xml:space="preserve">
+    <value>დახურვა</value>
+  </data>
+  <data name="PV_SaveTitle" xml:space="preserve">
+    <value>ვიდეოს შენახვა</value>
+  </data>
+  <data name="PV_SaveHint" xml:space="preserve">
+    <value>ჩანაწერი მზადაა. როგორ შევინახო?</value>
+  </data>
+  <data name="PV_SaveWithData" xml:space="preserve">
+    <value>შეინახე ციფრებით</value>
+  </data>
+  <data name="PV_SaveWithoutData" xml:space="preserve">
+    <value>შეინახე ციფრების გარეშე</value>
+  </data>
+  <data name="PV_SaveBoth" xml:space="preserve">
+    <value>შეინახე ორივე</value>
+  </data>
+  <data name="PV_Discard" xml:space="preserve">
+    <value>ჩანაწერის წაშლა</value>
+  </data>
+  <data name="PV_Processing" xml:space="preserve">
+    <value>ვიდეოზე ციფრები ემატება… {0}%</value>
+  </data>
+  <data name="PV_Saving" xml:space="preserve">
+    <value>გალერეაში ინახება…</value>
+  </data>
+  <data name="PV_Saved" xml:space="preserve">
+    <value>შენახულია გალერეაში (Movies/GCar360).</value>
+  </data>
+  <data name="PV_SavedBoth" xml:space="preserve">
+    <value>ორივე ვიდეო შენახულია გალერეაში (Movies/GCar360).</value>
+  </data>
+  <data name="PV_Discarded" xml:space="preserve">
+    <value>ჩანაწერი წაიშალა.</value>
+  </data>
+  <data name="PV_SaveFailed" xml:space="preserve">
+    <value>ვიდეო ვერ შეინახა: {0}</value>
+  </data>
+  <data name="PV_CameraPermission" xml:space="preserve">
+    <value>Performance ვიდეოსთვის კამერის ნებართვა საჭიროა.</value>
+  </data>
+  <data name="PV_StoragePermission" xml:space="preserve">
+    <value>ვიდეოს შესანახად მეხსიერების ნებართვა საჭიროა.</value>
+  </data>
+  <data name="PV_CameraError" xml:space="preserve">
+    <value>კამერა ვერ გაიხსნა: {0}</value>
+  </data>
+  <data name="PV_RecordError" xml:space="preserve">
+    <value>ჩაწერა ვერ მოხერხდა: {0}</value>
+  </data>
+  <data name="PV_NotSupported" xml:space="preserve">
+    <value>Performance ვიდეო ხელმისაწვდომია Android-ზე.</value>
+  </data>
+  <data name="PV_WaitingSpeed" xml:space="preserve">
+    <value>OBD სიჩქარეს ველოდები…</value>
+  </data>
+  <data name="PV_ReadyHint" xml:space="preserve">
+    <value>გაჩერდი — დრო დაიწყება დაძვრისთანავე.</value>
+  </data>
+  <data name="PV_Seconds" xml:space="preserve">
+    <value>წმ</value>
+  </data>
+</root>

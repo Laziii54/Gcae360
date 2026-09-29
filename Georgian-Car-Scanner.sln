@@ -1,0 +1,27 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CarScanner", "CarScanner.csproj", "{7302d337-e6d4-405f-bd63-a40c03307483}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CarScanner.Api", "Backend\CarScanner.Api\CarScanner.Api.csproj", "{2da18887-5a11-4061-a6bd-30f98d6489c2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7302d337-e6d4-405f-bd63-a40c03307483}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7302d337-e6d4-405f-bd63-a40c03307483}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7302d337-e6d4-405f-bd63-a40c03307483}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7302d337-e6d4-405f-bd63-a40c03307483}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2da18887-5a11-4061-a6bd-30f98d6489c2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2da18887-5a11-4061-a6bd-30f98d6489c2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2da18887-5a11-4061-a6bd-30f98d6489c2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2da18887-5a11-4061-a6bd-30f98d6489c2}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

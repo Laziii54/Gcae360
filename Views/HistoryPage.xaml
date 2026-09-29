@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    xmlns:models="clr-namespace:CarScanner.Models"
+    x:Class="CarScanner.Views.HistoryPage"
+    x:DataType="vm:HistoryViewModel"
+    Title="ისტორია"
+    BackgroundColor="{DynamicResource PageBg}">
+
+    <ScrollView>
+
+        <VerticalStackLayout Padding="16,12,16,32" Spacing="12">
+
+            <Label Text="ისტორია" Style="{StaticResource PageTitleStyle}" />
+
+            <!-- ACTIONS -->
+
+            <Grid
+                ColumnDefinitions="*,*,*"
+                ColumnSpacing="8">
+
+                <Button
+                    Text="განახლება"
+                    Command="{Binding LoadCommand}"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    CornerRadius="12"
+                    HeightRequest="48"
+                    FontSize="13" />
+
+                <Button
+                    Grid.Column="1"
+                    Text="CSV ექსპორტი"
+                    Command="{Binding ExportCommand}"
+                    BackgroundColor="Transparent"
+                    TextColor="{DynamicResource TextColor}"
+                    BorderColor="{DynamicResource TextColor}"
+                    BorderWidth="1.5"
+                    CornerRadius="12"
+                    HeightRequest="48"
+                    FontSize="13"
+                    FontAttributes="Bold" />
+
+                <Button
+                    Grid.Column="2"
+                    Text="წაშლა"
+                    Command="{Binding ClearCommand}"
+                    BackgroundColor="Transparent"
+                    TextColor="#B3361F"
+                    BorderColor="#B3361F"
+                    BorderWidth="1.5"
+                    CornerRadius="12"
+                    HeightRequest="48"
+                    FontSize="13"
+                    FontAttributes="Bold" />
+
+            </Grid>
+
+            <!-- DETAILED SESSIONS -->
+
+            <Label
+                Text="Detailed Scan Sessions"
+                Style="{StaticResource SectionCaptionStyle}" />
+
+            <VerticalStackLayout
+                Spacing="8"
+                BindableLayout.ItemsSource="{Binding Sessions}">
+
+                <BindableLayout.ItemTemplate>
+
+                    <DataTemplate x:DataType="models:ScanSession">
+
+                        <Border Style="{StaticResource ListCardStyle}">
+
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,13">
+
+                                <Path
+                                    Data="M6,3 L14,3 L19,8 L19,21 L6,21 Z M14,3 L14,8 L19,8 M9,13 L16,13 M9,17 L16,17"
+                                    Style="{StaticResource RowIconStyle}"
+                                    VerticalOptions="Start" />
+
+                                <VerticalStackLayout Grid.Column="1" Spacing="3">
+
+                                    <Label
+                                        Text="{Binding VehicleSummary}"
+                                        TextColor="{DynamicResource TextColor}"
+                                        FontSize="14"
+                                        FontAttributes="Bold" />
+
+                                    <Label
+                                        Text="{Binding StartedAt, StringFormat='{0:dd.MM.yyyy HH:mm}'}"
+                                        TextColor="{DynamicResource SubTextColor}"
+                                        FontSize="11" />
+
+                                    <Label
+                                        Text="{Binding Protocol}"
+                                        TextColor="{DynamicResource SubTextColor}"
+                                        FontSize="12" />
+
+                                    <HorizontalStackLayout Spacing="14" Margin="0,2,0,0">
+
+                                        <Label
+                                            Text="{Binding StoredDtcCount, StringFormat='{0}'}"
+                                            TextColor="{DynamicResource TextColor}"
+                                            FontSize="12" />
+
+                                        <Label
+                                            Text="{Binding PendingDtcCount, StringFormat='{0}'}"
+                                            TextColor="{DynamicResource TextColor}"
+                                            FontSize="12" />
+
+                                        <Label
+                                            Text="{Binding PermanentDtcCount, StringFormat='{0}'}"
+                                            TextColor="{DynamicResource TextColor}"
+                                            FontSize="12" />
+
+                                    </HorizontalStackLayout>
+
+                                </VerticalStackLayout>
+
+                            </Grid>
+
+                        </Border>
+
+                    </DataTemplate>
+
+                </BindableLayout.ItemTemplate>
+
+            </VerticalStackLayout>
+
+
+            <!-- LEGACY HISTORY -->
+
+            <Label
+                Text="Legacy Scan History"
+                Style="{StaticResource SectionCaptionStyle}" />
+
+            <VerticalStackLayout
+                Spacing="8"
+                BindableLayout.ItemsSource="{Binding History}">
+
+                <BindableLayout.EmptyView>
+
+                    <VerticalStackLayout Padding="0,30" Spacing="4">
+
+                        <Label
+                            Text="ისტორია ცარიელია"
+                            FontSize="16"
+                            FontAttributes="Bold"
+                            TextColor="{DynamicResource TextColor}"
+                            HorizontalOptions="Center" />
+
+                        <Label
+                            Text="სკანირების შემდეგ აქ გამოჩნდება."
+                            FontSize="13"
+                            TextColor="{DynamicResource SubTextColor}"
+                            HorizontalOptions="Center" />
+
+                    </VerticalStackLayout>
+
+                </BindableLayout.EmptyView>
+
+                <BindableLayout.ItemTemplate>
+
+                    <DataTemplate
+                        x:DataType="models:ScanResult">
+
+                        <Border Style="{StaticResource ListCardStyle}">
+
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,13">
+
+                                <Path
+                                    Data="M3,17 L3,12 L5.5,6.5 L18.5,6.5 L21,12 L21,17 Z M3,12 L21,12 M7,17 L7,20 M17,17 L17,20"
+                                    Style="{StaticResource RowIconStyle}"
+                                    VerticalOptions="Start" />
+
+                                <VerticalStackLayout Grid.Column="1" Spacing="3">
+
+                                    <Label
+                                        Text="{Binding CarInfo}"
+                                        FontSize="14"
+                                        FontAttributes="Bold"
+                                        TextColor="{DynamicResource TextColor}"
+                                        LineBreakMode="TailTruncation" />
+
+                                    <Label
+                                        Text="{Binding ScanDate, StringFormat='{0:dd.MM.yyyy HH:mm}'}"
+                                        FontSize="11"
+                                        TextColor="{DynamicResource SubTextColor}" />
+
+                                    <Label
+                                        Text="{Binding FoundCodes}"
+                                        FontSize="13"
+                                        FontFamily="monospace"
+                                        TextColor="#B3361F"
+                                        FontAttributes="Bold"
+                                        Margin="0,2,0,0"
+                                        LineBreakMode="WordWrap" />
+
+                                    <Label
+                                        Text="{Binding Notes}"
+                                        FontSize="12"
+                                        TextColor="{DynamicResource SubTextColor}"
+                                        LineBreakMode="WordWrap" />
+
+                                </VerticalStackLayout>
+
+                            </Grid>
+
+                        </Border>
+
+                    </DataTemplate>
+
+                </BindableLayout.ItemTemplate>
+
+            </VerticalStackLayout>
+
+
+            <!-- LOADING -->
+
+            <ActivityIndicator
+                IsRunning="{Binding IsBusy}"
+                IsVisible="{Binding IsBusy}"
+                Color="{DynamicResource Primary}" />
+
+        </VerticalStackLayout>
+
+    </ScrollView>
+
+</ContentPage>

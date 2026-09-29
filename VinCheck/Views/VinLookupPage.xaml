@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage x:Class="CarScanner.VinCheck.Views.VinLookupPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vc="clr-namespace:CarScanner.VinCheck"
+             xmlns:controls="clr-namespace:CarScanner.Controls"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="{DynamicResource PageBg}">
+    <ContentPage.Resources>
+        <vc:VinCheckResources />
+    </ContentPage.Resources>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,12,16,36" Spacing="12">
+
+            <!-- ===== Top bar ===== -->
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+                <Button Text="‹" FontSize="24" Padding="0" Command="{Binding BackCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="12" WidthRequest="40" HeightRequest="40" MinimumHeightRequest="40" />
+                <Label Grid.Column="1" Text="GCar360" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalTextAlignment="Center" Margin="4,0,0,0" />
+                <Button Grid.Column="2" Text="{Binding LanguageText}" Command="{Binding ToggleLanguageCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="12" Padding="12,0" HeightRequest="40" MinimumHeightRequest="40" FontSize="12" FontAttributes="Bold" />
+                <Border Grid.Column="3" WidthRequest="40" HeightRequest="40" Padding="0" BackgroundColor="{DynamicResource CardBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 12">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding OpenHistoryCommand}" />
+                    </Border.GestureRecognizers>
+                    <Path Data="M4,12 A8,8 0 1 0 20,12 A8,8 0 1 0 4,12 M12,8 L12,12 L15,14" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" InputTransparent="True" />
+                </Border>
+            </Grid>
+
+            <!-- ===== Intro (calm white card) ===== -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="16,14">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="{Binding Title}" Style="{StaticResource PageTitleStyle}" />
+                    <Label Text="{Binding Subtitle}" FontSize="13" TextColor="{DynamicResource SubTextColor}" />
+                    <FlexLayout Wrap="Wrap" Margin="0,8,0,0" BindableLayout.ItemsSource="{Binding Features}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate>
+                                <Border BackgroundColor="{DynamicResource PageBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 8" Padding="9,4" Margin="0,0,6,6">
+                                    <Label Text="{Binding .}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </FlexLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- ===== VIN boxes ===== -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,14">
+                <VerticalStackLayout Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
+                        <Label Text="{Binding VinCodeText}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalTextAlignment="Center" />
+                        <Label Grid.Column="1" Text="{Binding ClearText}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource Primary}"
+                               IsVisible="{Binding HasText}" VerticalTextAlignment="Center">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ClearCommand}" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                        <Label Grid.Column="2" Text="{Binding CountText}" FontSize="12" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" VerticalTextAlignment="Center" />
+                    </Grid>
+
+                    <!-- One line: 17 characters with an underline each + camera -->
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                        <Border Padding="10,10,10,12" BackgroundColor="{DynamicResource CardBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 12">
+                            <Grid ColumnDefinitions="*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*" ColumnSpacing="2">
+                                <VerticalStackLayout Grid.Column="0" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding Cells[0].Text}" FontFamily="monospace" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" HeightRequest="22" VerticalTextAlignment="End" />
+                                    <BoxView HeightRequest="2" CornerRadius="1" Margin="1,0" Color="{DynamicResource TextColor}">
+                                        <BoxView.Triggers>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[0].Text}" Value="">
+                                                <Setter Property="Color" Value="{DynamicResource BorderColor}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[0].IsCurrent}" Value="True">
+                                                <Setter Property="Color" Value="{DynamicResource Primary}" />
+                                            </DataTrigger>
+                                        </BoxView.Triggers>
+                                    </BoxView>
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding Cells[1].Text}" FontFamily="monospace" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" HeightRequest="22" VerticalTextAlignment="End" />
+                                    <BoxView HeightRequest="2" CornerRadius="1" Margin="1,0" Color="{DynamicResource TextColor}">
+                                        <BoxView.Triggers>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[1].Text}" Value="">
+                                                <Setter Property="Color" Value="{DynamicResource BorderColor}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[1].IsCurrent}" Value="True">
+                                                <Setter Property="Color" Value="{DynamicResource Primary}" />
+                                            </DataTrigger>
+                                        </BoxView.Triggers>
+                                    </BoxView>
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="2" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding Cells[2].Text}" FontFamily="monospace" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" HeightRequest="22" VerticalTextAlignment="End" />
+                                    <BoxView HeightRequest="2" CornerRadius="1" Margin="1,0" Color="{DynamicResource TextColor}">
+                                        <BoxView.Triggers>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[2].Text}" Value="">
+                                                <Setter Property="Color" Value="{DynamicResource BorderColor}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[2].IsCurrent}" Value="True">
+                                                <Setter Property="Color" Value="{DynamicResource Primary}" />
+                                            </DataTrigger>
+                                        </BoxView.Triggers>
+                                    </BoxView>
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="3" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding Cells[3].Text}" FontFamily="monospace" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" HeightRequest="22" VerticalTextAlignment="End" />
+                                    <BoxView HeightRequest="2" CornerRadius="1" Margin="1,0" Color="{DynamicResource TextColor}">
+                                        <BoxView.Triggers>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[3].Text}" Value="">
+                                                <Setter Property="Color" Value="{DynamicResource BorderColor}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[3].IsCurrent}" Value="True">
+                                                <Setter Property="Color" Value="{DynamicResource Primary}" />
+                                            </DataTrigger>
+                                        </BoxView.Triggers>
+                                    </BoxView>
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="4" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding Cells[4].Text}" FontFamily="monospace" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" HeightRequest="22" VerticalTextAlignment="End" />
+                                    <BoxView HeightRequest="2" CornerRadius="1" Margin="1,0" Color="{DynamicResource TextColor}">
+                                        <BoxView.Triggers>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[4].Text}" Value="">
+                                                <Setter Property="Color" Value="{DynamicResource BorderColor}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[4].IsCurrent}" Value="True">
+                                                <Setter Property="Color" Value="{DynamicResource Primary}" />
+                                            </DataTrigger>
+                                        </BoxView.Triggers>
+                                    </BoxView>
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="5" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding Cells[5].Text}" FontFamily="monospace" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" HeightRequest="22" VerticalTextAlignment="End" />
+                                    <BoxView HeightRequest="2" CornerRadius="1" Margin="1,0" Color="{DynamicResource TextColor}">
+                                        <BoxView.Triggers>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[5].Text}" Value="">
+                                                <Setter Property="Color" Value="{DynamicResource BorderColor}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[5].IsCurrent}" Value="True">
+                                                <Setter Property="Color" Value="{DynamicResource Primary}" />
+                                            </DataTrigger>
+                                        </BoxView.Triggers>
+                                    </BoxView>
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="6" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding Cells[6].Text}" FontFamily="monospace" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" HeightRequest="22" VerticalTextAlignment="End" />
+                                    <BoxView HeightRequest="2" CornerRadius="1" Margin="1,0" Color="{DynamicResource TextColor}">
+                                        <BoxView.Triggers>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[6].Text}" Value="">
+                                                <Setter Property="Color" Value="{DynamicResource BorderColor}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[6].IsCurrent}" Value="True">
+                                                <Setter Property="Color" Value="{DynamicResource Primary}" />
+                                            </DataTrigger>
+                                        </BoxView.Triggers>
+                                    </BoxView>
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="7" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding Cells[7].Text}" FontFamily="monospace" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" HeightRequest="22" VerticalTextAlignment="End" />
+                                    <BoxView HeightRequest="2" CornerRadius="1" Margin="1,0" Color="{DynamicResource TextColor}">
+                                        <BoxView.Triggers>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[7].Text}" Value="">
+                                                <Setter Property="Color" Value="{DynamicResource BorderColor}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[7].IsCurrent}" Value="True">
+                                                <Setter Property="Color" Value="{DynamicResource Primary}" />
+                                            </DataTrigger>
+                                        </BoxView.Triggers>
+                                    </BoxView>
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="8" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding Cells[8].Text}" FontFamily="monospace" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" HeightRequest="22" VerticalTextAlignment="End" />
+                                    <BoxView HeightRequest="2" CornerRadius="1" Margin="1,0" Color="{DynamicResource TextColor}">
+                                        <BoxView.Triggers>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[8].Text}" Value="">
+                                                <Setter Property="Color" Value="{DynamicResource BorderColor}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[8].IsCurrent}" Value="True">
+                                                <Setter Property="Color" Value="{DynamicResource Primary}" />
+                                            </DataTrigger>
+                                        </BoxView.Triggers>
+                                    </BoxView>
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="9" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding Cells[9].Text}" FontFamily="monospace" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" HeightRequest="22" VerticalTextAlignment="End" />
+                                    <BoxView HeightRequest="2" CornerRadius="1" Margin="1,0" Color="{DynamicResource TextColor}">
+                                        <BoxView.Triggers>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[9].Text}" Value="">
+                                                <Setter Property="Color" Value="{DynamicResource BorderColor}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[9].IsCurrent}" Value="True">
+                                                <Setter Property="Color" Value="{DynamicResource Primary}" />
+                                            </DataTrigger>
+                                        </BoxView.Triggers>
+                                    </BoxView>
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="10" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding Cells[10].Text}" FontFamily="monospace" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" HeightRequest="22" VerticalTextAlignment="End" />
+                                    <BoxView HeightRequest="2" CornerRadius="1" Margin="1,0" Color="{DynamicResource TextColor}">
+                                        <BoxView.Triggers>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[10].Text}" Value="">
+                                                <Setter Property="Color" Value="{DynamicResource BorderColor}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[10].IsCurrent}" Value="True">
+                                                <Setter Property="Color" Value="{DynamicResource Primary}" />
+                                            </DataTrigger>
+                                        </BoxView.Triggers>
+                                    </BoxView>
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="11" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding Cells[11].Text}" FontFamily="monospace" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" HeightRequest="22" VerticalTextAlignment="End" />
+                                    <BoxView HeightRequest="2" CornerRadius="1" Margin="1,0" Color="{DynamicResource TextColor}">
+                                        <BoxView.Triggers>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[11].Text}" Value="">
+                                                <Setter Property="Color" Value="{DynamicResource BorderColor}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[11].IsCurrent}" Value="True">
+                                                <Setter Property="Color" Value="{DynamicResource Primary}" />
+                                            </DataTrigger>
+                                        </BoxView.Triggers>
+                                    </BoxView>
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="12" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding Cells[12].Text}" FontFamily="monospace" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" HeightRequest="22" VerticalTextAlignment="End" />
+                                    <BoxView HeightRequest="2" CornerRadius="1" Margin="1,0" Color="{DynamicResource TextColor}">
+                                        <BoxView.Triggers>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[12].Text}" Value="">
+                                                <Setter Property="Color" Value="{DynamicResource BorderColor}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[12].IsCurrent}" Value="True">
+                                                <Setter Property="Color" Value="{DynamicResource Primary}" />
+                                            </DataTrigger>
+                                        </BoxView.Triggers>
+                                    </BoxView>
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="13" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding Cells[13].Text}" FontFamily="monospace" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" HeightRequest="22" VerticalTextAlignment="End" />
+                                    <BoxView HeightRequest="2" CornerRadius="1" Margin="1,0" Color="{DynamicResource TextColor}">
+                                        <BoxView.Triggers>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[13].Text}" Value="">
+                                                <Setter Property="Color" Value="{DynamicResource BorderColor}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[13].IsCurrent}" Value="True">
+                                                <Setter Property="Color" Value="{DynamicResource Primary}" />
+                                            </DataTrigger>
+                                        </BoxView.Triggers>
+                                    </BoxView>
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="14" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding Cells[14].Text}" FontFamily="monospace" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" HeightRequest="22" VerticalTextAlignment="End" />
+                                    <BoxView HeightRequest="2" CornerRadius="1" Margin="1,0" Color="{DynamicResource TextColor}">
+                                        <BoxView.Triggers>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[14].Text}" Value="">
+                                                <Setter Property="Color" Value="{DynamicResource BorderColor}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[14].IsCurrent}" Value="True">
+                                                <Setter Property="Color" Value="{DynamicResource Primary}" />
+                                            </DataTrigger>
+                                        </BoxView.Triggers>
+                                    </BoxView>
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="15" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding Cells[15].Text}" FontFamily="monospace" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" HeightRequest="22" VerticalTextAlignment="End" />
+                                    <BoxView HeightRequest="2" CornerRadius="1" Margin="1,0" Color="{DynamicResource TextColor}">
+                                        <BoxView.Triggers>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[15].Text}" Value="">
+                                                <Setter Property="Color" Value="{DynamicResource BorderColor}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[15].IsCurrent}" Value="True">
+                                                <Setter Property="Color" Value="{DynamicResource Primary}" />
+                                            </DataTrigger>
+                                        </BoxView.Triggers>
+                                    </BoxView>
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="16" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding Cells[16].Text}" FontFamily="monospace" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" HeightRequest="22" VerticalTextAlignment="End" />
+                                    <BoxView HeightRequest="2" CornerRadius="1" Margin="1,0" Color="{DynamicResource TextColor}">
+                                        <BoxView.Triggers>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[16].Text}" Value="">
+                                                <Setter Property="Color" Value="{DynamicResource BorderColor}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="BoxView" Binding="{Binding Cells[16].IsCurrent}" Value="True">
+                                                <Setter Property="Color" Value="{DynamicResource Primary}" />
+                                            </DataTrigger>
+                                        </BoxView.Triggers>
+                                    </BoxView>
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Border>
+
+                        <!-- Invisible text field over the characters: opens the keyboard. -->
+                        <Entry x:Name="VinEntry" Text="{Binding Vin}" MaxLength="17"
+                               Keyboard="Plain" IsSpellCheckEnabled="False" IsTextPredictionEnabled="False"
+                               Opacity="0.02" TextColor="Transparent" BackgroundColor="Transparent"
+                               Focused="OnEntryFocused" Unfocused="OnEntryUnfocused" />
+
+                        <!-- Camera -->
+                        <Border Grid.Column="1" WidthRequest="50" HeightRequest="50" Padding="12" StrokeThickness="0"
+                                StrokeShape="RoundRectangle 12" BackgroundColor="{DynamicResource Primary}" VerticalOptions="Center">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ScanCommand}" />
+                            </Border.GestureRecognizers>
+                            <controls:CameraIconView IconColor="White" InputTransparent="True" />
+                        </Border>
+                    </Grid>
+
+                    <Label Text="{Binding TapHintText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                    <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" />
+                    <Label Text="{Binding SampleHint}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="{Binding ErrorMessage}" TextColor="#B3361F" FontSize="13" IsVisible="{Binding ErrorMessage,Converter={StaticResource NotEmpty}}" />
+
+            <Button Text="{Binding ButtonText}" Command="{Binding SearchCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" />
+
+            <HorizontalStackLayout HorizontalOptions="Center" Spacing="10" IsVisible="{Binding IsLoading}">
+                <ActivityIndicator IsRunning="{Binding IsLoading}" Color="{DynamicResource Primary}" />
+                <Label Text="{Binding LoadingText}" FontSize="13" TextColor="{DynamicResource SubTextColor}" VerticalTextAlignment="Center" />
+            </HorizontalStackLayout>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button Text="{Binding HistoryText}" Command="{Binding OpenHistoryCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="48" FontSize="14" />
+                <Button Grid.Column="1" Text="{Binding FavoritesText}" Command="{Binding OpenHistoryCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="48" FontSize="14" />
+            </Grid>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

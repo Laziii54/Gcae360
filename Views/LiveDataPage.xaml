@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    xmlns:m="clr-namespace:CarScanner.Models"
+    xmlns:controls="clr-namespace:CarScanner.Controls"
+    x:Class="CarScanner.Views.LiveDataPage"
+    x:DataType="vm:LiveDataViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="Live Data">
+    <!-- CollectionView is the page's own scroll container (it cannot nest
+         inside a ScrollView); everything above/below the PID list lives in
+         Header/Footer. Flat style A: white list cards, 1px borders. -->
+    <CollectionView
+        ItemsSource="{Binding VisiblePids}"
+        BackgroundColor="{DynamicResource PageBg}">
+        <CollectionView.ItemsLayout>
+            <LinearItemsLayout Orientation="Vertical" ItemSpacing="10" />
+        </CollectionView.ItemsLayout>
+
+        <CollectionView.Header>
+            <VerticalStackLayout Padding="16,12,16,10" Spacing="12">
+                <Label Text="Live Data" Style="{StaticResource PageTitleStyle}" />
+
+                <!-- Vehicle -->
+                <Border Style="{StaticResource ListCardStyle}">
+                    <VerticalStackLayout Spacing="0">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
+                            <Path Data="M4,16 L4,12 L6,7 L18,7 L20,12 L20,16 Z M4,12 L20,12 M7,16 L7,18 M17,16 L17,18" Style="{StaticResource RowIconStyle}" />
+                            <Label Grid.Column="1" Text="მანქანა" Style="{StaticResource RowTitleStyle}" />
+                            <Label AutomationId="DynamicTextVehicle" Grid.Column="2" Text="{Binding VehicleName}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" HorizontalTextAlignment="End" VerticalOptions="Center" LineBreakMode="TailTruncation" MaximumWidthRequest="220" />
+                        </Grid>
+                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
+                            <Path Data="M4,6 L20,6 M4,12 L20,12 M4,18 L14,18" Style="{StaticResource RowIconStyle}" />
+                            <Label Grid.Column="1" Text="VIN" Style="{StaticResource RowTitleStyle}" />
+                            <Label AutomationId="DynamicTextVin" Grid.Column="2" Text="{Binding Vin}" TextColor="{DynamicResource SubTextColor}" FontSize="12" FontFamily="monospace" HorizontalTextAlignment="End" VerticalOptions="Center" LineBreakMode="TailTruncation" MaximumWidthRequest="220" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Controls: start (primary) · pause / stop (outlined) -->
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                    <Button Text="დაწყება" Command="{Binding StartLiveDataCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="48" />
+                    <Button Grid.Column="1" Text="პაუზა" Command="{Binding PauseLiveDataCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="48" />
+                    <Button Grid.Column="2" Text="გაჩერება" Command="{Binding StopLiveDataCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="48" />
+                </Grid>
+
+                <Label Text="Live Dashboard" Style="{StaticResource SectionCaptionStyle}" />
+            </VerticalStackLayout>
+        </CollectionView.Header>
+
+        <CollectionView.ItemTemplate>
+            <DataTemplate x:DataType="m:LivePidItem">
+                <Border Style="{StaticResource ListCardStyle}" Padding="14,12" Margin="16,0">
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10" RowSpacing="2">
+                        <Label AutomationId="DynamicTextPidName" Text="{Binding DisplayName}" TextColor="{DynamicResource SubTextColor}" FontSize="13" VerticalOptions="Center" LineBreakMode="TailTruncation" />
+                        <Button AutomationId="DynamicTextFavorite" Grid.Column="1" Text="{Binding FavoriteGlyph}" TextColor="{Binding FavoriteColor}" Command="{Binding x:DataType=vm:LiveDataViewModel, Source={RelativeSource AncestorType={x:Type vm:LiveDataViewModel}}, Path=ToggleFavoriteCommand}" CommandParameter="{Binding .}" BackgroundColor="Transparent" BorderWidth="0" FontSize="22" WidthRequest="40" HeightRequest="36" MinimumHeightRequest="36" Padding="0" VerticalOptions="Center" />
+                        <Label AutomationId="DynamicTextPidValue" Grid.Row="1" Text="{Binding ValueText}" TextColor="{DynamicResource TextColor}" FontSize="28" FontAttributes="Bold" />
+                        <Label AutomationId="DynamicTextPidHealth" Grid.Row="1" Grid.Column="1" Text="{Binding HealthText}" TextColor="{Binding HealthColor}" FontSize="12" FontAttributes="Bold" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                        <Label AutomationId="DynamicTextPidStats" Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding StatisticsText}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="TailTruncation" />
+                    </Grid>
+                </Border>
+            </DataTemplate>
+        </CollectionView.ItemTemplate>
+
+        <CollectionView.Footer>
+            <VerticalStackLayout Padding="16,14,16,56" Spacing="12">
+                <Border Style="{StaticResource ListCardStyle}" Padding="14,12">
+                    <VerticalStackLayout Spacing="10">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <Path Data="M4,19 L20,19 M4,19 L4,5 M7,15 L11,10 L14,13 L19,7" Style="{StaticResource RowIconStyle}" />
+                            <Label Grid.Column="1" Text="Graph Studio" TextColor="{DynamicResource TextColor}" FontSize="15" FontAttributes="Bold" VerticalOptions="Center" />
+                            <Button Grid.Column="2" Text="Reset" Command="{Binding ResetGraphCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="10" Padding="14,0" HeightRequest="34" MinimumHeightRequest="34" FontSize="12" VerticalOptions="Center" />
+                        </Grid>
+                        <controls:TelemetryGraphView Samples="{Binding GraphSamples}" Pids="{Binding GraphPidIds}" Title="რეალური მონაცემების გრაფიკი" HeightRequest="220" />
+                    </VerticalStackLayout>
+                </Border>
+                <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" />
+            </VerticalStackLayout>
+        </CollectionView.Footer>
+    </CollectionView>
+</ContentPage>

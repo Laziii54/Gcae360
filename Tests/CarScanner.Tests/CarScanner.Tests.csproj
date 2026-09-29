@@ -1,0 +1,74 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.0.0" />
+    <PackageReference Include="YamlDotNet" Version="18.1.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Backend/CarScanner.Api/CarScanner.Api.csproj" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Compile Include="../../Services/UDS/UdsModels.cs" Link="UdsModels.cs" />
+    <Compile Include="../../Services/UDS/IsoTpReassembler.cs" Link="IsoTpReassembler.cs" />
+    <Compile Include="../../Services/OBD/DTCDecoder.cs" Link="DTCDecoder.cs" />
+    <Compile Include="../../Services/OBD/ObdResponseParser.cs" Link="ObdResponseParser.cs" />
+    <Compile Include="../../Services/OBD/AdvancedModeParser.cs" Link="AdvancedModeParser.cs" />
+    <Compile Include="../../Services/OBD/PidDefinitionRegistry.cs" Link="PidDefinitionRegistry.cs" />
+    <Compile Include="../../Services/OBD/PIDDecoder.cs" Link="PIDDecoder.cs" />
+    <Compile Include="../../Services/OBD/Mode06Definitions.cs" Link="Mode06Definitions.cs" />
+    <Compile Include="../../Models/AdvancedObdTest.cs" Link="AdvancedObdTest.cs" />
+    <Compile Include="../../Models/DiagnosticCode.cs" Link="DiagnosticCode.cs" />
+    <Compile Include="../../Models/DiagnosticOperationResult.cs" Link="DiagnosticOperationResult.cs" />
+    <Compile Include="../../Models/PidDefinition.cs" Link="PidDefinition.cs" />
+    <Compile Include="../../Models/SensorValue.cs" Link="SensorValue.cs" />
+    <Compile Include="../../Models/VehicleInfo.cs" Link="VehicleInfo.cs" />
+    <Compile Include="../../Models/VehicleHealthItem.cs" Link="VehicleHealthItem.cs" />
+    <Compile Include="../../Models/VehicleBrandProfile.cs" Link="VehicleBrandProfile.cs" />
+    <Compile Include="../../Models/ResolvedVehicleProfile.cs" Link="ResolvedVehicleProfile.cs" />
+    <Compile Include="../../Models/OemEcuDefinition.cs" Link="OemEcuDefinition.cs" />
+    <Compile Include="../../Models/ManufacturerDefinitionPackage.cs" Link="ManufacturerDefinitionPackage.cs" />
+    <Compile Include="../../Models/OemModuleDiscoveryModels.cs" Link="OemModuleDiscoveryModels.cs" />
+    <Compile Include="../../Models/OemEcuCapabilityModels.cs" Link="OemEcuCapabilityModels.cs" />
+    <Compile Include="../../Models/OemEcuIdentificationModels.cs" Link="OemEcuIdentificationModels.cs" />
+    <Compile Include="../../Models/OemDtcModels.cs" Link="OemDtcModels.cs" />
+    <Compile Include="../../Models/OemFreezeFrameModels.cs" Link="OemFreezeFrameModels.cs" />
+    <Compile Include="../../Models/OemLiveDataModels.cs" Link="OemLiveDataModels.cs" />
+    <Compile Include="../../Models/OemOperationModels.cs" Link="OemOperationModels.cs" />
+    <Compile Include="../../Models/VehicleNetworkTopology.cs" Link="VehicleNetworkTopology.cs" />
+    <Compile Include="../../Services/VehicleProfileResolutionEngine.cs" Link="VehicleProfileResolutionEngine.cs" />
+    <Compile Include="../../Services/VehicleHealthScoreCalculator.cs" Link="VehicleHealthScoreCalculator.cs" />
+    <Compile Include="../../Services/OemDiagnostics/OemAddressRegistry.cs" Link="OemAddressRegistry.cs" />
+    <Compile Include="../../Services/OemDiagnostics/ManufacturerDefinitionCatalogParser.cs" Link="ManufacturerDefinitionCatalogParser.cs" />
+    <Compile Include="../../Services/OemDiagnostics/ManufacturerDefinitionResolutionEngine.cs" Link="ManufacturerDefinitionResolutionEngine.cs" />
+    <Compile Include="../../Services/OemDiagnostics/OemDefinitionPackageParser.cs" Link="OemDefinitionPackageParser.cs" />
+    <Compile Include="../../Services/OemDiagnostics/VehicleNetworkTopologyBuilder.cs" Link="VehicleNetworkTopologyBuilder.cs" />
+    <Compile Include="../../Services/OemDiagnostics/OemCapabilityResponseEvaluator.cs" Link="OemCapabilityResponseEvaluator.cs" />
+    <Compile Include="../../Services/OemDiagnostics/OemIdentificationResponseDecoder.cs" Link="OemIdentificationResponseDecoder.cs" />
+    <Compile Include="../../Services/OemDiagnostics/OemUdsDtcResponseDecoder.cs" Link="OemUdsDtcResponseDecoder.cs" />
+    <Compile Include="../../Services/OemDiagnostics/OemFreezeFrameResponseDecoder.cs" Link="OemFreezeFrameResponseDecoder.cs" />
+    <Compile Include="../../Services/OemDiagnostics/OemLiveDataResponseDecoder.cs" Link="OemLiveDataResponseDecoder.cs" />
+    <Compile Include="../../Services/OemDiagnostics/OemOperationPackageParser.cs" Link="OemOperationPackageParser.cs" />
+    <Compile Include="../../Services/OemDiagnostics/OemOperationResponseValidator.cs" Link="OemOperationResponseValidator.cs" />
+    <Compile Include="../../Services/OemDiagnostics/OemOperationSimulationValidator.cs" Link="OemOperationSimulationValidator.cs" />
+    <Compile Include="../../Services/OemDiagnostics/VoltOilLifeDecoder.cs" Link="OemDiagnostics/VoltOilLifeDecoder.cs" />
+    <Compile Include="../../Models/ServiceDataModels.cs" Link="ServiceDataModels.cs" />
+    <Compile Include="../../Models/ServiceResetVerificationModels.cs" Link="ServiceResetVerificationModels.cs" />
+    <Compile Include="../../Services/OemDiagnostics/ServiceResetVerificationService.cs" Link="ServiceResetVerificationService.cs" />
+    <Compile Include="../../Services/OemDiagnostics/ServiceDiagnosticTrace.cs" Link="ServiceDiagnosticTrace.cs" />
+    <None Include="../../Resources/Raw/manufacturer_definitions.json" Link="manufacturer_definitions.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../DtcCatalog/ka/generic/*.yaml" Link="DtcCatalog/ka/generic/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../Models/ServiceProcedureDefinition.cs" Link="ServiceProcedureDefinition.cs" />
+    <Compile Include="../../Models/ServiceProcedureItem.cs" Link="ServiceProcedureItem.cs" />
+  </ItemGroup>
+</Project>

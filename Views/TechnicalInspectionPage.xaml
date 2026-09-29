@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    x:Class="CarScanner.Views.TechnicalInspectionPage"
+    x:DataType="vm:TechnicalInspectionViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,14,16,32" Spacing="12">
+            <Label Text="{Binding PageHeading}" Style="{StaticResource PageTitleStyle}" />
+            <Label Text="{Binding PageSubtitle}" FontSize="13" TextColor="{DynamicResource SubTextColor}" Margin="2,-7,2,4" LineBreakMode="WordWrap" />
+
+            <Button
+                Text="{Binding CheckButtonText}"
+                Command="{Binding CheckCommand}"
+                IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
+                Style="{StaticResource PrimaryButtonStyle}"
+                HeightRequest="64"
+                MinimumHeightRequest="64"
+                FontSize="16"
+                FontAttributes="Bold" />
+
+            <Border IsVisible="{Binding IsBusy}" Style="{StaticResource ListCardStyle}" Padding="16,14">
+                <VerticalStackLayout Spacing="10">
+                    <ActivityIndicator IsRunning="True" Color="{DynamicResource Primary}" />
+                    <Label Text="{Binding StatusText}" FontSize="13" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border IsVisible="{Binding HasResult}" Style="{StaticResource ListCardStyle}" Padding="18,18">
+                <VerticalStackLayout Spacing="7" HorizontalOptions="Fill">
+                    <Border WidthRequest="112" HeightRequest="112" BackgroundColor="{Binding ResultColor}" StrokeThickness="0" StrokeShape="RoundRectangle 56" HorizontalOptions="Center">
+                        <Label Text="{Binding ResultAnswer}" TextColor="White" FontSize="30" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                    </Border>
+                    <Label Text="{Binding ResultTitle}" FontSize="18" FontAttributes="Bold" TextColor="{Binding ResultColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding ResultExplanation}" FontSize="13" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding StatusText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Label IsVisible="{Binding HasIssues}" Text="{Binding IssuesHeading}" Style="{StaticResource SectionCaptionStyle}" />
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Issues}" Spacing="10">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="vm:TechnicalInspectionIssueDisplay">
+                        <Border Style="{StaticResource ListCardStyle}" Padding="14,13">
+                            <VerticalStackLayout Spacing="7">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                    <VerticalStackLayout Spacing="2">
+                                        <Label Text="{Binding Code}" FontSize="12" FontAttributes="Bold" TextColor="{Binding Color}" />
+                                        <Label Text="{Binding Title}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                                        <Label Text="{Binding Category}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                    </VerticalStackLayout>
+                                    <Border Grid.Column="1" BackgroundColor="{Binding Color}" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="9,4" VerticalOptions="Start">
+                                        <Label Text="{Binding Severity}" TextColor="White" FontSize="10" FontAttributes="Bold" />
+                                    </Border>
+                                </Grid>
+                                <BoxView Style="{StaticResource RowDividerStyle}" />
+                                <Label Text="{Binding ImpactLabel}" FontSize="10" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
+                                <Label Text="{Binding Impact}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                                <Label Text="{Binding CheckLabel}" FontSize="10" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
+                                <Label Text="{Binding Check}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                                <Label Text="{Binding FixLabel}" FontSize="10" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
+                                <Label Text="{Binding Fix}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+
+            <Label Text="{Binding PhysicalHeading}" Style="{StaticResource SectionCaptionStyle}" />
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,13">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                    <Label Text="!" FontSize="18" FontAttributes="Bold" TextColor="#F59E0B" />
+                    <Label Grid.Column="1" Text="{Binding PhysicalText}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                </Grid>
+            </Border>
+
+            <Label Text="{Binding DisclaimerText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" Margin="4,2" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

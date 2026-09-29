@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage x:Class="CarScanner.VinCheck.Views.VinPhotoGalleryPage" xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" BackgroundColor="#050505" xmlns:vc="clr-namespace:CarScanner.VinCheck" Shell.NavBarIsVisible="False">
+<ContentPage.Resources>
+<vc:VinCheckResources />
+</ContentPage.Resources>
+<Grid RowDefinitions="64,*,64">
+<Grid Padding="12" ColumnDefinitions="Auto,*">
+<Button Text="✕" Clicked="CloseClicked" BackgroundColor="#44000000" TextColor="White" CornerRadius="20" WidthRequest="42"/>
+<Label x:Name="Counter" Grid.Column="1" TextColor="White" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" FontAttributes="Bold"/>
+</Grid>
+<CarouselView x:Name="Gallery" Grid.Row="1" PositionChanged="PositionChanged" Loop="False">
+<CarouselView.ItemTemplate>
+<DataTemplate>
+<Grid>
+<Image Source="{Binding}" Aspect="AspectFit">
+<Image.GestureRecognizers>
+<PinchGestureRecognizer PinchUpdated="PinchUpdated"/>
+<TapGestureRecognizer NumberOfTapsRequired="2" Tapped="DoubleTapped"/>
+</Image.GestureRecognizers>
+</Image>
+</Grid>
+</DataTemplate>
+</CarouselView.ItemTemplate>
+</CarouselView>
+<Grid Grid.Row="2" ColumnDefinitions="*,*" Padding="18,6" ColumnSpacing="18">
+<Button Text="‹" Clicked="PreviousClicked" BackgroundColor="#33222222" TextColor="White" CornerRadius="18"/>
+<Button Grid.Column="1" Text="›" Clicked="NextClicked" BackgroundColor="#33222222" TextColor="White" CornerRadius="18"/>
+</Grid>
+</Grid>
+</ContentPage>

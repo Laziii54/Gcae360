@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:CarScanner.ViewModels"
+             x:Class="CarScanner.Views.BatteryPage"
+             x:DataType="vm:BatteryViewModel"
+             Title="Battery / Charging"
+             BackgroundColor="{DynamicResource PageBg}">
+    <ScrollView>
+        <VerticalStackLayout Padding="16,14,16,32" Spacing="12">
+
+            <!-- Header -->
+            <VerticalStackLayout Spacing="3">
+                <Label Text="BATTERY / CHARGING" Style="{StaticResource PageTitleStyle}" />
+                <Label Text="რეალური ECU-reported 12V Control Module Voltage (PID 0142)" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+            </VerticalStackLayout>
+
+            <!-- Voltage now -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="16,14">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="12V სისტემის მდგომარეობა" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                    <Label Text="{Binding Voltage}" FontSize="30" FontAttributes="Bold" TextColor="{Binding MeasurementStateColor}" />
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                        <BoxView WidthRequest="8" HeightRequest="8" CornerRadius="4" Color="{Binding MeasurementStateColor}" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="{Binding MeasurementState}" FontSize="13" FontAttributes="Bold" TextColor="{Binding MeasurementStateColor}" VerticalOptions="Center" />
+                    </Grid>
+                    <Label Text="{Binding ChargingStatus}" FontSize="13" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding LastUpdated}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Button Text="განახლება" Command="{Binding RefreshCommand}" Style="{StaticResource PrimaryButtonStyle}" />
+
+            <!-- Min / Max -->
+            <Border Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout Spacing="0">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
+                        <Path Data="M3,8 L19,8 L19,17 L3,17 Z M21,11 L21,14 M7,12.5 L11,12.5 M14,12.5 L17,12.5" Style="{StaticResource RowIconStyle}" />
+                        <Label Grid.Column="1" Text="მინიმალური ძაბვა" Style="{StaticResource RowTitleStyle}" />
+                        <Label Grid.Column="2" Text="{Binding Minimum}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
+                        <Path Data="M3,8 L19,8 L19,17 L3,17 Z M21,11 L21,14 M7,12.5 L11,12.5 M9,10.5 L9,14.5 M14,12.5 L17,12.5" Style="{StaticResource RowIconStyle}" />
+                        <Label Grid.Column="1" Text="მაქსიმალური ძაბვა" Style="{StaticResource RowTitleStyle}" />
+                        <Label Grid.Column="2" Text="{Binding Maximum}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="PID 0142 აჩვენებს ECU-ის Control Module Voltage-ს — ეს არის დამუხტვის სისტემის ინდიკატორი და არა აკუმულატორის capacity/health ტესტი." FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0" />
+
+            <!-- High voltage battery -->
+            <Label Text="High Voltage Battery" Style="{StaticResource SectionCaptionStyle}" />
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,13">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" RowDefinitions="Auto,Auto" RowSpacing="3">
+                    <BoxView WidthRequest="8" HeightRequest="8" CornerRadius="4" Color="{Binding HighVoltageStateColor}" VerticalOptions="Center" />
+                    <Label Grid.Column="1" Text="{Binding HighVoltageState}" FontSize="13" FontAttributes="Bold" TextColor="{Binding HighVoltageStateColor}" VerticalOptions="Center" />
+                    <Label Grid.Row="1" Grid.Column="1" Text="{Binding HighVoltageStatus}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                </Grid>
+            </Border>
+
+            <!-- History -->
+            <Label Text="Voltage History" Style="{StaticResource SectionCaptionStyle}" />
+            <Label Text="მხოლოდ ამ სესიაში ECU-დან წარმატებით მიღებული გაზომვები." FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0" />
+            <Border Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding VoltageHistory}" Spacing="0" Margin="0,-1,0,0">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <VerticalStackLayout Spacing="0">
+                                <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                                <Label Text="{Binding .}" FontSize="13" TextColor="{DynamicResource TextColor}" Padding="14,11" LineBreakMode="WordWrap" />
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" Margin="0,6" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

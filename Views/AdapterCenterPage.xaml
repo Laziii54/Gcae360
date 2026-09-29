@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:m="clr-namespace:CarScanner.Models"
+             xmlns:vm="clr-namespace:CarScanner.ViewModels"
+             x:Class="CarScanner.Views.AdapterCenterPage"
+             x:DataType="vm:AdapterCenterViewModel"
+             Title="OBD Adapter Center"
+             BackgroundColor="{DynamicResource PageBg}">
+    <ScrollView>
+        <VerticalStackLayout Padding="16,14,16,32" Spacing="12">
+
+            <VerticalStackLayout Spacing="2">
+                <Label Text="OBD ADAPTER CENTER" Style="{StaticResource PageTitleStyle}" />
+                <Label Text="რეალური Bluetooth, ELM327 და ECU კავშირის შემოწმება" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+            </VerticalStackLayout>
+
+            <!-- Test state -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,13">
+                <VerticalStackLayout Spacing="8">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                        <BoxView WidthRequest="10" HeightRequest="10" CornerRadius="5" Color="{Binding TestStateColor}" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="{Binding TestState}" FontSize="16" FontAttributes="Bold" TextColor="{Binding TestStateColor}" VerticalOptions="Center" LineBreakMode="TailTruncation" />
+                        <Label Grid.Column="2" Text="{Binding TestProgress, StringFormat='{0}%'}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                    </Grid>
+                    <ProgressBar Progress="{Binding TestProgressValue}" ProgressColor="{Binding TestStateColor}" BackgroundColor="{DynamicResource DividerColor}" />
+                    <Label Text="{Binding TestStatus}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Button Text="TEST" Command="{Binding TestCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" />
+
+            <!-- Test results -->
+            <Label Text="Test Results" Style="{StaticResource SectionCaptionStyle}" />
+            <Border Style="{StaticResource ListCardStyle}">
+                <!-- Negative top margin hides the first item's top divider under the card edge -->
+                <VerticalStackLayout Spacing="0" Margin="0,-1,0,0" BindableLayout.ItemsSource="{Binding TestResults}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="m:AdapterTestResult">
+                            <VerticalStackLayout Spacing="0">
+                                <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" />
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,12">
+                                    <BoxView WidthRequest="9" HeightRequest="9" CornerRadius="4.5" Color="{Binding Color}" VerticalOptions="Center" />
+                                    <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                        <Label Text="{Binding Name}" FontSize="14" TextColor="{DynamicResource TextColor}" />
+                                        <Label Text="{Binding Details}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                    </VerticalStackLayout>
+                                    <Label Grid.Column="2" Text="{Binding Status}" FontSize="13" FontAttributes="Bold" TextColor="{Binding Color}" VerticalOptions="Center" HorizontalTextAlignment="End" />
+                                </Grid>
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Adapter / connection / benchmark details -->
+            <Border Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout Spacing="0">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,13">
+                        <Path Data="M8,3 L8,8 M16,3 L16,8 M5,8 L19,8 L19,12 C19,16 16,18 12,18 C8,18 5,16 5,12 Z M12,18 L12,21" Style="{StaticResource RowIconStyle}" VerticalOptions="Start" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="3">
+                            <Label Text="Adapter status" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                            <Label Text="{Binding Adapter}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" />
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,13">
+                        <Path Data="M3,12 L7,12 L10,5 L14,19 L17,12 L21,12" Style="{StaticResource RowIconStyle}" VerticalOptions="Start" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="3">
+                            <Label Text="Connection Diagnostics" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                            <Label Text="{Binding Connection}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" />
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,13">
+                        <Path Data="M4,12 A8,8 0 1 0 20,12 A8,8 0 1 0 4,12 M12,8 L12,12 L15,14" Style="{StaticResource RowIconStyle}" VerticalOptions="Start" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="3">
+                            <Label Text="Response Benchmark" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                            <Label Text="{Binding Benchmark}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

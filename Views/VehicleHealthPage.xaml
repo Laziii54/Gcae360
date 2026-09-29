@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:m="clr-namespace:CarScanner.Models"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    x:Class="CarScanner.Views.VehicleHealthPage"
+    x:DataType="vm:VehicleHealthViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="Vehicle Health">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,14,16,32" Spacing="12">
+
+            <Label
+                Text="VEHICLE HEALTH"
+                Style="{StaticResource PageTitleStyle}" />
+
+            <Button
+                Text="FULL HEALTH SCAN"
+                Command="{Binding ScanCommand}"
+                IsEnabled="{Binding CanScan}"
+                Style="{StaticResource PrimaryButtonStyle}"
+                FontSize="13"
+                Padding="16,0" />
+
+            <!-- Progress -->
+            <Border
+                IsVisible="{Binding IsBusy}"
+                Style="{StaticResource ListCardStyle}"
+                Padding="16,14">
+                <VerticalStackLayout Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <Label
+                            AutomationId="DynamicTextHealthStage"
+                            Text="{Binding ScanStage}"
+                            FontSize="13"
+                            TextColor="{DynamicResource TextColor}"
+                            VerticalOptions="Center"
+                            LineBreakMode="WordWrap" />
+                        <Label
+                            Grid.Column="1"
+                            AutomationId="DynamicTextHealthProgress"
+                            Text="{Binding ProgressText}"
+                            FontSize="15"
+                            FontAttributes="Bold"
+                            TextColor="{DynamicResource TextColor}"
+                            VerticalOptions="Center" />
+                    </Grid>
+                    <ProgressBar
+                        Progress="{Binding ProgressValue}"
+                        ProgressColor="{DynamicResource Primary}"
+                        BackgroundColor="{DynamicResource DividerColor}"
+                        HeightRequest="6" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Score -->
+            <Border
+                IsVisible="{Binding HasResult}"
+                Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout Spacing="0">
+                    <VerticalStackLayout Spacing="3" Padding="16,14">
+                        <Label
+                            Text="VEHICLE HEALTH SCORE"
+                            FontSize="12"
+                            TextColor="{DynamicResource SubTextColor}" />
+                        <Label
+                            AutomationId="DynamicTextHealthScore"
+                            Text="{Binding ScoreText}"
+                            FontSize="30"
+                            FontAttributes="Bold"
+                            TextColor="{DynamicResource TextColor}" />
+                        <Label
+                            AutomationId="DynamicTextHealthInterpretation"
+                            Text="{Binding Interpretation}"
+                            FontSize="13"
+                            FontAttributes="Bold"
+                            TextColor="{DynamicResource Primary}"
+                            LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="16,0,0,0" />
+                    <VerticalStackLayout Spacing="3" Padding="16,12">
+                        <Label
+                            AutomationId="DynamicTextHealthIssues"
+                            Text="{Binding IssueSummary}"
+                            FontSize="14"
+                            TextColor="{DynamicResource TextColor}"
+                            LineBreakMode="WordWrap" />
+                        <Label
+                            AutomationId="DynamicTextHealthCoverage"
+                            Text="{Binding CoverageText}"
+                            FontSize="12"
+                            TextColor="{DynamicResource SubTextColor}"
+                            LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Issues -->
+            <Label
+                IsVisible="{Binding HasIssues}"
+                Text="DETECTED ISSUES"
+                Style="{StaticResource SectionCaptionStyle}" />
+
+            <Border
+                IsVisible="{Binding HasIssues}"
+                Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout
+                    IsVisible="{Binding HasIssues}"
+                    BindableLayout.ItemsSource="{Binding Issues}"
+                    Spacing="0"
+                    Margin="0,-1,0,0">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="m:VehicleHealthIssue">
+                            <VerticalStackLayout Spacing="0">
+                                <BoxView Style="{StaticResource RowDividerStyle}" Margin="36,0,0,0" />
+                                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="3" Padding="14,13">
+                                    <BoxView
+                                        WidthRequest="10"
+                                        HeightRequest="10"
+                                        CornerRadius="5"
+                                        Color="{Binding Color}"
+                                        VerticalOptions="Center" />
+                                    <Label
+                                        Grid.Column="1"
+                                        Text="{Binding Title}"
+                                        FontSize="14"
+                                        FontAttributes="Bold"
+                                        TextColor="{DynamicResource TextColor}"
+                                        VerticalOptions="Center"
+                                        LineBreakMode="WordWrap" />
+                                    <Label
+                                        Grid.Column="2"
+                                        Text="{Binding PenaltyText}"
+                                        FontSize="15"
+                                        FontAttributes="Bold"
+                                        TextColor="{Binding Color}"
+                                        VerticalOptions="Center" />
+                                    <Label
+                                        Grid.Row="1"
+                                        Grid.Column="1"
+                                        Grid.ColumnSpan="2"
+                                        Text="{Binding Description}"
+                                        FontSize="12"
+                                        TextColor="{DynamicResource SubTextColor}"
+                                        LineBreakMode="WordWrap" />
+                                    <HorizontalStackLayout Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Spacing="8">
+                                        <Label Text="{Binding SeverityText}" FontSize="11" FontAttributes="Bold" TextColor="{Binding Color}" />
+                                        <Label Text="{Binding Source}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                    </HorizontalStackLayout>
+                                </Grid>
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Summary -->
+            <Label
+                IsVisible="{Binding HasResult}"
+                AutomationId="DynamicTextHealthSummary"
+                Text="{Binding ScanSummary}"
+                FontSize="11"
+                TextColor="{DynamicResource SubTextColor}"
+                Margin="4,0"
+                LineBreakMode="WordWrap" />
+
+            <Label
+                IsVisible="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
+                AutomationId="DynamicTextHealthStageIdle"
+                Text="{Binding ScanStage}"
+                FontSize="11"
+                TextColor="{DynamicResource SubTextColor}"
+                HorizontalTextAlignment="Center"
+                LineBreakMode="WordWrap" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

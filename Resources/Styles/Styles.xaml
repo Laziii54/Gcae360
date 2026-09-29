@@ -1,0 +1,456 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <!-- Shared page language: mirrors the compact ECU Explorer layout. -->
+    <Style x:Key="PageStackStyle" TargetType="VerticalStackLayout">
+        <Setter Property="Padding" Value="16,18,16,30" />
+        <Setter Property="Spacing" Value="13" />
+    </Style>
+
+    <Style x:Key="PageTitleStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="23" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor" Value="{DynamicResource TextColor}" />
+    </Style>
+
+    <Style x:Key="SectionTitleStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor" Value="{DynamicResource TextColor}" />
+    </Style>
+
+    <Style x:Key="CaptionStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="TextColor" Value="{DynamicResource SubTextColor}" />
+        <Setter Property="LineBreakMode" Value="WordWrap" />
+    </Style>
+
+    <Style x:Key="CardStyle" TargetType="Border">
+        <Setter Property="Padding" Value="12" />
+        <Setter Property="BackgroundColor" Value="{DynamicResource CardBg}" />
+        <Setter Property="Stroke" Value="{DynamicResource BorderColor}" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 12" />
+        <Setter Property="StrokeThickness" Value="1" />
+    </Style>
+
+    <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="#1D5BD6" />
+        <Setter Property="TextColor" Value="White" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="HeightRequest" Value="50" />
+    </Style>
+
+    <Style x:Key="DangerButtonStyle" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="#B3361F" />
+        <Setter Property="TextColor" Value="White" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="HeightRequest" Value="50" />
+    </Style>
+
+    <!-- ===== List-style home / menus (style A) ===== -->
+    <Style x:Key="SectionCaptionStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor" Value="{DynamicResource SubTextColor}" />
+        <Setter Property="Margin" Value="4,6,0,0" />
+    </Style>
+    <Style x:Key="ListCardStyle" TargetType="Border">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="BackgroundColor" Value="{DynamicResource CardBg}" />
+        <Setter Property="Stroke" Value="{DynamicResource BorderColor}" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 12" />
+    </Style>
+    <Style x:Key="RowIconStyle" TargetType="Path">
+        <Setter Property="Stroke" Value="{DynamicResource TextColor}" />
+        <Setter Property="StrokeThickness" Value="1.7" />
+        <Setter Property="StrokeLineCap" Value="Round" />
+        <Setter Property="StrokeLineJoin" Value="Round" />
+        <Setter Property="WidthRequest" Value="20" />
+        <Setter Property="HeightRequest" Value="20" />
+        <Setter Property="Aspect" Value="Uniform" />
+        <Setter Property="VerticalOptions" Value="Center" />
+    </Style>
+    <Style x:Key="RowTitleStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="TextColor" Value="{DynamicResource TextColor}" />
+        <Setter Property="VerticalOptions" Value="Center" />
+        <Setter Property="LineBreakMode" Value="TailTruncation" />
+    </Style>
+    <Style x:Key="RowChevronStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="TextColor" Value="{DynamicResource SubTextColor}" />
+        <Setter Property="VerticalOptions" Value="Center" />
+    </Style>
+    <Style x:Key="RowDividerStyle" TargetType="BoxView">
+        <Setter Property="HeightRequest" Value="1" />
+        <Setter Property="Color" Value="{DynamicResource DividerColor}" />
+        <Setter Property="Margin" Value="46,0,0,0" />
+    </Style>
+    <Style x:Key="ProBadgeStyle" TargetType="Border">
+        <Setter Property="Padding" Value="7,2" />
+        <Setter Property="BackgroundColor" Value="{DynamicResource ProBadgeBg}" />
+        <Setter Property="StrokeThickness" Value="0" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 5" />
+        <Setter Property="VerticalOptions" Value="Center" />
+    </Style>
+    <Style x:Key="ProBadgeTextStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor" Value="{DynamicResource ProBadgeText}" />
+    </Style>
+
+    <!-- ===== Report style (DTC results) ===== -->
+    <Style x:Key="ReportTitleStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="26" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor" Value="{DynamicResource TextColor}" />
+    </Style>
+    <Style x:Key="ReportCodeStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="FontFamily" Value="monospace" />
+        <Setter Property="TextColor" Value="{DynamicResource TextColor}" />
+        <Setter Property="VerticalOptions" Value="Center" />
+    </Style>
+    <Style x:Key="ReportBodyStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="TextColor" Value="{DynamicResource TextColor}" />
+        <Setter Property="LineBreakMode" Value="WordWrap" />
+    </Style>
+    <Style x:Key="ReportMetaStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="TextColor" Value="{DynamicResource SubTextColor}" />
+        <Setter Property="LineBreakMode" Value="WordWrap" />
+    </Style>
+
+    <!-- Activity Indicator -->
+    <Style TargetType="ActivityIndicator">
+        <Setter Property="Color">
+            <Setter.Value>
+                <AppThemeBinding
+                    Light="#1D5BD6"
+                    Dark="#6B9BF2" />
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+    <!-- Border -->
+    <Style TargetType="Border">
+        <Setter Property="Stroke">
+            <Setter.Value>
+                <AppThemeBinding
+                    Light="#DCDFE3"
+                    Dark="#2C3036" />
+            </Setter.Value>
+        </Setter>
+
+        <Setter Property="StrokeShape"
+                Value="RoundRectangle 14" />
+
+        <Setter Property="StrokeThickness"
+                Value="1" />
+    </Style>
+
+
+    <!-- Button -->
+    <Style TargetType="Button">
+
+        <Setter Property="TextColor">
+            <Setter.Value>
+                <AppThemeBinding
+                    Light="#1B1D20"
+                    Dark="#FFFFFF" />
+            </Setter.Value>
+        </Setter>
+
+        <Setter Property="BackgroundColor">
+            <Setter.Value>
+                <AppThemeBinding
+                    Light="#FFFFFF"
+                    Dark="#23272C" />
+            </Setter.Value>
+        </Setter>
+
+        <Setter Property="FontFamily"
+                Value="NotoSansGeorgian" />
+
+        <Setter Property="FontSize"
+                Value="14" />
+
+        <Setter Property="BorderWidth"
+                Value="0" />
+
+        <Setter Property="CornerRadius"
+                Value="10" />
+
+        <Setter Property="Padding"
+                Value="14,10" />
+
+        <Setter Property="MinimumHeightRequest"
+                Value="46" />
+
+        <Setter Property="MinimumWidthRequest"
+                Value="44" />
+
+        <Setter Property="HorizontalOptions"
+                Value="Fill" />
+
+        <Setter Property="VisualStateManager.VisualStateGroups">
+
+            <VisualStateGroupList>
+
+                <VisualStateGroup x:Name="CommonStates">
+
+                    <VisualState x:Name="Normal" />
+
+                    <VisualState x:Name="PointerOver">
+                        <VisualState.Setters>
+
+                            <Setter Property="Opacity"
+                                    Value="0.88" />
+
+
+
+                        </VisualState.Setters>
+                    </VisualState>
+
+                    <VisualState x:Name="Pressed">
+                        <VisualState.Setters>
+
+                            <Setter Property="Opacity"
+                                    Value="0.72" />
+
+
+
+                        </VisualState.Setters>
+                    </VisualState>
+
+                    <VisualState x:Name="Disabled">
+                        <VisualState.Setters>
+
+                            <Setter Property="Opacity"
+                                    Value="0.45" />
+
+                        </VisualState.Setters>
+                    </VisualState>
+
+                </VisualStateGroup>
+
+            </VisualStateGroupList>
+
+        </Setter>
+
+    </Style>
+
+
+    <!-- CheckBox -->
+    <Style TargetType="CheckBox">
+
+        <Setter Property="Color">
+            <Setter.Value>
+                <AppThemeBinding
+                    Light="#1D5BD6"
+                    Dark="#6B9BF2" />
+            </Setter.Value>
+        </Setter>
+
+        <Setter Property="MinimumHeightRequest"
+                Value="44" />
+
+        <Setter Property="MinimumWidthRequest"
+                Value="44" />
+
+    </Style>
+
+
+    <!-- Picker -->
+    <Style TargetType="Picker">
+
+        <Setter Property="FontFamily"
+                Value="NotoSansGeorgian" />
+
+        <Setter Property="TextColor">
+            <Setter.Value>
+                <AppThemeBinding
+                    Light="#1B1D20"
+                    Dark="#FFFFFF" />
+            </Setter.Value>
+        </Setter>
+
+        <Setter Property="TitleColor">
+            <Setter.Value>
+                <AppThemeBinding
+                    Light="#5D636B"
+                    Dark="#9AA1A9" />
+            </Setter.Value>
+        </Setter>
+
+        <Setter Property="BackgroundColor">
+            <Setter.Value>
+                <AppThemeBinding
+                    Light="#FFFFFF"
+                    Dark="#1B1E22" />
+            </Setter.Value>
+        </Setter>
+
+        <Setter Property="MinimumHeightRequest"
+                Value="46" />
+
+    </Style>
+
+
+    <!-- Entry -->
+    <Style TargetType="Entry">
+
+        <Setter Property="TextColor">
+            <Setter.Value>
+                <AppThemeBinding
+                    Light="#1B1D20"
+                    Dark="#FFFFFF" />
+            </Setter.Value>
+        </Setter>
+
+        <Setter Property="BackgroundColor">
+            <Setter.Value>
+                <AppThemeBinding
+                    Light="#FFFFFF"
+                    Dark="#1B1E22" />
+            </Setter.Value>
+        </Setter>
+
+        <Setter Property="PlaceholderColor">
+            <Setter.Value>
+                <AppThemeBinding
+                    Light="#5D636B"
+                    Dark="#9AA1A9" />
+            </Setter.Value>
+        </Setter>
+
+        <Setter Property="FontFamily"
+                Value="NotoSansGeorgian" />
+
+        <Setter Property="FontSize"
+                Value="14" />
+
+        <Setter Property="MinimumHeightRequest"
+                Value="46" />
+
+        <Setter Property="MinimumWidthRequest"
+                Value="44" />
+
+    </Style>
+
+
+    <!-- Editor -->
+    <Style TargetType="Editor">
+
+        <Setter Property="FontFamily"
+                Value="NotoSansGeorgian" />
+
+        <Setter Property="TextColor">
+            <Setter.Value>
+                <AppThemeBinding
+                    Light="#1B1D20"
+                    Dark="#FFFFFF" />
+            </Setter.Value>
+        </Setter>
+
+        <Setter Property="BackgroundColor">
+            <Setter.Value>
+                <AppThemeBinding
+                    Light="#FFFFFF"
+                    Dark="#1B1E22" />
+            </Setter.Value>
+        </Setter>
+
+        <Setter Property="PlaceholderColor">
+            <Setter.Value>
+                <AppThemeBinding
+                    Light="#5D636B"
+                    Dark="#9AA1A9" />
+            </Setter.Value>
+        </Setter>
+
+        <Setter Property="MinimumHeightRequest"
+                Value="46" />
+
+    </Style>
+
+
+    <!-- Label -->
+    <Style TargetType="Label">
+
+        <Setter Property="TextColor">
+            <Setter.Value>
+                <AppThemeBinding
+                    Light="#1B1D20"
+                    Dark="#FFFFFF" />
+            </Setter.Value>
+        </Setter>
+
+        <Setter Property="FontFamily"
+                Value="NotoSansGeorgian" />
+
+    </Style>
+
+    <!-- Search uses the same Georgian-first font as every other text input. -->
+    <Style TargetType="SearchBar">
+
+        <Setter Property="FontFamily"
+                Value="NotoSansGeorgian" />
+
+    </Style>
+
+
+    <!-- ImageButton -->
+    <Style TargetType="ImageButton">
+
+        <Setter Property="MinimumHeightRequest"
+                Value="44" />
+
+        <Setter Property="MinimumWidthRequest"
+                Value="44" />
+
+        <Setter Property="VisualStateManager.VisualStateGroups">
+
+            <VisualStateGroupList>
+
+                <VisualStateGroup x:Name="CommonStates">
+
+                    <VisualState x:Name="Normal" />
+
+                    <VisualState x:Name="PointerOver">
+                        <VisualState.Setters>
+
+                            <Setter Property="Opacity"
+                                    Value="0.85" />
+
+                        </VisualState.Setters>
+                    </VisualState>
+
+                    <VisualState x:Name="Pressed">
+                        <VisualState.Setters>
+
+                            <Setter Property="Opacity"
+                                    Value="0.65" />
+
+                            <Setter Property="Scale"
+                                    Value="0.95" />
+
+                        </VisualState.Setters>
+                    </VisualState>
+
+                </VisualStateGroup>
+
+            </VisualStateGroupList>
+
+        </Setter>
+
+    </Style>
+
+</ResourceDictionary>

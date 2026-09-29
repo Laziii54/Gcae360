@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="PV_Title" xml:space="preserve">
+    <value>Performance Video</value>
+  </data>
+  <data name="PV_OpenCamera" xml:space="preserve">
+    <value>Open camera (Performance Video)</value>
+  </data>
+  <data name="PV_StartRecording" xml:space="preserve">
+    <value>Start recording</value>
+  </data>
+  <data name="PV_StopRecording" xml:space="preserve">
+    <value>Stop recording</value>
+  </data>
+  <data name="PV_Rec" xml:space="preserve">
+    <value>REC</value>
+  </data>
+  <data name="PV_Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="PV_SaveTitle" xml:space="preserve">
+    <value>Save video</value>
+  </data>
+  <data name="PV_SaveHint" xml:space="preserve">
+    <value>The recording is ready. How do you want to save it?</value>
+  </data>
+  <data name="PV_SaveWithData" xml:space="preserve">
+    <value>Save with data</value>
+  </data>
+  <data name="PV_SaveWithoutData" xml:space="preserve">
+    <value>Save without data</value>
+  </data>
+  <data name="PV_SaveBoth" xml:space="preserve">
+    <value>Save both</value>
+  </data>
+  <data name="PV_Discard" xml:space="preserve">
+    <value>Delete recording</value>
+  </data>
+  <data name="PV_Processing" xml:space="preserve">
+    <value>Adding data to the video… {0}%</value>
+  </data>
+  <data name="PV_Saving" xml:space="preserve">
+    <value>Saving to the gallery…</value>
+  </data>
+  <data name="PV_Saved" xml:space="preserve">
+    <value>Saved to the gallery (Movies/GCar360).</value>
+  </data>
+  <data name="PV_SavedBoth" xml:space="preserve">
+    <value>Both videos were saved to the gallery (Movies/GCar360).</value>
+  </data>
+  <data name="PV_Discarded" xml:space="preserve">
+    <value>The recording was deleted.</value>
+  </data>
+  <data name="PV_SaveFailed" xml:space="preserve">
+    <value>The video could not be saved: {0}</value>
+  </data>
+  <data name="PV_CameraPermission" xml:space="preserve">
+    <value>Camera permission is required for Performance Video.</value>
+  </data>
+  <data name="PV_StoragePermission" xml:space="preserve">
+    <value>Storage permission is required to save the video.</value>
+  </data>
+  <data name="PV_CameraError" xml:space="preserve">
+    <value>The camera could not be opened: {0}</value>
+  </data>
+  <data name="PV_RecordError" xml:space="preserve">
+    <value>Recording failed: {0}</value>
+  </data>
+  <data name="PV_NotSupported" xml:space="preserve">
+    <value>Performance Video is available on Android.</value>
+  </data>
+  <data name="PV_WaitingSpeed" xml:space="preserve">
+    <value>Waiting for OBD speed…</value>
+  </data>
+  <data name="PV_ReadyHint" xml:space="preserve">
+    <value>Stop the car — timing starts when you pull away.</value>
+  </data>
+  <data name="PV_Seconds" xml:space="preserve">
+    <value>s</value>
+  </data>
+</root>

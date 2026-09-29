@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    xmlns:controls="clr-namespace:CarScanner.Controls"
+    x:Class="CarScanner.Views.PerformanceVideoPage"
+    x:DataType="vm:PerformanceVideoViewModel"
+    Shell.NavBarIsVisible="False"
+    Shell.TabBarIsVisible="False"
+    BackgroundColor="Black"
+    Title="{Binding TitleText}">
+
+    <Grid>
+
+        <!-- CAMERA PREVIEW -->
+        <controls:PerformanceCameraView x:Name="CameraView" />
+
+        <!-- TOP BAR: close · REC -->
+        <Grid VerticalOptions="Start" Padding="16,14,16,0" ColumnDefinitions="Auto,*,Auto">
+
+            <Grid WidthRequest="44" HeightRequest="44" SemanticProperties.Description="{Binding CloseText}">
+                <BoxView Color="{DynamicResource CardBg}" Opacity="0.8" CornerRadius="22" />
+                <Label AutomationId="DynamicTextPvClose" Text="✕" FontSize="18" FontAttributes="Bold"
+                       TextColor="{DynamicResource TextColor}"
+                       HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding CloseCommand}" />
+                </Grid.GestureRecognizers>
+            </Grid>
+
+            <Grid Grid.Column="1" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="{Binding IsRecording}">
+                <BoxView Color="{DynamicResource CardBg}" Opacity="0.8" CornerRadius="16" />
+                <HorizontalStackLayout Padding="14,7" Spacing="8">
+                    <Ellipse Fill="#EF4444" WidthRequest="10" HeightRequest="10" VerticalOptions="Center" />
+                    <Label AutomationId="DynamicTextPvRec" Text="{Binding RecText}" FontSize="13" FontAttributes="Bold"
+                           TextColor="#EF4444" VerticalTextAlignment="Center" />
+                    <Label AutomationId="DynamicTextPvRecTime" Text="{Binding RecordTimeText}" FontSize="13" FontAttributes="Bold"
+                           TextColor="{DynamicResource TextColor}" VerticalTextAlignment="Center" />
+                </HorizontalStackLayout>
+            </Grid>
+
+        </Grid>
+
+        <!-- STATUS (errors / saved) -->
+        <Grid VerticalOptions="Start" Margin="16,72,16,0" IsVisible="{Binding HasStatus}">
+            <BoxView Color="{DynamicResource CardBg}" Opacity="0.88" CornerRadius="14" />
+            <Label AutomationId="DynamicTextPvStatus" Text="{Binding StatusText}" Padding="14,10" FontSize="13"
+                   TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+        </Grid>
+
+        <!-- BOTTOM: speed · record · splits -->
+        <VerticalStackLayout VerticalOptions="End" Padding="16,0,16,18" Spacing="12">
+
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+
+                <!-- Live speed: bottom-left, not in the very corner -->
+                <Grid HorizontalOptions="Start" VerticalOptions="End" Margin="10,0,0,0">
+                    <BoxView Color="{DynamicResource CardBg}" Opacity="0.78" CornerRadius="18" />
+                    <HorizontalStackLayout Padding="18,4,18,8" Spacing="6">
+                        <Label AutomationId="DynamicTextPvSpeed" Text="{Binding SpeedText}" FontSize="64" FontAttributes="Bold"
+                               TextColor="{DynamicResource TextColor}" VerticalTextAlignment="End" />
+                        <Label AutomationId="DynamicTextPvSpeedUnit" Text="{Binding SpeedUnit}" FontSize="18" FontAttributes="Bold"
+                               TextColor="{DynamicResource SubTextColor}" VerticalOptions="End" Margin="0,0,0,14" />
+                    </HorizontalStackLayout>
+                </Grid>
+
+                <!-- Record / stop -->
+                <Grid Grid.Column="1" WidthRequest="76" HeightRequest="76" VerticalOptions="End" IsEnabled="{Binding CanUseRecordButton}" SemanticProperties.Description="{Binding RecordButtonText}">
+                    <Ellipse Stroke="White" StrokeThickness="4" Fill="#33000000" />
+                    <Ellipse Fill="#EF4444" WidthRequest="56" HeightRequest="56" IsVisible="{Binding IsRecording, Converter={StaticResource InverseBoolConverter}}" />
+                    <BoxView Color="#EF4444" WidthRequest="30" HeightRequest="30" CornerRadius="6" IsVisible="{Binding IsRecording}" />
+                    <Grid.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ToggleRecordingCommand}" />
+                    </Grid.GestureRecognizers>
+                </Grid>
+
+            </Grid>
+
+            <!-- Hint -->
+            <Grid IsVisible="{Binding HasHint}" HorizontalOptions="Center">
+                <BoxView Color="{DynamicResource CardBg}" Opacity="0.7" CornerRadius="12" />
+                <Label AutomationId="DynamicTextPvHint" Text="{Binding HintText}" Padding="12,6" FontSize="11"
+                       TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+            </Grid>
+
+            <!-- 0–20 | 0–50 | 0–80 | 0–100 -->
+            <Grid HeightRequest="64">
+                <BoxView Color="{DynamicResource CardBg}" Opacity="0.8" CornerRadius="16" />
+                <Grid ColumnDefinitions="*,Auto,*,Auto,*,Auto,*" Padding="6,8">
+
+                    <VerticalStackLayout Grid.Column="0" Spacing="1" VerticalOptions="Center">
+                        <Label AutomationId="DynamicTextPvSplitLabel0" Text="{Binding Splits[0].Label}" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                        <Label AutomationId="DynamicTextPvSplitValue0" Text="{Binding Splits[0].ValueText}" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource Primary}" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                    <BoxView Grid.Column="1" WidthRequest="1" Margin="0,6" Color="{DynamicResource BorderColor}" />
+
+                    <VerticalStackLayout Grid.Column="2" Spacing="1" VerticalOptions="Center">
+                        <Label AutomationId="DynamicTextPvSplitLabel1" Text="{Binding Splits[1].Label}" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                        <Label AutomationId="DynamicTextPvSplitValue1" Text="{Binding Splits[1].ValueText}" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource Primary}" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                    <BoxView Grid.Column="3" WidthRequest="1" Margin="0,6" Color="{DynamicResource BorderColor}" />
+
+                    <VerticalStackLayout Grid.Column="4" Spacing="1" VerticalOptions="Center">
+                        <Label AutomationId="DynamicTextPvSplitLabel2" Text="{Binding Splits[2].Label}" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                        <Label AutomationId="DynamicTextPvSplitValue2" Text="{Binding Splits[2].ValueText}" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource Primary}" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                    <BoxView Grid.Column="5" WidthRequest="1" Margin="0,6" Color="{DynamicResource BorderColor}" />
+
+                    <VerticalStackLayout Grid.Column="6" Spacing="1" VerticalOptions="Center">
+                        <Label AutomationId="DynamicTextPvSplitLabel3" Text="{Binding Splits[3].Label}" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                        <Label AutomationId="DynamicTextPvSplitValue3" Text="{Binding Splits[3].ValueText}" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource Primary}" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+
+                </Grid>
+            </Grid>
+
+        </VerticalStackLayout>
+
+        <!-- SAVE CHOICE (after recording) -->
+        <Grid IsVisible="{Binding IsSavePanelVisible}">
+            <BoxView Color="Black" Opacity="0.55" />
+            <Border VerticalOptions="Center" Margin="24" Padding="20"
+                    BackgroundColor="{DynamicResource CardBg}" Stroke="{DynamicResource BorderColor}"
+                    StrokeThickness="1" StrokeShape="RoundRectangle 12">
+                <VerticalStackLayout Spacing="12">
+                    <Label AutomationId="DynamicTextPvSaveTitle" Text="{Binding SaveTitleText}" FontSize="19" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                    <Label AutomationId="DynamicTextPvSaveHint" Text="{Binding SaveHintText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+
+                    <Button AutomationId="DynamicTextPvSaveWithData" Text="{Binding SaveWithDataText}" Command="{Binding SaveWithDataCommand}"
+                            IsEnabled="{Binding AreSaveButtonsEnabled}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" />
+                    <Button AutomationId="DynamicTextPvSaveWithoutData" Text="{Binding SaveWithoutDataText}" Command="{Binding SaveWithoutDataCommand}"
+                            IsEnabled="{Binding AreSaveButtonsEnabled}" HeightRequest="50" FontAttributes="Bold" CornerRadius="12"
+                            BackgroundColor="{DynamicResource ButtonBg}" TextColor="{DynamicResource ButtonTextColor}"
+                            BorderColor="{DynamicResource BorderColor}" BorderWidth="1" />
+                    <Button AutomationId="DynamicTextPvSaveBoth" Text="{Binding SaveBothText}" Command="{Binding SaveBothCommand}"
+                            IsEnabled="{Binding AreSaveButtonsEnabled}" HeightRequest="50" FontAttributes="Bold" CornerRadius="12"
+                            BackgroundColor="{DynamicResource ButtonBg}" TextColor="{DynamicResource ButtonTextColor}"
+                            BorderColor="{DynamicResource BorderColor}" BorderWidth="1" />
+
+                    <HorizontalStackLayout IsVisible="{Binding IsProcessing}" Spacing="10" HorizontalOptions="Center">
+                        <ActivityIndicator IsRunning="{Binding IsProcessing}" Color="#1D5BD6" HeightRequest="20" WidthRequest="20" />
+                        <Label AutomationId="DynamicTextPvProgress" Text="{Binding ProgressText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
+
+                    <Button AutomationId="DynamicTextPvDiscard" Text="{Binding DiscardText}" Command="{Binding DiscardCommand}"
+                            IsEnabled="{Binding AreSaveButtonsEnabled}" BackgroundColor="Transparent" TextColor="#EF4444" FontSize="13" />
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+    </Grid>
+</ContentPage>

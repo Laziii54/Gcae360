@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#000817</color>
+    <color name="colorPrimaryDark">#000817</color>
+    <color name="colorAccent">#2563EB</color>
+    <color name="ic_gcar_light_background">#030B19</color>
+    <color name="ic_gcar_dark_background">#000102</color>
+</resources>

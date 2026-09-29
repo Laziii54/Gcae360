@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    xmlns:models="clr-namespace:CarScanner.Models"
+    x:Class="CarScanner.Views.SensorsPage"
+    x:DataType="vm:SensorsViewModel"
+    Title="ყველა სენსორი"
+    BackgroundColor="{DynamicResource PageBg}">
+    <ScrollView>
+        <VerticalStackLayout Padding="16,12,16,32" Spacing="12">
+            <Label Text="ყველა სენსორი" Style="{StaticResource PageTitleStyle}" />
+
+            <Button Text="დაწყება" Command="{Binding RefreshCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="50" />
+            <Label Text="განახლებისთვის დააჭირე ღილაკს" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalTextAlignment="Center" />
+
+            <!-- Scan progress -->
+            <Border IsVisible="{Binding IsBusy}" Style="{StaticResource ListCardStyle}" Padding="14,12">
+                <VerticalStackLayout Spacing="8">
+                    <Label AutomationId="DynamicTextSensorProgress" Text="{Binding ScanProgressText}" TextColor="{DynamicResource TextColor}" FontSize="12" LineBreakMode="TailTruncation" />
+                    <ProgressBar Progress="{Binding ScanProgress}" ProgressColor="{DynamicResource Primary}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Sensors: one list card, key/value rows -->
+            <Border Style="{StaticResource ListCardStyle}">
+                <Border.Triggers>
+                    <DataTrigger TargetType="Border" Binding="{Binding Sensors.Count}" Value="0">
+                        <Setter Property="IsVisible" Value="False" />
+                    </DataTrigger>
+                </Border.Triggers>
+                <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding Sensors}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="models:SensorValue">
+                            <VerticalStackLayout Spacing="0">
+                                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="1" Padding="14,11">
+                                    <Path Grid.RowSpan="2" Data="M4,12 A8,8 0 1 0 20,12 A8,8 0 1 0 4,12 M12,8 L12,12 L15,14" Style="{StaticResource RowIconStyle}" />
+                                    <Label AutomationId="DynamicTextSensorName" Grid.Column="1" Text="{Binding Name}" TextColor="{DynamicResource TextColor}" FontSize="14" VerticalOptions="Center" LineBreakMode="WordWrap" />
+                                    <Label AutomationId="DynamicTextSensorValue" Grid.Column="2" Text="{Binding Value}" TextColor="{Binding StatusColor}" FontSize="15" FontAttributes="Bold" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                    <Label AutomationId="DynamicTextSensorPid" Grid.Row="1" Grid.Column="1" Text="{Binding Pid, StringFormat='PID 01{0:X2}'}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                                    <Label AutomationId="DynamicTextSensorUnit" Grid.Row="1" Grid.Column="2" Text="{Binding Unit}" TextColor="{DynamicResource SubTextColor}" FontSize="11" HorizontalTextAlignment="End" />
+                                </Grid>
+                                <BoxView Style="{StaticResource RowDividerStyle}" />
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    x:Class="CarScanner.Views.EmissionsPage"
+    x:DataType="vm:EmissionsViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="{Binding PageTitle}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,14,16,32" Spacing="12">
+
+            <VerticalStackLayout Spacing="3">
+                <Label Text="{Binding HeaderTitle}" Style="{StaticResource PageTitleStyle}" LineBreakMode="WordWrap" />
+                <Label Text="{Binding HeaderSubtitle}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+            </VerticalStackLayout>
+
+            <Button Text="{Binding RefreshButtonText}" Command="{Binding LoadCommand}" Style="{StaticResource PrimaryButtonStyle}" />
+
+            <!-- Main result -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="20,20,20,18">
+                <VerticalStackLayout Spacing="5" HorizontalOptions="Fill">
+                    <Border
+                        WidthRequest="68"
+                        HeightRequest="68"
+                        HorizontalOptions="Center"
+                        BackgroundColor="{Binding InspectionColor}"
+                        StrokeThickness="0"
+                        StrokeShape="RoundRectangle 34">
+                        <Label Text="{Binding InspectionGlyph}" FontSize="34" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
+                    </Border>
+                    <Label
+                        Text="{Binding InspectionStatus}"
+                        TextColor="{Binding InspectionColor}"
+                        FontSize="20"
+                        FontAttributes="Bold"
+                        HorizontalTextAlignment="Center"
+                        LineBreakMode="WordWrap"
+                        Margin="0,5,0,0" />
+                    <Label
+                        Text="{Binding ReadinessRatio}"
+                        TextColor="{Binding InspectionColor}"
+                        FontSize="54"
+                        FontAttributes="Bold"
+                        HorizontalTextAlignment="Center"
+                        LineHeight="0.95" />
+                    <Label
+                        Text="{Binding ReadinessCountCaption}"
+                        FontSize="13"
+                        TextColor="{DynamicResource SubTextColor}"
+                        HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Numeric summary -->
+            <Border Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout Spacing="0">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,13">
+                        <Label Text="{Binding IncompleteMonitorsLabel}" FontSize="13" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="{Binding IncompleteMonitorCount}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,13">
+                        <Label Text="{Binding MilStatusLabel}" FontSize="13" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="{Binding MilStatus}" FontSize="14" FontAttributes="Bold" TextColor="{Binding InspectionColor}" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,13">
+                        <Label Text="{Binding EmissionDtcLabel}" FontSize="13" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="{Binding EmissionDtcStatus}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,13">
+                        <Label Text="{Binding DistanceSinceClearLabel}" FontSize="13" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" LineBreakMode="WordWrap" />
+                        <Label Grid.Column="1" Text="{Binding DistanceSinceClear}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,13">
+                        <Label Text="{Binding WarmUpsLabel}" FontSize="13" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" LineBreakMode="WordWrap" />
+                        <Label Grid.Column="1" Text="{Binding WarmUpsSinceClear}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="{Binding Summary}" FontSize="12" TextColor="{DynamicResource SubTextColor}" Margin="4,0" LineBreakMode="WordWrap" />
+
+            <!-- Supported monitors -->
+            <Label Text="{Binding MonitorsTitle}" Style="{StaticResource SectionCaptionStyle}" />
+            <Border Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding ReadinessMonitors}" Spacing="0" Margin="0,-1,0,0">
+                    <BindableLayout.EmptyView>
+                        <Label Text="{Binding Summary}" Padding="14,14" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    </BindableLayout.EmptyView>
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:EmissionMonitorDisplayItem">
+                            <VerticalStackLayout Spacing="0">
+                                <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,12">
+                                    <Border
+                                        WidthRequest="28"
+                                        HeightRequest="28"
+                                        BackgroundColor="{Binding StatusColor}"
+                                        StrokeThickness="0"
+                                        StrokeShape="RoundRectangle 14"
+                                        VerticalOptions="Center">
+                                        <Label Text="{Binding Glyph}" FontSize="16" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
+                                    </Border>
+                                    <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                                        <Label Text="{Binding Name}" FontSize="14" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                                        <Label Text="{Binding Category}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                    </VerticalStackLayout>
+                                    <Label Grid.Column="2" Text="{Binding Status}" TextColor="{Binding StatusColor}" FontSize="13" FontAttributes="Bold" VerticalOptions="Center" />
+                                </Grid>
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Optional OBD tests remain accessible -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button
+                    Text="{Binding Mode05ButtonText}"
+                    Command="{Binding OpenMode05Command}"
+                    HeightRequest="46"
+                    FontSize="13"
+                    FontAttributes="Bold"
+                    CornerRadius="12"
+                    BackgroundColor="Transparent"
+                    TextColor="{DynamicResource TextColor}"
+                    BorderColor="{DynamicResource BorderColor}"
+                    BorderWidth="1" />
+                <Button
+                    Grid.Column="1"
+                    Text="{Binding Mode06ButtonText}"
+                    Command="{Binding OpenMode06Command}"
+                    HeightRequest="46"
+                    FontSize="13"
+                    FontAttributes="Bold"
+                    CornerRadius="12"
+                    BackgroundColor="Transparent"
+                    TextColor="{DynamicResource TextColor}"
+                    BorderColor="{DynamicResource BorderColor}"
+                    BorderWidth="1" />
+            </Grid>
+
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,13">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                    <Label Text="ⓘ" FontSize="18" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Start" />
+                    <Label Grid.Column="1" Text="{Binding ObdDisclaimerText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                </Grid>
+            </Border>
+
+            <Border IsVisible="{Binding IsBusy}" Style="{StaticResource ListCardStyle}" Padding="14,13">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                    <ActivityIndicator IsRunning="{Binding IsBusy}" Color="{DynamicResource Primary}" WidthRequest="22" HeightRequest="22" />
+                    <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                        <Label Text="{Binding LoadingTitle}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                        <Label Text="{Binding LoadingSubtitle}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

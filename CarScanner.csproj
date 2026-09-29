@@ -1,0 +1,200 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<!-- iOS stays visible on Windows so Visual Studio can pair to a Mac;
+		     the final native build/signing still happens on macOS. -->
+		<TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>
+
+		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+			$(TargetFrameworks);net10.0-maccatalyst
+		</TargetFrameworks>
+
+		<OutputType>Exe</OutputType>
+		<RootNamespace>CarScanner</RootNamespace>
+		<UseMaui>true</UseMaui>
+		<SingleProject>true</SingleProject>
+
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<GenerateDocumentationFile>false</GenerateDocumentationFile>
+
+		<ApplicationTitle>Georgian Car Scanner</ApplicationTitle>
+		<ApplicationId>com.gcar360.app</ApplicationId>
+		<!-- Keep the published Android identity unchanged. iOS uses the App Store
+		     bundle identifier expected by the purchase-verification backend. -->
+		<ApplicationId Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">com.Gcar360.app</ApplicationId>
+
+		<ApplicationDisplayVersion>0.5.2</ApplicationDisplayVersion>
+		<ApplicationVersion>52</ApplicationVersion>
+
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+			24.0
+		</SupportedOSPlatformVersion>
+
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
+			15.0
+		</SupportedOSPlatformVersion>
+
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">
+			15.0
+		</SupportedOSPlatformVersion>
+
+		<AndroidUseLatestPlatformSdk>false</AndroidUseLatestPlatformSdk>
+
+		<Aapt2DaemonMaxInstanceCount>1</Aapt2DaemonMaxInstanceCount>
+		<AndroidAapt2LinkExtraArgs>$(AndroidAapt2LinkExtraArgs) -v</AndroidAapt2LinkExtraArgs>
+
+		<EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+		<MauiEnableXamlCBindingWithSourceCompilation>true</MauiEnableXamlCBindingWithSourceCompilation>
+	</PropertyGroup>
+
+
+	<!-- ========================================================= -->
+	<!-- Backend / Tests                                           -->
+	<!-- ========================================================= -->
+
+	<ItemGroup>
+
+		<Compile Remove="Backend\**\*.cs" />
+		<EmbeddedResource Remove="Backend\**\*" />
+		<None Remove="Backend\**\*" />
+
+		<Compile Remove="Tests\**\*.cs" />
+		<Compile Remove="Services\Mileage\GmBroadcastOdometerProvider.cs" />
+		<EmbeddedResource Remove="Tests\**\*" />
+		<None Remove="Tests\**\*" />
+
+	</ItemGroup>
+
+
+	<!-- ========================================================= -->
+	<!-- MAUI Resources                                            -->
+	<!-- ========================================================= -->
+
+	<ItemGroup>
+
+		<!-- App icon: Platforms/Android/Resources/mipmap-*/ic_gcar_light / ic_gcar_dark
+		     (light and dark variants, switched by Services/AppIconSwitcher). -->
+		<!-- Generate the Apple asset catalog without replacing Android's existing icons. -->
+		<MauiIcon Include="Resources\Splash\gcar_splash.png"
+		          Color="#000817"
+		          Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" />
+
+		<MauiSplashScreen Include="Resources\Splash\gcar_splash.png" Color="#000817" BaseSize="240,240" />
+
+		<MauiImage Include="Resources\Images\**\*" />
+
+		<MauiFont Include="Resources\Fonts\*" />
+
+		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+		<!-- The DTC catalog is packaged Brotli-compressed (DtcCatalog.sqlite.br) and unpacked on first launch. -->
+		<MauiAsset Remove="Resources\Raw\DtcCatalog.sqlite" />
+
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Test source files must not be compiled into the app project. Tests live in the Tests project. -->
+	</ItemGroup>
+
+
+	<!-- ========================================================= -->
+	<!-- NuGet Packages                                            -->
+	<!-- ========================================================= -->
+
+	<ItemGroup>
+
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+
+		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.101" />
+
+		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.12" />
+
+		<PackageReference Include="Plugin.BLE" Version="3.2.1" />
+
+		<PackageReference Include="Plugin.LocalNotification" Version="14.1.1" />
+
+		<PackageReference Include="sqlite-net-pcl" Version="1.11.285" />
+
+		<PackageReference Include="Xamarin.Android.Google.BillingClient" Version="8.0.0" Condition="'$(TargetFramework)' == 'net10.0-android'" />
+
+		<!-- VIN camera scanner: text recognition on the phone (Google ML Kit via Play Services). -->
+		<PackageReference Include="Xamarin.GooglePlayServices.MLKit.Text.Recognition" Version="119.0.1.9" Condition="'$(TargetFramework)' == 'net10.0-android'" />
+
+		<!-- Keep the AndroidX Kotlin-extension artifacts on the same generation as the
+		     AndroidX base artifacts pulled in by BillingClient / ML Kit. Mixing the
+		     older KTX line with Fragment 1.9.0 defines FragmentKt twice during D8. -->
+		<PackageReference Include="Xamarin.AndroidX.Fragment.Ktx" Version="1.9.0" Condition="'$(TargetFramework)' == 'net10.0-android'" />
+		<PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData" Version="2.11.0.1" Condition="'$(TargetFramework)' == 'net10.0-android'" />
+		<PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core.Ktx" Version="2.11.0.1" Condition="'$(TargetFramework)' == 'net10.0-android'" />
+		<PackageReference Include="Xamarin.AndroidX.Collection.Ktx" Version="1.6.0.1" Condition="'$(TargetFramework)' == 'net10.0-android'" />
+
+	</ItemGroup>
+
+
+	<!-- ========================================================= -->
+	<!-- Additional folders                                       -->
+	<!-- ========================================================= -->
+
+	<ItemGroup>
+		<Folder Include="Resources\DTC\" />
+	</ItemGroup>
+
+
+	<!-- ========================================================= -->
+	<!-- Android - DEBUG                                           -->
+	<!-- ========================================================= -->
+
+	<PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-android' AND '$(Configuration)' == 'Debug'">
+
+		<AndroidUseAapt2>true</AndroidUseAapt2>
+
+		<!-- Debug-ზე მხოლოდ APK -->
+		<AndroidPackageFormats>apk</AndroidPackageFormats>
+
+		<!-- Debug build უფრო სწრაფი იყოს -->
+		<EmbedAssembliesIntoApk>false</EmbedAssembliesIntoApk>
+
+		<!-- დიდი SQLite ბაზის შეკუმშვა არ სცადოს -->
+		<AndroidStoreUncompressedFileExtensions>
+			$(AndroidStoreUncompressedFileExtensions);.sqlite
+		</AndroidStoreUncompressedFileExtensions>
+
+	</PropertyGroup>
+
+
+	<!-- ========================================================= -->
+	<!-- Android - RELEASE / GOOGLE PLAY                           -->
+	<!-- ========================================================= -->
+
+	<PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-android' AND '$(Configuration)' == 'Release'">
+
+		<AndroidUseAapt2>true</AndroidUseAapt2>
+
+		<!-- Google Play -->
+		<AndroidPackageFormats>aab</AndroidPackageFormats>
+
+		<EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+
+	</PropertyGroup>
+
+
+	<!-- ========================================================= -->
+	<!-- iOS                                                       -->
+	<!-- ========================================================= -->
+
+	<PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-ios'">
+		<RuntimeIdentifiers>ios-arm64;iossimulator-arm64</RuntimeIdentifiers>
+		<CodesignEntitlements>Platforms\iOS\Entitlements.plist</CodesignEntitlements>
+		<MtouchUseLlvm>true</MtouchUseLlvm>
+		<MtouchLink>SdkOnly</MtouchLink>
+	</PropertyGroup>
+
+
+	<!-- ========================================================= -->
+	<!-- Mac Catalyst                                              -->
+	<!-- ========================================================= -->
+
+	<PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-maccatalyst'">
+	</PropertyGroup>
+
+</Project>

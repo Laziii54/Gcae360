@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 2,
+  "catalogVersion": 2,
+  "definitions": [
+    {
+      "definitionId": "hyundai.sonata-dn8.2020-2023.abs",
+      "definitionVersion": 1,
+      "packageId": "manufacturer.hyundai",
+      "brand": "Hyundai",
+      "vehicleProfile": "Sonata",
+      "generation": "DN8",
+      "minimumYear": 2020,
+      "maximumYear": 2023,
+      "powertrain": "ICE",
+      "ecuId": "ABS",
+      "ecuName": "Electronic Stability Control / ABS",
+      "transport": {
+        "protocol": "UDS_ISOTP_CAN",
+        "canBus": "HS-CAN",
+        "baudRateKbps": 500,
+        "txCanId": 2001,
+        "rxCanId": 2009,
+        "extended29Bit": false
+      },
+      "readOnlyCommands": [
+        {
+          "id": "identity.firmware-signature",
+          "name": "Read ABS/ESC firmware signature",
+          "capabilityCode": "IDENTIFICATION.READ",
+          "requestHex": "22 F1 00",
+          "discoveryProbe": true,
+          "probeDuringCapabilityDetection": true,
+          "timeoutMs": 1800,
+          "responseFields": [
+            {
+              "key": "SOFTWARE_VERSION",
+              "label": "ABS/ESC firmware signature",
+              "byteOffset": 0,
+              "byteLength": 19,
+              "encoding": "HEX",
+              "scale": 1.0,
+              "valueOffset": 0.0,
+              "unit": ""
+            }
+          ]
+        }
+      ],
+      "dtcMappings": [],
+      "evidence": {
+        "evidenceId": "opendbc-52f5d03-hyundai-sonata-dn8-abs-f100",
+        "sourceType": "REVIEWED_TECHNICAL_SOURCE",
+        "sourceReference": "oem_evidence/hyundai_sonata_dn8_abs_f100.md",
+        "sourceSha256": "559B462D8B31D3A9F7AB9881D8FD496AEFBAA2DF11A8496590C81F1220CB4A47",
+        "observedAtUtc": "2026-09-17T00:00:00Z",
+        "observedProtocol": "UDS_ISOTP_CAN",
+        "reviewStatus": "APPROVED",
+        "reviewedBy": "Georgian Car Scanner catalog review",
+        "reviewedAtUtc": "2026-09-17T00:00:00Z"
+      },
+      "notes": "Verified read-only ABS/ESC discovery and firmware identification only. No DTC read, clear, routine, coding, or actuator operation is authorized."
+    }
+  ]
+}

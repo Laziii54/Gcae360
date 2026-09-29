@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    x:Class="CarScanner.Views.AccelerationHistoryPage"
+    x:Name="HistoryRoot"
+    x:DataType="vm:AccelerationHistoryViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="Performance ისტორია">
+
+    <Grid Padding="16,12,16,24" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="10">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <Label
+                AutomationId="DynamicTextAccelerationHistoryTitle"
+                Text="{Binding HistoryTitle}"
+                Style="{StaticResource PageTitleStyle}"
+                VerticalOptions="Center" />
+            <Button
+                Grid.Column="1"
+                Text="გასუფთავება"
+                Command="{Binding ClearAllCommand}"
+                IsVisible="{Binding HasRuns}"
+                BackgroundColor="Transparent"
+                TextColor="#B3361F"
+                BorderColor="#B3361F"
+                BorderWidth="1.5"
+                CornerRadius="12"
+                FontSize="12"
+                FontAttributes="Bold"
+                Padding="12,0"
+                HeightRequest="36"
+                MinimumHeightRequest="36"
+                VerticalOptions="Center" />
+        </Grid>
+
+        <Label
+            Grid.Row="1"
+            Text="ყველა გაზომვა ინახება ამ ტელეფონზე."
+            TextColor="{DynamicResource SubTextColor}"
+            FontSize="12"
+            LineBreakMode="WordWrap" />
+
+        <Border Grid.Row="2" Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasRuns}">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,13">
+                <Path Data="M8,4 L16,4 L16,10 C16,13 14,14 12,14 C10,14 8,13 8,10 Z M8,6 L5,6 L5,8 C5,10 6,11 8,11 M16,6 L19,6 L19,8 C19,10 18,11 16,11 M12,14 L12,18 M8,20 L16,20" Style="{StaticResource RowIconStyle}" />
+                <Label
+                    Grid.Column="1"
+                    AutomationId="DynamicTextAccelerationBest"
+                    Text="{Binding BestResultText}"
+                    TextColor="{DynamicResource TextColor}"
+                    FontSize="14"
+                    FontAttributes="Bold"
+                    VerticalOptions="Center" />
+            </Grid>
+        </Border>
+
+        <CollectionView Grid.Row="3" ItemsSource="{Binding Runs}" Margin="0,4,0,0">
+            <CollectionView.EmptyView>
+                <Label
+                    AutomationId="DynamicTextAccelerationEmpty"
+                    Text="{Binding EmptyMessage}"
+                    TextColor="{DynamicResource SubTextColor}"
+                    FontSize="13"
+                    HorizontalTextAlignment="Center"
+                    VerticalTextAlignment="Center" />
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:AccelerationRunDisplay">
+                    <Border
+                        Style="{StaticResource ListCardStyle}"
+                        Margin="0,0,0,8"
+                        Padding="14,12">
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="3" ColumnSpacing="12">
+                            <Path
+                                Grid.RowSpan="2"
+                                Data="M4,16 A8,8 0 1 1 20,16 M12,16 L16,10"
+                                Style="{StaticResource RowIconStyle}" />
+                            <Label
+                                Grid.Column="1"
+                                Text="{Binding TestName}"
+                                TextColor="{DynamicResource TextColor}"
+                                FontSize="14"
+                                FontAttributes="Bold" />
+                            <Label
+                                Grid.Column="2"
+                                Grid.RowSpan="2"
+                                Text="{Binding TimeText}"
+                                TextColor="{DynamicResource TextColor}"
+                                FontSize="22"
+                                FontAttributes="Bold"
+                                VerticalOptions="Center" />
+                            <Button
+                                Grid.Column="3"
+                                Grid.RowSpan="2"
+                                Text="×"
+                                Command="{Binding x:DataType=vm:AccelerationHistoryViewModel, Source={RelativeSource AncestorType={x:Type vm:AccelerationHistoryViewModel}}, Path=DeleteRunCommand}"
+                                CommandParameter="{Binding .}"
+                                BackgroundColor="Transparent"
+                                TextColor="#B3361F"
+                                BorderWidth="0"
+                                FontSize="20"
+                                Padding="4,0"
+                                WidthRequest="32"
+                                VerticalOptions="Center" />
+                            <Label
+                                Grid.Row="1"
+                                Grid.Column="1"
+                                Text="{Binding DateText}"
+                                TextColor="{DynamicResource SubTextColor}"
+                                FontSize="11" />
+                            <Label
+                                Grid.Row="2"
+                                Grid.Column="1"
+                                Grid.ColumnSpan="3"
+                                Text="{Binding SplitsText}"
+                                IsVisible="{Binding HasSplits}"
+                                TextColor="{DynamicResource TextColor}"
+                                FontSize="12"
+                                Margin="0,4,0,0"
+                                LineBreakMode="WordWrap" />
+                            <Label
+                                Grid.Row="3"
+                                Grid.Column="1"
+                                Grid.ColumnSpan="3"
+                                Text="{Binding DetailsText}"
+                                TextColor="{DynamicResource SubTextColor}"
+                                FontSize="11"
+                                LineBreakMode="WordWrap" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <ActivityIndicator
+            Grid.Row="3"
+            IsRunning="{Binding IsBusy}"
+            IsVisible="{Binding IsBusy}"
+            Color="{DynamicResource Primary}"
+            HorizontalOptions="Center"
+            VerticalOptions="Center" />
+    </Grid>
+</ContentPage>

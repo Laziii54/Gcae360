@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    x:Class="CarScanner.Views.SettingsPage"
+    x:DataType="vm:SettingsViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="Settings">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,14,16,32" Spacing="10">
+
+            <Label Text="Settings" Style="{StaticResource PageTitleStyle}" />
+
+            <!-- Adapter status -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,12">
+                <VerticalStackLayout Spacing="3">
+                    <Label Text="Bluetooth / OBD2" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                    <Label Text="{Binding BluetoothStatus}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                    <Label Text="რეალური OBD ფუნქციებისთვის საჭიროა Bluetooth ადაპტერი და მანქანის კონტაქტი." FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout Spacing="0">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,4">
+                            <Label Text="Theme" Style="{StaticResource RowTitleStyle}" />
+                            <Picker Grid.Column="1" ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding ThemeOption}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" MinimumWidthRequest="120" HorizontalTextAlignment="End" FontSize="14" VerticalOptions="Center" />
+                        </Grid>
+                        <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,4">
+                            <Label Text="Language" Style="{StaticResource RowTitleStyle}" />
+                            <Picker Grid.Column="1" ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding LanguageOption}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" MinimumWidthRequest="120" HorizontalTextAlignment="End" FontSize="14" VerticalOptions="Center" />
+                        </Grid>
+                        <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,4">
+                            <Label Text="Units" Style="{StaticResource RowTitleStyle}" />
+                            <Picker Grid.Column="1" ItemsSource="{Binding UnitOptions}" SelectedItem="{Binding UnitOption}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" MinimumWidthRequest="120" HorizontalTextAlignment="End" FontSize="14" VerticalOptions="Center" />
+                        </Grid>
+                        <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,4">
+                            <Label Text="Live Data polling" Style="{StaticResource RowTitleStyle}" />
+                            <Picker Grid.Column="1" ItemsSource="{Binding PollingOptions}" SelectedItem="{Binding PollingOption}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" MinimumWidthRequest="120" HorizontalTextAlignment="End" FontSize="14" VerticalOptions="Center" />
+                        </Grid>
+                        <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,2">
+                            <Label Text="Auto reconnect OBD adapter" Style="{StaticResource RowTitleStyle}" />
+                            <CheckBox Grid.Column="1" IsChecked="{Binding AutoReconnect}" VerticalOptions="Center" />
+                        </Grid>
+                        <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,2">
+                            <Label Text="Enable Notifications" Style="{StaticResource RowTitleStyle}" />
+                            <CheckBox Grid.Column="1" IsChecked="{Binding NotificationsEnabled}" VerticalOptions="Center" />
+                        </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout Spacing="0">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
+                            <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnAccountTapped" /></Grid.GestureRecognizers>
+                            <Path Data="M12 12a4 4 0 1 0 0-8a4 4 0 1 0 0 8M4 21c0-4 4-6 8-6s8 2 8 6" Style="{StaticResource RowIconStyle}" />
+                            <Label Grid.Column="1" Text="ანგარიში (შესვლა / რეგისტრაცია)" Style="{StaticResource RowTitleStyle}" />
+                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                        </Grid>
+                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
+                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding OpenProCommand}" /></Grid.GestureRecognizers>
+                            <Path Data="M5 12l4 4 10-10" Style="{StaticResource RowIconStyle}" />
+                            <Label Grid.Column="1" Text="PRO / Payments" Style="{StaticResource RowTitleStyle}" />
+                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                        </Grid>
+                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
+                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding ManageSubscriptionCommand}" /></Grid.GestureRecognizers>
+                            <Path Data="M3 6h18v12H3zM3 10h18" Style="{StaticResource RowIconStyle}" />
+                            <Label Grid.Column="1" Text="Manage Subscription" Style="{StaticResource RowTitleStyle}" />
+                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                        </Grid>
+                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
+                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding OpenHistoryCommand}" /></Grid.GestureRecognizers>
+                            <Path Data="M4 12a8 8 0 1 0 2.3-5.7M4 4v4h4M12 8v4l3 2" Style="{StaticResource RowIconStyle}" />
+                            <Label Grid.Column="1" Text="History" Style="{StaticResource RowTitleStyle}" />
+                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                        </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout Spacing="0">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
+                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding OpenContactCommand}" /></Grid.GestureRecognizers>
+                            <Path Data="M3 6h18v12H3zM3 7l9 6 9-6" Style="{StaticResource RowIconStyle}" />
+                            <Label Grid.Column="1" Text="Contact" Style="{StaticResource RowTitleStyle}" />
+                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                        </Grid>
+                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
+                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding PrivacyPolicyCommand}" /></Grid.GestureRecognizers>
+                            <Path Data="M6 2h8l5 5v15H6zM14 2v5h5M9 12h7M9 16h7" Style="{StaticResource RowIconStyle}" />
+                            <Label Grid.Column="1" Text="Privacy Policy" Style="{StaticResource RowTitleStyle}" />
+                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                        </Grid>
+                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
+                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding TermsOfUseCommand}" /></Grid.GestureRecognizers>
+                            <Path Data="M6 2h8l5 5v15H6zM14 2v5h5M9 12h7M9 16h7" Style="{StaticResource RowIconStyle}" />
+                            <Label Grid.Column="1" Text="Terms of Use" Style="{StaticResource RowTitleStyle}" />
+                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                        </Grid>
+                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
+                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding AboutCommand}" /></Grid.GestureRecognizers>
+                            <Path Data="M12 21a9 9 0 1 0 0-18a9 9 0 1 0 0 18M12 11v5M12 8h.01" Style="{StaticResource RowIconStyle}" />
+                            <Label Grid.Column="1" Text="About" Style="{StaticResource RowTitleStyle}" />
+                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                        </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout Spacing="0">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
+                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding ExportMyDataCommand}" /></Grid.GestureRecognizers>
+                            <Path Data="M12 3v12M7 8l5-5 5 5M4 17v4h16v-4" Style="{StaticResource RowIconStyle}" />
+                            <Label Grid.Column="1" Text="Export My Data" Style="{StaticResource RowTitleStyle}" />
+                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                        </Grid>
+                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
+                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding ClearHistoryCommand}" /></Grid.GestureRecognizers>
+                            <Path Data="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" Style="{StaticResource RowIconStyle}" />
+                            <Label Grid.Column="1" Text="Clear History" Style="{StaticResource RowTitleStyle}" />
+                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                        </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="Georgian Car Scanner" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalOptions="Center" Margin="0,8" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

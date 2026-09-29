@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    xmlns:models="clr-namespace:CarScanner.Models"
+    x:Class="CarScanner.Views.DiagnosticsPage"
+    x:DataType="vm:DiagnosticsViewModel"
+    Title="DTC Center"
+    BackgroundColor="{DynamicResource PageBg}">
+
+    <ScrollView>
+
+        <Grid
+            RowDefinitions="Auto,Auto,*,Auto"
+            Padding="20,18,20,30"
+            RowSpacing="13">
+
+            <!-- HEADER -->
+
+            <Border
+                IsVisible="False"
+                BackgroundColor="{DynamicResource CardBg}"
+                Stroke="{DynamicResource BorderColor}"
+                Padding="14"
+                StrokeShape="RoundRectangle 14">
+
+                <VerticalStackLayout Spacing="5">
+
+                    <Label
+                        Text="TROUBLE CODES — DTC CENTER"
+                        FontSize="22"
+                        FontAttributes="Bold"
+                        TextColor="{DynamicResource TextColor}" />
+
+                    <Label
+                        Text="{Binding CarInfo}"
+                        TextColor="{DynamicResource TextColor}"
+                        FontSize="18"
+                        FontAttributes="Bold" />
+
+                    <Label
+                        Text="{Binding Vin}"
+                        TextColor="{DynamicResource SubTextColor}"
+                        FontSize="12"
+                        LineBreakMode="TailTruncation" />
+
+                    <Label
+                        Text="{Binding Protocol}"
+                        TextColor="{DynamicResource SubTextColor}"
+                        FontSize="12" />
+
+                    <Label
+                        Text="{Binding Readiness}"
+                        TextColor="{DynamicResource SubTextColor}"
+                        FontSize="12" />
+
+                </VerticalStackLayout>
+
+            </Border>
+
+
+            <!-- ACTIONS -->
+
+            <VerticalStackLayout
+                Grid.Row="1"
+                Spacing="8">
+                <Grid
+                    ColumnDefinitions="*,*"
+                    ColumnSpacing="8">
+
+                    <Button
+                        Text="სკანირების დაწყება"
+                        Command="{Binding ScanCommand}"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        FontSize="11" />
+
+                    <Button
+                        Grid.Column="1"
+                        Text="კოდების წაშლა"
+                        Command="{Binding ClearCodesCommand}"
+                        BackgroundColor="Transparent"
+                        TextColor="{DynamicResource TextColor}"
+                        BorderColor="{DynamicResource TextColor}"
+                        BorderWidth="1.5"
+                        HeightRequest="50"
+                        FontSize="11" />
+
+                </Grid>
+
+                <Button
+                    Text="რამდენი დამიჯდება?"
+                    Command="{Binding OpenRepairCostsCommand}"
+                    IsVisible="{Binding HasErrors}"
+                    BackgroundColor="#1D5BD6"
+                    TextColor="White"
+                    FontAttributes="Bold"
+                    HeightRequest="48" />
+
+                <Border
+                    IsVisible="{Binding IsDtcScanInProgress}"
+                    Padding="10"
+                    BackgroundColor="{DynamicResource CardBg}"
+                    Stroke="{DynamicResource BorderColor}"
+                    StrokeShape="RoundRectangle 12">
+                    <VerticalStackLayout Spacing="6">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Label Text="{Binding ScanProgressText}" TextColor="{DynamicResource TextColor}" FontSize="12" LineBreakMode="TailTruncation" />
+                            <Label Grid.Column="1" Text="{Binding ScanProgressPercent}" TextColor="#60A5FA" FontSize="13" FontAttributes="Bold" />
+                        </Grid>
+                        <ProgressBar Progress="{Binding ScanProgressValue}" ProgressColor="#2563EB" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border IsVisible="False" Padding="11" BackgroundColor="{DynamicResource CardBg}" Stroke="{DynamicResource BorderColor}" StrokeShape="RoundRectangle 12">
+                    <VerticalStackLayout Spacing="5">
+                        <Label Text="{Binding ScanSummary}" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" FontSize="13" />
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                            <Label Text="{Binding CurrentCount}" TextColor="#F87171" FontSize="11" />
+                            <Label Grid.Column="1" Text="{Binding HistoryCount}" TextColor="#FBBF24" FontSize="11" HorizontalTextAlignment="End" />
+                        </Grid>
+                        <Label Text="{Binding ModulesSummary}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="WordWrap" />
+                        <Button Text="Open Related Live Data" Command="{Binding OpenRelatedLiveDataCommand}" HeightRequest="38" BackgroundColor="{DynamicResource ButtonBg}" TextColor="{DynamicResource ButtonTextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" FontSize="11" />
+                    </VerticalStackLayout>
+                </Border>
+
+            </VerticalStackLayout>
+
+
+            <!-- DTC LIST -->
+
+            <CollectionView
+                Grid.Row="2"
+                ItemsSource="{Binding Errors}"
+                SelectionMode="None"
+                VerticalScrollBarVisibility="Always"
+                ItemSizingStrategy="MeasureAllItems">
+
+                <CollectionView.EmptyView>
+
+                    <VerticalStackLayout
+                        Spacing="8"
+                        Padding="0,30">
+
+                        <Label
+                            Text="{Binding EmptyStateTitle}"
+                            TextColor="{DynamicResource SubTextColor}"
+                            FontSize="18"
+                            HorizontalOptions="Center" />
+
+                        <Label
+                            Text="{Binding EmptyStateMessage}"
+                            TextColor="{DynamicResource SubTextColor}"
+                            HorizontalOptions="Center"
+                            HorizontalTextAlignment="Center" />
+
+                    </VerticalStackLayout>
+
+                </CollectionView.EmptyView>
+
+
+                <CollectionView.ItemTemplate>
+
+                    <DataTemplate
+                        x:DataType="models:ErrorCode">
+
+                        <!-- Report style: dot + code, plain-language text, divider -->
+                        <VerticalStackLayout Spacing="0">
+                            <VerticalStackLayout Spacing="4" Padding="0,14">
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                    <BoxView WidthRequest="9" HeightRequest="9" CornerRadius="4.5" Color="{Binding SeverityColor}" VerticalOptions="Center" />
+                                    <Label Grid.Column="1" Text="{Binding Code}" Style="{StaticResource ReportCodeStyle}" />
+                                    <Label Grid.Column="2" Text="{Binding DisplayStatus}" Style="{StaticResource ReportMetaStyle}" VerticalOptions="Center" />
+                                </Grid>
+                                <Label Text="{Binding DisplayTitle}" Style="{StaticResource ReportBodyStyle}" FontAttributes="Bold" />
+                                <Label Text="{Binding DisplayDescription}" Style="{StaticResource ReportBodyStyle}" FontSize="13" />
+
+                                <Label Text="Recommended checks" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" Margin="0,6,0,0" />
+                                <Label AutomationId="DynamicTextDtcChecks" Text="{Binding DisplayChecks}" Style="{StaticResource ReportMetaStyle}" FontSize="13" />
+
+                                <Label Text="შესაძლო მიზეზები" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" Margin="0,6,0,0" />
+                                <Label Text="{Binding DisplayCauses}" Style="{StaticResource ReportMetaStyle}" FontSize="13" />
+
+                                <Label Text="სიმპტომები" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" Margin="0,6,0,0" />
+                                <Label Text="{Binding DisplaySymptoms}" Style="{StaticResource ReportMetaStyle}" FontSize="13" />
+
+                                <Label Text="{Binding Severity}" TextColor="{Binding SeverityColor}" FontSize="12" FontAttributes="Bold" Margin="0,4,0,0" />
+                            </VerticalStackLayout>
+                            <BoxView HeightRequest="1" Color="{DynamicResource BorderColor}" />
+                        </VerticalStackLayout>
+
+                    </DataTemplate>
+
+                </CollectionView.ItemTemplate>
+
+            </CollectionView>
+
+
+            <!-- FREEZE FRAME + STATUS -->
+
+            <VerticalStackLayout
+                Grid.Row="3"
+                IsVisible="{Binding ShowFreezeFrame}"
+                Spacing="4">
+
+                <Border
+                    BackgroundColor="{DynamicResource CardBg}"
+                    Stroke="{DynamicResource BorderColor}"
+                    Padding="10"
+                    StrokeShape="RoundRectangle 12">
+
+                    <VerticalStackLayout Spacing="8">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Label Text="{Binding FreezeFrameTitle}" TextColor="{DynamicResource TextColor}" FontSize="15" FontAttributes="Bold" LineBreakMode="TailTruncation" />
+                            <Label Grid.Column="1" Text="{Binding FreezeFrameProgress, StringFormat='{0}%'}" TextColor="#60A5FA" FontSize="12" IsVisible="{Binding IsFreezeFrameLoading}" />
+                        </Grid>
+                        <Label Text="{Binding FreezeFrameEmptyMessage}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="WordWrap" />
+                        <VerticalStackLayout IsVisible="{Binding IsFreezeFrameLoading}" Spacing="4">
+                            <Label Text="{Binding FreezeFrameProgressText}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="TailTruncation" />
+                            <ProgressBar Progress="{Binding FreezeFrameProgressValue}" ProgressColor="#2563EB" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding FreezeFrameValues}" Spacing="5">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="models:FreezeFrameValue">
+                                    <Border Padding="9" BackgroundColor="{DynamicResource PageBg}" Stroke="{DynamicResource BorderColor}" StrokeShape="RoundRectangle 10">
+                                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8">
+                                            <Label Text="{Binding Label}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="TailTruncation" />
+                                            <Label Grid.Column="1" Text="{Binding Value}" TextColor="{DynamicResource TextColor}" FontAttributes="Bold" HorizontalTextAlignment="End" />
+                                            <Label Grid.Row="1" Text="{Binding SourceText}" TextColor="#4ADE80" FontSize="9" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+
+                </Border>
+
+
+                <HorizontalStackLayout
+                    Spacing="12"
+                    HorizontalOptions="Center">
+                    <Label
+                        Text="{Binding StatusMessage}"
+                        TextColor="{DynamicResource SubTextColor}"
+                        VerticalOptions="Center" />
+
+                </HorizontalStackLayout>
+
+            </VerticalStackLayout>
+
+        </Grid>
+
+    </ScrollView>
+
+</ContentPage>

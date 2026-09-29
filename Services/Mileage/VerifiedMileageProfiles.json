@@ -1,0 +1,39 @@
+{
+  "udsProfiles": [],
+  "canProfiles": [
+    {
+      "brand": "Toyota",
+      "vehicleProfile": "Prius 2017",
+      "ecu": "UI_SETTING",
+      "canId": 1553,
+      "extended29Bit": false,
+      "odometerStartBit": 43,
+      "odometerBitLength": 20,
+      "unitStartBit": 26,
+      "unitBitLength": 2,
+      "kmUnitValue": 1,
+      "milesUnitValue": 2,
+      "confidence": 0.8,
+      "source": "Toyota Prius 2017 DBC",
+      "sourceUrl": "https://gitea.interbiznw.com/rusefi/opendbc/src/commit/61cca0a81adf155ef9de43958426c2ba0a0a73eb/toyota_prius_2017_pt_generated.dbc",
+      "notes": "Public DBC definition; exact platform profile only."
+    },
+    {
+      "brand": "Lexus",
+      "vehicleProfile": "CT200h 2018",
+      "ecu": "UI_SETTING",
+      "canId": 1553,
+      "extended29Bit": false,
+      "odometerStartBit": 43,
+      "odometerBitLength": 20,
+      "unitStartBit": 26,
+      "unitBitLength": 2,
+      "kmUnitValue": 1,
+      "milesUnitValue": 2,
+      "confidence": 0.8,
+      "source": "Lexus CT200h 2018 DBC",
+      "sourceUrl": "https://gitea.interbiznw.com/rusefi/opendbc/src/commit/3afceadb847346feb30d96506f482f536e36281d/lexus_ct200h_2018_pt_generated.dbc",
+      "notes": "Public DBC definition; exact platform profile only."
+    }
+  ]
+}

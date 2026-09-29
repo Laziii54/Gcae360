@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:CarScanner.ViewModels"
+             xmlns:m="clr-namespace:CarScanner.Models"
+             x:Class="CarScanner.Views.DiagnosticReportPage"
+             x:Name="ReportRoot"
+             x:DataType="vm:DiagnosticReportViewModel"
+             Title="დიაგნოსტიკური ანგარიში"
+             BackgroundColor="{DynamicResource PageBg}">
+    <ScrollView x:Name="Scroller">
+        <VerticalStackLayout Padding="20,14,20,34" Spacing="12">
+
+            <!-- Report header -->
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="დიაგნოსტიკური ანგარიში" Style="{StaticResource ReportTitleStyle}" />
+                    <Label Text="მხოლოდ მანქანიდან წაკითხული რეალური მონაცემები" Style="{StaticResource ReportMetaStyle}" FontSize="13" />
+                </VerticalStackLayout>
+                <Button Grid.Column="1" Text="განახლება" Command="{Binding LoadCommand}"
+                        BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderWidth="0"
+                        Padding="0" HeightRequest="32" MinimumHeightRequest="32" FontSize="13" FontAttributes="Bold" VerticalOptions="Start" />
+            </Grid>
+
+            <!-- Report state: status accent bar + plain text -->
+            <Grid ColumnDefinitions="3,*" ColumnSpacing="10" Margin="0,2,0,0">
+                <BoxView Background="{Binding ReportStateBrush}" Color="{Binding ReportStateColor}" />
+                <VerticalStackLayout Grid.Column="1" Spacing="2">
+                    <Label Text="{Binding ReportState}" FontSize="15" FontAttributes="Bold" TextColor="{Binding ReportStateColor}" />
+                    <Label Text="{Binding ReportStateDetail}" Style="{StaticResource ReportMetaStyle}" />
+                </VerticalStackLayout>
+            </Grid>
+
+            <!-- Saved scans: plain rows -->
+            <VerticalStackLayout Spacing="0" Margin="0,10,0,0">
+                <Label Text="შენახული სკანები" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" Margin="0,0,0,4" />
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding Sessions}" Spacing="0">
+                    <BindableLayout.EmptyView>
+                        <Label Text="ჯერ ანგარიში არ არის შენახული." Style="{StaticResource ReportMetaStyle}" FontSize="13" Margin="0,4,0,0" />
+                    </BindableLayout.EmptyView>
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="m:ScanSession">
+                            <VerticalStackLayout Spacing="0">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,11">
+                                    <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                                        <Label Text="{Binding VehicleSummary}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                                        <Label Text="{Binding StartedAt, StringFormat='სკანი: {0:dd.MM.yyyy HH:mm}'}" Style="{StaticResource ReportMetaStyle}" FontSize="11" />
+                                        <Label Text="{Binding VIN, StringFormat='VIN: {0}'}" Style="{StaticResource ReportMetaStyle}" FontSize="11" FontFamily="monospace" LineBreakMode="TailTruncation" />
+                                    </VerticalStackLayout>
+                                    <Button Grid.Column="1" Text="გახსნა" Clicked="OnOpenSessionClicked"
+                                            BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderWidth="0"
+                                            Padding="6,0" HeightRequest="32" MinimumHeightRequest="32" FontSize="13" FontAttributes="Bold" VerticalOptions="Center" />
+                                </Grid>
+                                <BoxView HeightRequest="1" Color="{DynamicResource BorderColor}" />
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+
+            <!-- Selected report details (scroll target) -->
+            <Border x:Name="DetailsCard" Padding="0" BackgroundColor="Transparent" StrokeThickness="0" Margin="0,10,0,0">
+                <VerticalStackLayout Spacing="0">
+
+                    <VerticalStackLayout Spacing="4" Padding="0,0,0,14">
+                        <Label Text="ავტომობილი" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                        <Label Text="{Binding VehicleDetails}" Style="{StaticResource ReportBodyStyle}" FontSize="13" />
+                    </VerticalStackLayout>
+                    <BoxView HeightRequest="1" Color="{DynamicResource BorderColor}" />
+
+                    <VerticalStackLayout Spacing="4" Padding="0,14">
+                        <Label Text="სკანი" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                        <Label Text="{Binding ScanSummary}" Style="{StaticResource ReportBodyStyle}" FontSize="13" />
+                        <Label Text="{Binding EcuSummary}" Style="{StaticResource ReportMetaStyle}" />
+                    </VerticalStackLayout>
+                    <BoxView HeightRequest="1" Color="{DynamicResource BorderColor}" />
+
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Codes / readiness / freeze frame -->
+            <VerticalStackLayout Spacing="0">
+                <VerticalStackLayout Spacing="4" Padding="0,0,0,14">
+                    <Label Text="შეცდომის კოდები" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                    <Label Text="{Binding DtcSummary}" Style="{StaticResource ReportBodyStyle}" FontSize="13" />
+                </VerticalStackLayout>
+                <BoxView HeightRequest="1" Color="{DynamicResource BorderColor}" />
+
+                <VerticalStackLayout Spacing="4" Padding="0,14">
+                    <Label Text="Check Engine / მზადყოფნა" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                    <Label Text="{Binding EmissionsSummary}" Style="{StaticResource ReportMetaStyle}" FontSize="13" />
+                </VerticalStackLayout>
+                <BoxView HeightRequest="1" Color="{DynamicResource BorderColor}" />
+
+                <VerticalStackLayout Spacing="4" Padding="0,14">
+                    <Label Text="Freeze Frame" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                    <Label Text="{Binding FreezeFrameSummary}" Style="{StaticResource ReportMetaStyle}" FontSize="13" />
+                </VerticalStackLayout>
+                <BoxView HeightRequest="1" Color="{DynamicResource BorderColor}" />
+
+                <VerticalStackLayout Spacing="4" Padding="0,14">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <Label Text="წინასთან შედარება" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="შედარება" Command="{Binding CompareWithPreviousCommand}" IsEnabled="{Binding HasReport}"
+                                BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderWidth="0"
+                                Padding="0" HeightRequest="32" MinimumHeightRequest="32" FontSize="13" FontAttributes="Bold" VerticalOptions="Center" />
+                    </Grid>
+                    <Label Text="{Binding ComparisonSummary}" Style="{StaticResource ReportMetaStyle}" FontSize="13" />
+                </VerticalStackLayout>
+                <BoxView HeightRequest="1" Color="{DynamicResource BorderColor}" />
+            </VerticalStackLayout>
+
+            <!-- Export / share / new scan -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,6,0,0">
+                <Button Text="PDF" Command="{Binding ExportPdfCommand}" IsEnabled="{Binding HasReport}"
+                        BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}"
+                        BorderWidth="1.5" CornerRadius="14" HeightRequest="48" FontSize="13" FontAttributes="Bold" />
+                <Button Grid.Column="1" Text="გაზიარება" Command="{Binding ShareTextCommand}" IsEnabled="{Binding HasReport}"
+                        BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}"
+                        BorderWidth="1.5" CornerRadius="14" HeightRequest="48" FontSize="13" FontAttributes="Bold" />
+            </Grid>
+            <Button Text="QR ანგარიში" Command="{Binding CreateQrReportCommand}" IsEnabled="{Binding HasReport}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="14" FontSize="13" />
+            <Button Text="ახალი სრული სკანი" Command="{Binding StartNewScanCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="14" FontSize="13" />
+
+            <ActivityIndicator IsRunning="{Binding IsExporting}" IsVisible="{Binding IsExporting}" Color="{DynamicResource Primary}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

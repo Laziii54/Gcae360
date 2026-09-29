@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:m="clr-namespace:CarScanner.Models"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    x:Class="CarScanner.Views.EcuIdentifiersPage"
+    x:DataType="vm:EcuIdentifiersViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="ECU Explorer">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,14,16,32" Spacing="12">
+
+            <!-- Header -->
+            <Label Text="ECU EXPLORER" Style="{StaticResource PageTitleStyle}" />
+
+            <Button
+                Text="სკანირება"
+                Command="{Binding LoadCommand}"
+                Style="{StaticResource PrimaryButtonStyle}"
+                HeightRequest="50" />
+
+            <!-- ECM Identification: key / value list -->
+            <Label Text="ECM Identification" Style="{StaticResource SectionCaptionStyle}" />
+
+            <Border Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout
+                    BindableLayout.ItemsSource="{Binding Items}"
+                    Spacing="0"
+                    Margin="0,-1,0,0">
+
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="m:EcuIdentifier">
+                            <VerticalStackLayout Spacing="0">
+                                <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                                <Grid
+                                    ColumnDefinitions="Auto,*"
+                                    RowDefinitions="Auto,Auto"
+                                    ColumnSpacing="12"
+                                    RowSpacing="3"
+                                    Padding="14,13">
+
+                                    <Label
+                                        Text="{Binding Name}"
+                                        FontSize="13"
+                                        TextColor="{DynamicResource SubTextColor}"
+                                        VerticalOptions="Start" />
+
+                                    <Label
+                                        Grid.Column="1"
+                                        Text="{Binding Value}"
+                                        FontSize="13"
+                                        FontAttributes="Bold"
+                                        TextColor="{DynamicResource TextColor}"
+                                        HorizontalTextAlignment="End"
+                                        LineBreakMode="WordWrap" />
+
+                                    <Label
+                                        Grid.Row="1"
+                                        Grid.ColumnSpan="2"
+                                        Text="{Binding Explanation}"
+                                        FontSize="11"
+                                        TextColor="{DynamicResource SubTextColor}"
+                                        LineBreakMode="WordWrap" />
+
+                                </Grid>
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Supported PIDs Header -->
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+
+                <Label Text="Supported PIDs" Style="{StaticResource SectionCaptionStyle}" />
+
+                <Label
+                    Grid.Column="1"
+                    Text="{Binding PidSummary}"
+                    FontSize="12"
+                    FontAttributes="Bold"
+                    TextColor="#1F8A4C"
+                    VerticalOptions="End" />
+
+            </Grid>
+
+            <Label
+                Text="{Binding PidRefreshStatus}"
+                TextColor="{DynamicResource SubTextColor}"
+                FontSize="11"
+                Margin="4,0,0,0"
+                LineBreakMode="WordWrap" />
+
+            <!-- Supported PIDs List -->
+            <Border Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout
+                    BindableLayout.ItemsSource="{Binding PidReadings}"
+                    Spacing="0"
+                    Margin="0,-1,0,0">
+
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="m:EcuPidReading">
+                            <VerticalStackLayout Spacing="0">
+                                <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                                <Grid
+                                    ColumnDefinitions="Auto,*,Auto"
+                                    ColumnSpacing="12"
+                                    Padding="14,13">
+
+                                    <Label
+                                        Text="{Binding Command}"
+                                        FontSize="12"
+                                        FontFamily="monospace"
+                                        FontAttributes="Bold"
+                                        TextColor="{DynamicResource Primary}"
+                                        VerticalOptions="Center" />
+
+                                    <VerticalStackLayout
+                                        Grid.Column="1"
+                                        Spacing="1"
+                                        VerticalOptions="Center">
+
+                                        <Label
+                                            Text="{Binding Name}"
+                                            FontSize="14"
+                                            TextColor="{DynamicResource TextColor}"
+                                            LineBreakMode="WordWrap" />
+
+                                        <Label
+                                            Text="{Binding Category}"
+                                            FontSize="11"
+                                            TextColor="{DynamicResource SubTextColor}" />
+
+                                    </VerticalStackLayout>
+
+                                    <VerticalStackLayout
+                                        Grid.Column="2"
+                                        Spacing="1"
+                                        HorizontalOptions="End"
+                                        VerticalOptions="Center">
+
+                                        <Label
+                                            Text="{Binding CurrentValue}"
+                                            FontSize="14"
+                                            FontAttributes="Bold"
+                                            TextColor="{DynamicResource TextColor}"
+                                            HorizontalTextAlignment="End" />
+
+                                        <Label
+                                            Text="{Binding Unit}"
+                                            FontSize="11"
+                                            TextColor="{DynamicResource SubTextColor}"
+                                            HorizontalTextAlignment="End" />
+
+                                        <Label
+                                            Text="{Binding Status}"
+                                            TextColor="{Binding StatusColor}"
+                                            FontSize="10"
+                                            HorizontalTextAlignment="End" />
+
+                                    </VerticalStackLayout>
+
+                                </Grid>
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Loading -->
+            <ActivityIndicator
+                IsRunning="{Binding IsBusy}"
+                IsVisible="{Binding IsBusy}"
+                Color="{DynamicResource Primary}"
+                Margin="0,6" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

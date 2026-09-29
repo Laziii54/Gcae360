@@ -1,0 +1,1 @@
+using CarScanner.ViewModels; namespace CarScanner.Views; public partial class AdapterCenterPage:ContentPage{public AdapterCenterPage(AdapterCenterViewModel vm){InitializeComponent();BindingContext=vm;}}

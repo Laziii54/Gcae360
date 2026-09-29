@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    x:Class="CarScanner.Views.CalendarPage"
+    x:DataType="vm:CalendarViewModel"
+    x:Name="CalendarRoot"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="კალენდარი">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,14,16,32" Spacing="12">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                <VerticalStackLayout Spacing="1">
+                    <Label Text="სერვისის კალენდარი" Style="{StaticResource PageTitleStyle}" />
+                    <Label Text="შეხსენება მოვა ერთი დღით ადრე და იმავე დღეს" Style="{StaticResource CaptionStyle}" />
+                </VerticalStackLayout>
+                <Button Grid.Column="1" Text="+ დამატება" Command="{Binding ToggleAddFormCommand}" Padding="12,0" HeightRequest="38" MinimumHeightRequest="38" FontSize="12" FontAttributes="Bold" BackgroundColor="{DynamicResource Primary}" TextColor="White" CornerRadius="12" />
+            </Grid>
+
+            <Border Style="{StaticResource ListCardStyle}" Padding="12">
+                <VerticalStackLayout Spacing="10">
+                    <Grid ColumnDefinitions="44,*,44">
+                        <Button Text="‹" Command="{Binding PreviousMonthCommand}" FontSize="24" Padding="0" HeightRequest="40" MinimumHeightRequest="40" BackgroundColor="Transparent" />
+                        <Label Grid.Column="1" Text="{Binding MonthTitle}" FontSize="17" FontAttributes="Bold" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                        <Button Grid.Column="2" Text="›" Command="{Binding NextMonthCommand}" FontSize="24" Padding="0" HeightRequest="40" MinimumHeightRequest="40" BackgroundColor="Transparent" />
+                    </Grid>
+
+                    <Grid ColumnDefinitions="*,*,*,*,*,*,*" ColumnSpacing="2">
+                        <Label Grid.Column="0" Text="ორშ" Style="{StaticResource CaptionStyle}" HorizontalTextAlignment="Center" />
+                        <Label Grid.Column="1" Text="სამ" Style="{StaticResource CaptionStyle}" HorizontalTextAlignment="Center" />
+                        <Label Grid.Column="2" Text="ოთხ" Style="{StaticResource CaptionStyle}" HorizontalTextAlignment="Center" />
+                        <Label Grid.Column="3" Text="ხუთ" Style="{StaticResource CaptionStyle}" HorizontalTextAlignment="Center" />
+                        <Label Grid.Column="4" Text="პარ" Style="{StaticResource CaptionStyle}" HorizontalTextAlignment="Center" />
+                        <Label Grid.Column="5" Text="შაბ" Style="{StaticResource CaptionStyle}" HorizontalTextAlignment="Center" />
+                        <Label Grid.Column="6" Text="კვი" Style="{StaticResource CaptionStyle}" HorizontalTextAlignment="Center" />
+                    </Grid>
+
+                    <CollectionView ItemsSource="{Binding Days}" HeightRequest="294" SelectionMode="None">
+                        <CollectionView.ItemsLayout>
+                            <GridItemsLayout Orientation="Vertical" Span="7" HorizontalItemSpacing="2" VerticalItemSpacing="2" />
+                        </CollectionView.ItemsLayout>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:CalendarDayItem">
+                                <Border Padding="0" HeightRequest="46" StrokeThickness="0" BackgroundColor="{Binding BackgroundColor}" Opacity="{Binding Opacity}" StrokeShape="RoundRectangle 11">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding Source={x:Reference CalendarRoot}, Path=BindingContext.SelectDayCommand}" CommandParameter="{Binding .}" />
+                                    </Border.GestureRecognizers>
+                                    <Grid RowDefinitions="*,7" Padding="1,3">
+                                        <Label Text="{Binding DayNumber}" FontSize="14" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" TextColor="{DynamicResource TextColor}">
+                                            <Label.Triggers>
+                                                <DataTrigger TargetType="Label" Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter Property="TextColor" Value="White" />
+                                                </DataTrigger>
+                                            </Label.Triggers>
+                                        </Label>
+                                        <Border Grid.Row="1" IsVisible="{Binding HasReminder}" WidthRequest="5" HeightRequest="5" Padding="0" StrokeThickness="0" StrokeShape="RoundRectangle 3" BackgroundColor="{Binding DotColor}" HorizontalOptions="Center" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border IsVisible="{Binding IsAddFormVisible}" Style="{StaticResource ListCardStyle}" Padding="14">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="ახალი ჩანაწერი" Style="{StaticResource SectionTitleStyle}" />
+                    <Entry Text="{Binding NewTitle}" Placeholder="მაგ.: დაზღვევის განახლება" />
+                    <Picker Title="ტიპი" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                        <VerticalStackLayout Spacing="3">
+                            <Label Text="თარიღი" Style="{StaticResource CaptionStyle}" />
+                            <DatePicker Date="{Binding NewDueDate}" MinimumDate="2020-01-01" MaximumDate="2100-12-31" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="3">
+                            <Label Text="ინტერვალი (თვე)" Style="{StaticResource CaptionStyle}" />
+                            <Entry Text="{Binding IntervalMonthsText}" Keyboard="Numeric" Placeholder="12" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <VerticalStackLayout Spacing="3">
+                        <Label Text="ინტერვალი (კმ, სურვილისამებრ)" Style="{StaticResource CaptionStyle}" />
+                        <Entry Text="{Binding IntervalKmText}" Keyboard="Numeric" Placeholder="მაგ.: 10000" />
+                    </VerticalStackLayout>
+                    <Label Text="{Binding ValidationMessage}" TextColor="#EF4444" FontSize="12" />
+                    <Button Text="შენახვა" Command="{Binding AddReminderCommand}" Style="{StaticResource PrimaryButtonStyle}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="{Binding SelectedDateTitle}" Style="{StaticResource SectionTitleStyle}" Margin="2,4,0,0" />
+
+            <Border IsVisible="{Binding HasNoSelectedReminders}" Style="{StaticResource ListCardStyle}" Padding="16,20">
+                <Label Text="ამ დღეს შესასრულებელი არაფერია" Style="{StaticResource CaptionStyle}" HorizontalTextAlignment="Center" />
+            </Border>
+
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding SelectedReminders}" Spacing="10">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CalendarReminderItem">
+                        <Border Style="{StaticResource ListCardStyle}" Padding="14">
+                            <Grid ColumnDefinitions="5,*,Auto" ColumnSpacing="12" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
+                                <BoxView Grid.RowSpan="4" Color="{Binding AccentColor}" CornerRadius="3" />
+                                <Label Grid.Column="1" Text="{Binding Title}" FontSize="15" FontAttributes="Bold" LineBreakMode="WordWrap" />
+                                <Border Grid.Column="2" Padding="8,3" BackgroundColor="Transparent" Stroke="{Binding AccentColor}" StrokeThickness="1" StrokeShape="RoundRectangle 8">
+                                    <Label Text="{Binding Category}" FontSize="10" TextColor="{Binding AccentColor}" />
+                                </Border>
+                                <Label Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Details}" IsVisible="{Binding HasDetails}" Style="{StaticResource CaptionStyle}" />
+                                <Label Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Source}" FontSize="10" TextColor="{DynamicResource SubTextColor}" />
+                                <Button Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Text="გაკეთდა" Command="{Binding Source={x:Reference CalendarRoot}, Path=BindingContext.CompleteCommand}" CommandParameter="{Binding .}" Style="{StaticResource PrimaryButtonStyle}" HeightRequest="44" Margin="0,6,0,0" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

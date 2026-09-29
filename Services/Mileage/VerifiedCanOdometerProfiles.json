@@ -1,0 +1,38 @@
+{
+  "profiles": [
+    {
+      "Brand": "Toyota",
+      "VehicleProfile": "Prius 2017",
+      "Ecu": "UI_SETTING",
+      "CanId": 1553,
+      "Extended29Bit": false,
+      "OdometerStartBit": 43,
+      "OdometerBitLength": 20,
+      "UnitStartBit": 26,
+      "UnitBitLength": 2,
+      "KmUnitValue": 1,
+      "MilesUnitValue": 2,
+      "Confidence": 0.8,
+      "Source": "Toyota Prius 2017 DBC",
+      "SourceUrl": "https://gitea.interbiznw.com/rusefi/opendbc/src/commit/61cca0a81adf155ef9de43958426c2ba0a0a73eb/toyota_prius_2017_pt_generated.dbc",
+      "Notes": "BO_1553 UI_SETTING; ODOMETER 43|20@0; UNITS 26|2@0."
+    },
+    {
+      "Brand": "Lexus",
+      "VehicleProfile": "CT200h 2018",
+      "Ecu": "UI_SETTING",
+      "CanId": 1553,
+      "Extended29Bit": false,
+      "OdometerStartBit": 43,
+      "OdometerBitLength": 20,
+      "UnitStartBit": 26,
+      "UnitBitLength": 2,
+      "KmUnitValue": 1,
+      "MilesUnitValue": 2,
+      "Confidence": 0.8,
+      "Source": "Lexus CT200h 2018 DBC",
+      "SourceUrl": "https://gitea.interbiznw.com/rusefi/opendbc/src/commit/3afceadb847346feb30d96506f482f536e36281d/lexus_ct200h_2018_pt_generated.dbc",
+      "Notes": "BO_1553 UI_SETTING; ODOMETER 43|20@0; UNITS 26|2@0."
+    }
+  ]
+}

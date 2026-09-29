@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    x:Class="CarScanner.Views.AiPage"
+    x:DataType="vm:AiDiagnosticViewModel"
+    Title="AI Diagnostic"
+    BackgroundColor="{DynamicResource PageBg}">
+
+    <Grid
+        Padding="16,12,16,14"
+        RowDefinitions="Auto,Auto,Auto,*,Auto"
+        RowSpacing="12">
+
+        <!-- ================================================= -->
+        <!-- AI DIAGNOSTIC BUTTON -->
+        <!-- ================================================= -->
+
+        <Button
+            Grid.Row="0"
+            Text="AI დიაგნოსტიკის დაწყება"
+            Command="{Binding AnalyzeCommand}"
+            Style="{StaticResource PrimaryButtonStyle}"
+            CornerRadius="12"
+            HeightRequest="50" />
+
+
+        <!-- ================================================= -->
+        <!-- DIAGNOSTIC PROGRESS -->
+        <!-- ================================================= -->
+
+        <Border
+            Grid.Row="1"
+            IsVisible="{Binding IsAnalyzing}"
+            Style="{StaticResource ListCardStyle}"
+            Padding="14,12">
+
+            <VerticalStackLayout Spacing="8">
+
+                <Grid
+                    ColumnDefinitions="Auto,*,Auto"
+                    ColumnSpacing="12">
+
+                    <Path
+                        Data="M12,3 L14,9 L20,11 L14,13 L12,19 L10,13 L4,11 L10,9 Z"
+                        Style="{StaticResource RowIconStyle}" />
+
+                    <Label
+                        AutomationId="DynamicTextAiStage"
+                        Grid.Column="1"
+                        Text="{Binding ScanStage}"
+                        FontSize="13"
+                        TextColor="{DynamicResource TextColor}"
+                        LineBreakMode="WordWrap"
+                        VerticalTextAlignment="Center" />
+
+                    <Label
+                        AutomationId="DynamicTextAiPercent"
+                        Grid.Column="2"
+                        Text="{Binding ScanProgress, StringFormat='{0}%'}"
+                        FontSize="15"
+                        FontAttributes="Bold"
+                        TextColor="{DynamicResource TextColor}"
+                        VerticalTextAlignment="Center" />
+
+                </Grid>
+
+                <ProgressBar
+                    HeightRequest="5"
+                    Progress="{Binding ScanProgressValue}"
+                    ProgressColor="{DynamicResource Primary}"
+                    BackgroundColor="{DynamicResource DividerColor}" />
+
+            </VerticalStackLayout>
+
+        </Border>
+
+
+        <!-- ================================================= -->
+        <!-- CHAT TITLE -->
+        <!-- ================================================= -->
+
+        <Label
+            Grid.Row="2"
+            Text="AI ჩატი"
+            Style="{StaticResource SectionCaptionStyle}"
+            Margin="4,2,0,-4" />
+
+
+        <!-- ================================================= -->
+        <!-- CHAT CONTENT -->
+        <!-- ================================================= -->
+
+        <Border
+            Grid.Row="3"
+            Style="{StaticResource ListCardStyle}"
+            Padding="4">
+
+            <Grid
+                RowDefinitions="*,Auto"
+                RowSpacing="4">
+
+                <!-- ============================================= -->
+                <!-- CHAT MESSAGES -->
+                <!-- ============================================= -->
+
+                <CollectionView
+                    x:Name="ChatMessagesList"
+                    Grid.Row="0"
+                    ItemsSource="{Binding ChatMessages}"
+                    SelectionMode="None"
+                    Margin="4,6,4,0">
+
+                    <CollectionView.EmptyView>
+
+                        <Grid Padding="24">
+
+                            <VerticalStackLayout
+                                Spacing="8"
+                                VerticalOptions="Center"
+                                HorizontalOptions="Center">
+
+                                <Path
+                                    Data="M12,3 L14,9 L20,11 L14,13 L12,19 L10,13 L4,11 L10,9 Z"
+                                    Style="{StaticResource RowIconStyle}"
+                                    Stroke="{DynamicResource SubTextColor}"
+                                    WidthRequest="28"
+                                    HeightRequest="28"
+                                    HorizontalOptions="Center" />
+
+                                <Label
+                                    Text="GCar360 AI"
+                                    FontSize="17"
+                                    FontAttributes="Bold"
+                                    TextColor="{DynamicResource TextColor}"
+                                    HorizontalTextAlignment="Center" />
+
+                                <Label
+                                    Text="დაიწყე AI დიაგნოსტიკა ან მომწერე კითხვა მანქანის შესახებ"
+                                    FontSize="12"
+                                    TextColor="{DynamicResource SubTextColor}"
+                                    HorizontalTextAlignment="Center"
+                                    LineBreakMode="WordWrap" />
+
+                            </VerticalStackLayout>
+
+                        </Grid>
+
+                    </CollectionView.EmptyView>
+
+                    <CollectionView.ItemTemplate>
+
+                        <DataTemplate x:DataType="x:String">
+
+                            <!-- Flat message block: text with a divider below -->
+                            <VerticalStackLayout Spacing="0" Padding="10,0">
+
+                                <Label
+                                    AutomationId="DynamicTextAiMessage"
+                                    Text="{Binding .}"
+                                    TextColor="{DynamicResource TextColor}"
+                                    FontSize="14"
+                                    LineHeight="1.2"
+                                    LineBreakMode="WordWrap"
+                                    Padding="0,11" />
+
+                                <BoxView
+                                    HeightRequest="1"
+                                    Color="{DynamicResource DividerColor}" />
+
+                            </VerticalStackLayout>
+
+                        </DataTemplate>
+
+                    </CollectionView.ItemTemplate>
+
+                </CollectionView>
+
+
+                <!-- ============================================= -->
+                <!-- AI THINKING -->
+                <!-- ============================================= -->
+
+                <HorizontalStackLayout
+                    Grid.Row="1"
+                    IsVisible="{Binding IsAiThinking}"
+                    HorizontalOptions="Start"
+                    Margin="14,4,8,8"
+                    Spacing="9"
+                    VerticalOptions="Center">
+
+                    <ActivityIndicator
+                        IsRunning="{Binding IsAiThinking}"
+                        WidthRequest="18"
+                        HeightRequest="18"
+                        Color="{DynamicResource Primary}"
+                        VerticalOptions="Center" />
+
+                    <Label
+                        Text="{Binding AiThinkingText}"
+                        FontSize="12"
+                        TextColor="{DynamicResource SubTextColor}"
+                        VerticalTextAlignment="Center" />
+
+                </HorizontalStackLayout>
+
+            </Grid>
+
+        </Border>
+
+
+        <!-- ================================================= -->
+        <!-- CHAT INPUT -->
+        <!-- ================================================= -->
+
+        <Border
+            Grid.Row="4"
+            Style="{StaticResource ListCardStyle}"
+            Padding="6">
+
+            <Grid
+                ColumnDefinitions="*,Auto"
+                ColumnSpacing="6">
+
+                <!-- TEXT INPUT -->
+
+                <Editor
+                    Grid.Column="0"
+                    Text="{Binding ChatInput}"
+                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
+                    Placeholder="მიწერე AI-ს..."
+                    TextColor="{DynamicResource TextColor}"
+                    PlaceholderColor="{DynamicResource SubTextColor}"
+                    BackgroundColor="Transparent"
+                    AutoSize="TextChanges"
+                    MinimumHeightRequest="46"
+                    MaximumHeightRequest="110"
+                    Margin="8,0,2,0"
+                    FontSize="14"
+                    VerticalTextAlignment="Center" />
+
+
+                <!-- SEND BUTTON (line arrow drawn on top, taps pass through to the button) -->
+
+                <Grid
+                    Grid.Column="1"
+                    VerticalOptions="End">
+
+                    <Button
+                        Command="{Binding SendMessageCommand}"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
+                        WidthRequest="44"
+                        HeightRequest="44"
+                        MinimumWidthRequest="44"
+                        MinimumHeightRequest="44"
+                        Padding="0"
+                        Margin="0"
+                        CornerRadius="10"
+                        BackgroundColor="{DynamicResource Primary}" />
+
+                    <Path
+                        Data="M5,12 L19,12 M13,6 L19,12 L13,18"
+                        Style="{StaticResource RowIconStyle}"
+                        Stroke="White"
+                        StrokeThickness="2"
+                        InputTransparent="True"
+                        HorizontalOptions="Center" />
+
+                </Grid>
+
+            </Grid>
+
+        </Border>
+
+    </Grid>
+
+</ContentPage>

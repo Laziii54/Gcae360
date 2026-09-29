@@ -1,0 +1,9 @@
+GEORGIAN CAR SCANNER - STABLE BUILD PACKAGE
+
+1) Extract the whole folder to a short path if possible, e.g. C:\CarScanner.
+2) Open CarScanner.csproj in Visual Studio.
+3) For Android on Windows, double-click BUILD_ANDROID.bat or run it from a terminal.
+4) For iPhone, build the same project on macOS with Xcode/Apple signing configured.
+5) Do not copy bin/obj from another machine. The build script deletes and regenerates them.
+
+Important: Generic OBD-II cannot universally code ABS/SRS/BCM/HV/ADAS modules. The app therefore reports only data that the connected ECU actually exposes and does not invent OEM-specific results.

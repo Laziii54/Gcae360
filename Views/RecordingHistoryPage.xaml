@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Name="Root"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    xmlns:models="clr-namespace:CarScanner.Models"
+    x:Class="CarScanner.Views.RecordingHistoryPage"
+    x:DataType="vm:RecordingHistoryViewModel"
+    Title="Data Recording"
+    BackgroundColor="{DynamicResource PageBg}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,12,16,32" Spacing="12">
+            <Label Text="DATA RECORDING" Style="{StaticResource PageTitleStyle}" />
+            <Label Text="მხოლოდ რეალური OBD Live Data ინახება ამ მოწყობილობაზე. GPS მდებარეობა ამ სესიებში არ იწერება." TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button Text="განახლება" Command="{Binding LoadCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="48" />
+                <Button Grid.Column="1" Text="JSON იმპორტი" Command="{Binding ImportCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="48" FontAttributes="Bold" />
+            </Grid>
+
+            <Label Text="{Binding EmptyMessage}" TextColor="{DynamicResource SubTextColor}" FontSize="13" Margin="0,8" LineBreakMode="WordWrap" />
+
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Sessions}" Spacing="10">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="models:RecordingSession">
+                        <Border Style="{StaticResource ListCardStyle}">
+                            <VerticalStackLayout Spacing="0">
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
+                                    <Path Data="M3,12 L7,12 L10,5 L14,19 L17,12 L21,12" Style="{StaticResource RowIconStyle}" />
+                                    <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                        <Label Text="{Binding DateText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" />
+                                        <Label Text="{Binding VehicleText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="TailTruncation" />
+                                    </VerticalStackLayout>
+                                    <Label Grid.Column="2" Text="{Binding FileSizeText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" VerticalOptions="Center" />
+                                </Grid>
+                                <BoxView Style="{StaticResource RowDividerStyle}" />
+                                <VerticalStackLayout Spacing="2" Padding="46,10,14,10">
+                                    <Label Text="{Binding SampleCount, StringFormat='მონაცემი: {0}'}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
+                                    <Label Text="{Binding DurationText, StringFormat='ხანგრძლივობა: {0}'}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
+                                </VerticalStackLayout>
+                                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8" Padding="14,0,14,14">
+                                    <Button Text="CSV" Command="{Binding x:DataType=vm:RecordingHistoryViewModel, Source={RelativeSource AncestorType={x:Type vm:RecordingHistoryViewModel}}, Path=ShareCsvCommand}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="40" MinimumHeightRequest="40" FontSize="13" FontAttributes="Bold" Padding="0" />
+                                    <Button Grid.Column="1" Text="JSON" Command="{Binding x:DataType=vm:RecordingHistoryViewModel, Source={RelativeSource AncestorType={x:Type vm:RecordingHistoryViewModel}}, Path=ShareJsonCommand}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="40" MinimumHeightRequest="40" FontSize="13" FontAttributes="Bold" Padding="0" />
+                                    <Button Grid.Column="2" Text="წაშლა" Command="{Binding x:DataType=vm:RecordingHistoryViewModel, Source={RelativeSource AncestorType={x:Type vm:RecordingHistoryViewModel}}, Path=DeleteCommand}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="#B3361F" BorderColor="#B3361F" BorderWidth="1.5" CornerRadius="12" HeightRequest="40" MinimumHeightRequest="40" FontSize="13" FontAttributes="Bold" Padding="0" />
+                                </Grid>
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+
+            <ActivityIndicator IsVisible="{Binding IsBusy}" IsRunning="{Binding IsBusy}" Color="{DynamicResource Primary}" />
+            <Label Text="{Binding StatusMessage}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

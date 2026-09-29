@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    x:Class="CarScanner.Views.FreezeFramePage"
+    x:DataType="vm:FreezeFrameViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="Freeze Frame">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,12,16,32" Spacing="12">
+
+            <Label AutomationId="DynamicTextFreezeTitle"
+                   Text="{Binding PageTitle}"
+                   Style="{StaticResource PageTitleStyle}" />
+
+            <!-- READ (primary) + COPY (outlined) -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+
+                <Button
+                    AutomationId="DynamicTextFreezeRead"
+                    Text="{Binding ReadButtonText}"
+                    Command="{Binding ReadCommand}"
+                    IsEnabled="{Binding IsNotReading}"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    CornerRadius="12"
+                    HeightRequest="48" />
+
+                <Button
+                    Grid.Column="1"
+                    AutomationId="DynamicTextFreezeCopy"
+                    Text="{Binding CopyButtonText}"
+                    Command="{Binding CopyCommand}"
+                    IsEnabled="{Binding CanCopy}"
+                    HeightRequest="48"
+                    FontAttributes="Bold"
+                    BackgroundColor="Transparent"
+                    TextColor="{DynamicResource TextColor}"
+                    BorderColor="{DynamicResource TextColor}"
+                    BorderWidth="1.5"
+                    CornerRadius="12" />
+
+            </Grid>
+
+            <!-- PROGRESS -->
+            <Border IsVisible="{Binding IsReading}" Style="{StaticResource ListCardStyle}" Padding="14,12">
+                <VerticalStackLayout Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <Label AutomationId="DynamicTextFreezeProgress" Text="{Binding ProgressText}"
+                               TextColor="{DynamicResource TextColor}" FontSize="12"
+                               LineBreakMode="TailTruncation" VerticalOptions="Center" />
+                        <Label Grid.Column="1" AutomationId="DynamicTextFreezePercent"
+                               Text="{Binding ReadProgress, StringFormat='{0}%'}"
+                               TextColor="{DynamicResource Primary}" FontSize="13" FontAttributes="Bold" VerticalOptions="Center" />
+                    </Grid>
+                    <ProgressBar Progress="{Binding ProgressFraction}" ProgressColor="{DynamicResource Primary}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Label IsVisible="{Binding IsNotReading}" AutomationId="DynamicTextFreezeState"
+                   Text="{Binding StateDetail}" TextColor="{DynamicResource SubTextColor}"
+                   FontSize="12" LineBreakMode="WordWrap" />
+
+            <!-- DTC THAT STORED THE FRAME -->
+            <Label AutomationId="DynamicTextFreezeTriggerSection"
+                   Text="{Binding TriggerSectionTitle}"
+                   Style="{StaticResource SectionCaptionStyle}" />
+
+            <Border IsVisible="{Binding HasFrame}" Style="{StaticResource ListCardStyle}" Padding="14,13">
+                <VerticalStackLayout Spacing="4">
+
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                        <BoxView WidthRequest="9" HeightRequest="9" CornerRadius="4.5" Color="#B3361F" VerticalOptions="Center" />
+                        <Label Grid.Column="1" AutomationId="DynamicTextFreezeCode" Text="{Binding TriggerCode}"
+                               Style="{StaticResource ReportCodeStyle}" />
+                        <Label Grid.Column="2" AutomationId="DynamicTextFreezeBadge"
+                               Text="{Binding TriggerBadge}"
+                               TextColor="{DynamicResource SubTextColor}" FontSize="11" VerticalOptions="Center" />
+                    </Grid>
+
+                    <Label AutomationId="DynamicTextFreezeDtcTitle" Text="{Binding TriggerTitle}"
+                           Style="{StaticResource ReportBodyStyle}" />
+
+                    <Label AutomationId="DynamicTextFreezeConditions" Text="{Binding ConditionsText}"
+                           Style="{StaticResource ReportMetaStyle}" />
+
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- EMPTY STATE -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="16,18"
+                    IsVisible="{Binding HasNoFrame}">
+                <VerticalStackLayout Spacing="8">
+                    <Path Data="M12,3 L12,21 M4,7.5 L20,16.5 M20,7.5 L4,16.5" Style="{StaticResource RowIconStyle}"
+                          Stroke="{DynamicResource SubTextColor}" HorizontalOptions="Center" />
+                    <Label AutomationId="DynamicTextFreezeEmpty"
+                           Text="{Binding EmptyMessage}"
+                           TextColor="{DynamicResource SubTextColor}" FontSize="13"
+                           HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- VALUES -->
+            <Label IsVisible="{Binding HasFrame}" AutomationId="DynamicTextFreezeValuesSection"
+                   Text="{Binding ValuesSectionTitle}"
+                   Style="{StaticResource SectionCaptionStyle}" />
+
+            <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasFrame}">
+                <VerticalStackLayout Spacing="0"
+                                     BindableLayout.ItemsSource="{Binding Values}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:FreezeFrameDisplayItem">
+                            <VerticalStackLayout Spacing="0">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="14,12">
+                                    <Label AutomationId="DynamicTextFreezeValueName" Text="{Binding Name}"
+                                           TextColor="{DynamicResource TextColor}" FontSize="14"
+                                           VerticalOptions="Center" LineBreakMode="WordWrap" />
+                                    <Label Grid.Column="1" AutomationId="DynamicTextFreezeValue"
+                                           Text="{Binding ValueText}" TextColor="{Binding ValueColor}"
+                                           FontSize="15" FontAttributes="Bold"
+                                           HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                </Grid>
+                                <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+
+            <ActivityIndicator
+                IsRunning="{Binding IsReading}"
+                IsVisible="{Binding IsReading}"
+                Color="{DynamicResource Primary}"
+                Margin="0,6" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,22 @@
+{
+  "P011E": {
+    "description": "Engine Coolant Temperature / Intake Air Temperature Correlation",
+    "system": "Powertrain",
+    "severity": "Warning"
+  },
+  "P0300": {
+    "description": "Random/Multiple Cylinder Misfire Detected",
+    "system": "Powertrain",
+    "severity": "Critical"
+  },
+  "P0420": {
+    "description": "Catalyst System Efficiency Below Threshold",
+    "system": "Powertrain",
+    "severity": "Warning"
+  },
+  "U0100": {
+    "description": "Lost Communication With ECM/PCM",
+    "system": "Network",
+    "severity": "Critical"
+  }
+}

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    x:Class="CarScanner.Views.FuelPage"
+    x:DataType="vm:FuelViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="საწვავის ხარჯი">
+    <ScrollView>
+        <VerticalStackLayout Padding="16,12,16,32" Spacing="12">
+            <Label Text="საწვავის ხარჯი" Style="{StaticResource PageTitleStyle}" />
+
+            <!-- Headline numbers -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="16,14">
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <VerticalStackLayout Spacing="2">
+                        <Label Text="მომენტალური" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
+                        <Label AutomationId="DynamicTextFuelInstant" Text="{Binding Instant}" TextColor="{DynamicResource TextColor}" FontSize="26" FontAttributes="Bold" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="1" Spacing="2">
+                        <Label Text="საშუალო" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
+                        <Label AutomationId="DynamicTextFuelAverage" Text="{Binding Average}" TextColor="{DynamicResource TextColor}" FontSize="26" FontAttributes="Bold" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <Label AutomationId="DynamicTextFuelStatus" Text="{Binding Status}" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalTextAlignment="Center" />
+
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                <Button Text="დაწყება" Command="{Binding StartCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="48" />
+                <Button Grid.Column="1" Text="პაუზა" Command="{Binding PauseCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="48" FontAttributes="Bold" />
+                <Button Grid.Column="2" Text="გაჩერება" Command="{Binding StopCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="48" FontAttributes="Bold" />
+            </Grid>
+
+            <!-- Trip analytics -->
+            <Label Text="Trip Analytics" Style="{StaticResource SectionCaptionStyle}" />
+            <Border Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout Spacing="0">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
+                        <Path Data="M4,18 L20,18 M6,18 C6,12 9,9 12,9 C15,9 18,12 18,18 M12,9 L12,5 M9,5 L15,5" Style="{StaticResource RowIconStyle}" />
+                        <Label Grid.Column="1" Text="მანძილი" Style="{StaticResource RowTitleStyle}" />
+                        <Label Grid.Column="2" AutomationId="DynamicTextFuelDistance" Text="{Binding Distance}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
+                        <Path Data="M5,20 L5,5 L13,5 L13,20 Z M5,11 L13,11 M13,8 L17,11 L17,17 C17,19 19,19 19,17 L19,9" Style="{StaticResource RowIconStyle}" />
+                        <Label Grid.Column="1" Text="დახარჯული საწვავი" Style="{StaticResource RowTitleStyle}" />
+                        <Label Grid.Column="2" AutomationId="DynamicTextFuelUsed" Text="{Binding FuelUsed}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
+                        <Path Data="M12,4 C12,4 6,11 6,15 C6,18 9,20 12,20 C15,20 18,18 18,15 C18,11 12,4 12,4 Z" Style="{StaticResource RowIconStyle}" />
+                        <Label Grid.Column="1" Text="Fuel Rate" Style="{StaticResource RowTitleStyle}" />
+                        <Label Grid.Column="2" AutomationId="DynamicTextFuelRate" Text="{Binding FuelRate}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
+                        <Path Data="M7,3 L17,3 L17,21 L7,21 Z M7,13 L17,13" Style="{StaticResource RowIconStyle}" />
+                        <Label Grid.Column="1" Text="საწვავის დონე" Style="{StaticResource RowTitleStyle}" />
+                        <Label Grid.Column="2" AutomationId="DynamicTextFuelLevel" Text="{Binding FuelLevel}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
+                        <Path Data="M4,12 A8,8 0 1 0 20,12 A8,8 0 1 0 4,12 M12,8 L12,12 L15,14" Style="{StaticResource RowIconStyle}" />
+                        <Label Grid.Column="1" Text="მოძრაობის დრო" Style="{StaticResource RowTitleStyle}" />
+                        <Label Grid.Column="2" AutomationId="DynamicTextFuelMoving" Text="{Binding MovingTime}" TextColor="{DynamicResource TextColor}" FontSize="14" VerticalOptions="Center" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
+                        <Path Data="M4,16 A8,8 0 1 1 20,16 M12,16 L16,10" Style="{StaticResource RowIconStyle}" />
+                        <Label Grid.Column="1" Text="მაქსიმალური სიჩქარე" Style="{StaticResource RowTitleStyle}" />
+                        <Label Grid.Column="2" AutomationId="DynamicTextFuelMaxSpeed" Text="{Binding MaximumSpeed}" TextColor="{DynamicResource TextColor}" FontSize="14" VerticalOptions="Center" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
