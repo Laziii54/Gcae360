@@ -8,6 +8,8 @@
       app_store_connect: codemagic-api
 
     environment:
+      xcode: 26.6
+
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.gcar360.app
@@ -24,28 +26,36 @@
 
       - name: Install .NET SDK
         script: |
-          IOS_TFM=$(grep -oE 'net[0-9]+\.[0-9]+-ios' CarScanner.csproj | head -1)
-          DOTNET_CHANNEL=$(echo "$IOS_TFM" | sed -E 's/net([0-9]+\.[0-9]+)-ios/\1/')
           curl -sSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh
           chmod +x dotnet-install.sh
-          ./dotnet-install.sh --channel "$DOTNET_CHANNEL" --install-dir "$DOTNET_PATH"
+          ./dotnet-install.sh \
+            --version 10.0.401 \
+            --install-dir "$DOTNET_PATH"
+
+          "$DOTNET" --version
 
       - name: Install MAUI iOS workload
         script: |
-          $DOTNET workload install ios maui
+          "$DOTNET" workload install ios maui --version 10.0.401
+          "$DOTNET" workload --info
 
       - name: Build GCar360 IPA
         script: |
           IOS_TFM=$(grep -oE 'net[0-9]+\.[0-9]+-ios' CarScanner.csproj | head -1)
 
+          echo "iOS Target Framework: $IOS_TFM"
+
           CERT_NAME=$(keychain list-certificates | jq -r '.[] | .common_name' | head -1)
 
           PROFILE_NAME=$(find ~/Library/MobileDevice/Provisioning\ Profiles \
             -name "*.mobileprovision" \
-            -execdir sh -c '/usr/libexec/PlistBuddy -c "print :Name" /dev/stdin <<< $(security cms -D -i {})' \; \
+            -execdir sh -c '/usr/libexec/PlistBuddy -c "print :Name" /dev/stdin <<< $(security cms -D -i "{}")' \; \
             | head -1)
 
-          $DOTNET publish CarScanner.csproj \
+          echo "Certificate: $CERT_NAME"
+          echo "Provisioning profile: $PROFILE_NAME"
+
+          "$DOTNET" publish CarScanner.csproj \
             -f "$IOS_TFM" \
             -c Release \
             -p:BuildIpa=True \
@@ -59,6 +69,7 @@
 
     artifacts:
       - artifacts/*.ipa
+      - "**/*.ipa"
 
     publishing:
       app_store_connect:
