@@ -15,8 +15,10 @@
         bundle_identifier: com.gcar360.app
 
       vars:
-        DOTNET_PATH: $CM_BUILD_DIR/dotnet
-        DOTNET: $CM_BUILD_DIR/dotnet/dotnet
+        # Keep the SDK outside the cloned repository. Otherwise the SDK's own
+        # *.cs tooling files are picked up by the project's default Compile glob.
+        DOTNET_PATH: $HOME/.gcar360-dotnet
+        DOTNET: $HOME/.gcar360-dotnet/dotnet
         APP_STORE_APPLE_ID: "6817508639"
 
     scripts:
