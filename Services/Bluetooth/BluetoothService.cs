@@ -64,6 +64,7 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
 
     private ICharacteristic? _writeCharacteristic;
     private ICharacteristic? _notifyCharacteristic;
+    private IDevice? _connectedBleDevice;
 
     private readonly StringBuilder _responseBuffer = new();
 
@@ -87,6 +88,9 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         _adapter = CrossBluetoothLE.Current.Adapter;
 
         _adapter.DeviceDisconnected += OnDeviceDisconnected;
+        _adapter.DeviceConnectionLost += OnDeviceConnectionLost;
+        _adapter.DeviceConnectionError += OnDeviceConnectionError;
+        _ble.StateChanged += OnBluetoothStateChanged;
     }
 
     // =========================================================
@@ -307,7 +311,7 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         await StopScanAsync()
             .ConfigureAwait(false);
 
-        if (IsConnected)
+        if (IsConnected || _connectedBleDevice != null)
         {
             await DisconnectAsync()
                 .ConfigureAwait(false);
@@ -343,6 +347,10 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
                         forceBleTransport: true))
                 .ConfigureAwait(false);
 
+            // Keep a strong reference to the active peripheral on iOS and use
+            // it to distinguish this connection from unrelated BLE events.
+            _connectedBleDevice = item.Device;
+
             await DiscoverElm327CharacteristicsAsync(
                 item.Device)
                 .ConfigureAwait(false);
@@ -358,15 +366,18 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         }
         catch
         {
-            DetachCharacteristics();
+            var failedDevice = _connectedBleDevice ?? item.Device;
+            MarkBleDisconnected(failedDevice, "OBD Bluetooth კავშირი ვერ დამყარდა.");
 
-            IsConnected = false;
-            ConnectedDeviceName =
-                string.Empty;
-
-            ConnectionChanged?.Invoke(
-                this,
-                false);
+            try
+            {
+                await _adapter
+                    .DisconnectDeviceAsync(failedDevice)
+                    .ConfigureAwait(false);
+            }
+            catch
+            {
+            }
 
             throw;
         }
@@ -379,8 +390,7 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
 
     public async Task DisconnectAsync()
     {
-        var wasConnected =
-            IsConnected;
+        var connectedBleDevice = _connectedBleDevice;
 
         try
         {
@@ -405,21 +415,27 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         }
 #endif
 
-        DetachCharacteristics();
-
-        IsConnected = false;
-
-        ConnectedDeviceName =
-            string.Empty;
-
-        _pendingResponse = null;
-
-        if (wasConnected)
+        if (connectedBleDevice != null)
         {
-            ConnectionChanged?.Invoke(
-                this,
-                false);
+            try
+            {
+                using var disconnectTimeout =
+                    new CancellationTokenSource(TimeSpan.FromSeconds(3));
+
+                await _adapter
+                    .DisconnectDeviceAsync(
+                        connectedBleDevice,
+                        disconnectTimeout.Token)
+                    .ConfigureAwait(false);
+            }
+            catch
+            {
+            }
         }
+
+        MarkBleDisconnected(
+            connectedBleDevice,
+            "OBD Bluetooth კავშირი გათიშულია.");
     }
 
 
@@ -550,8 +566,31 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
             return await _pendingResponse.Task
                 .ConfigureAwait(false);
         }
+        catch (TimeoutException)
+        {
+            await DisconnectUnresponsiveBleDeviceAsync()
+                .ConfigureAwait(false);
+            throw;
+        }
+        catch (Exception ex) when (
+            _connectedBleDevice != null &&
+            ex is not System.OperationCanceledException)
+        {
+            await DisconnectUnresponsiveBleDeviceAsync()
+                .ConfigureAwait(false);
+            throw;
+        }
         finally
         {
+#if IOS
+            // Cheap BLE ELM327 adapters can drop an iPhone connection when
+            // commands are started back-to-back with no radio quiet period.
+            if (IsConnected)
+            {
+                await Task.Delay(20)
+                    .ConfigureAwait(false);
+            }
+#endif
             _pendingResponse = null;
             _commandLock.Release();
         }
@@ -1372,26 +1411,105 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         object? sender,
         DeviceEventArgs e)
     {
-        if (!IsConnected)
+        MarkBleDisconnected(
+            e.Device,
+            "OBD Bluetooth კავშირი გაითიშა.");
+    }
+
+
+    private void OnDeviceConnectionLost(
+        object? sender,
+        DeviceErrorEventArgs e)
+    {
+        MarkBleDisconnected(
+            e.Device,
+            "OBD Bluetooth კავშირი მოულოდნელად დაიკარგა.");
+    }
+
+
+    private void OnDeviceConnectionError(
+        object? sender,
+        DeviceErrorEventArgs e)
+    {
+        MarkBleDisconnected(
+            e.Device,
+            "OBD Bluetooth კავშირი შეცდომით დასრულდა.");
+    }
+
+
+    private void OnBluetoothStateChanged(
+        object? sender,
+        BluetoothStateChangedArgs e)
+    {
+        if (e.NewState == BluetoothState.On)
             return;
+
+        MarkBleDisconnected(
+            _connectedBleDevice,
+            "Bluetooth გამორთულია ან მიუწვდომელია.");
+    }
+
+
+    private async Task DisconnectUnresponsiveBleDeviceAsync()
+    {
+        var device = _connectedBleDevice;
+        if (device == null)
+            return;
+
+        MarkBleDisconnected(
+            device,
+            "OBD Bluetooth კავშირი აღარ პასუხობს.");
+
+        try
+        {
+            using var disconnectTimeout =
+                new CancellationTokenSource(TimeSpan.FromSeconds(3));
+
+            await _adapter
+                .DisconnectDeviceAsync(
+                    device,
+                    disconnectTimeout.Token)
+                .ConfigureAwait(false);
+        }
+        catch
+        {
+        }
+    }
+
+
+    private void MarkBleDisconnected(
+        IDevice? device,
+        string reason)
+    {
+        var activeDevice = _connectedBleDevice;
+
+        if (device != null &&
+            activeDevice != null &&
+            device.Id != activeDevice.Id)
+        {
+            return;
+        }
+
+        var wasConnected = IsConnected;
 
         DetachCharacteristics();
 
+        _connectedBleDevice = null;
         IsConnected = false;
-
-        ConnectedDeviceName =
-            string.Empty;
+        ConnectedDeviceName = string.Empty;
 
         _pendingResponse?
             .TrySetException(
-                new IOException(
-                    "OBD Bluetooth კავშირი გაითიშა."));
+                new IOException(reason));
 
         _pendingResponse = null;
 
-        ConnectionChanged?.Invoke(
-            this,
-            false);
+        if (wasConnected)
+        {
+            ConnectionChanged?.Invoke(
+                this,
+                false);
+        }
     }
 
 
@@ -1441,6 +1559,12 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
 
         _adapter.DeviceDisconnected -=
             OnDeviceDisconnected;
+        _adapter.DeviceConnectionLost -=
+            OnDeviceConnectionLost;
+        _adapter.DeviceConnectionError -=
+            OnDeviceConnectionError;
+        _ble.StateChanged -=
+            OnBluetoothStateChanged;
 
         _ = StopScanAsync();
 

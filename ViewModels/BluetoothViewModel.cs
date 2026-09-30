@@ -101,11 +101,20 @@ public partial class BluetoothViewModel : BaseViewModel
                 : WifiConnectionState.NotConnected);
 
         _bluetooth.ConnectionChanged +=
-            (_, __) =>
+            (_, connected) =>
                 MainThread.BeginInvokeOnMainThread(
                     () =>
                     {
                         UpdateConnectionInfo();
+
+                        if (!connected &&
+                            _connection.ActiveKind == ObdTransportKind.Bluetooth &&
+                            !IsConnecting)
+                        {
+                            StatusMessage = L(
+                                "Bluetooth OBD connection was lost. Reconnect the adapter.",
+                                "Bluetooth OBD კავშირი დაიკარგა. ადაპტერი ხელახლა დააკავშირე.");
+                        }
 
                         if (_connection.ActiveKind != ObdTransportKind.Wifi)
                             return;
