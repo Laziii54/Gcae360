@@ -493,7 +493,9 @@ public partial class PerformanceVideoViewModel : BaseViewModel
 
             // Only a video actually recorded and saved by this app grants the
             // video-verified badge to a matching recent 0–100 run.
-            await _leaderboard.AttachVideoToLatestEligibleRunAsync(_recordingStartedUtc);
+            // A private copy (with the data overlay when made) is kept for a
+            // ranking review upload.
+            await _leaderboard.AttachVideoToLatestEligibleRunAsync(_recordingStartedUtc, composed ?? source);
 
             DeletePendingVideo();
             IsSavePanelVisible = false;

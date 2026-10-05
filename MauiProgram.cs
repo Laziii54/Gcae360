@@ -210,6 +210,15 @@ public static class MauiProgram
 
         builder.Services.AddSingleton<
             CarScanner.Services.OemDiagnostics.ServiceDataReaderService>();
+        builder.Services.AddSingleton<
+            CarScanner.Services.OemDiagnostics.ServiceSearchReportService>();
+        builder.Services.AddSingleton<
+            CarScanner.Services.OemDiagnostics.ResetRecorderService>();
+        builder.Services.AddTransient<ResetRecorderViewModel>();
+        builder.Services.AddTransient<ResetRecorderPage>();
+        builder.Services.AddSingleton<CarScanner.Services.Customs.CustomsRulesService>();
+        builder.Services.AddTransient<CustomsCalculatorViewModel>();
+        builder.Services.AddTransient<CustomsCalculatorPage>();
 
         builder.Services.AddSingleton<
             CarScanner.Services.OemDiagnostics.ServiceResetVerificationService>();
@@ -255,11 +264,19 @@ public static class MauiProgram
         builder.Services.AddSingleton<
             FuelConsumptionService>();
 
+        // EV / hybrid battery energy (PID 01 9A + brand identifiers from the catalog).
+        builder.Services.AddSingleton<CarScanner.Services.Energy.EvEnergyReader>();
+
+        // Service page: parts and fluids tracked one by one (stored on the phone per VIN).
+        builder.Services.AddSingleton<CarScanner.Services.Maintenance.MaintenanceTrackerService>();
+        builder.Services.AddSingleton<CarScanner.Services.Maintenance.MaintenanceNotificationService>();
+
         builder.Services.AddSingleton<
             LiveDataRecorder>();
 
         builder.Services.AddSingleton<RecordingSessionService>();
 
+        builder.Services.AddSingleton<RunGpsRecorder>();
         builder.Services.AddSingleton<
             AccelerationMeasurementService>();
         builder.Services.AddSingleton<AccelerationLeaderboardService>();
@@ -290,8 +307,6 @@ public static class MauiProgram
         builder.Services.AddTransient<AccelerationLeaderboardViewModel>();
         builder.Services.AddTransient<QrReportViewModel>();
 
-        builder.Services.AddTransient<
-            VehicleTypeSelectionViewModel>();
 
         builder.Services.AddTransient<VehicleBrandSelectionViewModel>();
 
@@ -314,6 +329,8 @@ public static class MauiProgram
         builder.Services.AddTransient<VehicleHealthViewModel>();
         builder.Services.AddTransient<BatteryViewModel>();
         builder.Services.AddTransient<HybridHealthViewModel>();
+        builder.Services.AddTransient<MaintenancePartViewModel>();
+        builder.Services.AddTransient<MaintenanceSetupViewModel>();
         builder.Services.AddTransient<AdapterCenterViewModel>();
 
         builder.Services.AddTransient<EcuIdentifiersViewModel>();
@@ -383,8 +400,6 @@ public static class MauiProgram
         builder.Services.AddTransient<AccelerationLeaderboardPage>();
         builder.Services.AddTransient<QrReportPage>();
 
-        builder.Services.AddTransient<
-            VehicleTypeSelectionPage>();
 
         builder.Services.AddTransient<VehicleBrandSelectionPage>();
 
@@ -410,6 +425,8 @@ public static class MauiProgram
         builder.Services.AddTransient<VehicleHealthPage>();
         builder.Services.AddTransient<BatteryPage>();
         builder.Services.AddTransient<HybridHealthPage>();
+        builder.Services.AddTransient<MaintenancePartPage>();
+        builder.Services.AddTransient<MaintenanceSetupPage>();
         builder.Services.AddTransient<AdapterCenterPage>();
 
         builder.Services.AddTransient<EcuIdentifiersPage>();

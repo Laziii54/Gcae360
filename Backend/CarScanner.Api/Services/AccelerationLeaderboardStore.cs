@@ -11,9 +11,20 @@ public sealed class AccelerationLeaderboardStore
     private readonly string _connectionString;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
+    /// <summary>
+    /// Example (demo) results are shown only when explicitly enabled with
+    /// GCS_ACCELERATION_DEMO=true (or Acceleration:ShowDemo). Production default: off.
+    /// </summary>
+    private readonly bool _showDemo;
+
     public AccelerationLeaderboardStore(IHostEnvironment env, IConfiguration config)
     {
-        _connectionString = BackendDataPath.CreateConnectionString(BackendDataPath.ResolveDatabasePath(env, config));
+        var databasePath = BackendDataPath.ResolveDatabasePath(env, config);
+        _connectionString = BackendDataPath.CreateConnectionString(databasePath);
+        VideoDirectory = Path.Combine(Path.GetDirectoryName(databasePath) ?? ".", "acceleration-videos");
+        Directory.CreateDirectory(VideoDirectory);
+        var demoSetting = config["Acceleration:ShowDemo"] ?? Environment.GetEnvironmentVariable("GCS_ACCELERATION_DEMO");
+        _showDemo = bool.TryParse(demoSetting, out var showDemo) && showDemo;
         using var connection = new SqliteConnection(_connectionString);
         connection.Open();
         using var command = connection.CreateCommand();
@@ -30,7 +41,16 @@ CREATE INDEX IF NOT EXISTS IX_AccelerationLeaderboard_Finished ON AccelerationLe
         EnsureColumn(connection, "ReviewedAt", "TEXT NULL");
         EnsureColumn(connection, "ReviewedBy", "TEXT NULL");
         EnsureColumn(connection, "IsDemo", "INTEGER NOT NULL DEFAULT 0");
-        SeedDemo(connection);
+        // Several ranked tests: 0–100 km/h, 0–60 mph, ¼ mile.
+        EnsureColumn(connection, "TestId", "TEXT NOT NULL DEFAULT '0-100'");
+        EnsureColumn(connection, "MaxSpeedKph", "INTEGER NOT NULL DEFAULT 0");
+        // Evidence: ECU and GPS speed traces, GPS difference, review video.
+        EnsureColumn(connection, "SpeedTrace", "TEXT NULL");
+        EnsureColumn(connection, "GpsTrace", "TEXT NULL");
+        EnsureColumn(connection, "GpsDiffKph", "REAL NULL");
+        EnsureColumn(connection, "VideoUploadedAt", "TEXT NULL");
+        if (_showDemo)
+            SeedDemo(connection);
     }
 
     public static string? Validate(AccelerationLeaderboardRequest request)
@@ -40,57 +60,255 @@ CREATE INDEX IF NOT EXISTS IX_AccelerationLeaderboard_Finished ON AccelerationLe
         if (string.IsNullOrWhiteSpace(request.VehicleModel) || request.VehicleModel.Trim().Length > 100) return "invalid vehicle model";
         if (!request.VinVerified || !VinPattern.IsMatch((request.Vin ?? string.Empty).Trim().ToUpperInvariant())) return "VIN verification required";
         if (!request.SpeedSource.Equals("OBD_PID_010D", StringComparison.Ordinal)) return "ECU speed source required";
-        if (!request.TestId.Equals("0-100", StringComparison.OrdinalIgnoreCase) || request.StartSpeedKph is < 0 or > 0.5 || request.TargetSpeedKph is < 99 or > 101) return "only 0-100 is accepted";
-        if (request.DurationSeconds is < 1.2 or > 60) return "implausible time";
-        if (request.SampleCount is < 5 or > 1000 || request.MaxSpeedKph is < 100 or > 160) return "invalid ECU samples";
-        if (request.DistanceMeters is < 5 or > 1500 || request.PeakAcceleration is < 0 or > 30) return "implausible telemetry";
+        if (request.StartSpeedKph is < 0 or > 0.5) return "standing start required";
+        switch (NormalizeTest(request.TestId))
+        {
+            case "0-100":
+                if (request.TargetSpeedKph is < 99 or > 101) return "invalid target";
+                if (request.DurationSeconds is < 1.2 or > 60) return "implausible time";
+                if (request.SampleCount is < 5 or > 1000 || request.MaxSpeedKph is < 99 or > 160) return "invalid ECU samples";
+                if (request.DistanceMeters is < 5 or > 1500) return "implausible telemetry";
+                break;
+            case "0-60mph":
+                if (request.TargetSpeedKph is < 95.5 or > 97.5) return "invalid target";
+                if (request.DurationSeconds is < 1.2 or > 60) return "implausible time";
+                if (request.SampleCount is < 5 or > 1000 || request.MaxSpeedKph is < 95 or > 160) return "invalid ECU samples";
+                if (request.DistanceMeters is < 5 or > 1500) return "implausible telemetry";
+                break;
+            case "quarter-mile":
+                // ¼ mile = 402.3 m. Fastest street cars run ~8–9 s; trap speed must fit the time.
+                if (request.DistanceMeters is < 400 or > 405) return "invalid distance";
+                if (request.DurationSeconds is < 6 or > 40) return "implausible time";
+                if (request.SampleCount is < 8 or > 1000 || request.MaxSpeedKph is < 60 or > 350) return "invalid ECU samples";
+                // Average speed over the run can never exceed the trap speed.
+                if (402.336 / request.DurationSeconds * 3.6 > request.MaxSpeedKph + 2) return "implausible telemetry";
+                break;
+            default:
+                return "this test is not ranked";
+        }
+        if (request.PeakAcceleration is < 0 or > 20) return "implausible telemetry";
         var finished = request.FinishedAt.ToUniversalTime();
         if (finished < DateTime.UtcNow.AddDays(-30) || finished > DateTime.UtcNow.AddMinutes(10)) return "invalid timestamp";
         return null;
     }
 
-    public async Task SaveAsync(string accountId, AccelerationLeaderboardRequest request, CancellationToken token)
+    /// <summary>"0-100", "0-60mph" or "quarter-mile" (anything else is returned unchanged).</summary>
+    public static string NormalizeTest(string? testId) => (testId ?? string.Empty).Trim().ToLowerInvariant() switch
+    {
+        "0-100" => "0-100",
+        "0-60mph" => "0-60mph",
+        "quarter-mile" => "quarter-mile",
+        var other => other
+    };
+
+    /// <summary>Top places that always need a video and a review.</summary>
+    public const int ReviewTopPlaces = 10;
+
+    /// <summary>Uploaded videos and GPS coordinates are deleted this long after the review.</summary>
+    public static readonly TimeSpan EvidenceKeep = TimeSpan.FromDays(30);
+
+    /// <summary>
+    /// Server-side GPS check of the submitted traces. Null when the run is
+    /// confirmed by GPS, else the reason.
+    /// </summary>
+    public static (string? Error, RunGpsCheckResult? Result) CheckGps(AccelerationLeaderboardRequest request)
+    {
+        if (request.SpeedTrace is not { Count: >= 5 and <= 1500 } speed ||
+            request.GpsTrace is not { Count: <= 3000 } gps)
+            return ("gps evidence required", null);
+        if (speed.Any(p => p is not { Length: 2 }) || gps.Any(p => p is not { Length: >= 2 and <= 5 }))
+            return ("invalid evidence", null);
+
+        var result = RunGpsCheck.Check(
+            speed.Select(p => (p[0], p[1])).ToArray(),
+            gps.Select(p => (p[0], p[1])).ToArray());
+        return result.Status switch
+        {
+            RunGpsCheck.Passed => (null, result),
+            RunGpsCheck.Missing => ("gps missing", result),
+            _ => ("gps speed does not match the ECU speed", result)
+        };
+    }
+
+    /// <summary>
+    /// Saves a checked result. Top-10 places and results that are much faster
+    /// than the same model get "Pending" (shown as "under review") until the
+    /// owner reviews the uploaded video. Returns the stored status.
+    /// </summary>
+    public async Task<string> SaveAsync(string accountId, AccelerationLeaderboardRequest request, RunGpsCheckResult gps, CancellationToken token)
     {
         var vinHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("gcar360-ranking:" + request.Vin.Trim().ToUpperInvariant())));
+        var test = NormalizeTest(request.TestId);
+        var duration = Math.Round(request.DurationSeconds, 2);
+        await _gate.WaitAsync(token);
+        try
+        {
+            await using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync(token);
+
+            // Already reviewed results keep their status.
+            await using (var existing = connection.CreateCommand())
+            {
+                existing.CommandText = "SELECT Status FROM AccelerationLeaderboard WHERE AccountId=$a AND SubmissionId=$s";
+                existing.Parameters.AddWithValue("$a", accountId);
+                existing.Parameters.AddWithValue("$s", request.SubmissionId);
+                if (await existing.ExecuteScalarAsync(token) is string known && known is "Rejected" or "Verified")
+                    return known;
+            }
+
+            int faster;
+            await using (var place = connection.CreateCommand())
+            {
+                place.CommandText = @"SELECT COUNT(*) FROM AccelerationLeaderboard
+WHERE TestId=$test AND IsDemo=0 AND Status IN ('Approved','Pending','Verified') AND DurationSeconds<$d AND NOT (AccountId=$a AND SubmissionId=$s)";
+                place.Parameters.AddWithValue("$test", test);
+                place.Parameters.AddWithValue("$d", duration);
+                place.Parameters.AddWithValue("$a", accountId);
+                place.Parameters.AddWithValue("$s", request.SubmissionId);
+                faster = Convert.ToInt32(await place.ExecuteScalarAsync(token));
+            }
+
+            var sameModel = new List<double>();
+            await using (var model = connection.CreateCommand())
+            {
+                model.CommandText = @"SELECT DurationSeconds FROM AccelerationLeaderboard
+WHERE TestId=$test AND IsDemo=0 AND Status IN ('Approved','Verified') AND VehicleModel=$m";
+                model.Parameters.AddWithValue("$test", test);
+                model.Parameters.AddWithValue("$m", request.VehicleModel.Trim());
+                await using var reader = await model.ExecuteReaderAsync(token);
+                while (await reader.ReadAsync(token))
+                    sameModel.Add(reader.GetDouble(0));
+            }
+
+            sameModel.Sort();
+            var modelMedian = sameModel.Count >= 3 ? sameModel[sameModel.Count / 2] : (double?)null;
+            var extreme = test switch
+            {
+                "0-100" => duration < 2.5,
+                "0-60mph" => duration < 2.4,
+                "quarter-mile" => duration < 9.0,
+                _ => false
+            };
+            var review = faster < ReviewTopPlaces || extreme || (modelMedian is { } median && duration < median * 0.8);
+            var status = review ? "Pending" : "Approved";
+
+            // Coordinates are kept only for results that are reviewed.
+            var gpsJson = System.Text.Json.JsonSerializer.Serialize(review
+                ? request.GpsTrace!.Select(p => p.Select(v => Math.Round(v, 6)).ToArray())
+                : request.GpsTrace!.Select(p => new[] { Math.Round(p[0], 2), Math.Round(p[1], 1) }));
+            var speedJson = System.Text.Json.JsonSerializer.Serialize(request.SpeedTrace!.Select(p => new[] { Math.Round(p[0], 2), Math.Round(p[1], 1) }));
+
+            await using var command = connection.CreateCommand();
+            command.CommandText = @"INSERT INTO AccelerationLeaderboard
+(SubmissionId,AccountId,UserName,VehicleModel,VinHash,DurationSeconds,FinishedAt,SampleCount,HasVerifiedVideo,CreatedAt,Status,IsDemo,TestId,MaxSpeedKph,SpeedTrace,GpsTrace,GpsDiffKph)
+VALUES($s,$a,$u,$m,$v,$d,$f,$n,0,$now,$status,0,$test,$max,$speed,$gps,$diff)
+ON CONFLICT(AccountId,SubmissionId) DO UPDATE SET UserName=$u,VehicleModel=$m,DurationSeconds=$d,FinishedAt=$f,
+SampleCount=$n,TestId=$test,MaxSpeedKph=$max,SpeedTrace=$speed,GpsTrace=$gps,GpsDiffKph=$diff,
+Status=CASE WHEN AccelerationLeaderboard.Status='Pending' THEN 'Pending' ELSE $status END
+WHERE AccelerationLeaderboard.Status NOT IN ('Rejected','Verified');";
+            command.Parameters.AddWithValue("$s", request.SubmissionId);
+            command.Parameters.AddWithValue("$a", accountId);
+            command.Parameters.AddWithValue("$u", request.UserName.Trim());
+            command.Parameters.AddWithValue("$m", request.VehicleModel.Trim());
+            command.Parameters.AddWithValue("$v", vinHash);
+            command.Parameters.AddWithValue("$d", duration);
+            command.Parameters.AddWithValue("$f", request.FinishedAt.ToUniversalTime().ToString("O"));
+            command.Parameters.AddWithValue("$n", request.SampleCount);
+            command.Parameters.AddWithValue("$now", DateTimeOffset.UtcNow.ToString("O"));
+            command.Parameters.AddWithValue("$status", status);
+            command.Parameters.AddWithValue("$test", test);
+            command.Parameters.AddWithValue("$max", request.MaxSpeedKph);
+            command.Parameters.AddWithValue("$speed", speedJson);
+            command.Parameters.AddWithValue("$gps", gpsJson);
+            command.Parameters.AddWithValue("$diff", gps.MedianDiffKph);
+            await command.ExecuteNonQueryAsync(token);
+            return status;
+        }
+        finally { _gate.Release(); }
+    }
+
+    // ============================================================
+    // VIDEO EVIDENCE
+    // ============================================================
+
+    public string VideoDirectory { get; }
+
+    public string VideoPath(string submissionId) => Path.Combine(VideoDirectory, submissionId + ".mp4");
+
+    /// <summary>True when the result belongs to the account and waits for a video.</summary>
+    public async Task<bool> CanUploadVideoAsync(string accountId, string submissionId, CancellationToken token)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(token);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM AccelerationLeaderboard WHERE AccountId=$a AND SubmissionId=$s AND Status='Pending'";
+        command.Parameters.AddWithValue("$a", accountId);
+        command.Parameters.AddWithValue("$s", submissionId);
+        return Convert.ToInt32(await command.ExecuteScalarAsync(token)) > 0;
+    }
+
+    public async Task MarkVideoAsync(string submissionId, CancellationToken token)
+    {
         await _gate.WaitAsync(token);
         try
         {
             await using var connection = new SqliteConnection(_connectionString);
             await connection.OpenAsync(token);
             await using var command = connection.CreateCommand();
-            command.CommandText = @"INSERT INTO AccelerationLeaderboard
-(SubmissionId,AccountId,UserName,VehicleModel,VinHash,DurationSeconds,FinishedAt,SampleCount,HasVerifiedVideo,CreatedAt,Status,IsDemo)
-VALUES($s,$a,$u,$m,$v,$d,$f,$n,$video,$now,'Pending',0)
-ON CONFLICT(AccountId,SubmissionId) DO UPDATE SET UserName=$u,VehicleModel=$m,DurationSeconds=$d,FinishedAt=$f,
-SampleCount=$n,HasVerifiedVideo=MAX(HasVerifiedVideo,$video),Status='Pending',ReviewedAt=NULL,ReviewedBy=NULL;";
-            command.Parameters.AddWithValue("$s", request.SubmissionId);
-            command.Parameters.AddWithValue("$a", accountId);
-            command.Parameters.AddWithValue("$u", request.UserName.Trim());
-            command.Parameters.AddWithValue("$m", request.VehicleModel.Trim());
-            command.Parameters.AddWithValue("$v", vinHash);
-            command.Parameters.AddWithValue("$d", Math.Round(request.DurationSeconds, 2));
-            command.Parameters.AddWithValue("$f", request.FinishedAt.ToUniversalTime().ToString("O"));
-            command.Parameters.AddWithValue("$n", request.SampleCount);
-            command.Parameters.AddWithValue("$video", request.HasVerifiedVideo ? 1 : 0);
-            command.Parameters.AddWithValue("$now", DateTimeOffset.UtcNow.ToString("O"));
+            command.CommandText = "UPDATE AccelerationLeaderboard SET VideoUploadedAt=$at WHERE SubmissionId=$s";
+            command.Parameters.AddWithValue("$at", DateTime.UtcNow.ToString("O"));
+            command.Parameters.AddWithValue("$s", submissionId);
             await command.ExecuteNonQueryAsync(token);
         }
         finally { _gate.Release(); }
     }
 
-    public async Task<IReadOnlyList<AccelerationLeaderboardItem>> GetAsync(CancellationToken token)
+    /// <summary>Deletes videos and GPS coordinates 30 days after the review.</summary>
+    public async Task CleanupEvidenceAsync(CancellationToken token)
+    {
+        var cutoff = DateTime.UtcNow - EvidenceKeep;
+        var expired = new List<string>();
+        await _gate.WaitAsync(token);
+        try
+        {
+            await using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync(token);
+            await using (var select = connection.CreateCommand())
+            {
+                select.CommandText = "SELECT SubmissionId FROM AccelerationLeaderboard WHERE ReviewedAt IS NOT NULL AND ReviewedAt<$cut AND (VideoUploadedAt IS NOT NULL OR GpsTrace IS NOT NULL)";
+                select.Parameters.AddWithValue("$cut", cutoff.ToString("O"));
+                await using var reader = await select.ExecuteReaderAsync(token);
+                while (await reader.ReadAsync(token))
+                    expired.Add(reader.GetString(0));
+            }
+
+            foreach (var id in expired)
+            {
+                try { File.Delete(VideoPath(id)); } catch (IOException) { }
+                await using var update = connection.CreateCommand();
+                update.CommandText = "UPDATE AccelerationLeaderboard SET VideoUploadedAt=NULL, GpsTrace=NULL WHERE SubmissionId=$s";
+                update.Parameters.AddWithValue("$s", id);
+                await update.ExecuteNonQueryAsync(token);
+            }
+        }
+        finally { _gate.Release(); }
+    }
+
+    public async Task<IReadOnlyList<AccelerationLeaderboardItem>> GetAsync(CancellationToken token, string testId = "0-100")
     {
         var result = new List<AccelerationLeaderboardItem>();
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(token);
         await using var command = connection.CreateCommand();
-        command.CommandText = @"SELECT SubmissionId,UserName,VehicleModel,DurationSeconds,FinishedAt,HasVerifiedVideo,IsDemo
-FROM AccelerationLeaderboard WHERE Status='Approved' ORDER BY DurationSeconds ASC,FinishedAt ASC LIMIT 100";
+        command.CommandText = @"SELECT SubmissionId,UserName,VehicleModel,DurationSeconds,FinishedAt,HasVerifiedVideo,IsDemo,MaxSpeedKph,Status
+FROM AccelerationLeaderboard WHERE Status IN ('Approved','Pending','Verified') AND TestId=$test AND ($demo=1 OR IsDemo=0) ORDER BY DurationSeconds ASC,FinishedAt ASC LIMIT 100";
+        command.Parameters.AddWithValue("$demo", _showDemo ? 1 : 0);
+        command.Parameters.AddWithValue("$test", NormalizeTest(testId));
         await using var reader = await command.ExecuteReaderAsync(token);
         while (await reader.ReadAsync(token))
             result.Add(new(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetDouble(3),
                 DateTime.Parse(reader.GetString(4), null, System.Globalization.DateTimeStyles.RoundtripKind),
-                reader.GetInt32(5) != 0, reader.GetInt32(6) != 0));
+                reader.GetInt32(5) != 0, reader.GetInt32(6) != 0, reader.GetInt32(7), reader.GetString(8)));
         return result;
     }
 
@@ -100,14 +318,20 @@ FROM AccelerationLeaderboard WHERE Status='Approved' ORDER BY DurationSeconds AS
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(token);
         await using var command = connection.CreateCommand();
-        command.CommandText = @"SELECT SubmissionId,AccountId,UserName,VehicleModel,DurationSeconds,FinishedAt,SampleCount,HasVerifiedVideo,Status,IsDemo,CreatedAt
+        command.CommandText = @"SELECT SubmissionId,AccountId,UserName,VehicleModel,DurationSeconds,FinishedAt,SampleCount,HasVerifiedVideo,Status,IsDemo,CreatedAt,TestId,MaxSpeedKph,
+SpeedTrace,GpsTrace,GpsDiffKph,VideoUploadedAt
 FROM AccelerationLeaderboard ORDER BY CASE Status WHEN 'Pending' THEN 0 WHEN 'Approved' THEN 1 ELSE 2 END,CreatedAt DESC LIMIT 500";
         await using var reader = await command.ExecuteReaderAsync(token);
         while (await reader.ReadAsync(token))
             result.Add(new(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetDouble(4),
                 DateTime.Parse(reader.GetString(5), null, System.Globalization.DateTimeStyles.RoundtripKind), reader.GetInt32(6),
                 reader.GetInt32(7) != 0, reader.GetString(8), reader.GetInt32(9) != 0,
-                DateTime.Parse(reader.GetString(10), null, System.Globalization.DateTimeStyles.RoundtripKind)));
+                DateTime.Parse(reader.GetString(10), null, System.Globalization.DateTimeStyles.RoundtripKind),
+                reader.GetString(11), reader.GetInt32(12),
+                reader.IsDBNull(13) ? null : reader.GetString(13),
+                reader.IsDBNull(14) ? null : reader.GetString(14),
+                reader.IsDBNull(15) ? null : reader.GetDouble(15),
+                !reader.IsDBNull(16)));
         return result;
     }
 
@@ -122,7 +346,11 @@ FROM AccelerationLeaderboard ORDER BY CASE Status WHEN 'Pending' THEN 0 WHEN 'Ap
             await using var command = connection.CreateCommand();
             command.CommandText = action == "delete"
                 ? "DELETE FROM AccelerationLeaderboard WHERE SubmissionId=$id"
-                : "UPDATE AccelerationLeaderboard SET Status=$status,ReviewedAt=$at,ReviewedBy=$by WHERE SubmissionId=$id";
+                // Approving a result that has a review video makes it "Verified".
+                : @"UPDATE AccelerationLeaderboard SET
+Status=CASE WHEN $status='Approved' AND VideoUploadedAt IS NOT NULL THEN 'Verified' ELSE $status END,
+HasVerifiedVideo=CASE WHEN $status='Approved' AND VideoUploadedAt IS NOT NULL THEN 1 ELSE HasVerifiedVideo END,
+ReviewedAt=$at,ReviewedBy=$by WHERE SubmissionId=$id";
             command.Parameters.AddWithValue("$id", submissionId);
             if (action != "delete")
             {
@@ -130,7 +358,12 @@ FROM AccelerationLeaderboard ORDER BY CASE Status WHEN 'Pending' THEN 0 WHEN 'Ap
                 command.Parameters.AddWithValue("$at", DateTime.UtcNow.ToString("O"));
                 command.Parameters.AddWithValue("$by", reviewer);
             }
-            return await command.ExecuteNonQueryAsync(token) > 0;
+            var changed = await command.ExecuteNonQueryAsync(token) > 0;
+            if (changed && action == "delete")
+            {
+                try { File.Delete(VideoPath(submissionId)); } catch (IOException) { }
+            }
+            return changed;
         }
         finally { _gate.Release(); }
     }
@@ -203,12 +436,15 @@ public sealed record AccelerationLeaderboardRequest(
     string SubmissionId, string UserName, string VehicleModel, string Vin, bool VinVerified,
     string SpeedSource, string TestId, double StartSpeedKph, double TargetSpeedKph,
     double DurationSeconds, int SampleCount, int MaxSpeedKph, double DistanceMeters,
-    double PeakAcceleration, DateTime FinishedAt, bool HasVerifiedVideo);
+    double PeakAcceleration, DateTime FinishedAt, bool HasVerifiedVideo,
+    IReadOnlyList<double[]>? SpeedTrace = null, IReadOnlyList<double[]>? GpsTrace = null);
 
 public sealed record AccelerationLeaderboardItem(
     string SubmissionId, string UserName, string VehicleModel, double DurationSeconds,
-    DateTime FinishedAt, bool HasVerifiedVideo, bool IsDemo);
+    DateTime FinishedAt, bool HasVerifiedVideo, bool IsDemo, int MaxSpeedKph = 0, string Status = "Approved");
 
 public sealed record AccelerationLeaderboardAdminItem(
     string SubmissionId, string AccountId, string UserName, string VehicleModel, double DurationSeconds,
-    DateTime FinishedAt, int SampleCount, bool HasVerifiedVideo, string Status, bool IsDemo, DateTime CreatedAt);
+    DateTime FinishedAt, int SampleCount, bool HasVerifiedVideo, string Status, bool IsDemo, DateTime CreatedAt,
+    string TestId = "0-100", int MaxSpeedKph = 0,
+    string? SpeedTrace = null, string? GpsTrace = null, double? GpsDiffKph = null, bool HasVideo = false);

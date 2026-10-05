@@ -11,7 +11,7 @@ public static class ProGate
         if (await pro.EnsureProAsync())
             return true;
 
-        var english = Preferences.Default.Get("language", "ქართული")
+        var english = Preferences.Default.Get("language", "English")
             .Equals("English", StringComparison.OrdinalIgnoreCase);
 
         var open = await Shell.Current.DisplayAlertAsync(

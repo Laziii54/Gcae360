@@ -9,7 +9,7 @@ Build Android with `BUILD_ANDROID.bat`. A Windows machine cannot perform the fin
 1. Install the matching .NET 10 SDK and MAUI workload.
 2. Install Xcode and accept its license.
 3. Open this project on the Mac.
-4. Set the Apple Development Team for bundle ID `com.Gcar360.app` and let Xcode create the provisioning profile.
+4. Set the Apple Development Team for bundle ID `com.gcar360.app` and let Xcode create the provisioning profile.
 5. Select an iOS simulator for UI-only work, or a connected iPhone for Bluetooth, camera, notifications and StoreKit testing.
 6. Create these product IDs in App Store Connect before testing purchases:
    - Auto-renewable subscriptions: `com.georgiancarscanner.pro.monthly`, `com.georgiancarscanner.vin.monthly`, `com.georgiancarscanner.full.monthly`.

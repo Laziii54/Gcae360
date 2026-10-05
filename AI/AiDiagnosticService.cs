@@ -28,7 +28,7 @@ public sealed class AiDiagnosticService
 
     private static bool IsEnglish()
     {
-        var language = Preferences.Default.Get("language", "ქართული");
+        var language = Preferences.Default.Get("language", "English");
 
         return language.Equals(
             "English",

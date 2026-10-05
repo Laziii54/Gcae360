@@ -12,15 +12,33 @@ public partial class Mode06ViewModel : BaseViewModel
 {
     private readonly OBDService _obd;
 
+    private static string L(string ka, string en) => ObdLang.L(ka, en);
+
     public ObservableCollection<Mode06MonitorResult> Tests { get; } = new();
 
-    [ObservableProperty] private string scanState = "ჯერ არ შემოწმებულა";
-    [ObservableProperty] private string scanDetail = "Mode 06 optional სტანდარტული OBD-II სერვისია.";
+    [ObservableProperty] private string scanState = L("ჯერ არ შემოწმებულა", "Not checked yet");
+    [ObservableProperty] private string scanDetail = L(
+        "Mode 06 სტანდარტული OBD-II სერვისია: ECU-ის თვითშემოწმების შედეგები.",
+        "Mode 06 is an optional standard OBD-II service: the ECU's self-test results.");
     [ObservableProperty] private string scanColor = "#94A3B8";
     [ObservableProperty] private int scanPercent;
-    [ObservableProperty] private string rawStatus = "Raw პასუხი ჯერ არ არის.";
+    [ObservableProperty] private string rawStatus = L("ECU-ს პასუხი ჯერ არ არის.", "No ECU response yet.");
 
     public double ScanProgress => ScanPercent / 100d;
+
+    // Page texts (both languages, so the page never mixes them)
+    public string PageHeadingText => L("MODE 06 — მონიტორები", "MODE 06 MONITORS");
+    public string PageSubtitleText => L(
+        "გამონაბოლქვის სისტემების თვითშემოწმება · სტანდარტული OBD-II",
+        "Emission system self-test results · generic OBD-II");
+    public string RefreshButtonText => L("განახლება", "Refresh");
+    public string ResultsCaptionText => L("აღმოჩენილი ტესტები", "Tests found");
+    public string EmptyText => L(
+        "Mode 06 შედეგები შემოწმების შემდეგ გამოჩნდება.",
+        "Mode 06 results appear after the test.");
+    public string FooterText => L(
+        "Mode 06 მხოლოდ კითხულობს ECU-ის თვითშემოწმების შედეგებს და ზღვრებს. ეს გვერდი მანქანაში არაფერს ცვლის.",
+        "Mode 06 only reads the ECU's self-test results and limits. This page changes nothing in the vehicle.");
 
     public Mode06ViewModel(OBDService obd)
     {
@@ -52,9 +70,11 @@ public partial class Mode06ViewModel : BaseViewModel
         {
             ScanPercent = 100;
             ScanColor = "#C98A1A";
-            ScanState = "MODE 06 მიუწვდომელია";
-            ScanDetail = "ამ ECU-მ Mode 06 მონიტორების სია არ დააბრუნა. ეს თავისთავად გაუმართაობას არ ნიშნავს.";
-            RawStatus = "0600: No Data";
+            ScanState = L("MODE 06 მიუწვდომელია", "MODE 06 unavailable");
+            ScanDetail = L(
+                "ამ ECU-მ Mode 06 მონიტორების სია არ დააბრუნა. ეს თავისთავად გაუმართაობას არ ნიშნავს.",
+                "This ECU returned no Mode 06 monitor list. This alone is not a fault.");
+            RawStatus = L("0600: მონაცემი არ არის", "0600: No data");
             return;
         }
 
@@ -80,19 +100,27 @@ public partial class Mode06ViewModel : BaseViewModel
         }
 
         ScanPercent = 100;
-        RawStatus = $"მონიტორები: {supported.Count} · ტესტები: {all.Count}";
+        RawStatus = L(
+            $"მონიტორები: {supported.Count} · ტესტები: {all.Count}",
+            $"Monitors: {supported.Count} · Tests: {all.Count}");
         if (all.Count == 0)
         {
             ScanColor = "#C98A1A";
-            ScanState = "MODE 06 მონაცემი ვერ წაიკითხა";
-            ScanDetail = "მონიტორების სია მოვიდა, მაგრამ ტესტების შედეგები არა. სცადე ძრავის ჩართვით.";
+            ScanState = L("MODE 06 მონაცემი ვერ წაიკითხა", "MODE 06 data could not be read");
+            ScanDetail = L(
+                "მონიტორების სია მოვიდა, მაგრამ ტესტების შედეგები არა. სცადე ძრავის ჩართვით.",
+                "The monitor list arrived, but no test results. Try again with the engine running.");
             return;
         }
 
         var failed = all.Count(test => !test.Passed);
         ScanColor = failed == 0 ? "#1F8A4C" : "#B3361F";
-        ScanState = failed == 0 ? $"MODE 06: {all.Count} ტესტი, ყველა PASSED" : $"MODE 06: {failed} ტესტი FAILED";
-        ScanDetail = "მნიშვნელობა, მინიმუმი და მაქსიმუმი ECU-მ დააბრუნა; ერთეულები SAE J1979 სტანდარტით არის გადაყვანილი.";
+        ScanState = failed == 0
+            ? L($"MODE 06: {all.Count} ტესტი, ყველა ნორმაშია", $"MODE 06: {all.Count} tests, all passed")
+            : L($"MODE 06: {failed} ტესტი ნორმაში არ არის", $"MODE 06: {failed} test(s) failed");
+        ScanDetail = L(
+            "მნიშვნელობა, მინიმუმი და მაქსიმუმი ECU-მ დააბრუნა; ერთეულები SAE J1979 სტანდარტით არის გადაყვანილი.",
+            "Value, minimum and maximum come from the ECU; units are converted per SAE J1979.");
     }
 
     [RelayCommand]
@@ -105,10 +133,12 @@ public partial class Mode06ViewModel : BaseViewModel
         {
             IsBusy = true;
             Tests.Clear();
-            ScanColor = "#60A5FA";
+            ScanColor = "#1D5BD6";
             ScanPercent = 15;
-            ScanState = "MODE 06 შემოწმება…";
-            ScanDetail = "ECU-ს ვუგზავნით ერთ მოკლე, read-only Mode 06 მოთხოვნას.";
+            ScanState = L("MODE 06 შემოწმება…", "Checking MODE 06…");
+            ScanDetail = L(
+                "ECU-ს ვუგზავნით მოკლე მოთხოვნას (მხოლოდ კითხვა).",
+                "Sending a short, read-only Mode 06 request to the ECU.");
 
             if (!_obd.IsInitialized)
                 await _obd.InitializeAsync();
@@ -124,18 +154,21 @@ public partial class Mode06ViewModel : BaseViewModel
             if (ObdResponseParser.IsNegative(raw))
             {
                 ScanPercent = 100;
-                ScanColor = "#F59E0B";
-                ScanState = "MODE 06 მიუწვდომელია";
-                ScanDetail = "ამ ECU-მ Mode 06 მონაცემი არ დააბრუნა. ეს თავისთავად გაუმართაობას არ ნიშნავს.";
-                RawStatus = "ECU პასუხი: No Data / negative response.";
+                ScanColor = "#C98A1A";
+                ScanState = L("MODE 06 მიუწვდომელია", "MODE 06 unavailable");
+                ScanDetail = L(
+                    "ამ ECU-მ Mode 06 მონაცემი არ დააბრუნა. ეს თავისთავად გაუმართაობას არ ნიშნავს.",
+                    "This ECU returned no Mode 06 data. This alone is not a fault.");
+                RawStatus = L("ECU-ს პასუხი: მონაცემი არ არის.", "ECU response: No Data / negative response.");
                 return;
             }
 
             ScanPercent = 80;
             var results = AdvancedModeParser.ParseMode06Detailed(raw);
             RawStatus = results.Count == 0
-                ? "ECU-მ პასუხი დააბრუნა, მაგრამ ამ პასუხში დეკოდირებადი სტანდარტული Mode 06 item ვერ მოიძებნა."
-                : $"ECU-მ {results.Count} რეალური Mode 06 item დააბრუნა.";
+                ? L("ECU-მ პასუხი დააბრუნა, მაგრამ მასში გასაშიფრი Mode 06 ტესტი ვერ მოიძებნა.",
+                    "The ECU responded, but no decodable standard Mode 06 item was found in this response.")
+                : L($"ECU-მ {results.Count} ტესტი დააბრუნა.", $"The ECU returned {results.Count} Mode 06 item(s).");
 
             foreach (var result in results)
                 Tests.Add(result);
@@ -143,25 +176,33 @@ public partial class Mode06ViewModel : BaseViewModel
             ScanPercent = 100;
             if (results.Count == 0)
             {
-                ScanColor = "#F59E0B";
-                ScanState = "MODE 06 მონაცემი ვერ გაიშიფრა";
-                ScanDetail = "მონაცემი გამოგონილი არ არის: ამ ECU/adapter-ის პასუხისთვის საჭიროა დამატებითი, დადასტურებული definition.";
+                ScanColor = "#C98A1A";
+                ScanState = L("MODE 06 მონაცემი ვერ გაიშიფრა", "MODE 06 data could not be decoded");
+                ScanDetail = L(
+                    "მონაცემი გამოგონილი არ არის: ამ ECU-ს პასუხისთვის საჭიროა მწარმოებლის დადასტურებული აღწერა.",
+                    "No data is invented: this ECU/adapter response needs a verified manufacturer definition.");
             }
             else
             {
                 var failed = results.Count(result => !result.Passed);
-                ScanColor = failed == 0 ? "#22C55E" : "#EF4444";
-                ScanState = failed == 0 ? "MODE 06 — ყველა წაკითხული ტესტი ზღვარშია" : $"MODE 06 — {failed} item ზღვარს გარეთაა";
-                ScanDetail = "შედეგი ეფუძნება ECU-ის მიერ დაბრუნებულ raw minimum/maximum საზღვრებს. ზუსტი OEM მონიტორის სახელები მოგვიანებით დაემატება დადასტურებული definition pack-ებით.";
+                ScanColor = failed == 0 ? "#1F8A4C" : "#B3361F";
+                ScanState = failed == 0
+                    ? L("MODE 06 — ყველა ტესტი ნორმაშია", "MODE 06 — all tests are within limits")
+                    : L($"MODE 06 — {failed} ტესტი ნორმაში არ არის", $"MODE 06 — {failed} item(s) out of limits");
+                ScanDetail = L(
+                    "შედეგი ეფუძნება ECU-ის მიერ დაბრუნებულ მინიმუმ/მაქსიმუმ ზღვრებს. ტესტების ზუსტი სახელები მწარმოებლის დადასტურებული აღწერით დაემატება.",
+                    "The result is based on the minimum/maximum limits returned by the ECU. Exact test names will come with verified manufacturer definitions.");
             }
         }
         catch (Exception ex)
         {
             ScanPercent = 100;
-            ScanColor = "#EF4444";
-            ScanState = "MODE 06 ვერ წაიკითხა";
-            ScanDetail = "კავშირი ან ECU პასუხი ვერ დადასტურდა; მონაცემი არ არის გამოგონილი.";
-            RawStatus = string.IsNullOrWhiteSpace(ex.Message) ? "კავშირის შეცდომა." : ex.Message;
+            ScanColor = "#B3361F";
+            ScanState = L("MODE 06 ვერ წაიკითხა", "MODE 06 could not be read");
+            ScanDetail = L(
+                "კავშირი ან ECU-ს პასუხი ვერ დადასტურდა; მონაცემი გამოგონილი არ არის.",
+                "The connection or ECU response could not be confirmed; no data is invented.");
+            RawStatus = string.IsNullOrWhiteSpace(ex.Message) ? L("კავშირის შეცდომა.", "Connection error.") : ex.Message;
         }
         finally
         {

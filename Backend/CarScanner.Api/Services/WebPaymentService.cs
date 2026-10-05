@@ -17,7 +17,7 @@ namespace CarScanner.Api.Services;
 /// A payment is never trusted from the browser or from the callback
 /// body: the order status is always read back from the bank API.
 /// </summary>
-public sealed class WebPaymentService
+public sealed partial class WebPaymentService
 {
     /// <summary>Days of access bought with one "monthly" web purchase.</summary>
     public const int PlanDays = 30;
@@ -58,6 +58,26 @@ CreatedAt TEXT NOT NULL,
 PaidAt TEXT NULL);
 CREATE INDEX IF NOT EXISTS IX_WebOrders_Provider ON WebOrders(Provider, ProviderPaymentId);";
         cmd.ExecuteNonQuery();
+
+        // Monthly auto-renewal (BOG saved card): columns added later.
+        AddColumnIfMissing(c, "WebOrders", "Recurring", "INTEGER NOT NULL DEFAULT 0");
+        AddColumnIfMissing(c, "WebOrders", "ParentOrderId", "TEXT NULL");
+        AddColumnIfMissing(c, "WebOrders", "Currency", "TEXT NOT NULL DEFAULT 'GEL'");
+        CreateSubscriptionSchema(c);
+        AddColumnIfMissing(c, "WebSubscriptions", "Currency", "TEXT NOT NULL DEFAULT 'GEL'");
+    }
+
+    private static void AddColumnIfMissing(SqliteConnection c, string table, string column, string definition)
+    {
+        using var check = c.CreateCommand();
+        check.CommandText = $"SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE name=$n";
+        check.Parameters.AddWithValue("$n", column);
+        if (Convert.ToInt32(check.ExecuteScalar(), CultureInfo.InvariantCulture) > 0)
+            return;
+
+        using var alter = c.CreateCommand();
+        alter.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {definition}";
+        alter.ExecuteNonQuery();
     }
 
     // ============================================================
@@ -74,6 +94,33 @@ CREATE INDEX IF NOT EXISTS IX_WebOrders_Provider ON WebOrders(Provider, Provider
         ProductCatalog.VinSingle => 2.99m,
         _ => null
     };
+
+    /// <summary>
+    /// Website prices in US dollars for visitors outside Georgia (charged in
+    /// USD through BOG). Same numbers as in lari, set for foreign markets.
+    /// </summary>
+    public static decimal? UsdPriceFor(string? productId) => productId switch
+    {
+        ProductCatalog.ObdMonthly => 4.99m,
+        ProductCatalog.VinMonthly => 5.99m,
+        ProductCatalog.FullMonthly => 8.99m,
+        ProductCatalog.VinPack5 => 3.99m,
+        ProductCatalog.VinPack10 => 6.99m,
+        ProductCatalog.VinSingle => 2.99m,
+        _ => null
+    };
+
+    public static decimal? PriceFor(string? productId, string currency) =>
+        currency == "USD" ? UsdPriceFor(productId) : PriceFor(productId);
+
+    /// <summary>"USD" or "GEL" (anything else is lari).</summary>
+    public static string NormalizeCurrency(string? currency) =>
+        string.Equals(currency?.Trim(), "USD", StringComparison.OrdinalIgnoreCase) ? "USD" : "GEL";
+
+    public static string FormatPrice(decimal amount, string currency) =>
+        currency == "USD"
+            ? "$" + amount.ToString("0.00", CultureInfo.InvariantCulture)
+            : amount.ToString("0.00", CultureInfo.InvariantCulture) + " ₾";
 
     // ============================================================
     // CONFIG
@@ -120,23 +167,29 @@ CREATE INDEX IF NOT EXISTS IX_WebOrders_Provider ON WebOrders(Provider, Provider
         CancellationToken ct,
         decimal? priceOverride = null,
         string resultPath = "/pro/result",
-        string description = "GCar360 PRO")
+        string description = "GCar360 PRO",
+        bool recurring = false,
+        string currency = "GEL")
     {
-        var price = priceOverride ?? PriceFor(productId);
-        if (price is null || !IsConfigured(provider))
+        currency = NormalizeCurrency(currency);
+        var price = priceOverride ?? PriceFor(productId, currency);
+        // Dollar payments go through BOG only.
+        if (price is null || !IsConfigured(provider) || (currency == "USD" && provider != "bog"))
             return CheckoutResult.Fail("NOT_AVAILABLE");
 
         var orderId = Guid.NewGuid().ToString("N");
         var returnUrl = $"{publicBaseUrl}{resultPath}?order={orderId}";
         var callbackUrl = $"{publicBaseUrl}/api/web/payments/{provider}/callback";
 
-        await InsertOrderAsync(orderId, userId, productId, provider, price.Value, ct);
+        // Auto-renewal only for monthly plans paid through BOG.
+        recurring = recurring && provider == "bog" && ProductCatalog.IsSubscription(productId);
+        await InsertOrderAsync(orderId, userId, productId, provider, price.Value, ct, recurring, currency: currency);
 
         try
         {
             var (paymentId, redirect) = provider == "tbc"
                 ? await CreateTbcAsync(orderId, price.Value, returnUrl, callbackUrl, description, ct)
-                : await CreateBogAsync(orderId, productId, price.Value, returnUrl, callbackUrl, ct);
+                : await CreateBogAsync(orderId, productId, price.Value, returnUrl, callbackUrl, ct, currency);
 
             if (paymentId is null || redirect is null)
             {
@@ -145,6 +198,15 @@ CREATE INDEX IF NOT EXISTS IX_WebOrders_Provider ON WebOrders(Provider, Provider
             }
 
             await SetProviderPaymentIdAsync(orderId, paymentId, ct);
+
+            // The card must be marked for automatic payments before the
+            // customer is sent to the bank page.
+            if (recurring && !await EnableBogSavedCardAsync(paymentId, ct))
+            {
+                await SetStatusAsync(orderId, "failed", null, ct);
+                return CheckoutResult.Fail("AUTO_RENEW_UNAVAILABLE");
+            }
+
             return new CheckoutResult(true, orderId, redirect, null);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
@@ -298,7 +360,8 @@ CREATE INDEX IF NOT EXISTS IX_WebOrders_Provider ON WebOrders(Provider, Provider
         }, ct);
 
     private async Task<(string? PaymentId, string? Redirect)> CreateBogAsync(
-        string orderId, string productId, decimal price, string returnUrl, string callbackUrl, CancellationToken ct)
+        string orderId, string productId, decimal price, string returnUrl, string callbackUrl, CancellationToken ct,
+        string currency = "GEL")
     {
         var token = await BogTokenAsync(ct);
         if (token is null)
@@ -310,7 +373,7 @@ CREATE INDEX IF NOT EXISTS IX_WebOrders_Provider ON WebOrders(Provider, Provider
             external_order_id = orderId,
             purchase_units = new
             {
-                currency = "GEL",
+                currency,
                 total_amount = price,
                 basket = new[] { new { product_id = productId, quantity = 1, unit_price = price } }
             },
@@ -320,7 +383,8 @@ CREATE INDEX IF NOT EXISTS IX_WebOrders_Provider ON WebOrders(Provider, Provider
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.bog.ge/payments/v1/ecommerce/orders");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        request.Headers.Add("Accept-Language", "ka");
+        // Bank page in English for foreign (dollar) customers.
+        request.Headers.Add("Accept-Language", currency == "USD" ? "en" : "ka");
         request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
         using var response = await _clients.CreateClient().SendAsync(request, ct);
         var raw = await response.Content.ReadAsStringAsync(ct);
@@ -472,15 +536,20 @@ CREATE INDEX IF NOT EXISTS IX_WebOrders_Provider ON WebOrders(Provider, Provider
     // ORDERS
     // ============================================================
 
-    private async Task InsertOrderAsync(string orderId, string userId, string productId, string provider, decimal amount, CancellationToken ct)
+    private async Task InsertOrderAsync(
+        string orderId, string userId, string productId, string provider, decimal amount, CancellationToken ct,
+        bool recurring = false, string? parentOrderId = null, string currency = "GEL")
     {
         await _gate.WaitAsync(ct);
         try
         {
             using var c = new SqliteConnection(_connectionString); c.Open();
             using var cmd = c.CreateCommand();
-            cmd.CommandText = @"INSERT INTO WebOrders(OrderId,UserId,ProductId,Provider,Amount,Status,Applied,CreatedAt)
-VALUES($o,$u,$p,$pr,$a,'created',0,$at)";
+            cmd.CommandText = @"INSERT INTO WebOrders(OrderId,UserId,ProductId,Provider,Amount,Status,Applied,CreatedAt,Recurring,ParentOrderId,Currency)
+VALUES($o,$u,$p,$pr,$a,'created',0,$at,$rc,$po,$cur)";
+            cmd.Parameters.AddWithValue("$cur", NormalizeCurrency(currency));
+            cmd.Parameters.AddWithValue("$rc", recurring ? 1 : 0);
+            cmd.Parameters.AddWithValue("$po", (object?)parentOrderId ?? DBNull.Value);
             cmd.Parameters.AddWithValue("$o", orderId);
             cmd.Parameters.AddWithValue("$u", userId);
             cmd.Parameters.AddWithValue("$p", productId);
@@ -595,7 +664,7 @@ VALUES($o,$u,$p,$pr,$a,'created',0,$at)";
         {
             using var c = new SqliteConnection(_connectionString); c.Open();
             using var cmd = c.CreateCommand();
-            cmd.CommandText = "SELECT OrderId,UserId,ProductId,Provider,ProviderPaymentId,Amount,Status,Applied FROM WebOrders WHERE " + where + " LIMIT 1";
+            cmd.CommandText = "SELECT OrderId,UserId,ProductId,Provider,ProviderPaymentId,Amount,Status,Applied,Recurring,ParentOrderId,Currency FROM WebOrders WHERE " + where + " LIMIT 1";
             cmd.Parameters.AddWithValue("$v", value);
             using var r = cmd.ExecuteReader();
             if (!r.Read()) return null;
@@ -604,7 +673,10 @@ VALUES($o,$u,$p,$pr,$a,'created',0,$at)";
                 r.IsDBNull(4) ? null : r.GetString(4),
                 decimal.Parse(r.GetString(5), CultureInfo.InvariantCulture),
                 r.GetString(6),
-                r.GetInt32(7) != 0);
+                r.GetInt32(7) != 0,
+                r.GetInt32(8) != 0,
+                r.IsDBNull(9) ? null : r.GetString(9),
+                r.IsDBNull(10) ? "GEL" : r.GetString(10));
         }
         finally { _gate.Release(); }
     }
@@ -618,7 +690,10 @@ public sealed record WebOrder(
     string? ProviderPaymentId,
     decimal Amount,
     string Status,
-    bool Applied);
+    bool Applied,
+    bool Recurring = false,
+    string? ParentOrderId = null,
+    string Currency = "GEL");
 
 public sealed record CheckoutResult(bool Success, string? OrderId, string? RedirectUrl, string? Error)
 {

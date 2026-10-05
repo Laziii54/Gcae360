@@ -309,35 +309,49 @@ public sealed class OBDService
     /// Values are populated only after a positive ECU response; no fallback
     /// or simulated speed is used here.
     /// </summary>
+    /// <summary>
+    /// Performance Lab: speed first. Every call reads PID 0D through the fast
+    /// single-response path; RPM and throttle are read only on every 4th call
+    /// (alternating) and the last value is reused in between. Reading all three
+    /// on every tick made the speed update 3x slower and the display lag behind.
+    /// </summary>
     public async Task<LiveDataModel> GetPerformanceDataAsync(CancellationToken token = default)
     {
-        EnsureInitialized();
-        if (_supported.Count == 0)
-            await DiscoverSupportedPidsAsync(token).ConfigureAwait(false);
+        var data = await GetPerformanceSpeedDataAsync(token).ConfigureAwait(false);
 
-        var data = new LiveDataModel { Timestamp = DateTime.UtcNow };
-        var timeout = TimeSpan.FromMilliseconds(600);
-
-        await TrySetAsync(0x0D, token, value =>
+        var tick = ++_performanceTick;
+        var timeout = TimeSpan.FromMilliseconds(400);
+        if (tick % 4 == 1)
         {
-            data.Speed = (int)Math.Round(value);
-            data.HasSpeed = true;
-        }, timeout).ConfigureAwait(false);
-
-        await TrySetAsync(0x0C, token, value =>
+            await TrySetAsync(0x0C, token, value =>
+            {
+                _performanceRpm = (int)Math.Round(value);
+                _performanceAuxAt = DateTime.UtcNow;
+            }, timeout).ConfigureAwait(false);
+        }
+        else if (tick % 4 == 3)
         {
-            data.Rpm = (int)Math.Round(value);
-            data.HasRpm = true;
-        }, timeout).ConfigureAwait(false);
+            await TrySetAsync(0x11, token, value =>
+            {
+                _performanceThrottle = (int)Math.Round(value);
+                _performanceAuxAt = DateTime.UtcNow;
+            }, timeout).ConfigureAwait(false);
+        }
 
-        await TrySetAsync(0x11, token, value =>
+        // Reuse the last RPM / throttle only while it is fresh.
+        if (DateTime.UtcNow - _performanceAuxAt < TimeSpan.FromSeconds(3))
         {
-            data.ThrottlePosition = (int)Math.Round(value);
-            data.HasThrottlePosition = true;
-        }, timeout).ConfigureAwait(false);
+            if (_performanceRpm is { } rpm) { data.Rpm = rpm; data.HasRpm = true; }
+            if (_performanceThrottle is { } throttle) { data.ThrottlePosition = throttle; data.HasThrottlePosition = true; }
+        }
 
         return data;
     }
+
+    private int _performanceTick;
+    private int? _performanceRpm;
+    private int? _performanceThrottle;
+    private DateTime _performanceAuxAt = DateTime.MinValue;
 
     /// <summary>
     /// Reads only standard vehicle speed (Mode 01 PID 0D). The camera overlay
@@ -647,6 +661,21 @@ public sealed class OBDService
     /// (0x7DF = functional) and filtered to one reply ID, so the app can see
     /// exactly which module answered. Service page oil-life reset only.
     /// </summary>
+    /// <summary>
+    /// Read-only request to a Toyota/Lexus hybrid ECU (e.g. HV battery ECU 0x7E3):
+    /// only service 0x21 (read data by local id) or 0x22 (read data by identifier)
+    /// is accepted. The reply is read from transmit + 8.
+    /// </summary>
+    public Task<string> ReadHybridEcuAsync(int transmitCanId, byte[] payload, TimeSpan timeout, CancellationToken token = default)
+    {
+        EnsureInitialized();
+        if (payload is null || payload.Length is < 2 or > 3 || payload[0] is not (0x21 or 0x22))
+            throw new InvalidOperationException("Only read-only 0x21 / 0x22 requests are allowed.");
+        if (transmitCanId is < 0x700 or > 0x7FF)
+            throw new ArgumentOutOfRangeException(nameof(transmitCanId));
+        return _protocol.SendCanIsoTpPayloadAsync(payload, transmitCanId, transmitCanId + 8, false, timeout, token);
+    }
+
     public Task<string> ReadGmlanDidFilteredAsync(int transmitCanId, int receiveCanId, int did, TimeSpan timeout, CancellationToken token = default)
     {
         EnsureInitialized();
@@ -691,9 +720,11 @@ public sealed class OBDService
         if (address.ExtendedAddress.HasValue)
             throw new NotSupportedException("Extended CAN addressing is not supported for writes.");
 
+        // 29-bit physical addressing swaps the target/source bytes (18DA xx yy -> 18DA yy xx).
+        var transmit = address.TransmitCanId;
         var receive = address.ReceiveCanId ?? (address.Extended29Bit
-            ? (int)((address.TransmitCanId & 0xFFFF0000) | ((address.TransmitCanId & 0xFF) << 8) | ((address.TransmitCanId >> 8) & 0xFF))
-            : address.TransmitCanId + 8);
+            ? (transmit & unchecked((int)0xFFFF0000)) | ((transmit & 0xFF) << 8) | ((transmit >> 8) & 0xFF)
+            : transmit + 8);
 
         var payload = new byte[3 + data.Length];
         payload[0] = 0x2E;

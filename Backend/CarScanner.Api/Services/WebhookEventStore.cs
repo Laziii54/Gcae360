@@ -34,7 +34,12 @@ public sealed class WebhookEventStore
             using var c=new SqliteConnection(_connectionString); c.Open();
             foreach(var id in data.Where(x=>!string.IsNullOrWhiteSpace(x))){using var cmd=c.CreateCommand();cmd.CommandText="INSERT OR IGNORE INTO WebhookEvents(EventId,ReceivedAt) VALUES($id,$at)";cmd.Parameters.AddWithValue("$id",id);cmd.Parameters.AddWithValue("$at",DateTimeOffset.UtcNow.ToString("O"));cmd.ExecuteNonQuery();}
             File.Move(legacy,legacy+".migrated",true);
-        } catch { }
+        }
+        catch (Exception ex)
+        {
+            // Visible in the Azure log stream; the legacy file stays in place for a retry.
+            Console.Error.WriteLine($"[WebhookEventStore] Legacy webhook-events.json migration failed: {ex.GetType().Name}: {ex.Message}");
+        }
     }
 
 }

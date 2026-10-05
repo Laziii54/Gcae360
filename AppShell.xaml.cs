@@ -41,6 +41,9 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(LiveDataPage), typeof(LiveDataPage));
         Routing.RegisterRoute(nameof(DiagnosticsPage), typeof(DiagnosticsPage));
         Routing.RegisterRoute(nameof(HistoryPage), typeof(HistoryPage));
+        Routing.RegisterRoute(nameof(RecordingHistoryPage), typeof(RecordingHistoryPage));
+        Routing.RegisterRoute(nameof(ResetRecorderPage), typeof(ResetRecorderPage));
+        Routing.RegisterRoute(nameof(CustomsCalculatorPage), typeof(CustomsCalculatorPage));
         Routing.RegisterRoute(nameof(SettingsPage), typeof(SettingsPage));
         Routing.RegisterRoute(nameof(SensorsPage), typeof(SensorsPage));
         Routing.RegisterRoute(nameof(EmissionsPage), typeof(EmissionsPage));
@@ -48,6 +51,8 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(VehicleHealthPage), typeof(VehicleHealthPage));
         Routing.RegisterRoute(nameof(BatteryPage), typeof(BatteryPage));
         Routing.RegisterRoute(nameof(HybridHealthPage), typeof(HybridHealthPage));
+        Routing.RegisterRoute(nameof(MaintenancePartPage), typeof(MaintenancePartPage));
+        Routing.RegisterRoute(nameof(MaintenanceSetupPage), typeof(MaintenanceSetupPage));
         Routing.RegisterRoute(nameof(AdapterCenterPage), typeof(AdapterCenterPage));
         Routing.RegisterRoute(nameof(EcuIdentifiersPage), typeof(EcuIdentifiersPage));
         Routing.RegisterRoute(nameof(MileagePage), typeof(MileagePage));
@@ -68,7 +73,6 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(Mode05Page), typeof(Mode05Page));
         Routing.RegisterRoute(nameof(Mode06Page), typeof(Mode06Page));
         Routing.RegisterRoute(nameof(ContactPage), typeof(ContactPage));
-        Routing.RegisterRoute(nameof(VehicleTypeSelectionPage), typeof(VehicleTypeSelectionPage));
         Routing.RegisterRoute(nameof(VehicleBrandSelectionPage), typeof(VehicleBrandSelectionPage));
         Routing.RegisterRoute(nameof(AccelerationHistoryPage), typeof(AccelerationHistoryPage));
         Routing.RegisterRoute(nameof(AccelerationLeaderboardPage), typeof(AccelerationLeaderboardPage));

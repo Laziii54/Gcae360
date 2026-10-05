@@ -11,13 +11,83 @@
             <Label Text="{Binding Heading}" Style="{StaticResource PageTitleStyle}" />
             <Label Text="{Binding Subtitle}" FontSize="13" TextColor="{DynamicResource SubTextColor}" Margin="2,-7,2,2" />
 
+            <!-- Ranked test -->
             <Grid ColumnDefinitions="*,*,*" ColumnSpacing="7">
-                <Button Text="{Binding AllText}" Command="{Binding ShowAllCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="12" HeightRequest="44" FontSize="11" Padding="5,0" />
-                <Button Grid.Column="1" Text="{Binding MyModelText}" Command="{Binding ShowMyModelCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="12" HeightRequest="44" FontSize="11" Padding="5,0" />
-                <Button Grid.Column="2" Text="{Binding ThisMonthText}" Command="{Binding ShowThisMonthCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="12" HeightRequest="44" FontSize="11" Padding="5,0" />
+                <Button Text="{Binding ZeroHundredText}" Command="{Binding ShowZeroHundredCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="18" HeightRequest="38" MinimumHeightRequest="38" FontSize="11" FontAttributes="Bold" Padding="5,0">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding IsZeroHundredSelected}" Value="True">
+                            <Setter Property="BackgroundColor" Value="{DynamicResource TextColor}" />
+                            <Setter Property="TextColor" Value="{DynamicResource PageBg}" />
+                            <Setter Property="BorderColor" Value="{DynamicResource TextColor}" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+                <Button Grid.Column="1" Text="{Binding ZeroSixtyText}" Command="{Binding ShowZeroSixtyCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="18" HeightRequest="38" MinimumHeightRequest="38" FontSize="11" FontAttributes="Bold" Padding="5,0">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding IsZeroSixtySelected}" Value="True">
+                            <Setter Property="BackgroundColor" Value="{DynamicResource TextColor}" />
+                            <Setter Property="TextColor" Value="{DynamicResource PageBg}" />
+                            <Setter Property="BorderColor" Value="{DynamicResource TextColor}" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+                <Button Grid.Column="2" Text="{Binding QuarterMileText}" Command="{Binding ShowQuarterMileCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="18" HeightRequest="38" MinimumHeightRequest="38" FontSize="11" FontAttributes="Bold" Padding="5,0">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding IsQuarterMileSelected}" Value="True">
+                            <Setter Property="BackgroundColor" Value="{DynamicResource TextColor}" />
+                            <Setter Property="TextColor" Value="{DynamicResource PageBg}" />
+                            <Setter Property="BorderColor" Value="{DynamicResource TextColor}" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
             </Grid>
 
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="7">
+                <Button Text="{Binding AllText}" Command="{Binding ShowAllCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="18" HeightRequest="38" MinimumHeightRequest="38" FontSize="11" FontAttributes="Bold" Padding="5,0">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding IsAllSelected}" Value="True">
+                            <Setter Property="BackgroundColor" Value="{DynamicResource Primary}" />
+                            <Setter Property="TextColor" Value="White" />
+                            <Setter Property="BorderColor" Value="{DynamicResource Primary}" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+                <Button Grid.Column="1" Text="{Binding MyModelText}" Command="{Binding ShowMyModelCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="18" HeightRequest="38" MinimumHeightRequest="38" FontSize="11" FontAttributes="Bold" Padding="5,0">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding IsMyModelSelected}" Value="True">
+                            <Setter Property="BackgroundColor" Value="{DynamicResource Primary}" />
+                            <Setter Property="TextColor" Value="White" />
+                            <Setter Property="BorderColor" Value="{DynamicResource Primary}" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+                <Button Grid.Column="2" Text="{Binding ThisMonthText}" Command="{Binding ShowThisMonthCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="18" HeightRequest="38" MinimumHeightRequest="38" FontSize="11" FontAttributes="Bold" Padding="5,0">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding IsThisMonthSelected}" Value="True">
+                            <Setter Property="BackgroundColor" Value="{DynamicResource Primary}" />
+                            <Setter Property="TextColor" Value="White" />
+                            <Setter Property="BorderColor" Value="{DynamicResource Primary}" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+            </Grid>
+
+            <!-- My place: always visible -->
+            <Border IsVisible="{Binding HasMyPlace}" Padding="14,12" BackgroundColor="{DynamicResource CardBg}" Stroke="{DynamicResource Primary}" StrokeThickness="1.5" StrokeShape="RoundRectangle 12">
+                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="2">
+                    <Label Grid.RowSpan="2" Text="{Binding MyPlaceRank}" FontSize="24" FontAttributes="Bold" TextColor="{DynamicResource Primary}" VerticalOptions="Center" />
+                    <Label Grid.Column="1" Text="{Binding MyPlaceCaption}" FontSize="11" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
+                    <Label Grid.Column="2" Text="{Binding MyPlaceTime}" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                    <Label Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding MyPlaceDetail}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                </Grid>
+            </Border>
+
             <Button Text="{Binding PublishText}" Command="{Binding PublishLatestCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" Style="{StaticResource PrimaryButtonStyle}" />
+            <!-- My result is under review: video -->
+            <Button IsVisible="{Binding HasVideoToSend}" Text="{Binding SendVideoText}" Command="{Binding SendVideoCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="46" FontAttributes="Bold" FontSize="13" />
+            <Border IsVisible="{Binding NeedsVideo}" Padding="12,10" BackgroundColor="{DynamicResource CardBg}" Stroke="#E0B34A" StrokeThickness="1.5" StrokeShape="RoundRectangle 12">
+                <Label Text="{Binding VideoHintText}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+            </Border>
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" />
             <Label Text="{Binding StatusMessage}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
 
@@ -26,6 +96,11 @@
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="vm:AccelerationLeaderboardRow">
                             <VerticalStackLayout Spacing="0">
+                                <VerticalStackLayout.Triggers>
+                                    <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding IsMine}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="{DynamicResource ProBadgeBg}" />
+                                    </DataTrigger>
+                                </VerticalStackLayout.Triggers>
                                 <Grid ColumnDefinitions="42,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10" RowSpacing="2" Padding="12,11">
                                     <Label Text="{Binding Rank}" Grid.RowSpan="3" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource Primary}" VerticalOptions="Center" />
                                     <Label Grid.Column="1" Text="{Binding UserName}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
@@ -44,7 +119,7 @@
             <Label IsVisible="{Binding HasRows, Converter={StaticResource InverseBoolConverter}}" Text="{Binding EmptyText}" FontSize="13" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" Margin="0,20" />
             <Border Style="{StaticResource ListCardStyle}" Padding="14,12">
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
-                    <Label Text="🛡" FontSize="18" />
+                    <Path Data="M12,3 L20,6 L20,12 C20,17 16.5,20 12,21 C7.5,20 4,17 4,12 L4,6 Z" Style="{StaticResource RowIconStyle}" VerticalOptions="Start" />
                     <Label Grid.Column="1" Text="{Binding RulesText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                 </Grid>
             </Border>

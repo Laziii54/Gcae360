@@ -6,30 +6,63 @@
     x:Class="CarScanner.Views.MileagePage"
     x:DataType="vm:MileageViewModel"
     BackgroundColor="{DynamicResource PageBg}"
-    Title="გარბენის გადამოწმება">
+    Title="{Binding Title}">
     <ScrollView>
         <VerticalStackLayout Padding="16,12,16,32" Spacing="12">
-            <Label Text="გარბენის გადამოწმება" Style="{StaticResource PageTitleStyle}" />
 
-            <!-- Result -->
-            <Border Style="{StaticResource ListCardStyle}" Padding="16,14">
-                <VerticalStackLayout Spacing="4">
-                    <Label Text="შედეგი" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
-                    <Label AutomationId="DynamicTextMileageResult" Text="{Binding Result}" TextColor="{DynamicResource TextColor}" FontSize="26" FontAttributes="Bold" LineBreakMode="WordWrap" />
-                </VerticalStackLayout>
-            </Border>
-
-            <!-- Vehicle -->
-            <Border Style="{StaticResource ListCardStyle}">
-                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
-                    <Path Data="M3,17 L3,12 L5.5,6.5 L18.5,6.5 L21,12 L21,17 Z M3,12 L21,12 M7,17 L7,20 M17,17 L17,20" Style="{StaticResource RowIconStyle}" />
-                    <Label Grid.Column="1" Text="VIN" Style="{StaticResource RowTitleStyle}" />
-                    <Label Grid.Column="2" AutomationId="DynamicTextMileageVin" Text="{Binding Vin}" TextColor="{DynamicResource SubTextColor}" FontSize="13" FontFamily="monospace" VerticalOptions="Center" HorizontalTextAlignment="End" LineBreakMode="TailTruncation" />
+            <!-- The car -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,12">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <Ellipse WidthRequest="9" HeightRequest="9" Fill="#22A35A" VerticalOptions="Center" />
+                    <VerticalStackLayout Grid.Column="1" Spacing="1">
+                        <Label Text="{Binding VehicleTitle}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                        <Label AutomationId="DynamicTextMileageVin" Text="{Binding Vin}" FontSize="11" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" />
+                    </VerticalStackLayout>
                 </Grid>
             </Border>
 
-            <Button Text="გარბენის შემოწმება" Command="{Binding CheckCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="52" Margin="0,4,0,0" />
+            <!-- Before the check: what it does -->
+            <Border IsVisible="{Binding IsIntro}" Style="{StaticResource ListCardStyle}" Padding="18,22">
+                <VerticalStackLayout Spacing="8">
+                    <Path Data="M4,17 A9,9 0 1 1 20,17 M12,13 L16,8" Stroke="{DynamicResource Primary}" StrokeThickness="2.2" StrokeLineCap="Round" Aspect="Uniform" WidthRequest="40" HeightRequest="30" HorizontalOptions="Center" />
+                    <Label Text="{Binding IntroTitle}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding IntroText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- After the check: the answer on top -->
+            <Border IsVisible="{Binding HasResult}" Padding="16,14" BackgroundColor="{Binding ResultBackground}" Stroke="{Binding CardStroke}" StrokeThickness="1" StrokeShape="RoundRectangle 14">
+                <VerticalStackLayout Spacing="4">
+                    <Label AutomationId="DynamicTextMileageStatus" Text="{Binding ResultTitle}" FontSize="17" FontAttributes="Bold" TextColor="{Binding ResultTitleColor}" LineBreakMode="WordWrap" />
+                    <Label AutomationId="DynamicTextMileageResult" Text="{Binding ResultValue}" FontSize="26" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding VerdictNote}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- One row per module -->
+            <Border IsVisible="{Binding HasModules}" Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding Modules}" Spacing="0" Margin="0,-1,0,0">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:MileageModuleRow">
+                            <VerticalStackLayout Spacing="0" BackgroundColor="{Binding RowBackground}">
+                                <BoxView Style="{StaticResource RowDividerStyle}" />
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="14,12">
+                                    <Label Text="{Binding Name}" FontSize="14" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" VerticalOptions="Center" />
+                                    <Label Grid.Column="1" Text="{Binding ValueText}" FontSize="14" FontAttributes="Bold" TextColor="{Binding ValueColor}" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                </Grid>
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- One button: filled before the check, outlined after it -->
+            <Button IsVisible="{Binding HasResult, Converter={StaticResource InverseBoolConverter}}" Text="{Binding CheckButtonText}" Command="{Binding CheckCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="52" />
+            <Button IsVisible="{Binding HasResult}" Text="{Binding CheckButtonText}" Command="{Binding CheckCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" CornerRadius="12" HeightRequest="48" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.2" />
+            <Label IsVisible="{Binding IsIntro}" Text="{Binding IntroHint}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" />
+            <Label AutomationId="DynamicTextMileageProgress" Text="{Binding StatusMessage}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

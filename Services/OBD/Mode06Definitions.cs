@@ -10,54 +10,58 @@ namespace CarScanner.Services.OBD;
 /// </summary>
 public static class Mode06Definitions
 {
+    private static string L(string ka, string en) => ObdLang.L(ka, en);
+
     public static string MonitorName(byte mid)
     {
-        static string O2(int index) => $"Bank {(index / 4) + 1} – Sensor {(index % 4) + 1}";
+        static string O2(int index) => L(
+            $"ბანკი {(index / 4) + 1}, სენსორი {(index % 4) + 1}",
+            $"Bank {(index / 4) + 1} – Sensor {(index % 4) + 1}");
         return mid switch
         {
-            >= 0x01 and <= 0x10 => $"Oxygen Sensor Monitor {O2(mid - 0x01)}",
-            >= 0x21 and <= 0x24 => $"Catalyst Monitor Bank {mid - 0x20}",
-            >= 0x31 and <= 0x34 => $"EGR Monitor Bank {mid - 0x30}",
-            >= 0x35 and <= 0x38 => $"VVT Monitor Bank {mid - 0x34}",
-            0x39 => "EVAP Monitor (Cap Off / 0.150\")",
-            0x3A => "EVAP Monitor (0.090\")",
-            0x3B => "EVAP Monitor (0.040\")",
-            0x3C => "EVAP Monitor (0.020\")",
-            0x3D => "Purge Flow Monitor",
-            >= 0x41 and <= 0x50 => $"Oxygen Sensor Heater Monitor {O2(mid - 0x41)}",
-            >= 0x61 and <= 0x64 => $"Heated Catalyst Monitor Bank {mid - 0x60}",
-            >= 0x71 and <= 0x74 => $"Secondary Air Monitor {mid - 0x70}",
-            >= 0x81 and <= 0x84 => $"Fuel System Monitor Bank {mid - 0x80}",
-            0x85 => "Boost Pressure Control Monitor Bank 1",
-            0x86 => "Boost Pressure Control Monitor Bank 2",
-            0x90 => "NOx Adsorber Monitor Bank 1",
-            0x91 => "NOx Adsorber Monitor Bank 2",
-            0x98 => "NOx Catalyst Monitor Bank 1",
-            0x99 => "NOx Catalyst Monitor Bank 2",
-            0xA1 => "Misfire Monitor General Data",
-            >= 0xA2 and <= 0xAD => $"Misfire Cylinder {mid - 0xA1}",
-            0xB2 => "PM Filter Monitor Bank 1",
-            0xB3 => "PM Filter Monitor Bank 2",
-            _ => "Monitor"
+            >= 0x01 and <= 0x10 => L($"ჟანგბადის სენსორი · {O2(mid - 0x01)}", $"Oxygen Sensor Monitor {O2(mid - 0x01)}"),
+            >= 0x21 and <= 0x24 => L($"კატალიზატორი · ბანკი {mid - 0x20}", $"Catalyst Monitor Bank {mid - 0x20}"),
+            >= 0x31 and <= 0x34 => L($"EGR სისტემა · ბანკი {mid - 0x30}", $"EGR Monitor Bank {mid - 0x30}"),
+            >= 0x35 and <= 0x38 => L($"ფაზების რეგულირება (VVT) · ბანკი {mid - 0x34}", $"VVT Monitor Bank {mid - 0x34}"),
+            0x39 => L("საწვავის ორთქლი (EVAP) · ხუფი / 0.150\"", "EVAP Monitor (Cap Off / 0.150\")"),
+            0x3A => L("საწვავის ორთქლი (EVAP) · 0.090\"", "EVAP Monitor (0.090\")"),
+            0x3B => L("საწვავის ორთქლი (EVAP) · 0.040\"", "EVAP Monitor (0.040\")"),
+            0x3C => L("საწვავის ორთქლი (EVAP) · 0.020\"", "EVAP Monitor (0.020\")"),
+            0x3D => L("EVAP გაწმენდის ნაკადი", "Purge Flow Monitor"),
+            >= 0x41 and <= 0x50 => L($"ჟანგბადის სენსორის გამახურებელი · {O2(mid - 0x41)}", $"Oxygen Sensor Heater Monitor {O2(mid - 0x41)}"),
+            >= 0x61 and <= 0x64 => L($"გამახურებადი კატალიზატორი · ბანკი {mid - 0x60}", $"Heated Catalyst Monitor Bank {mid - 0x60}"),
+            >= 0x71 and <= 0x74 => L($"მეორადი ჰაერის სისტემა {mid - 0x70}", $"Secondary Air Monitor {mid - 0x70}"),
+            >= 0x81 and <= 0x84 => L($"საწვავის სისტემა · ბანკი {mid - 0x80}", $"Fuel System Monitor Bank {mid - 0x80}"),
+            0x85 => L("ტურბოს წნევის კონტროლი · ბანკი 1", "Boost Pressure Control Monitor Bank 1"),
+            0x86 => L("ტურბოს წნევის კონტროლი · ბანკი 2", "Boost Pressure Control Monitor Bank 2"),
+            0x90 => L("NOx ადსორბერი · ბანკი 1", "NOx Adsorber Monitor Bank 1"),
+            0x91 => L("NOx ადსორბერი · ბანკი 2", "NOx Adsorber Monitor Bank 2"),
+            0x98 => L("NOx კატალიზატორი · ბანკი 1", "NOx Catalyst Monitor Bank 1"),
+            0x99 => L("NOx კატალიზატორი · ბანკი 2", "NOx Catalyst Monitor Bank 2"),
+            0xA1 => L("ანთების გამოტოვება · ზოგადი", "Misfire Monitor General Data"),
+            >= 0xA2 and <= 0xAD => L($"ანთების გამოტოვება · ცილინდრი {mid - 0xA1}", $"Misfire Cylinder {mid - 0xA1}"),
+            0xB2 => L("ნაწილაკების ფილტრი (DPF) · ბანკი 1", "PM Filter Monitor Bank 1"),
+            0xB3 => L("ნაწილაკების ფილტრი (DPF) · ბანკი 2", "PM Filter Monitor Bank 2"),
+            _ => L("მონიტორი", "Monitor")
         };
     }
 
     public static string TestName(byte tid) => tid switch
     {
-        0x01 => "Rich to lean sensor threshold voltage (constant)",
-        0x02 => "Lean to rich sensor threshold voltage (constant)",
-        0x03 => "Low sensor voltage for switch time calculation (constant)",
-        0x04 => "High sensor voltage for switch time calculation (constant)",
-        0x05 => "Rich to lean sensor switch time (calculated)",
-        0x06 => "Lean to rich sensor switch time (calculated)",
-        0x07 => "Minimum sensor voltage for test cycle (calculated)",
-        0x08 => "Maximum sensor voltage for test cycle (calculated)",
-        0x09 => "Time between sensor transitions (calculated)",
-        0x0A => "Sensor period (calculated)",
-        0x0B => "Misfire counts, average of last 10 driving cycles",
-        0x0C => "Misfire counts, last/current driving cycle",
-        >= 0x80 => "Manufacturer defined",
-        _ => "Test"
+        0x01 => L("ზღვრული ძაბვა: მდიდარი → ღარიბი (მუდმივი)", "Rich to lean sensor threshold voltage (constant)"),
+        0x02 => L("ზღვრული ძაბვა: ღარიბი → მდიდარი (მუდმივი)", "Lean to rich sensor threshold voltage (constant)"),
+        0x03 => L("დაბალი ძაბვა გადართვის დროისთვის (მუდმივი)", "Low sensor voltage for switch time calculation (constant)"),
+        0x04 => L("მაღალი ძაბვა გადართვის დროისთვის (მუდმივი)", "High sensor voltage for switch time calculation (constant)"),
+        0x05 => L("გადართვის დრო: მდიდარი → ღარიბი (გამოთვლილი)", "Rich to lean sensor switch time (calculated)"),
+        0x06 => L("გადართვის დრო: ღარიბი → მდიდარი (გამოთვლილი)", "Lean to rich sensor switch time (calculated)"),
+        0x07 => L("სენსორის მინიმალური ძაბვა ციკლში (გამოთვლილი)", "Minimum sensor voltage for test cycle (calculated)"),
+        0x08 => L("სენსორის მაქსიმალური ძაბვა ციკლში (გამოთვლილი)", "Maximum sensor voltage for test cycle (calculated)"),
+        0x09 => L("დრო სენსორის გადართვებს შორის (გამოთვლილი)", "Time between sensor transitions (calculated)"),
+        0x0A => L("სენსორის პერიოდი (გამოთვლილი)", "Sensor period (calculated)"),
+        0x0B => L("გამოტოვებები, ბოლო 10 ციკლის საშუალო", "Misfire counts, average of last 10 driving cycles"),
+        0x0C => L("გამოტოვებები, ბოლო / მიმდინარე ციკლი", "Misfire counts, last/current driving cycle"),
+        >= 0x80 => L("მწარმოებლის ტესტი", "Manufacturer defined"),
+        _ => L("ტესტი", "Test")
     };
 
     private readonly record struct Scaling(double Factor, double Offset, string Unit, bool Signed);

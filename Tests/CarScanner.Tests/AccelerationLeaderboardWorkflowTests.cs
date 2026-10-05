@@ -26,7 +26,8 @@ public sealed class AccelerationLeaderboardWorkflowTests
             Assert.All(initial, item => Assert.True(item.IsDemo));
 
             var request = ValidRequest();
-            await store.SaveAsync("account-1", request, CancellationToken.None);
+            var gps = new RunGpsCheckResult(RunGpsCheck.Passed, 0.5, 0, 100, 20);
+            await store.SaveAsync("account-1", request, gps, CancellationToken.None);
             Assert.Equal(20, (await store.GetAsync(CancellationToken.None)).Count);
             Assert.Contains(await store.GetAdminAsync(CancellationToken.None), item =>
                 item.SubmissionId == request.SubmissionId && item.Status == "Pending");

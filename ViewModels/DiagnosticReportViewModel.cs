@@ -241,13 +241,38 @@ public partial class DiagnosticReportViewModel : BaseViewModel
             Status = ReportState,
             Summary = ScanSummary + (string.IsNullOrWhiteSpace(EcuSummary) ? string.Empty : "\n" + EcuSummary),
             DtcSummary = DtcSummary,
-            ReadinessSummary = EmissionsSummary
+            ReadinessSummary = EmissionsSummary,
+            ServiceHistory = BuildServiceHistoryText(vehicle)
         });
         await Shell.Current.GoToAsync(nameof(Views.QrReportPage));
     }
 
     [RelayCommand]
     private Task StartNewScan() => Shell.Current.GoToAsync(nameof(Views.ModuleScanPage));
+
+    /// <summary>Owner-entered service history for the QR report (one line per item).</summary>
+    private string BuildServiceHistoryText(VehicleInfo vehicle)
+    {
+        var english = _localization.IsEnglish;
+        var lines = CarScanner.Services.Maintenance.MaintenanceTrackerService.HistoryFor(vehicle)
+            .Select(item =>
+            {
+                var last = item.Records[0];
+                var when = string.Join(" · ", new[]
+                {
+                    last.DateUtc?.ToLocalTime().ToString("MM.yyyy"),
+                    last.Km is { } km ? MaintenanceText.Km(km) : null
+                }.Where(text => !string.IsNullOrWhiteSpace(text)));
+                var state = item.Status.State switch
+                {
+                    CarScanner.Services.Maintenance.PartState.Overdue => L(" (ვადა გავიდა)", " (overdue)"),
+                    CarScanner.Services.Maintenance.PartState.Soon => L(" (მალე)", " (due soon)"),
+                    _ => string.Empty
+                };
+                return $"{(english ? item.Part.NameEn : item.Part.NameKa)}: {when}{state}";
+            });
+        return string.Join("\n", lines);
+    }
 
     private void PopulateReport(ObdScanReport report)
     {

@@ -819,7 +819,7 @@ public partial class EcuIdentifiersViewModel : BaseViewModel
     }
 
     private static bool UiEnglish =>
-        Preferences.Default.Get("language", "ქართული").Equals("English", StringComparison.OrdinalIgnoreCase);
+        Preferences.Default.Get("language", "English").Equals("English", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Shows name, part number, versions and serial of every module from the last scan (PRO).</summary>
     public async Task RefreshModuleInfoAsync()
@@ -995,6 +995,7 @@ public partial class ProViewModel : BaseViewModel
     private readonly PurchaseService _purchase;
     private readonly LocalizationService _localization;
     private readonly CarScanner.VinCheck.Services.IVinHistoryService _vin;
+    private readonly AccountService _account;
 
     private Dictionary<string, string> _prices = new();
     private CarScanner.VinCheck.Models.VinQuotaInfo? _quota;
@@ -1007,9 +1008,6 @@ public partial class ProViewModel : BaseViewModel
 
     [ObservableProperty]
     private bool hasVin;
-
-    [ObservableProperty]
-    private string promo = "";
 
     [ObservableProperty]
     private string status = "";
@@ -1039,15 +1037,6 @@ public partial class ProViewModel : BaseViewModel
 
     [ObservableProperty]
     private string restorePurchaseText = "";
-
-    [ObservableProperty]
-    private string promoTitleText = "";
-
-    [ObservableProperty]
-    private string promoPlaceholderText = "";
-
-    [ObservableProperty]
-    private string activatePromoText = "";
 
     [ObservableProperty]
     private string subscriptionInfoText = "";
@@ -1083,8 +1072,10 @@ public partial class ProViewModel : BaseViewModel
         ProService pro,
         PurchaseService purchase,
         LocalizationService localization,
-        CarScanner.VinCheck.Services.IVinHistoryService vin)
+        CarScanner.VinCheck.Services.IVinHistoryService vin,
+        AccountService account)
     {
+        _account = account;
         _pro = pro;
         _purchase = purchase;
         _localization = localization;
@@ -1096,6 +1087,7 @@ public partial class ProViewModel : BaseViewModel
         Plans.Add(new ProPlanItem { ProductId = ProService.ObdProductId });
         Plans.Add(new ProPlanItem { ProductId = ProService.VinProductId });
         Plans.Add(new ProPlanItem { ProductId = ProService.FullProductId, IsRecommended = true });
+        Plans.Add(new ProPlanItem { ProductId = ProPlanItem.FreeId });
         Packs.Add(new ProPackItem { ProductId = ProService.VinPack5ProductId, Credits = 5 });
         Packs.Add(new ProPackItem { ProductId = ProService.VinPack10ProductId, Credits = 10 });
 
@@ -1103,13 +1095,7 @@ public partial class ProViewModel : BaseViewModel
             MainThread.BeginInvokeOnMainThread(RefreshAccess);
 
         _localization.LanguageChanged += (_, __) =>
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                ApplyLanguageTexts();
-
-                // ეს property სხვა partial ProViewModel ფაილშია.
-                OnPropertyChanged(nameof(TestPromoHint));
-            });
+            MainThread.BeginInvokeOnMainThread(ApplyLanguageTexts);
 
         ApplyLanguageTexts();
 
@@ -1118,6 +1104,19 @@ public partial class ProViewModel : BaseViewModel
 
     private string L(string ka, string en) =>
         _localization.IsEnglish ? en : ka;
+
+    /// <summary>
+    /// In-app purchase is offered on iPhone (App Store). On Android the app is
+    /// consumption-only: PRO bought outside the app is unlocked by signing in
+    /// (Google Play merchant accounts are not available from Georgia). Per
+    /// Google Play policy the app must not point to other ways to pay.
+    /// </summary>
+    public bool CanBuyInApp => DeviceInfo.Current.Platform == DevicePlatform.iOS;
+
+    [ObservableProperty]
+    private bool showPacks;
+
+    private string StoreName => DeviceInfo.Current.Platform == DevicePlatform.iOS ? "App Store" : "Google Play";
 
     // ============================================================
     // LANGUAGE
@@ -1142,23 +1141,13 @@ public partial class ProViewModel : BaseViewModel
             "PRO-ის გააქტიურება",
             "Activate PRO");
 
-        RestorePurchaseText = L(
-            "სტატუსის განახლება",
-            "Refresh status");
+        RestorePurchaseText = CanBuyInApp
+            ? L("შესყიდვების აღდგენა", "Restore Purchases")
+            : L("სტატუსის განახლება", "Refresh status");
 
-        PromoTitleText = L(
-            "პრომო კოდი",
-            "Promo code");
-
-        PromoPlaceholderText = L(
-            "შეიყვანე პრომო კოდი",
-            "Enter promo code");
-
-        ActivatePromoText = L(
-            "გააქტიურება",
-            "Activate");
-
-        SubscriptionInfoText = L(
+        SubscriptionInfoText = (CanBuyInApp
+            ? L("გამოწერა ყოველთვე ავტომატურად გრძელდება, სანამ App Store-ში არ გააუქმებ. ", "The subscription renews every month until you cancel it in the App Store. ")
+            : string.Empty) + L(
             "PRO გეგმა და დამატებითი VIN შემოწმებები ინახება შენს ანგარიშზე და ჩაირთვება ყველა მოწყობილობაზე, სადაც ამ ანგარიშით შეხვალ.",
             "PRO plans and extra VIN checks are stored on your account and work on every device where you sign in with it.");
 
@@ -1211,12 +1200,22 @@ public partial class ProViewModel : BaseViewModel
         var hasObd = _pro.HasObd;
         var hasVin = _pro.HasVin;
 
+        var hasAny = hasObd || hasVin;
         foreach (var plan in Plans)
         {
             switch (plan.ProductId)
             {
+                case ProPlanItem.FreeId:
+                    plan.Title = L("უფასო", "Free");
+                    plan.Subtitle = string.Empty;
+                    plan.PriceText = string.Empty;
+                    plan.Features = L(
+                        "✓ შეცდომის კოდები და მათი ახსნა\n✓ ცოცხალი მონაცემები\n✓ საწვავის ხარჯი, სერვისი, 0–100\n✓ VIN: მანქანის მონაცემები და ისტორიის მიმოხილვა",
+                        "✓ Fault codes with explanations\n✓ Live data\n✓ Fuel use, service, 0–100\n✓ VIN: car details and a history preview");
+                    plan.IsActive = !hasAny;
+                    break;
                 case ProService.ObdProductId:
-                    plan.Title = "OBD PRO";
+                    plan.Title = "PRO";
                     plan.Subtitle = L("მანქანის სრული დიაგნოსტიკა", "Full car diagnostics");
                     plan.PriceText = $"{Price(plan.ProductId, ProService.PriceGEL)} / {month}";
                     plan.Features = L(
@@ -1230,8 +1229,8 @@ public partial class ProViewModel : BaseViewModel
                     plan.Subtitle = L("მანქანის ისტორია VIN კოდით", "Car history by VIN");
                     plan.PriceText = $"{Price(plan.ProductId, ProService.VinPriceGEL)} / {month}";
                     plan.Features = L(
-                        $"✓ {ProService.VinMonthlyReports} VIN ისტორია ყოველთვე\n✓ აუქციონის ფოტოები და დაზიანებები\n✓ გარბენი და ტიტულის სტატუსი\n✓ უკვე გახსნილი VIN თავიდან უფასოდ იხსნება",
-                        $"✓ {ProService.VinMonthlyReports} VIN histories every month\n✓ Auction photos and damage\n✓ Mileage and title status\n✓ An opened VIN reopens for free");
+                        $"✓ VIN: სრული ისტორია, {ProService.VinMonthlyReports} ყოველთვე\n✓ აუქციონის ფოტოები და დაზიანებები\n✓ გარბენი და ტიტულის სტატუსი\n✓ უკვე გახსნილი VIN თავიდან უფასოდ იხსნება",
+                        $"✓ VIN: full history, {ProService.VinMonthlyReports} every month\n✓ Auction photos and damage\n✓ Mileage and title status\n✓ An opened VIN reopens for free");
                     plan.IsActive = hasVin;
                     break;
 
@@ -1240,16 +1239,21 @@ public partial class ProViewModel : BaseViewModel
                     plan.Subtitle = L("OBD PRO + VIN PRO ერთად", "OBD PRO + VIN PRO together");
                     plan.PriceText = $"{Price(plan.ProductId, ProService.FullPriceGEL)} / {month}";
                     plan.Features = L(
-                        $"✓ ყველა OBD PRO ფუნქცია\n✓ {ProService.VinMonthlyReports} VIN ისტორია ყოველთვე\n✓ ყველაზე მომგებიანი არჩევანი",
-                        $"✓ Every OBD PRO feature\n✓ {ProService.VinMonthlyReports} VIN histories every month\n✓ The best value");
+                        "✓ ყველაფერი PRO-დან\n✓ ყველაფერი VIN PRO-დან\n✓ ყველაზე მომგებიანი",
+                        "✓ Everything in PRO\n✓ Everything in VIN PRO\n✓ The best value");
                     plan.IsActive = hasObd && hasVin;
                     plan.BadgeText = L("საუკეთესო", "Best value");
                     break;
             }
 
-            plan.ButtonText = plan.IsActive
-                ? L("✓ აქტიურია", "✓ Active")
-                : string.Empty;
+            // Card: "current" (green) for the plan you have, "best value" (blue) for Full PRO.
+            plan.ShowPrice = CanBuyInApp && !plan.IsFree;
+            plan.CanOpen = !plan.IsActive && !plan.IsFree;
+            plan.TagText = plan.IsActive
+                ? L("მიმდინარე", "Current")
+                : plan.IsRecommended ? L("საუკეთესო", "Best value") : string.Empty;
+            plan.TagBackground = Color.FromArgb(plan.IsActive ? "#E8F5EE" : "#2563EB");
+            plan.TagTextColor = Color.FromArgb(plan.IsActive ? "#1F8A4C" : "#FFFFFF");
             plan.StrokeColor = Color.FromArgb(plan.IsActive ? "#22C55E" : plan.IsRecommended ? "#3B82F6" : "#6694A3B8");
         }
 
@@ -1260,6 +1264,8 @@ public partial class ProViewModel : BaseViewModel
             pack.PriceText = Price(pack.ProductId, fallback);
             pack.ButtonText = $"+{pack.Credits} VIN — {pack.PriceText}";
         }
+
+        ShowPacks = CanBuyInApp && hasVin;
 
         string Until(DateTime? date) =>
             date is { } d && d.Year < 2100 ? L($" · {d.ToLocalTime():dd.MM.yyyy}-მდე", $" · until {d.ToLocalTime():dd.MM.yyyy}") : string.Empty;
@@ -1303,75 +1309,6 @@ public partial class ProViewModel : BaseViewModel
     }
 
     // ============================================================
-    // PROMO
-    // ============================================================
-
-    [RelayCommand]
-    public async Task Redeem()
-    {
-        if (IsBusy)
-            return;
-
-        try
-        {
-            IsBusy = true;
-
-            if (string.IsNullOrWhiteSpace(Promo))
-            {
-                Status = L(
-                    "შეიყვანე პრომო კოდი.",
-                    "Enter a promo code.");
-
-                StatusColor =
-                    Color.FromArgb("#B45309");
-
-                return;
-            }
-
-            var ok =
-                await _pro.RedeemPromoCodeAsync(
-                    Promo.Trim());
-
-            Status = ok
-                ? L(
-                    "PRO წარმატებით გააქტიურდა.",
-                    "PRO activated successfully.")
-                : L(
-                    string.IsNullOrWhiteSpace(_pro.LastPromoError.Ka) ? "პრომო კოდი არასწორია ან ვადა გაუვიდა." : _pro.LastPromoError.Ka,
-                    string.IsNullOrWhiteSpace(_pro.LastPromoError.En) ? "The promo code is invalid or expired." : _pro.LastPromoError.En);
-
-            StatusColor =
-                Color.FromArgb(
-                    ok
-                        ? "#22C55E"
-                        : "#DC2626");
-
-            if (ok)
-            {
-                Promo = "";
-
-                await _pro.LoadAsync(
-                    forceServerRefresh: true);
-
-                RefreshAccess();
-            }
-        }
-        catch (Exception)
-        {
-            Status = L(
-                "პრომო კოდის გააქტიურება ვერ შესრულდა. სცადე ხელახლა.",
-                "Promo activation failed. Please try again.");
-
-            StatusColor =
-                Color.FromArgb("#DC2626");
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    // ============================================================
     // PURCHASE
     // ============================================================
 
@@ -1402,8 +1339,8 @@ public partial class ProViewModel : BaseViewModel
             IsBusy = true;
 
             Status = L(
-                "Google Play იტვირთება…",
-                "Opening Google Play…");
+                $"{StoreName} იტვირთება…",
+                $"Opening {StoreName}…");
 
             StatusColor =
                 Color.FromArgb("#94A3B8");
@@ -1440,6 +1377,45 @@ public partial class ProViewModel : BaseViewModel
         }
     }
 
+    /// <summary>
+    /// A plan card was tapped: iPhone buys it in the App Store; Android opens
+    /// sign-in (PRO bought outside the app is linked to the account).
+    /// </summary>
+    [RelayCommand]
+    public async Task OpenPlan(ProPlanItem? plan)
+    {
+        if (plan is null || plan.IsFree || IsBusy)
+            return;
+
+        if (plan.IsActive)
+        {
+            Status = L("ეს შენი მიმდინარე გეგმაა.", "This is your current plan.");
+            StatusColor = Color.FromArgb("#22C55E");
+            return;
+        }
+
+        if (CanBuyInApp)
+        {
+            await BuyPlan(plan);
+            return;
+        }
+
+        if (!_account.IsSignedIn)
+        {
+            await Shell.Current.GoToAsync(nameof(Views.AccountPage));
+            return;
+        }
+
+        await Restore();
+        if (!plan.IsActive)
+        {
+            Status = L(
+                $"{plan.Title} შენს ანგარიშზე ({_account.Email}) ჯერ არ არის აქტიური.",
+                $"{plan.Title} is not active on your account ({_account.Email}) yet.");
+            StatusColor = Color.FromArgb("#B45309");
+        }
+    }
+
     [RelayCommand]
     public async Task BuyPack(ProPackItem? pack)
     {
@@ -1458,7 +1434,7 @@ public partial class ProViewModel : BaseViewModel
         try
         {
             IsBusy = true;
-            Status = L("Google Play იტვირთება…", "Opening Google Play…");
+            Status = L($"{StoreName} იტვირთება…", $"Opening {StoreName}…");
             StatusColor = Color.FromArgb("#94A3B8");
 
             var result = await _purchase.BuyVinCreditsAsync(pack.ProductId);
@@ -1508,10 +1484,25 @@ public partial class ProViewModel : BaseViewModel
             StatusColor =
                 Color.FromArgb("#94A3B8");
 
+            // App Store requires a real "Restore Purchases" for in-app subscriptions.
+            if (CanBuyInApp)
+            {
+                try
+                {
+                    await _purchase.RestorePurchasesAsync();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"App Store restore failed: {ex.GetType().Name}");
+                }
+            }
+
             await _pro.LoadAsync(
                 forceServerRefresh: true);
 
             _quota = await _vin.GetQuotaAsync(CancellationToken.None);
+
+            await LoadWebSubscriptionAsync();
 
             RefreshAccess();
 
@@ -1676,7 +1667,10 @@ public partial class ProViewModel : BaseViewModel
 /// <summary>One subscription card on the PRO page.</summary>
 public sealed partial class ProPlanItem : ObservableObject
 {
+    public const string FreeId = "free";
+
     public string ProductId { get; init; } = "";
+    public bool IsFree => ProductId == FreeId;
     public bool IsRecommended { get; init; }
     public bool HasBadge => IsRecommended;
 
@@ -1687,6 +1681,14 @@ public sealed partial class ProPlanItem : ObservableObject
     [ObservableProperty] private string buttonText = "";
     [ObservableProperty] private string badgeText = "";
     [ObservableProperty] private bool isActive;
+    [ObservableProperty] private bool showPrice;
+    [ObservableProperty] private bool canOpen;
+    [ObservableProperty] private string tagText = "";
+    [ObservableProperty] private Color tagBackground = Color.FromArgb("#2563EB");
+    [ObservableProperty] private Color tagTextColor = Colors.White;
+
+    public bool HasTag => !string.IsNullOrEmpty(TagText);
+    partial void OnTagTextChanged(string value) => OnPropertyChanged(nameof(HasTag));
     [ObservableProperty] private Color strokeColor = Color.FromArgb("#6694A3B8");
 
     public bool CanBuy => !IsActive;
@@ -1782,6 +1784,13 @@ public partial class ServiceViewModel : BaseViewModel
     private void CancelOilDiscovery() => _discoveryCancellation?.Cancel();
 
     [RelayCommand]
+    private async Task OpenResetRecorder()
+    {
+        try { await Shell.Current.GoToAsync(nameof(Views.ResetRecorderPage)); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Reset recorder navigation failed: {ex.Message}"); }
+    }
+
+    [RelayCommand]
     private async Task CopyDiscoveryReport()
     {
         if (string.IsNullOrWhiteSpace(DiscoveryReport))
@@ -1789,46 +1798,169 @@ public partial class ServiceViewModel : BaseViewModel
         try { await Clipboard.Default.SetTextAsync(DiscoveryReport); } catch { }
     }
 
+    public ObservableCollection<ServiceSearchHitRow> SearchHits { get; } = new();
+    [ObservableProperty] private bool hasSearchHits;
+
+    private static ServiceSearchReportService? SearchReporter =>
+        Application.Current?.Handler?.MauiContext?.Services.GetService<ServiceSearchReportService>();
+
+    private string _knownSourcesCheckedFor = string.Empty;
+    private ServiceSearchResult? _lastSearch;
+    private IReadOnlyList<ServiceSearchHit> _lastSearchHits = Array.Empty<ServiceSearchHit>();
+    private VehicleInfo? _lastSearchVehicle;
+    private double? _lastSearchPercent;
+
+    /// <summary>
+    /// The user confirms that a value of the search (e.g. "Distance to next
+    /// service 4 200 km") is what the dashboard shows. It is remembered for
+    /// this car, shared as confirmed and shown on the Service page.
+    /// </summary>
+    public async Task ConfirmSearchHitAsync(ServiceSearchHitRow row)
+    {
+        if (!row.CanConfirm || _lastSearchVehicle is not { } vehicle || _lastSearch is not { } search)
+            return;
+
+        _serviceDataReader.SavePreferredSources(vehicle, new[] { row.SourceKey });
+        _lastSearchHits = _lastSearchHits
+            .Select(hit => hit.SourceKey == row.SourceKey ? hit with { MatchesDashboard = true } : hit)
+            .ToArray();
+
+        var index = SearchHits.IndexOf(row);
+        if (index >= 0)
+            SearchHits[index] = row with { Mark = "✓", MarkColor = "#1F8A4C", Detail = L("დადასტურდა — შენახულია", "Confirmed — saved"), CanConfirm = false };
+
+        if (SearchReporter is { } reporter)
+            _ = reporter.ReportAsync(vehicle, search, _lastSearchHits, _lastSearchPercent);
+
+        if (!IsBusy)
+            await Refresh();
+    }
+
+    /// <summary>
+    /// No oil value on this car yet: ask the server whether other drivers
+    /// already confirmed a source for the same make/model/year (no search needed).
+    /// </summary>
+    private async Task TryKnownSourcesAsync(VehicleInfo? vehicle, CancellationToken token)
+    {
+        if (vehicle is null || HasOilResetCard || SearchReporter is not { } reporter)
+            return;
+
+        var key = $"{vehicle.Manufacturer}|{vehicle.Model}|{vehicle.Year}";
+        if (key == _knownSourcesCheckedFor)
+            return;
+        _knownSourcesCheckedFor = key;
+
+        var known = await reporter.KnownSourcesAsync(vehicle, token);
+        if (known.Count == 0)
+            return;
+
+        _serviceDataReader.SavePreferredSources(vehicle, known);
+        await RefreshServiceValuesAsync(vehicle, token);
+    }
+
+    /// <summary>
+    /// "Search": tries every known service identifier (all makes, read-only)
+    /// without stopping at the first answer, compares the oil values with the
+    /// dashboard %, remembers the matching source for this car and shares the
+    /// result. GM cars then also get the GMLAN identifier scan.
+    /// </summary>
     private async Task RunOilDiscoveryAsync(bool deepScan)
     {
         if (IsBusy || IsDiscoveryRunning)
             return;
 
-        int? percent = int.TryParse(DashboardOilPercentText?.Trim().TrimEnd('%'), out var p) && p is >= 0 and <= 100
+        double? percent = int.TryParse(DashboardOilPercentText?.Trim().TrimEnd('%'), out var p) && p is >= 0 and <= 100
             ? p
             : null;
 
-        if (deepScan && percent is null)
-        {
-            DiscoveryReport = L(
-                "ღრმა ძიებისთვის ჩაწერე მანქანის ეკრანზე ნაჩვენები ზეთის % (მაგ. 90).",
-                "For the deep search, enter the oil % shown on the car's display (e.g. 90).");
-            return;
-        }
-
         _discoveryCancellation?.Dispose();
         _discoveryCancellation = new CancellationTokenSource(TimeSpan.FromMinutes(25));
+        var token = _discoveryCancellation.Token;
+        var vehicle = _currentOemVehicle ?? _vehicle.CurrentVehicle ?? new VehicleInfo();
+        var matchedAny = false;
+        var report = new System.Text.StringBuilder();
 
         try
         {
             IsBusy = true;
             IsDiscoveryRunning = true;
             DiscoveryReport = "";
+            SearchHits.Clear();
+            HasSearchHits = false;
 
             if (!_obd.IsInitialized)
-                await _obd.InitializeAsync(_discoveryCancellation.Token);
+                await _obd.InitializeAsync(token);
 
-            var progress = new System.Progress<string>(text => DiscoveryProgressText = text);
-            DiscoveryReport = await _serviceDataReader.RunGmOilLifeDiscoveryAsync(
-                percent, deepScan, progress, _discoveryCancellation.Token);
+            // 1) Every catalog source (read-only), no early stop.
+            var progress = new System.Progress<string>(step =>
+                DiscoveryProgressText = L($"მოწმდება {step}…", $"Checking {step}…"));
+            var search = await _serviceDataReader.SearchAllSourcesAsync(vehicle, progress, token);
+            var hits = ServiceDataReaderService.MatchDashboard(search.Hits, percent);
+
+            report.AppendLine($"GCar360 service search · {vehicle.Manufacturer} {vehicle.Model} {vehicle.Year}");
+            report.AppendLine($"tried {search.RequestsTried} · answered {search.RequestsAnswered} · dashboard {(percent.HasValue ? $"{percent}%" : "—")}");
+            foreach (var hit in hits)
+            {
+                report.AppendLine($"{(hit.MatchesDashboard ? "★" : "·")} {hit.Name} = {hit.Value:0.##} {hit.Unit} · {hit.Request} · {hit.Module} · {hit.CatalogMake}");
+                SearchHits.Add(new ServiceSearchHitRow(
+                    hit.MatchesDashboard ? "✓" : "•",
+                    hit.MatchesDashboard ? "#1F8A4C" : "#5D636B",
+                    $"{hit.Name}: {hit.Value:0.##} {hit.Unit}".Trim(),
+                    hit.MatchesDashboard
+                        ? L("ემთხვევა პანელს", "Matches the dashboard")
+                        : L($"თუ პანელზეც ასეა — დააჭირე „სწორია“ · {hit.Module}", $"If the dashboard shows the same — tap to confirm · {hit.Module}"),
+                    hit.SourceKey,
+                    !hit.MatchesDashboard));
+            }
+            HasSearchHits = SearchHits.Count > 0;
+
+            _lastSearch = search;
+            _lastSearchHits = hits;
+            _lastSearchVehicle = vehicle;
+            _lastSearchPercent = percent;
+
+            var matched = hits.Where(hit => hit.MatchesDashboard).ToArray();
+            if (matched.Length > 0)
+            {
+                // Remember the confirmed source(s) plus the other values of the same identifier.
+                var sameRequest = hits.Where(hit => matched.Any(m => m.Request == hit.Request && m.Module == hit.Module));
+                _serviceDataReader.SavePreferredSources(vehicle, sameRequest.Select(hit => hit.SourceKey));
+                matchedAny = true;
+            }
+
+            if (SearchReporter is { } reporter)
+                _ = reporter.ReportAsync(vehicle, search, hits, percent);
+
+            // 2) GM: GMLAN identifier scan when the catalog had no matching value.
+            if (!matchedAny && IsGmVehicle(vehicle) && percent is not null)
+            {
+                var gmProgress = new System.Progress<string>(text => DiscoveryProgressText = text);
+                var gm = await _serviceDataReader.RunGmOilLifeDiscoveryAsync((int)percent.Value, deepScan, gmProgress, token);
+                report.AppendLine().Append(gm);
+                matchedAny = gm.Contains("★", StringComparison.Ordinal);
+            }
+
+            DiscoveryReport = report.ToString();
+            DiscoveryResultText = matchedAny
+                ? L("✓ ნაპოვნია და შენახულია — ზეთის რესურსი ახლა გამოჩნდება.", "✓ Found and saved — oil life now appears.")
+                : hits.Count == 0
+                    ? L("ვერცერთმა ცნობილმა გზამ ვერ უპასუხა. ამ მანქანისთვის ჯერ წყარო არ გვაქვს — ინსტრუქცია ქვემოთაა.",
+                        "None of the known sources answered. We have no source for this car yet — instructions are below.")
+                    : percent is null
+                        ? L($"უპასუხა {hits.Count} მნიშვნელობამ. ჩაწერე პანელის ზეთის % და გაიმეორე, რომ სწორი ავარჩიოთ.",
+                            $"{hits.Count} value(s) answered. Enter the dashboard oil % and repeat to pick the right one.")
+                        : L($"უპასუხა {hits.Count} მნიშვნელობამ, მაგრამ არცერთი არ უდრის {percent}%-ს. შეამოწმე პანელის %.",
+                            $"{hits.Count} value(s) answered, but none equals {percent}%. Check the dashboard %.");
         }
         catch (OperationCanceledException)
         {
-            DiscoveryReport = L("ძიება შეწყდა.", "Search cancelled.");
+            DiscoveryReport = report.ToString();
+            DiscoveryResultText = L("ძიება შეწყდა.", "Search cancelled.");
         }
         catch (Exception ex)
         {
-            DiscoveryReport = L($"ძიება ვერ შესრულდა: {ex.Message}", $"Search failed: {ex.Message}");
+            DiscoveryReport = report.ToString();
+            DiscoveryResultText = L($"ძიება ვერ შესრულდა: {ex.Message}", $"Search failed: {ex.Message}");
         }
         finally
         {
@@ -1838,7 +1970,7 @@ public partial class ServiceViewModel : BaseViewModel
         }
 
         // A match was saved → read service values again so it shows up.
-        if (DiscoveryReport.Contains("★", StringComparison.Ordinal))
+        if (matchedAny)
             await Refresh();
     }
 
@@ -1848,7 +1980,7 @@ public partial class ServiceViewModel : BaseViewModel
     [ObservableProperty] private bool isOilResetRunning;
     [ObservableProperty] private string oilLifeValueText = "—";
     [ObservableProperty] private double oilLifeFraction;
-    [ObservableProperty] private string oilLifeColor = "#4ADE80";
+    [ObservableProperty] private string oilLifeColor = "#1F8A4C";
     [ObservableProperty] private string oilCompatibilityText = "";
     [ObservableProperty] private string oilResetStatusText = "";
     [ObservableProperty] private string oilResetStatusColor = "#94A3B8";
@@ -1877,8 +2009,6 @@ public partial class ServiceViewModel : BaseViewModel
     }
     partial void OnHasOilResetCardChanged(bool value)
     {
-        if (value)
-            ShowOilDiscovery = false;
         OnPropertyChanged(nameof(ShowOilResetUnavailable));
         OnPropertyChanged(nameof(ShowDirectResetsSection));
         OnPropertyChanged(nameof(ShowServiceMessageBox));
@@ -1899,7 +2029,7 @@ public partial class ServiceViewModel : BaseViewModel
         var clamped = Math.Clamp(percent, 0, 100);
         OilLifeValueText = $"{clamped:0.#}%";
         OilLifeFraction = clamped / 100d;
-        OilLifeColor = clamped <= 10 ? "#EF4444" : clamped <= 25 ? "#F59E0B" : "#4ADE80";
+        OilLifeColor = clamped <= 10 ? "#B3361F" : clamped <= 25 ? "#C98A1A" : "#1F8A4C";
     }
 
     private void UpdateOilCompatibilityText()
@@ -1924,7 +2054,7 @@ public partial class ServiceViewModel : BaseViewModel
         if (IsBusy || IsOilResetRunning)
             return;
 
-        if (!ServiceDataReaderService.CanResetLearnedOilLife)
+        if (!_serviceDataReader.CanResetLearnedOilLife)
         {
             await Refresh();
             return;
@@ -1934,7 +2064,7 @@ public partial class ServiceViewModel : BaseViewModel
         {
             IsOilResetRunning = true;
             OilResetStatusText = L("ზეთის რესურსი იკითხება…", "Reading oil life…");
-            OilResetStatusColor = "#60A5FA";
+            OilResetStatusColor = "#1D5BD6";
             OilResetDetailText = "";
 
             using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(20));
@@ -1950,13 +2080,13 @@ public partial class ServiceViewModel : BaseViewModel
             else
             {
                 OilResetStatusText = L("ECU-მ ზეთის რესურსი ახლა არ დააბრუნა. ანთება ჩართულია?", "The ECU did not return the oil life now. Is the ignition on?");
-                OilResetStatusColor = "#F59E0B";
+                OilResetStatusColor = "#C98A1A";
             }
         }
         catch (Exception ex)
         {
             OilResetStatusText = L($"წაკითხვა ვერ მოხერხდა: {ex.Message}", $"Read failed: {ex.Message}");
-            OilResetStatusColor = "#F87171";
+            OilResetStatusColor = "#B3361F";
         }
         finally
         {
@@ -2007,7 +2137,7 @@ public partial class ServiceViewModel : BaseViewModel
         try
         {
             IsOilResetRunning = true;
-            OilResetStatusColor = "#60A5FA";
+            OilResetStatusColor = "#1D5BD6";
             OilResetDetailText = "";
 
             using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(60));
@@ -2037,7 +2167,7 @@ public partial class ServiceViewModel : BaseViewModel
 
             // Technical details only when something went wrong.
             OilResetDetailText = result.Success ? string.Empty : result.Detail;
-            OilResetStatusColor = result.Success ? "#4ADE80" : result.WriteSent ? "#F87171" : "#F59E0B";
+            OilResetStatusColor = result.Success ? "#1F8A4C" : result.WriteSent ? "#B3361F" : "#C98A1A";
             OilResetStatusText = result.Success
                 ? result.WriteSent
                     ? L($"✓ განულდა: {result.Before:0.#}% → {result.After:0.#}%", $"✓ Reset done: {result.Before:0.#}% → {result.After:0.#}%")
@@ -2047,12 +2177,12 @@ public partial class ServiceViewModel : BaseViewModel
         catch (OperationCanceledException)
         {
             OilResetStatusText = L("დრო ამოიწურა — პასუხი არ მოვიდა.", "Timed out — no reply.");
-            OilResetStatusColor = "#F59E0B";
+            OilResetStatusColor = "#C98A1A";
         }
         catch (Exception ex)
         {
             OilResetStatusText = L($"განულება ვერ შესრულდა: {ex.Message}", $"Reset failed: {ex.Message}");
-            OilResetStatusColor = "#F87171";
+            OilResetStatusColor = "#B3361F";
         }
         finally
         {
@@ -2434,12 +2564,12 @@ public partial class ServiceViewModel : BaseViewModel
             "აპი არ აგზავნის guessed OEM ბრძანებებს. ფუნქცია აქტიურდება მხოლოდ მაშინ, როცა ზუსტი მანქანა, ECU definition, მისამართი, ძაბვა და საჭირო runtime პირობები დადასტურებულია. Security Access-ის საჭიროებისას ფუნქცია დაბლოკილი რჩება, სანამ შესაბამისი ავტორიზაცია არ არსებობს.",
             "The app never sends guessed OEM commands. A function is enabled only when the exact vehicle, ECU definition, address, voltage and required runtime conditions are verified. Operations requiring Security Access remain blocked until a valid authorization provider exists.");
 
-        DiscoveryTitleText = L("ზეთის რესურსის ძიება (GM)", "Oil life search (GM)");
+        DiscoveryTitleText = L("ზეთის და სერვისის ძებნა", "Oil & service search");
         DiscoveryHintText = L(
-            "თუ ზეთის % ზემოთ არ ჩანს: ჩაწერე მანქანის ეკრანზე ნაჩვენები % და დააჭირე ძიებას. აპი მხოლოდ კითხულობს (0x22), არაფერს წერს. ღრმა ძიებას რამდენიმე წუთი სჭირდება — ანთება ჩართული დატოვე.",
-            "If oil % is not shown above: enter the % shown on the car's display and start the search. The app only reads (0x22), it writes nothing. The deep search takes a few minutes — keep the ignition on.");
+            "ჩაწერე მანქანის ეკრანზე ნაჩვენები ზეთის % და დააჭირე ძებნას. აპი სცდის ყველა ცნობილ გზას (ყველა მარკის) და პირველზე არ ჩერდება. Service due / ტექდათვალიერების მნიშვნელობაზე დააჭირე, თუ პანელზეც ასეა. მხოლოდ კითხულობს — მანქანაში არაფერს წერს.",
+            "Enter the oil % shown on the car's display and start the search. The app tries every known source (all makes) and does not stop at the first one. Tap a Service due / inspection value if the dashboard shows the same. It only reads — nothing is written to the car.");
         DiscoveryQuickButtonText = L("სწრაფი შემოწმება", "Quick check");
-        DiscoveryDeepButtonText = L("ღრმა ძიება", "Deep search");
+        DiscoveryDeepButtonText = L("ძებნა", "Search");
         DiscoveryPlaceholderText = L("ეკრანის ზეთის % (მაგ. 90)", "Dashboard oil % (e.g. 90)");
 
         OilRefreshButtonText = L("განახლება", "Refresh");
@@ -2538,12 +2668,12 @@ public partial class ServiceViewModel : BaseViewModel
             ShowNoServiceContent = false;
 
             ConnectionState = "LOADING";
-            ConnectionStateColor = "#60A5FA";
+            ConnectionStateColor = "#1D5BD6";
             ConnectionDetail = L(
                 "ვამოწმებ OBD adapter-ს და ECU-ს…",
                 "Checking the OBD adapter and ECU…");
             OemState = "LOADING";
-            OemStateColor = "#60A5FA";
+            OemStateColor = "#1D5BD6";
             OemDetail = L("OEM catalog და ECU პასუხები მოწმდება…", "Checking the OEM catalog and ECU responses…");
             ServiceResult = L(
                 "სერვისის მონაცემები იკითხება…",
@@ -2562,7 +2692,7 @@ public partial class ServiceViewModel : BaseViewModel
             {
                 ClearOperationLists();
                 OemState = L("OEM ფუნქციები დაბლოკილია", "OEM functions blocked");
-                OemStateColor = "#F59E0B";
+                OemStateColor = "#C98A1A";
                 OemDetail = L(
                     "რეალური Generic OBD-II ECU პასუხი ვერ დადასტურდა, ამიტომ Service/Coding ბრძანება არ გაიგზავნება.",
                     "A real generic OBD-II ECU response was not confirmed, so no Service/Coding command will be sent.");
@@ -2588,7 +2718,7 @@ public partial class ServiceViewModel : BaseViewModel
                 VehicleSummary = L("ავტომობილი ვერ დადასტურდა", "Vehicle not verified");
                 VehicleVin = "VIN: —";
                 OemState = L("OEM ფუნქციები დაბლოკილია", "OEM functions blocked");
-                OemStateColor = "#F59E0B";
+                OemStateColor = "#C98A1A";
                 OemDetail = L(
                     "ECU პასუხობს, მაგრამ VIN/მწარმოებელი/მოდელი საკმარისად ვერ დადასტურდა.",
                     "The ECU responds, but VIN/make/model could not be verified sufficiently.");
@@ -2611,13 +2741,16 @@ public partial class ServiceViewModel : BaseViewModel
                 try { await RefreshServiceValuesAsync(vehicle, token); }
                 catch (OperationCanceledException) { throw; }
                 catch { }
-                ShowOilDiscovery = IsGmVehicle(vehicle) && !HasOilResetCard;
+                ShowOilDiscovery = true;
+                try { await TryKnownSourcesAsync(vehicle, token); }
+                catch (OperationCanceledException) { throw; }
+                catch { }
 
                 OemState = L(
                     "OEM პროფილი დაუდასტურებელია",
                     "OEM profile not verified");
 
-                OemStateColor = "#F59E0B";
+                OemStateColor = "#C98A1A";
                 OemDetail = resolvedVehicle.VerificationMessage;
                 ServiceResult = OemDetail;
                 return;
@@ -2642,7 +2775,7 @@ public partial class ServiceViewModel : BaseViewModel
             OemState = executable > 0
                 ? L("OEM ფუნქციები ხელმისაწვდომია", "OEM functions available")
                 : L("OEM ფუნქციები ჯერ არ არის მზად", "OEM functions not ready");
-            OemStateColor = executable > 0 ? "#4ADE80" : "#F59E0B";
+            OemStateColor = executable > 0 ? "#1F8A4C" : "#C98A1A";
             OemDetail = availability.Detail;
 
             ServiceResult = executable > 0
@@ -2692,6 +2825,15 @@ public partial class ServiceViewModel : BaseViewModel
                 {
                     // Optional; never break the page.
                 }
+
+                try
+                {
+                    await RefreshMaintenancePartsAsync(token);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Maintenance parts refresh failed: {ex.Message}");
+                }
             }
 
             IsBusy = false;
@@ -2704,7 +2846,10 @@ public partial class ServiceViewModel : BaseViewModel
     private async Task AddGuidedServiceResetsAsync(CancellationToken token)
     {
         var vehicle = _currentOemVehicle ?? _vehicle.CurrentVehicle;
-        ShowOilDiscovery = IsGmVehicle(vehicle) && !HasOilResetCard;
+        ShowOilDiscovery = true;
+        try { await TryKnownSourcesAsync(vehicle, token); }
+        catch (OperationCanceledException) { throw; }
+        catch { }
         await LoadGuidedServiceProceduresAsync(vehicle, token);
 
         foreach (var guided in GuidedServiceProcedures)
@@ -2807,7 +2952,7 @@ public partial class ServiceViewModel : BaseViewModel
         if (!adapter.BluetoothConnected || !adapter.AdapterInitialized)
         {
             ConnectionState = "ERROR";
-            ConnectionStateColor = "#F87171";
+            ConnectionStateColor = "#B3361F";
             ConnectionDetail = L(
                 "OBD adapter მზად არ არის. ჯერ დაუკავშირდი adapter-ს.",
                 "The OBD adapter is not ready. Connect the adapter first.");
@@ -2817,7 +2962,7 @@ public partial class ServiceViewModel : BaseViewModel
         if (!adapter.VehicleResponding)
         {
             ConnectionState = "NO ECU RESPONSE";
-            ConnectionStateColor = "#F59E0B";
+            ConnectionStateColor = "#C98A1A";
             ConnectionDetail = L(
                 "Adapter დაკავშირებულია, მაგრამ მანქანის Generic OBD-II ECU პასუხი ვერ დადასტურდა.",
                 "The adapter is connected, but a generic OBD-II ECU response was not confirmed.");
@@ -2825,7 +2970,7 @@ public partial class ServiceViewModel : BaseViewModel
         }
 
         ConnectionState = "READY";
-        ConnectionStateColor = "#4ADE80";
+        ConnectionStateColor = "#1F8A4C";
         ConnectionDetail = L(
             "Adapter და Generic OBD-II ECU პასუხი დადასტურებულია. OEM ფუნქციები ცალკე მოწმდება exact definition-ით.",
             "The adapter and generic OBD-II ECU response are confirmed. OEM functions are checked separately against exact definitions.");
@@ -2836,7 +2981,7 @@ public partial class ServiceViewModel : BaseViewModel
         if (TryNumeric(adapter.Voltage, out var voltage))
         {
             VoltageState = $"{voltage:0.0} V";
-            VoltageStateColor = voltage is >= 11.5 and <= 15.2 ? "#4ADE80" : "#F59E0B";
+            VoltageStateColor = voltage is >= 11.5 and <= 15.2 ? "#1F8A4C" : "#C98A1A";
         }
         else
         {
@@ -2861,7 +3006,7 @@ public partial class ServiceViewModel : BaseViewModel
                 SpeedState = speedValue < 0.5
                     ? L("გაჩერებულია", "Stationary")
                     : $"{speedValue:0} km/h";
-                SpeedStateColor = speedValue < 0.5 ? "#4ADE80" : "#F59E0B";
+                SpeedStateColor = speedValue < 0.5 ? "#1F8A4C" : "#C98A1A";
             }
             else
             {
@@ -2883,7 +3028,7 @@ public partial class ServiceViewModel : BaseViewModel
                 EngineState = rpmValue < 50
                     ? L("OFF", "OFF")
                     : L($"RUNNING · {rpmValue:0} RPM", $"RUNNING · {rpmValue:0} RPM");
-                EngineStateColor = "#4ADE80";
+                EngineStateColor = "#1F8A4C";
             }
             else
             {
@@ -2959,7 +3104,7 @@ public partial class ServiceViewModel : BaseViewModel
                 AvailabilityOverride = L(
                     "GUIDED · ECU write არ იგზავნება",
                     "GUIDED · No ECU write is sent"),
-                AvailabilityOverrideColor = "#60A5FA"
+                AvailabilityOverrideColor = "#1D5BD6"
             });
         }
 
@@ -3016,7 +3161,7 @@ public partial class ServiceViewModel : BaseViewModel
         HasOilResetCard = oilLife is not null;
         _oilLifeReading = oilLife;
         CanResetOilLife = oilLife is not null &&
-            (IsLearnedGmOilReading(oilLife) ? ServiceDataReaderService.CanResetLearnedOilLife : _serviceDataReader.CanResetByWriteBack(oilLife));
+            (IsLearnedGmOilReading(oilLife) ? _serviceDataReader.CanResetLearnedOilLife : _serviceDataReader.CanResetByWriteBack(oilLife));
         OilManualResetText = oilLife is not null && !CanResetOilLife ? ManualResetGuide() : string.Empty;
         if (oilLife is not null)
         {
@@ -3044,13 +3189,16 @@ public partial class ServiceViewModel : BaseViewModel
                     ? L("REAL ECU READ", "REAL ECU READ")
                     : L("RESEARCH READ", "RESEARCH READ"),
                 EvidenceColor = reading.EvidenceLevel == ServiceMetricEvidenceLevel.ProductionCatalog
-                    ? "#4ADE80"
-                    : "#F59E0B"
+                    ? "#1F8A4C"
+                    : "#C98A1A"
             });
         }
 
         RebuildServiceReminders(oilLife);
         UpdateCollectionState();
+
+        // The oil row of the parts list uses the same value from the car.
+        StoreCarServiceValues(_lastServiceReadings);
     }
 
     // ------------------------------------------------------------------
@@ -3068,8 +3216,9 @@ public partial class ServiceViewModel : BaseViewModel
     [ObservableProperty] private bool isAppOilStarted;
     [ObservableProperty] private string appOilValueText = "—";
     [ObservableProperty] private double appOilFraction;
-    [ObservableProperty] private string appOilColor = "#4ADE80";
+    [ObservableProperty] private string appOilColor = "#1F8A4C";
     [ObservableProperty] private string appOilHintText = "";
+    [ObservableProperty] private string appOilManualText = "";
     [ObservableProperty] private bool isAppOilBusy;
     public string AppOilTitleText => L("ზეთის სერვისი — დარჩა:", "Oil service — remaining:");
     public string AppOilButtonText => L("ზეთი შევცვალე", "Oil changed");
@@ -3109,9 +3258,11 @@ public partial class ServiceViewModel : BaseViewModel
             status = _appOilReminder.Peek(key, _appOilMake);
         }
 
-        // Only cars that report an odometer get this card (exact distance).
+        // Every car that does not report its own oil service gets this card:
+        // with an odometer it counts km + days, without one it counts days.
         ApplyAppOilStatus(status);
-        ShowAppOilReminder = status.OdometerAvailable || status.IsStarted;
+        AppOilManualText = ManualResetGuide();
+        ShowAppOilReminder = true;
     }
 
     private void ApplyAppOilStatus(AppOilReminderStatus status)
@@ -3136,10 +3287,14 @@ public partial class ServiceViewModel : BaseViewModel
                 ? L($"{status.KmLeft.Value:N0} კმ · {days}", $"{status.KmLeft.Value:N0} km · {days}").Replace(',', ' ')
                 : days;
         AppOilFraction = status.Fraction;
-        AppOilColor = overdue || status.Fraction <= 0.1 ? "#EF4444" : status.Fraction <= 0.25 ? "#F59E0B" : "#4ADE80";
-        AppOilHintText = L(
-            $"ზეთი შეიცვალა: {status.ChangedLocal:dd.MM.yyyy} · ინტერვალი {status.IntervalKm:N0} კმ / 12 თვე",
-            $"Oil changed: {status.ChangedLocal:dd.MM.yyyy} · interval {status.IntervalKm:N0} km / 12 months").Replace(',', ' ');
+        AppOilColor = overdue || status.Fraction <= 0.1 ? "#B3361F" : status.Fraction <= 0.25 ? "#C98A1A" : "#1F8A4C";
+        AppOilHintText = (status.KmLeft.HasValue
+            ? L(
+                $"ზეთი შეიცვალა: {status.ChangedLocal:dd.MM.yyyy} · ინტერვალი {status.IntervalKm:N0} კმ / 12 თვე",
+                $"Oil changed: {status.ChangedLocal:dd.MM.yyyy} · interval {status.IntervalKm:N0} km / 12 months")
+            : L(
+                $"ზეთი შეიცვალა: {status.ChangedLocal:dd.MM.yyyy} · ეს მანქანა OBD-ით გარბენს არ აბრუნებს, ამიტომ შეხსენება თარიღით ითვლის (12 თვე).",
+                $"Oil changed: {status.ChangedLocal:dd.MM.yyyy} · this car does not report its odometer over OBD, so the reminder counts by date (12 months).")).Replace(',', ' ');
     }
 
     [RelayCommand]
@@ -3232,7 +3387,7 @@ public partial class ServiceViewModel : BaseViewModel
         try
         {
             IsReminderResetRunning = true;
-            ReminderStatusColor = "#60A5FA";
+            ReminderStatusColor = "#1D5BD6";
             ReminderStatusText = L("განულება იგზავნება…", "Sending reset…");
 
             using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(60));
@@ -3241,7 +3396,7 @@ public partial class ServiceViewModel : BaseViewModel
 
             var result = await _serviceDataReader.ResetByWriteBackAsync(reading, 0, null, cancellation.Token);
 
-            ReminderStatusColor = result.Success ? "#4ADE80" : result.WriteSent ? "#F87171" : "#F59E0B";
+            ReminderStatusColor = result.Success ? "#1F8A4C" : result.WriteSent ? "#B3361F" : "#C98A1A";
             ReminderStatusText = result.Success
                 ? L($"✓ {row.Title} განულდა.", $"✓ {row.Title} was reset.")
                 : DescribeOilResetFailure(result);
@@ -3251,7 +3406,7 @@ public partial class ServiceViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            ReminderStatusColor = "#F87171";
+            ReminderStatusColor = "#B3361F";
             ReminderStatusText = L($"განულება ვერ შესრულდა: {ex.Message}", $"Reset failed: {ex.Message}");
         }
         finally
@@ -3302,7 +3457,7 @@ public partial class ServiceViewModel : BaseViewModel
                 ResetButtonText = ReminderResetButtonText,
                 Title = ReminderTitle(group.Key, readings[0]),
                 ValueText = string.Join(" · ", parts),
-                ValueColor = colors.Contains("#EF4444") ? "#EF4444" : colors.Contains("#F59E0B") ? "#F59E0B" : "#4ADE80"
+                ValueColor = colors.Contains("#B3361F") ? "#B3361F" : colors.Contains("#C98A1A") ? "#C98A1A" : "#1F8A4C"
             });
         }
 
@@ -3444,27 +3599,27 @@ public partial class ServiceViewModel : BaseViewModel
     {
         return reading.Kind switch
         {
-            ServiceMetricKind.OilLifePercent when reading.NumericValue <= 10 => "#EF4444",
-            ServiceMetricKind.OilLifePercent when reading.NumericValue <= 25 => "#F59E0B",
-            ServiceMetricKind.OilLifePercent => "#4ADE80",
+            ServiceMetricKind.OilLifePercent when reading.NumericValue <= 10 => "#B3361F",
+            ServiceMetricKind.OilLifePercent when reading.NumericValue <= 25 => "#C98A1A",
+            ServiceMetricKind.OilLifePercent => "#1F8A4C",
 
-            ServiceMetricKind.DistanceToNextService when reading.NumericValue <= 0 => "#EF4444",
-            ServiceMetricKind.DistanceToNextService when reading.NumericValue <= 1000 => "#F59E0B",
-            ServiceMetricKind.DistanceToNextService => "#4ADE80",
+            ServiceMetricKind.DistanceToNextService when reading.NumericValue <= 0 => "#B3361F",
+            ServiceMetricKind.DistanceToNextService when reading.NumericValue <= 1000 => "#C98A1A",
+            ServiceMetricKind.DistanceToNextService => "#1F8A4C",
 
-            ServiceMetricKind.DaysToNextService when reading.NumericValue <= 0 => "#EF4444",
-            ServiceMetricKind.DaysToNextService when reading.NumericValue <= 30 => "#F59E0B",
-            ServiceMetricKind.DaysToNextService => "#4ADE80",
+            ServiceMetricKind.DaysToNextService when reading.NumericValue <= 0 => "#B3361F",
+            ServiceMetricKind.DaysToNextService when reading.NumericValue <= 30 => "#C98A1A",
+            ServiceMetricKind.DaysToNextService => "#1F8A4C",
 
-            ServiceMetricKind.InspectionDistance when reading.NumericValue <= 0 => "#EF4444",
-            ServiceMetricKind.InspectionDistance when reading.NumericValue <= 1000 => "#F59E0B",
-            ServiceMetricKind.InspectionDistance => "#4ADE80",
+            ServiceMetricKind.InspectionDistance when reading.NumericValue <= 0 => "#B3361F",
+            ServiceMetricKind.InspectionDistance when reading.NumericValue <= 1000 => "#C98A1A",
+            ServiceMetricKind.InspectionDistance => "#1F8A4C",
 
-            ServiceMetricKind.InspectionDays when reading.NumericValue <= 0 => "#EF4444",
-            ServiceMetricKind.InspectionDays when reading.NumericValue <= 30 => "#F59E0B",
-            ServiceMetricKind.InspectionDays => "#4ADE80",
+            ServiceMetricKind.InspectionDays when reading.NumericValue <= 0 => "#B3361F",
+            ServiceMetricKind.InspectionDays when reading.NumericValue <= 30 => "#C98A1A",
+            ServiceMetricKind.InspectionDays => "#1F8A4C",
 
-            _ => "#4ADE80"
+            _ => "#1F8A4C"
         };
     }
 
@@ -3536,7 +3691,7 @@ public partial class ServiceViewModel : BaseViewModel
                 IsAvailable = availability.CanExecute,
                 IsActiveTest = availability.Definition.Type == OemOperationType.ActiveTest,
                 AvailabilityOverride = $"{availability.StatusText} · {availability.Detail}",
-                AvailabilityOverrideColor = availability.CanExecute ? "#4ADE80" : "#F59E0B"
+                AvailabilityOverrideColor = availability.CanExecute ? "#1F8A4C" : "#C98A1A"
             };
 
             MaintenanceProcedures.Add(item);
@@ -3825,12 +3980,12 @@ public partial class ServiceViewModel : BaseViewModel
         _currentOemVehicle = null;
         IsGenericObdReady = false;
         ConnectionState = "ERROR";
-        ConnectionStateColor = "#F87171";
+        ConnectionStateColor = "#B3361F";
         ConnectionDetail = L(
             "კავშირის/ECU შესაძლებლობების შემოწმება ვერ დასრულდა.",
             "Connection/ECU capability check failed.");
         OemState = "ERROR";
-        OemStateColor = "#EF4444";
+        OemStateColor = "#B3361F";
         OemDetail = L(
             "უსაფრთხოების მიზნით არცერთი OEM ბრძანება არ გაიგზავნა.",
             "No OEM command was sent for safety.");
@@ -4792,7 +4947,7 @@ public sealed class ServiceReminderRow
     public string Key { get; init; } = string.Empty;
     public string Title { get; init; } = string.Empty;
     public string ValueText { get; init; } = string.Empty;
-    public string ValueColor { get; init; } = "#4ADE80";
+    public string ValueColor { get; init; } = "#1F8A4C";
     public ServiceMetricReading? ResetReading { get; init; }
     public string ResetButtonText { get; init; } = string.Empty;
     public bool CanReset => ResetReading is not null;

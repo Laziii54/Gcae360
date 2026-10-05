@@ -28,6 +28,8 @@ public sealed class ActualMileageService
         {
             VIN = vehicle.VIN
         };
+        MileageTrace.Reset();
+        MileageTrace.Add($"მანქანა: {vehicle.Manufacturer} {vehicle.Model} {vehicle.Year} · VIN {vehicle.VIN}");
 
         // ============================================================
         // 1. ჯერ ყველა არსებული Mileage Provider შევამოწმოთ
@@ -42,6 +44,7 @@ public sealed class ActualMileageService
                     vehicle,
                     cancellationToken);
 
+                MileageTrace.Add($"[{provider.Name}] მნიშვნელობა: {evidence.Count}");
                 if (evidence.Count > 0)
                     result.Evidence.AddRange(evidence);
             }
@@ -49,8 +52,9 @@ public sealed class ActualMileageService
             {
                 throw;
             }
-            catch
+            catch (Exception ex)
             {
+                MileageTrace.Add($"[{provider.Name}] შეცდომა: {ex.GetType().Name}");
                 // ერთი provider-ის ჩავარდნამ მთელი Mileage scan
                 // არ უნდა გააჩეროს.
             }
@@ -74,6 +78,8 @@ public sealed class ActualMileageService
                 result,
                 cancellationToken);
         }
+
+        result.Log = MileageTrace.Snapshot();
 
         // ============================================================
         // 4. შედეგის შენახვა ბაზაში
@@ -121,6 +127,7 @@ public sealed class ActualMileageService
 
             var odometerKm =
                 await _obd.ReadStandardOdometerAsync(cancellationToken);
+            MileageTrace.Add($"01 A6 (standard odometer): {(odometerKm.HasValue ? $"{odometerKm:0} km" : "მანქანამ არ დააბრუნა")}");
 
             // აშკარად არარეალური მნიშვნელობა არ მივიღოთ.
             if (odometerKm.HasValue &&

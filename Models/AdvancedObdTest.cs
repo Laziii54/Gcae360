@@ -1,3 +1,5 @@
+using CarScanner.Services.OBD;
+
 namespace CarScanner.Models;
 
 public sealed record ObdTestItem(string Kind, string Identifier, string RawValue, string Status, string Description);
@@ -9,13 +11,15 @@ public sealed record ObdTestItem(string Kind, string Identifier, string RawValue
 public sealed record Mode05MonitorResult(byte TestId, int Actual, int Limit, byte StatusByte)
 {
     public bool IsFlagged => (StatusByte & 0x01) != 0;
-    public string Identifier => $"O₂ Test ID 0x{TestId:X2}";
-    public string ActualText => $"Actual: {Actual} raw";
-    public string LimitText => $"Limit: {Limit} raw";
-    public string StatusText => IsFlagged ? "FLAGGED" : "NOT FLAGGED";
-    public string StatusColor => IsFlagged ? "#EF4444" : "#4ADE80";
-    public string RawStatus => $"Status byte: 0x{StatusByte:X2}";
-    public string DefinitionNote => "ზუსტი O₂ sensor, ერთეული და მნიშვნელობა ამ raw Test ID-სთვის მხოლოდ დადასტურებული ECU definition-ით განისაზღვრება.";
+    public string Identifier => ObdLang.L($"O₂ ტესტი 0x{TestId:X2}", $"O₂ Test ID 0x{TestId:X2}");
+    public string ActualText => ObdLang.L($"მნიშვნელობა: {Actual}", $"Actual: {Actual} raw");
+    public string LimitText => ObdLang.L($"ზღვარი: {Limit}", $"Limit: {Limit} raw");
+    public string StatusText => IsFlagged ? ObdLang.L("ნორმაში არ არის", "FLAGGED") : ObdLang.L("ნორმაშია", "NOT FLAGGED");
+    public string StatusColor => IsFlagged ? "#B3361F" : "#1F8A4C";
+    public string RawStatus => ObdLang.L($"სტატუსის ბაიტი: 0x{StatusByte:X2}", $"Status byte: 0x{StatusByte:X2}");
+    public string DefinitionNote => ObdLang.L(
+        "ზუსტი O₂ სენსორი და ერთეული ამ ტესტისთვის მხოლოდ მწარმოებლის დადასტურებული აღწერით განისაზღვრება.",
+        "The exact O₂ sensor and unit for this test ID are defined only by a verified manufacturer definition.");
 }
 
 /// <summary>
@@ -42,16 +46,18 @@ public sealed record Mode06MonitorResult(
         : $"TID 0x{TestId:X2} / CID 0x{ComponentId:X2}";
     public string ActualText => IsCan
         ? CarScanner.Services.OBD.Mode06Definitions.Format(Actual, UnitScalingId!.Value)
-        : $"{Actual} raw";
+        : ObdLang.L($"{Actual} (ნედლი)", $"{Actual} raw");
     public string LimitsText => IsCan
-        ? $"MIN {CarScanner.Services.OBD.Mode06Definitions.Format(Minimum, UnitScalingId!.Value)} · MAX {CarScanner.Services.OBD.Mode06Definitions.Format(Maximum, UnitScalingId!.Value)}"
-        : $"MIN {Minimum} · MAX {Maximum}";
+        ? $"{ObdLang.L("მინ", "MIN")} {CarScanner.Services.OBD.Mode06Definitions.Format(Minimum, UnitScalingId!.Value)} · {ObdLang.L("მაქს", "MAX")} {CarScanner.Services.OBD.Mode06Definitions.Format(Maximum, UnitScalingId!.Value)}"
+        : $"{ObdLang.L("მინ", "MIN")} {Minimum} · {ObdLang.L("მაქს", "MAX")} {Maximum}";
     public string AuxiliaryText => IsCan
         ? $"{CarScanner.Services.OBD.Mode06Definitions.TestName(TestId)} · TID ${TestId:X2}"
-        : $"Aux: {Auxiliary}";
-    public string ResultText => Passed ? "PASSED" : "FAILED";
+        : ObdLang.L($"დამხმარე: {Auxiliary}", $"Aux: {Auxiliary}");
+    public string ResultText => Passed ? ObdLang.L("ნორმაშია", "PASSED") : ObdLang.L("ნორმაში არ არის", "FAILED");
     public string ResultColor => Passed ? "#1F8A4C" : "#B3361F";
     public string DefinitionNote => IsCan
-        ? (TestId >= 0x80 ? "მწარმოებლის ტესტი: ზღვრები ECU-მ თავად დააბრუნა." : string.Empty)
-        : "Generic Mode 06 value — ზუსტი სახელი და ერთეული მხოლოდ დადასტურებული OEM test definition-ით განისაზღვრება.";
+        ? (TestId >= 0x80 ? ObdLang.L("მწარმოებლის ტესტი: ზღვრები ECU-მ თავად დააბრუნა.", "Manufacturer test: the ECU returned its own limits.") : string.Empty)
+        : ObdLang.L(
+            "ზოგადი Mode 06 მნიშვნელობა — ზუსტი სახელი და ერთეული მხოლოდ მწარმოებლის დადასტურებული აღწერით განისაზღვრება.",
+            "Generic Mode 06 value — the exact name and unit are defined only by a confirmed OEM test definition.");
 }

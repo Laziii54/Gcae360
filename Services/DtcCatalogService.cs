@@ -30,6 +30,10 @@ public sealed class DtcCatalogService
     private const string DatabaseStampKey = "dtc_catalog_sqlite_asset_stamp";
     private const string ExpectedSchemaVersion = "5.0";
 
+    // Changes whenever the bundled catalog content is updated, so a phone
+    // with the same app version still unpacks the new file.
+    private const string CatalogRevision = "obdb-2026-10-03";
+
     private readonly VehicleBrandProfileService _brands;
     private readonly VehicleProfileResolverService _vehicleProfiles;
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -362,7 +366,8 @@ public sealed class DtcCatalogService
             AppInfo.Current.PackageName,
             AppInfo.Current.VersionString,
             AppInfo.Current.BuildString,
-            ExpectedSchemaVersion);
+            ExpectedSchemaVersion,
+            CatalogRevision);
     }
 
     private async Task LoadManufacturerAliasesAsync(

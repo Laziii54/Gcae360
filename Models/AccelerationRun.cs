@@ -44,4 +44,18 @@ public sealed class AccelerationRun
     public bool HasVerifiedVideo { get; set; }
     public string LeaderboardSubmissionId { get; set; } = string.Empty;
     public DateTime? PublishedAt { get; set; }
+
+    // Ranking evidence (empty for older runs).
+    /// <summary>[[seconds from start, km/h], …] from ECU PID 01 0D.</summary>
+    public string SpeedTraceJson { get; set; } = string.Empty;
+    /// <summary>[[seconds, km/h, lat, lon, accuracy m], …] from the phone GPS.</summary>
+    public string GpsTraceJson { get; set; } = string.Empty;
+    /// <summary>passed / failed / missing.</summary>
+    public string GpsStatus { get; set; } = string.Empty;
+    public double GpsMedianDiffKph { get; set; }
+    /// <summary>Server status after publishing: Approved, Pending (under review), Verified.</summary>
+    public string LeaderboardStatus { get; set; } = string.Empty;
+    /// <summary>Copy of the in-app video recorded with this run (for review uploads).</summary>
+    public string VideoPath { get; set; } = string.Empty;
+    public DateTime? VideoUploadedAt { get; set; }
 }

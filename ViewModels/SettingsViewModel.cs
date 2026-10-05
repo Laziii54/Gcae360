@@ -22,7 +22,7 @@ public partial class SettingsViewModel : BaseViewModel
     private string themeOption = "Light";
 
     [ObservableProperty]
-    private string languageOption = "ქართული";
+    private string languageOption = "English";
 
     [ObservableProperty]
     private bool notificationsEnabled;
@@ -87,7 +87,7 @@ public partial class SettingsViewModel : BaseViewModel
         LanguageOption =
             Preferences.Default.Get(
                 "language",
-                "ქართული");
+                "English");
 
         NotificationsEnabled =
             Preferences.Default.Get(

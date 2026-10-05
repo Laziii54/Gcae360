@@ -60,7 +60,7 @@ public partial class ErrorCode : ObservableObject
             return Preferences.Default
                 .Get(
                     "language",
-                    "ქართული")
+                    "English")
                 .Equals(
                     "English",
                     StringComparison.OrdinalIgnoreCase);
@@ -266,4 +266,4 @@ public partial class ErrorCode : ObservableObject
         OnPropertyChanged(
             nameof(SeverityColor));
     }
-}
+}

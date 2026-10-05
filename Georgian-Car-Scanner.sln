@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CarScanner", "CarScanner.cs
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CarScanner.Api", "Backend\CarScanner.Api\CarScanner.Api.csproj", "{2da18887-5a11-4061-a6bd-30f98d6489c2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CarScanner.Tests", "Tests\CarScanner.Tests\CarScanner.Tests.csproj", "{b3f1a7c2-6d4e-4f2a-9c1b-5e8d7a6f4c31}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,6 +22,10 @@ Global
 		{2da18887-5a11-4061-a6bd-30f98d6489c2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2da18887-5a11-4061-a6bd-30f98d6489c2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2da18887-5a11-4061-a6bd-30f98d6489c2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{b3f1a7c2-6d4e-4f2a-9c1b-5e8d7a6f4c31}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{b3f1a7c2-6d4e-4f2a-9c1b-5e8d7a6f4c31}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{b3f1a7c2-6d4e-4f2a-9c1b-5e8d7a6f4c31}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{b3f1a7c2-6d4e-4f2a-9c1b-5e8d7a6f4c31}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

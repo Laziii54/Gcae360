@@ -6,66 +6,173 @@
     x:Class="CarScanner.Views.HybridHealthPage"
     x:DataType="vm:HybridHealthViewModel"
     BackgroundColor="{DynamicResource PageBg}"
-    Title="ელექტრო / ჰიბრიდის ჯანმრთელობა">
+    Title="{Binding PageTitle}">
 
     <ScrollView>
         <VerticalStackLayout Padding="16,14,16,32" Spacing="12">
+
+            <!-- Header -->
             <VerticalStackLayout Spacing="2">
-                <Label Text="ელექტრო / ჰიბრიდის ჯანმრთელობა" Style="{StaticResource PageTitleStyle}" />
+                <Label Text="{Binding PageTitle}" Style="{StaticResource PageTitleStyle}" />
                 <Label Text="{Binding VehicleName}" Style="{StaticResource CaptionStyle}" />
             </VerticalStackLayout>
 
-            <Button Text="HV ბატარეის / BMS შემოწმება" Command="{Binding ScanCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" Style="{StaticResource PrimaryButtonStyle}" />
+            <Button Text="{Binding ScanButtonText}" Command="{Binding ScanCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" Style="{StaticResource PrimaryButtonStyle}" />
 
+            <!-- Progress / status -->
             <Border IsVisible="{Binding IsBusy}" Style="{StaticResource ListCardStyle}" Padding="14">
                 <VerticalStackLayout Spacing="8">
                     <ActivityIndicator IsRunning="True" />
                     <Label Text="{Binding ScanStage}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
+            <Label Text="{Binding ScanStage}" IsVisible="{Binding HasResult, Converter={StaticResource InverseBoolConverter}}" FontSize="13" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
 
-            <Border Style="{StaticResource ListCardStyle}" Padding="16,14">
-                <VerticalStackLayout Spacing="4">
-                    <Label Text="HYBRID BATTERY HEALTH SCORE" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
-                    <Label Text="{Binding ScoreText}" FontSize="34" FontAttributes="Bold" TextColor="{Binding ScoreColor}" />
-                    <Label Text="{Binding RatingText}" FontSize="14" FontAttributes="Bold" TextColor="{Binding ScoreColor}" />
-                    <Label Text="ქულა ჩნდება მხოლოდ მანქანიდან მიღებული მონაცემების საფუძველზე." Style="{StaticResource CaptionStyle}" Margin="0,4,0,0" />
+            <!-- Verdict -->
+            <Border IsVisible="{Binding HasResult}" Style="{StaticResource ListCardStyle}" Padding="16,14">
+                <VerticalStackLayout Spacing="6">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                        <Border WidthRequest="72" HeightRequest="72" StrokeThickness="5" Stroke="{Binding ScoreColor}" BackgroundColor="Transparent" StrokeShape="RoundRectangle 36" VerticalOptions="Center">
+                            <Label Text="{Binding ScoreText}" FontSize="26" FontAttributes="Bold" TextColor="{Binding ScoreColor}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                            <Label Text="{Binding ScoreCaption}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                            <Label Text="{Binding RatingText}" FontSize="18" FontAttributes="Bold" TextColor="{Binding ScoreColor}" LineBreakMode="WordWrap" />
+                            <Label Text="{Binding PackLabel}" IsVisible="{Binding HasPack}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <Label Text="{Binding SummaryText}" FontSize="13" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" Margin="0,4,0,0" />
+                    <Label Text="{Binding PackNote}" IsVisible="{Binding HasPackNote}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
 
-            <Label Text="რეალური მონაცემები" Style="{StaticResource SectionCaptionStyle}" />
-            <Border Style="{StaticResource ListCardStyle}">
+            <!-- Block / cell chart -->
+            <Border IsVisible="{Binding HasBars}" Style="{StaticResource ListCardStyle}" Padding="14,12">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="{Binding BlocksTitle}" FontSize="14" FontAttributes="Bold" />
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding BarRows}" Spacing="4">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:HybridBarRow">
+                                <HorizontalStackLayout BindableLayout.ItemsSource="{Binding Bars}" HorizontalOptions="Center" Spacing="3">
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:HybridBlockBar">
+                                            <VerticalStackLayout Spacing="3" WidthRequest="{Binding BarWidth}" VerticalOptions="End">
+                                                <BoxView HeightRequest="{Binding BarHeight}" WidthRequest="{Binding BarWidth}" Color="{Binding Color}" CornerRadius="3" VerticalOptions="End" />
+                                                <Label Text="{Binding Label}" IsVisible="{Binding ShowLabel}" FontSize="9" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                                                <VerticalStackLayout.GestureRecognizers>
+                                                    <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:HybridHealthViewModel}}, Path=SelectBlockCommand}" CommandParameter="{Binding .}" />
+                                                </VerticalStackLayout.GestureRecognizers>
+                                            </VerticalStackLayout>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
+                                </HorizontalStackLayout>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                    <Label Text="{Binding SelectedBlockText}" FontSize="12" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                    <Label Text="{Binding BlocksCaption}" Style="{StaticResource CaptionStyle}" HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Load test -->
+            <Border IsVisible="{Binding HasPack}" Style="{StaticResource ListCardStyle}" Padding="14,12">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="{Binding LoadTitle}" FontSize="14" FontAttributes="Bold" />
+                    <Label Text="{Binding LoadNotSupportedText}" IsVisible="{Binding IsLoadTestSupported, Converter={StaticResource InverseBoolConverter}}" Style="{StaticResource CaptionStyle}" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding LoadIntro}" IsVisible="{Binding IsLoadTestSupported}" Style="{StaticResource CaptionStyle}" LineBreakMode="WordWrap" />
+                    <Button Text="{Binding LoadStartText}" Command="{Binding StartLoadTestCommand}" IsVisible="{Binding ShowLoadStart}" IsEnabled="{Binding CanLoadTest}" HeightRequest="44" CornerRadius="12" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderColor="{DynamicResource Primary}" BorderWidth="1.5" />
+                    <VerticalStackLayout IsVisible="{Binding IsLoadTesting}" Spacing="8">
+                        <ProgressBar Progress="{Binding LoadProgress}" ProgressColor="{DynamicResource Primary}" />
+                        <Label Text="{Binding LoadLiveText}" FontSize="13" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                        <Button Text="{Binding LoadStopText}" Command="{Binding StopLoadTestCommand}" HeightRequest="40" CornerRadius="12" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout IsVisible="{Binding HasLoadResult}" Spacing="3" Margin="0,2,0,0">
+                        <Label Text="{Binding LoadResultTitle}" FontSize="14" FontAttributes="Bold" TextColor="{Binding LoadResultColor}" LineBreakMode="WordWrap" />
+                        <Label Text="{Binding LoadResultText}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Details -->
+            <Label IsVisible="{Binding HasResult}" Text="{Binding DetailsCaption}" Style="{StaticResource SectionCaptionStyle}" />
+            <Border IsVisible="{Binding HasResult}" Style="{StaticResource ListCardStyle}">
                 <VerticalStackLayout Spacing="0">
+                    <VerticalStackLayout IsVisible="{Binding HasSoh}" Spacing="0">
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Padding="14,12" ColumnSpacing="10">
+                            <Label Text="{Binding SohTitle}" Style="{StaticResource RowTitleStyle}" />
+                            <Label Grid.Column="1" Text="{Binding SohText}" FontAttributes="Bold" />
+                            <Label Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding SohCaption}" Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" />
+                        </Grid>
+                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout IsVisible="{Binding HasCapacity}" Spacing="0">
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Padding="14,12" ColumnSpacing="10">
+                            <Label Text="{Binding CapacityTitle}" Style="{StaticResource RowTitleStyle}" />
+                            <Label Grid.Column="1" Text="{Binding CapacityText}" FontAttributes="Bold" />
+                            <Label Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding CapacityCaption}" Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" />
+                        </Grid>
+                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                    </VerticalStackLayout>
                     <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Padding="14,12" ColumnSpacing="10">
-                        <Label Text="უჯრედების ძაბვის სხვაობა" Style="{StaticResource RowTitleStyle}" />
-                        <Label Grid.Column="1" Text="{Binding CellDeltaText}" FontAttributes="Bold" TextColor="{Binding ScoreColor}" />
-                        <Label Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding CellRangeText}" Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" />
+                        <Label Text="{Binding SpreadTitle}" Style="{StaticResource RowTitleStyle}" />
+                        <Label Grid.Column="1" Text="{Binding SpreadText}" FontAttributes="Bold" TextColor="{Binding ScoreColor}" />
+                        <Label Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding SpreadCaption}" Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" />
                     </Grid>
-                    <BoxView Style="{StaticResource RowDividerStyle}" />
-                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Padding="14,12" ColumnSpacing="10">
-                        <Label Text="ბატარეის ტემპერატურა" Style="{StaticResource RowTitleStyle}" />
-                        <Label Grid.Column="1" Text="{Binding TemperatureText}" FontAttributes="Bold" />
-                        <Label Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding TemperatureRangeText}" Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" />
-                    </Grid>
-                    <BoxView Style="{StaticResource RowDividerStyle}" />
-                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Padding="14,12" ColumnSpacing="10">
-                        <Label Text="სავარაუდო დარჩენილი სიცოცხლე" Style="{StaticResource RowTitleStyle}" />
-                        <Label Grid.Column="1" Text="{Binding RemainingLifeText}" FontAttributes="Bold" />
-                        <Label Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding RemainingLifeSource}" Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" />
-                    </Grid>
+                    <VerticalStackLayout IsVisible="{Binding HasTemperature}" Spacing="0">
+                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Padding="14,12" ColumnSpacing="10">
+                            <Label Text="{Binding TemperatureTitle}" Style="{StaticResource RowTitleStyle}" />
+                            <Label Grid.Column="1" Text="{Binding TemperatureText}" FontAttributes="Bold" />
+                            <Label Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding TemperatureCaption}" Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" />
+                        </Grid>
+                    </VerticalStackLayout>
+                    <VerticalStackLayout IsVisible="{Binding HasSoc}" Spacing="0">
+                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Padding="14,12" ColumnSpacing="10">
+                            <Label Text="{Binding SocTitle}" Style="{StaticResource RowTitleStyle}" />
+                            <Label Grid.Column="1" Text="{Binding SocText}" FontAttributes="Bold" />
+                            <Label Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding SocCaption}" Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" />
+                        </Grid>
+                    </VerticalStackLayout>
+                    <VerticalStackLayout IsVisible="{Binding HasResistance}" Spacing="0">
+                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Padding="14,12" ColumnSpacing="10">
+                            <Label Text="{Binding ResistanceTitle}" Style="{StaticResource RowTitleStyle}" />
+                            <Label Grid.Column="1" Text="{Binding ResistanceText}" FontAttributes="Bold" />
+                            <Label Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding ResistanceCaption}" Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" />
+                        </Grid>
+                    </VerticalStackLayout>
+                    <VerticalStackLayout IsVisible="{Binding HasRemainingLife}" Spacing="0">
+                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Padding="14,12" ColumnSpacing="10">
+                            <Label Text="{Binding RemainingLifeTitle}" Style="{StaticResource RowTitleStyle}" />
+                            <Label Grid.Column="1" Text="{Binding RemainingLifeText}" FontAttributes="Bold" />
+                            <Label Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding RemainingLifeCaption}" Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" />
+                        </Grid>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
             </Border>
 
-            <Border Style="{StaticResource ListCardStyle}" Padding="14">
+            <!-- How to read -->
+            <Border IsVisible="{Binding HasResult}" Style="{StaticResource ListCardStyle}" Padding="14,12">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="{Binding HowToTitle}" FontSize="13" FontAttributes="Bold" />
+                    <Label Text="{Binding HowToText}" Style="{StaticResource CaptionStyle}" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Technical (collapsed) -->
+            <Button IsVisible="{Binding HasResult}" Text="{Binding TechnicalToggleText}" Command="{Binding ToggleTechnicalCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" FontSize="12" HeightRequest="36" Padding="0" HorizontalOptions="Center" />
+            <Border IsVisible="{Binding ShowTechnical}" Style="{StaticResource ListCardStyle}" Padding="14">
                 <VerticalStackLayout Spacing="7">
-                    <Label Text="ვალიდაციის სტატუსი" FontSize="13" FontAttributes="Bold" />
-                    <Label Text="{Binding ValidationStatus}" FontSize="12" TextColor="#F59E0B" LineBreakMode="WordWrap" />
-                    <Label Text="{Binding EvidenceText}" FontSize="10" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding ValidationStatus}" FontSize="12" TextColor="#C98A1A" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding EvidenceText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    <Label IsVisible="{Binding HasRawLog}" Text="{Binding RawLog}" FontSize="10" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    <Button IsVisible="{Binding HasRawLog}" Text="{Binding CopyLogText}" Command="{Binding CopyLogCommand}" HeightRequest="38" MinimumHeightRequest="38" FontSize="12" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderColor="{DynamicResource Primary}" BorderWidth="1" CornerRadius="10" HorizontalOptions="Start" Padding="12,0" />
                 </VerticalStackLayout>
             </Border>
 
-            <Label Text="უსაფრთხოება: იგზავნება მხოლოდ read-only მოთხოვნები. აპი არ აკეთებს HV ბატარეის reset-ს, coding-ს ან actuator test-ს." Style="{StaticResource CaptionStyle}" Margin="4,0" />
-            <Label Text="{Binding ScanStage}" IsVisible="{Binding HasResult}" Style="{StaticResource CaptionStyle}" HorizontalTextAlignment="Center" />
+            <Label Text="{Binding SafetyText}" Style="{StaticResource CaptionStyle}" HorizontalTextAlignment="Center" Margin="4,0" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

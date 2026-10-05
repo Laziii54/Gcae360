@@ -48,6 +48,20 @@ public partial class HomeViewModel : BaseViewModel
     [ObservableProperty]
     private string vinNumber = "VIN უცნობია";
 
+    /// <summary>The 17-character VIN inside <see cref="VinNumber"/>, or null while it is unknown.</summary>
+    public string? CopyableVin =>
+        System.Text.RegularExpressions.Regex.Match(VinNumber ?? string.Empty, @"\b[A-HJ-NPR-Z0-9]{17}\b") is { Success: true } match
+            ? match.Value
+            : null;
+
+    public bool HasCopyableVin => CopyableVin is not null;
+
+    partial void OnVinNumberChanged(string value)
+    {
+        OnPropertyChanged(nameof(CopyableVin));
+        OnPropertyChanged(nameof(HasCopyableVin));
+    }
+
     [ObservableProperty]
     private string vehicleName = "მანქანა უცნობია";
 
@@ -146,6 +160,19 @@ public partial class HomeViewModel : BaseViewModel
     private string accelerationSpeed = "—";
 
     [ObservableProperty] private string accelerationSpeedUnit = "km/h";
+
+    // Big state line: stop → ready, go! → measuring → result.
+    [ObservableProperty] private string accelerationPhaseText = string.Empty;
+    [ObservableProperty] private string accelerationPhaseColor = "#94A3B8";
+    [ObservableProperty] private Microsoft.Maui.Controls.Brush accelerationPhaseBrush = new Microsoft.Maui.Controls.SolidColorBrush(Color.FromArgb("#94A3B8"));
+
+    // How many real ECU speed samples per second the adapter delivers.
+    [ObservableProperty] private string accelerationRateText = "—";
+    [ObservableProperty] private string accelerationRateColor = "#94A3B8";
+    [ObservableProperty] private string accelerationShareText = "გაზიარება";
+
+    private DateTime? _lastAccelerationCompletedAt;
+    private double _lastAccelerationSeconds;
     [ObservableProperty] private string accelerationTestLabel = "0–100 km/h";
     [ObservableProperty] private string accelerationButtonText = "ARM 0–100 TEST";
     [ObservableProperty] private string accelerationScaleCenter = "50";
@@ -223,6 +250,8 @@ public partial class HomeViewModel : BaseViewModel
         _acceleration.Completed += (_, run) =>
             MainThread.BeginInvokeOnMainThread(() =>
             {
+                _lastAccelerationCompletedAt = DateTime.UtcNow;
+                _lastAccelerationSeconds = run.DurationSeconds;
                 AccelerationResult =
                     $"{run.Source.Replace("OBD · ", string.Empty)}: {run.DurationSeconds:F2} წმ";
 
@@ -303,11 +332,13 @@ public partial class HomeViewModel : BaseViewModel
         AccelerationTestLabel = snapshot.CurrentTest.DisplayName;
         AccelerationButtonText = $"ARM {snapshot.CurrentTest.DisplayName.ToUpperInvariant()} TEST";
         var test = snapshot.CurrentTest;
-        AccelerationScaleCenter = _units.Convert(test.TargetSpeedKph / 2d, "km/h").Value.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
-        AccelerationScaleMaximum = _units.Convert(test.TargetSpeedKph, "km/h").Value.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
-        AccelerationSpeedSource = snapshot.HasCurrentSpeed
-            ? $"რეალური ECU პასუხი · Vehicle Speed PID 01 0D · {snapshot.LastSpeedAt?.ToLocalTime():HH:mm:ss}"
-            : "Vehicle Speed PID 01 0D-ის რეალურ პასუხს ველოდები…";
+        AccelerationScaleCenter = _units.Convert(test.DisplayTargetSpeedKph / 2d, "km/h").Value.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+        AccelerationScaleMaximum = _units.Convert(test.DisplayTargetSpeedKph, "km/h").Value.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+        AccelerationSpeedSource = _acceleration.GpsMode
+            ? L("ტელეფონის GPS · მიახლოებითი, რეიტინგში არ შედის", "Phone GPS · approximate, not ranked")
+            : snapshot.HasCurrentSpeed
+                ? L($"რეალური ECU პასუხი · PID 01 0D · {snapshot.LastSpeedAt?.ToLocalTime():HH:mm:ss}", $"Real ECU answer · PID 01 0D · {snapshot.LastSpeedAt?.ToLocalTime():HH:mm:ss}")
+                : L("PID 01 0D-ის პასუხს ველოდები…", "Waiting for PID 01 0D…");
         AccelerationObdStatus = _bluetooth.IsConnected ? "● Connected" : "● Disconnected";
         AccelerationObdStatusColor = _bluetooth.IsConnected ? Colors.LimeGreen : Colors.IndianRed;
         AccelerationRpm = snapshot.HasCurrentRpm
@@ -328,7 +359,9 @@ public partial class HomeViewModel : BaseViewModel
         // gets its own row that fills in live, right where its speed label is,
         // instead of only appearing bundled into one summary sentence.
         AccelerationSplitRows.Clear();
-        var checkpoints = snapshot.SplitTargetsKph.Append((int)Math.Round(test.TargetSpeedKph)).Distinct();
+        var checkpoints = test.IsDistanceTest
+            ? snapshot.SplitTargetsKph.Distinct()
+            : snapshot.SplitTargetsKph.Append((int)Math.Round(test.TargetSpeedKph)).Distinct();
         foreach (var target in checkpoints)
         {
             var targetText = _units.Convert(target, "km/h").Value.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
@@ -345,6 +378,59 @@ public partial class HomeViewModel : BaseViewModel
                 ? $"Max speed: {_units.FormatSpeed(snapshot.MaximumSpeed)} · Max RPM: {snapshot.MaximumRpm}\nDistance: {_units.Format(snapshot.DistanceMeters, "m", "0")} · Peak acceleration: {snapshot.PeakAcceleration:F2} m/s²"
                 : $"მაქს. სიჩქარე: {_units.FormatSpeed(snapshot.MaximumSpeed)} · მაქს. RPM: {snapshot.MaximumRpm}\nმანძილი: {_units.Format(snapshot.DistanceMeters, "m", "0")} · მაქს. აჩქარება: {snapshot.PeakAcceleration:F2} m/s²";
         AccelerationGraphSamples = snapshot.RunSamples;
+        UpdateAccelerationPhaseAndRate(snapshot);
+    }
+
+    private void UpdateAccelerationPhaseAndRate(AccelerationMeasurementSnapshot snapshot)
+    {
+        const string ok = "#1F8A4C", warn = "#C98A1A", bad = "#B3361F", muted = "#94A3B8", blue = "#1D5BD6";
+        var test = snapshot.CurrentTest;
+        AccelerationShareText = L("გაზიარება", "Share");
+
+        if (!_bluetooth.IsConnected)
+        {
+            (AccelerationPhaseText, AccelerationPhaseColor) = (L("დააკავშირე OBD ადაპტერი", "Connect the OBD adapter"), muted);
+        }
+        else if (_acceleration.IsTiming)
+        {
+            (AccelerationPhaseText, AccelerationPhaseColor) = (L("იზომება…", "Measuring…"), blue);
+        }
+        else if (snapshot.IsArmed && _acceleration.IsReadyToGo)
+        {
+            (AccelerationPhaseText, AccelerationPhaseColor) = (L("მზადაა — დაიძარი!", "Ready — go!"), ok);
+        }
+        else if (snapshot.IsArmed)
+        {
+            var start = _units.Convert(test.StartSpeedKph, "km/h").Value.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+            AccelerationPhaseText = test.RequiresStationaryStart
+                ? L("გაჩერდი — გაზომვა 0-დან იწყება", "Stop — the run starts from 0")
+                : L($"ჩამოდი {start} {_units.SpeedUnit}-მდე", $"Slow down to {start} {_units.SpeedUnit}");
+            AccelerationPhaseColor = warn;
+        }
+        else if (_lastAccelerationCompletedAt is { } done && DateTime.UtcNow - done < TimeSpan.FromSeconds(20))
+        {
+            AccelerationPhaseText = L($"დასრულდა: {_lastAccelerationSeconds:F2} წმ", $"Done: {_lastAccelerationSeconds:F2} s");
+            AccelerationPhaseColor = ok;
+        }
+        else
+        {
+            (AccelerationPhaseText, AccelerationPhaseColor) = (L("დააჭირე ღილაკს გაზომვის დასაწყებად", "Press the button to arm a run"), muted);
+        }
+
+        AccelerationPhaseBrush = new Microsoft.Maui.Controls.SolidColorBrush(Color.FromArgb(AccelerationPhaseColor));
+
+        var rate = _acceleration.SpeedSampleRate;
+        if (!snapshot.HasCurrentSpeed || rate <= 0)
+        {
+            (AccelerationRateText, AccelerationRateColor) = ("—", muted);
+            return;
+        }
+
+        var quality = rate >= 8 ? L("ზუსტი", "accurate") : rate >= 4 ? L("საშუალო", "fair") : L("ნელი ადაპტერი", "slow adapter");
+        AccelerationRateText = L(
+            $"{rate:0.#} გაზომვა/წმ · {quality}",
+            $"{rate:0.#} samples/s · {quality}");
+        AccelerationRateColor = rate >= 8 ? ok : rate >= 4 ? warn : bad;
     }
 
     partial void OnSelectedPerformanceTestChanged(PerformanceTestDefinition? value)
@@ -406,10 +492,11 @@ public partial class HomeViewModel : BaseViewModel
         if (!_bluetooth.IsConnected)
         {
             AccelerationSpeed = "—";
-            AccelerationSpeedSource = "ჯერ დააკავშირე OBD2 adapter.";
+            AccelerationSpeedSource = L("ადაპტერი არ არის · შეგიძლია ტელეფონის GPS-ით გაზომო", "No adapter · you can measure with the phone GPS");
             AccelerationObdStatus = "● Disconnected";
             AccelerationObdStatusColor = Colors.IndianRed;
-            AccelerationStatus = "Vehicle Speed PID 01 0D-ის წასაკითხად საჭიროა აქტიური OBD კავშირი.";
+            AccelerationStatus = L("ზუსტი დროისთვის დააკავშირე OBD2 ადაპტერი, ან დააჭირე ARM და აირჩიე GPS.",
+                "Connect an OBD2 adapter for an exact time, or tap ARM and choose GPS.");
             return;
         }
 
@@ -422,9 +509,9 @@ public partial class HomeViewModel : BaseViewModel
         {
             UpdateAccelerationState();
             AccelerationSpeed = "—";
-            AccelerationSpeedSource = "Vehicle Speed PID 01 0D ვერ წაიკითხა ECU-მ.";
+            AccelerationSpeedSource = L("ECU-მ სიჩქარე (PID 01 0D) არ დააბრუნა", "The ECU did not return the speed (PID 01 0D)");
             AccelerationStatus = string.IsNullOrWhiteSpace(ex.Message)
-                ? "რეალური სიჩქარის წაკითხვა ვერ დაიწყო. შეამოწმე OBD კავშირი."
+                ? L("სიჩქარის წაკითხვა ვერ დაიწყო. შეამოწმე OBD კავშირი, ან გაზომე GPS-ით.", "Could not start reading the speed. Check the OBD connection, or measure with GPS.")
                 : ex.Message;
         }
     }
@@ -441,6 +528,37 @@ public partial class HomeViewModel : BaseViewModel
     {
         if (IsBusy || IsAccelerationMeasuring)
             return;
+
+        // No adapter: offer timing from the phone GPS (works on any car,
+        // also on cars without OBD speed, but it is an estimate and not ranked).
+        if (!_bluetooth.IsConnected)
+        {
+            var useGps = await Shell.Current.DisplayAlertAsync(
+                L("ადაპტერი არ არის დაკავშირებული", "No adapter connected"),
+                L("გავზომო ტელეფონის GPS-ით? GPS წამში დაახლოებით ერთხელ ახლდება, ამიტომ შედეგი მიახლოებითია და რეიტინგში არ შედის. ზუსტი დროისთვის დააკავშირე OBD2 ადაპტერი.",
+                  "Measure with the phone GPS? GPS updates about once a second, so the result is approximate and not ranked. For an exact time, connect an OBD2 adapter."),
+                L("GPS-ით გაზომვა", "Use GPS"),
+                L("გაუქმება", "Cancel"));
+            if (!useGps)
+                return;
+
+            try
+            {
+                IsBusy = true;
+                await _acceleration.StartGpsAsync();
+                UpdateAccelerationState();
+            }
+            catch (Exception ex)
+            {
+                AccelerationStatus = ex.Message;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+
+            return;
+        }
 
         if (!await RequireObdConnectionAsync())
             return;
@@ -1019,12 +1137,6 @@ public partial class HomeViewModel : BaseViewModel
         => Shell.Current.GoToAsync(nameof(Views.VehicleBrandSelectionPage));
 
 
-    [RelayCommand]
-    private async Task SelectVehicleType()
-    {
-        await Shell.Current.GoToAsync(
-            nameof(Views.VehicleTypeSelectionPage));
-    }
 
 
     // ============================================================

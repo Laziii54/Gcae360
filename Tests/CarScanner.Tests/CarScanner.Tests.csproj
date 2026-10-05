@@ -25,6 +25,9 @@
     <Compile Include="../../Services/OBD/PidDefinitionRegistry.cs" Link="PidDefinitionRegistry.cs" />
     <Compile Include="../../Services/OBD/PIDDecoder.cs" Link="PIDDecoder.cs" />
     <Compile Include="../../Services/OBD/Mode06Definitions.cs" Link="Mode06Definitions.cs" />
+    <Compile Include="../../Services/OBD/ObdLanguage.cs" Link="ObdLanguage.cs" />
+    <Compile Include="../../Services/Energy/EvEnergyMath.cs" Link="Energy/EvEnergyMath.cs" />
+    <Compile Include="../../Services/Maintenance/MaintenanceSchedule.cs" Link="Maintenance/MaintenanceSchedule.cs" />
     <Compile Include="../../Models/AdvancedObdTest.cs" Link="AdvancedObdTest.cs" />
     <Compile Include="../../Models/DiagnosticCode.cs" Link="DiagnosticCode.cs" />
     <Compile Include="../../Models/DiagnosticOperationResult.cs" Link="DiagnosticOperationResult.cs" />
@@ -70,5 +73,12 @@
   <ItemGroup>
     <Compile Include="../../Models/ServiceProcedureDefinition.cs" Link="ServiceProcedureDefinition.cs" />
     <Compile Include="../../Models/ServiceProcedureItem.cs" Link="ServiceProcedureItem.cs" />
+    <Compile Include="../../Services/HvBatteryCore.cs" Link="HvBatteryCore.cs" />
+    <Compile Include="../../Services/ToyotaHybridBattery.cs" Link="ToyotaHybridBattery.cs" />
+    <Compile Include="../../Services/HyundaiKiaBattery.cs" Link="HyundaiKiaBattery.cs" />
+    <Compile Include="../../Services/GmVoltBoltBattery.cs" Link="GmVoltBoltBattery.cs" />
+    <Compile Include="../../Services/NissanLeafBattery.cs" Link="NissanLeafBattery.cs" />
+    <Compile Include="../../Services/MoreEvBatteries.cs" Link="MoreEvBatteries.cs" />
+    <Compile Include="../../Services/MoreEvBatteries2.cs" Link="MoreEvBatteries2.cs" />
   </ItemGroup>
 </Project>

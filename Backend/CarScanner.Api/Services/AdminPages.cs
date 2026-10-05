@@ -96,7 +96,9 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
         ("subs", "⭐", "გამოწერები"),
         ("payments", "💳", "გადახდები"),
         ("devices", "📱", "მოწყობილობები"),
-        ("acceleration", "🏁", "0–100 რეიტინგი"),
+        ("acceleration", "🏁", "აჩქარების რეიტინგი"),
+        ("service", "🛠", "სერვისის სწავლება"),
+        ("crashes", "🐞", "აპის შეცდომები"),
         ("log", "🧾", "ჟურნალი"),
         ("security", "🔒", "უსაფრთხოება"),
     };
@@ -120,6 +122,52 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
     private static string Kpi(string label, string value, string hint, string cls = "") =>
         $"<div class=\"kpi {cls}\"><div class=\"l\">{label}</div><div class=\"v\">{value}</div><div class=\"h\">{hint}</div></div>";
 
+    /// <summary>ECU vs GPS speed chart, GPS difference, map link and the review video.</summary>
+    private static string Evidence(AccelerationLeaderboardAdminItem item)
+    {
+        static List<double[]> Parse(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return new();
+            try { return System.Text.Json.JsonSerializer.Deserialize<List<double[]>>(json) ?? new(); }
+            catch (System.Text.Json.JsonException) { return new(); }
+        }
+
+        var speed = Parse(item.SpeedTrace).Where(p => p.Length >= 2).ToList();
+        var gps = Parse(item.GpsTrace).Where(p => p.Length >= 2).ToList();
+        var html = new StringBuilder();
+
+        if (speed.Count > 1)
+        {
+            const double w = 320, h = 120, pad = 4;
+            var maxT = Math.Max(0.1, speed.Concat(gps).Max(p => p[0]));
+            var minT = Math.Min(0, speed.Concat(gps).Min(p => p[0]));
+            var maxV = Math.Max(10, speed.Concat(gps).Max(p => p[1]));
+            string Line(IEnumerable<double[]> points) => string.Join(" ", points.Select(p =>
+                $"{(pad + (p[0] - minT) / (maxT - minT) * (w - 2 * pad)).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)},{(h - pad - p[1] / maxV * (h - 2 * pad)).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}"));
+            html.Append($"""
+<svg viewBox="0 0 {w} {h}" width="{w}" height="{h}" style="background:#f6f7f9;border-radius:8px;display:block;margin:6px 0">
+<polyline fill="none" stroke="#1d5bd6" stroke-width="2" points="{Line(speed)}"/>
+<polyline fill="none" stroke="#1f8a4c" stroke-width="2" stroke-dasharray="4 3" points="{Line(gps)}"/>
+</svg><div class="muted"><span style="color:#1d5bd6">━ ECU</span> · <span style="color:#1f8a4c">┅ GPS</span> · მაქს. {maxV:0} km/h · სხვაობა {(item.GpsDiffKph is { } d ? d.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) : "—")} km/h</div>
+""");
+        }
+
+        var start = gps.FirstOrDefault(p => p.Length >= 4 && Math.Abs(p[2]) > 0.0001);
+        if (start is not null)
+        {
+            var lat = start[2].ToString("0.00000", System.Globalization.CultureInfo.InvariantCulture);
+            var lon = start[3].ToString("0.00000", System.Globalization.CultureInfo.InvariantCulture);
+            html.Append($"<div><a href=\"https://www.google.com/maps?q={lat},{lon}\" target=\"_blank\" rel=\"noopener\">📍 სტარტის ადგილი რუკაზე</a></div>");
+        }
+
+        if (item.HasVideo)
+            html.Append($"<video controls preload=\"metadata\" width=\"320\" style=\"border-radius:8px;margin-top:6px\" src=\"/admin/acceleration/video/{H(item.SubmissionId)}\"></video>");
+        else if (item.Status == "Pending")
+            html.Append("<div class=\"muted\">ვიდეო ჯერ არ ატვირთულა</div>");
+
+        return html.ToString();
+    }
+
     public static string Acceleration(
         AdminService.Session s,
         IReadOnlyList<AccelerationLeaderboardAdminItem> items,
@@ -135,9 +183,12 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
         {
             var status = item.Status switch
             {
-                "Approved" => "<span class=\"pill p-ok\">დამოწმებული</span>",
+                "Approved" => "<span class=\"pill p-ok\">რეიტინგშია</span>",
+                "Verified" => "<span class=\"pill p-ok\">✓ Verified</span>",
                 "Rejected" => "<span class=\"pill p-err\">უარყოფილი</span>",
-                _ => "<span class=\"pill p-warn\">მოლოდინში</span>"
+                _ => item.HasVideo
+                    ? "<span class=\"pill p-warn\">მოწმდება · ვიდეო მოვიდა</span>"
+                    : "<span class=\"pill p-warn\">მოწმდება · ვიდეოს ელოდება</span>"
             };
             var demoPill = item.IsDemo ? " <span class=\"pill p-acc\">DEMO</span>" : string.Empty;
             var approve = $"<form class=\"inline\" method=\"post\" action=\"/admin/acceleration/{H(item.SubmissionId)}/approve\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button class=\"green\">დამოწმება</button></form>";
@@ -145,8 +196,8 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
             var delete = $"<form class=\"inline\" method=\"post\" action=\"/admin/acceleration/{H(item.SubmissionId)}/delete\" onsubmit=\"return confirm('ნამდვილად წაიშალოს ეს შედეგი?')\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button class=\"red\">წაშლა</button></form>";
             rows.Append($"""
 <tr><td><b>{H(item.UserName)}</b>{demoPill}<div class="muted mono">{H(item.SubmissionId)}</div></td>
-<td>{H(item.VehicleModel)}</td><td><b>{item.DurationSeconds:0.00} წმ</b></td><td>{item.SampleCount}</td>
-<td>{(item.HasVerifiedVideo ? "✓ ვიდეო" : "—")}</td><td>{status}</td><td>{item.FinishedAt.ToLocalTime():dd.MM.yyyy HH:mm}</td>
+<td>{H(item.VehicleModel)}</td><td><b>{item.DurationSeconds:0.00} წმ</b><br><small>{H(item.TestId == "quarter-mile" ? $"¼ მილი · {item.MaxSpeedKph} km/h" : item.TestId)}</small></td><td>{item.SampleCount}</td>
+<td>{Evidence(item)}</td><td>{status}</td><td>{item.FinishedAt.ToLocalTime():dd.MM.yyyy HH:mm}</td>
 <td>{approve}{reject}{delete}</td></tr>
 """);
         }
@@ -154,14 +205,14 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
         var content = $"""
 <div class="grid">
 {Kpi("მოლოდინში", N(pending), "შენს გადაწყვეტილებას ელოდება", pending > 0 ? "bad" : "")}
-{Kpi("დამოწმებული", N(approved), "საჯარო რეიტინგში ჩანს", "good")}
+{Kpi("რეიტინგში", N(approved), "საჯარო რეიტინგში ჩანს", "good")}
 {Kpi("DEMO", N(demo), "სატესტო ჩანაწერი")}
 </div>
 <h2>ყველა შედეგი</h2>
-<div class="tbl"><table><thead><tr><th>მომხმარებელი</th><th>მანქანა</th><th>დრო</th><th>ECU ნიმუში</th><th>ვიდეო</th><th>სტატუსი</th><th>თარიღი</th><th>მართვა</th></tr></thead>
+<div class="tbl"><table><thead><tr><th>მომხმარებელი</th><th>მანქანა</th><th>დრო</th><th>ECU ნიმუში</th><th>მტკიცებულება (ECU / GPS / ვიდეო)</th><th>სტატუსი</th><th>თარიღი</th><th>მართვა</th></tr></thead>
 <tbody>{rows}</tbody></table></div>
 """;
-        return Layout(s, "acceleration", "0–100 რეიტინგი", "დამოწმება, უარყოფა და წაშლა · მხოლოდ დამოწმებული შედეგი ჩანს აპში", content, message, ok);
+        return Layout(s, "acceleration", "აჩქარების რეიტინგი", "ყველა შედეგი GPS-ით მოწმდება · ტოპ-10 და საეჭვო შედეგები „მოწმდება“ სტატუსით ჩნდება და ვიდეოს ელოდება · „დამოწმება“ ვიდეოთი = ✓ Verified · ვიდეო და GPS კოორდინატები განხილვიდან 30 დღეში იშლება", content, message, ok);
     }
 
     private static string Bars(IEnumerable<(string Label, int Count)> items)
@@ -409,6 +460,83 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
 <p class="muted">აპი თითო მოწყობილობიდან 6 საათში ერთხელ აგზავნის ანონიმურ ჩანაწერს (შემთხვევითი ID-ის ჰეში, ვერსია, ენა, ნოტიფიკაციის ნებართვა). სახელი, ტელეფონი ან მდებარეობა არ იგზავნება. მონაცემები ითვლება აპის ამ ვერსიიდან.</p>
 """;
         return Layout(s, "devices", "მოწყობილობები", "ბოლო 30 დღე", content, message, ok);
+    }
+
+    // ============================================================
+    // CRASHES
+    // ============================================================
+
+    public static string Crashes(AdminService.Session s, IReadOnlyList<CrashGroup> groups, string? message, bool ok)
+    {
+        var total = groups.Sum(g => g.Count);
+        var fatal = groups.Sum(g => g.FatalCount);
+        var rows = string.Concat(groups.Select(g =>
+            "<details class=\"panel\" style=\"margin-bottom:8px\"><summary>" +
+            $"<span class=\"pill {(g.FatalCount > 0 ? "p-err" : "p-acc")}\">{N(g.Count)}×</span> <b>{H(g.ExceptionType)}</b>" +
+            $"<div class=\"mono muted\" style=\"margin-top:4px\">{H(g.Frame)}</div>" +
+            $"<div class=\"muted\" style=\"margin-top:4px\">ბოლოს: {Tbilisi(g.LastAt)} · ვერსია: {H(string.Join(", ", g.AppVersions))} · {H(string.Join(", ", g.Platforms))} {H(g.OsVersion)} · " +
+            (g.FatalCount > 0 ? "აპი დაიხურა: " + N(g.FatalCount) : "აპი არ დახურულა") + "</div></summary>" +
+            $"<pre class=\"mono\" style=\"white-space:pre-wrap;font-size:11px;margin-top:8px\">{H(g.SampleStack)}</pre></details>"));
+
+        var content =
+            "<div class=\"grid\" style=\"margin-bottom:12px\">" +
+            Kpi("შეცდომა · 30 დღე", N(total), "ყველა ჩანაწერი", total > 50 ? "bad" : "") +
+            Kpi("აპი დაიხურა", N(fatal), "fatal", fatal > 10 ? "bad" : "") +
+            Kpi("სხვადასხვა შეცდომა", N(groups.Count), "ჯგუფი") +
+            "</div>" +
+            (groups.Count == 0 ? "<div class=\"panel muted\">ბოლო 30 დღეში შეცდომა არ მოსულა.</div>" : rows) +
+            "<p class=\"muted\">აპი შეცდომას ინახავს და შემდეგ გახსნისას აგზავნის: მხოლოდ ტიპი, კოდის ხაზები, ვერსია და პლატფორმა. მანქანის, ანგარიშის ან შეტყობინების ტექსტი არ იგზავნება.</p>";
+
+        return Layout(s, "crashes", "აპის შეცდომები", "ბოლო 30 დღე · ერთნაირი შეცდომები ერთადაა", content, message, ok);
+    }
+
+    // ============================================================
+    // SERVICE LEARNING (service search results + reset recordings)
+    // ============================================================
+
+    public static string ServiceLearning(
+        AdminService.Session s,
+        IReadOnlyList<ServiceSearchRow> searches,
+        IReadOnlyList<ResetRecordingRow> recordings,
+        string? message,
+        bool ok)
+    {
+        static string At(string iso) => DateTimeOffset.TryParse(iso, CultureInfo.InvariantCulture, DateTimeStyles.None, out var at) ? Tbilisi(at) : iso;
+        static string Pct(double? v) => v is { } x ? $"{x:0.#}%" : "—";
+
+        var recRows = string.Concat(recordings.Select(r =>
+            "<details class=\"panel\" style=\"margin-bottom:8px\"><summary>" +
+            $"<span class=\"pill {(r.Candidates.Count > 0 ? "p-acc" : "p-err")}\">{N(r.Candidates.Count)} კანდიდატი</span> " +
+            $"<b>{H(r.Make)} {H(r.Model)} {H(r.Year)}</b> · {H(r.Item)} · {(r.Mode == "ToolSession" ? "აპარატით" : "მენიუდან")}" +
+            $"<div class=\"muted\" style=\"margin-top:4px\">{At(r.CreatedAt)} · VIN {H(r.VinPrefix)}… · ზეთი {Pct(r.ValueBefore)} → {Pct(r.ValueAfter)} · {N(r.FrameCount)} შეტყობინება{(r.Overflow ? " · ⚠ ადაპტერი ვერ ასწრებდა" : "")}</div></summary>" +
+            "<div class=\"tbl\" style=\"margin-top:8px\"><table><tr><th>ID</th><th>მონაცემი</th><th>ტიპი</th><th>შენიშვნა</th></tr>" +
+            string.Concat(r.Candidates.Select(c => $"<tr><td class=\"mono\">{H(c.Id)}</td><td class=\"mono\">{H(c.Data)}</td><td>{H(c.Kind)}</td><td class=\"muted\">{H(c.Note)}</td></tr>")) +
+            $"</table></div><p><a href=\"/admin/reset-recordings/{r.Id}.txt\">სრული ჩანაწერი (.txt)</a></p></details>"));
+
+        var searchRows = string.Concat(searches.Select(r =>
+        {
+            int matched;
+            try { matched = System.Text.Json.JsonSerializer.Deserialize<string[]>(r.MatchedKeys)?.Length ?? 0; }
+            catch (System.Text.Json.JsonException) { matched = 0; }
+            return $"<tr><td>{At(r.CreatedAt)}</td><td>{H(r.Make)} {H(r.Model)} {H(r.Year)}</td><td class=\"mono\">{H(r.VinPrefix)}</td><td>{Pct(r.DashboardPercent)}</td><td>{N(r.Answered)}/{N(r.Tried)}</td>" +
+                   $"<td><span class=\"pill {(matched > 0 ? "p-acc" : "p-err")}\">{(matched > 0 ? "✓ " + N(matched) : "—")}</span>{(r.Trusted ? " <span class=\"pill p-acc\">ადმინი</span>" : "")}</td></tr>";
+        }));
+
+        var content =
+            "<div class=\"grid\" style=\"margin-bottom:12px\">" +
+            Kpi("რესეტის ჩანაწერი", N(recordings.Count), "ბოლო 100") +
+            Kpi("ზეთის ძებნა", N(searches.Count), "ბოლო 200") +
+            Kpi("ნაპოვნი წყარო", N(searches.Count(x => x.MatchedKeys != "[]")), "პანელს დაემთხვა") +
+            "</div>" +
+            "<h3>რესეტის ჩანაწერები</h3>" +
+            (recordings.Count == 0 ? "<div class=\"panel muted\">ჩანაწერები ჯერ არ არის.</div>" : recRows) +
+            "<p class=\"muted\">ჩანაწერში მხოლოდ ის არის, რაც ადაპტერმა მოისმინა. ბრძანება მანქანაზე მხოლოდ შემოწმების შემდეგ, აპის ახალი ვერსიით ჩაირთვება.</p>" +
+            "<h3>ზეთის ძებნა (მხოლოდ კითხვა)</h3>" +
+            (searches.Count == 0 ? "<div class=\"panel muted\">ძებნა ჯერ არავის გაუშვია.</div>"
+                : $"<div class=\"tbl\"><table><tr><th>დრო</th><th>მანქანა</th><th>VIN</th><th>პანელი</th><th>უპასუხა</th><th>დაემთხვა</th></tr>{searchRows}</table></div>") +
+            "<p class=\"muted\">წყარო მოდელისთვის „ცნობილი“ ხდება, როცა 2 სხვადასხვა ტელეფონი (ან ადმინის ანგარიში) დაადასტურებს — მერე იმავე მოდელზე აპი მას ძებნის გარეშე იყენებს.</p>";
+
+        return Layout(s, "service", "სერვისის სწავლება", "ზეთის ძებნის შედეგები და რესეტის ჩანაწერები", content, message, ok);
     }
 
     // ============================================================

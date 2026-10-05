@@ -12,10 +12,10 @@ public sealed record ProductionConfigurationStatus(
     IReadOnlyList<string> Issues)
 {
     private const string ExpectedAndroidPackageId =
-        "com.Gcar360.app";
+        "com.gcar360.app";
 
     private const string ExpectedAppleBundleId =
-        "com.Gcar360.app";
+        "com.gcar360.app";
 
     public static ProductionConfigurationStatus Read(
         IConfiguration configuration)

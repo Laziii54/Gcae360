@@ -258,6 +258,37 @@ public partial class VinReportViewModel(
         try { await Launcher.Default.OpenAsync(new Uri(url)); } catch { }
     }
 
+    public string CustomsText => Microsoft.Maui.Storage.Preferences.Default.Get("language", "English") == "English"
+        ? "🧮 Customs cost in Georgia"
+        : "🧮 განბაჟების გამოთვლა";
+
+    /// <summary>Opens the customs calculator with year, engine size and fuel from this report.</summary>
+    [RelayCommand]
+    private async Task OpenCustomsAsync()
+    {
+        if (Report is null)
+            return;
+
+        string? Spec(string key) => Report.Specifications.FirstOrDefault(s => s.Key.Equals(key, StringComparison.OrdinalIgnoreCase))?.Value;
+        var cc = decimal.TryParse(Spec("DisplacementL"), NumberStyles.Number, CultureInfo.InvariantCulture, out var litres) && litres > 0
+            ? litres.ToString("0.0#", CultureInfo.InvariantCulture)
+            : "";
+        var fuelText = $"{Report.FuelType} {Spec("ElectrificationLevel")} {Report.Engine}".ToLowerInvariant();
+        var fuel = fuelText.Contains("hybrid") || fuelText.Contains("hev") ? "hybrid"
+            : fuelText.Contains("electric") && !fuelText.Contains("gasoline") && !fuelText.Contains("petrol") ? "electric"
+            : "petrol";
+        var year = Report.Year?.ToString(CultureInfo.InvariantCulture) ?? "";
+
+        try
+        {
+            await Shell.Current.GoToAsync($"{nameof(CustomsCalculatorPage)}?year={year}&litres={cc}&fuel={fuel}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Customs navigation failed: {ex.Message}");
+        }
+    }
+
     public string NoAuctionTitleText => VinText.T("NoAuctionTitle");
     public string NoAuctionHintText => VinText.T("NoAuctionHint");
     public string RecallHintText => VinText.T("RecallHint");

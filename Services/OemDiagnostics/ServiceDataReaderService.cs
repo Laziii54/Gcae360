@@ -19,7 +19,7 @@ namespace CarScanner.Services.OemDiagnostics;
 /// - a value exists only after an exact positive 0x62 DID echo;
 /// - unsupported/no-response values are omitted instead of fabricated.
 /// </summary>
-public sealed class ServiceDataReaderService
+public sealed partial class ServiceDataReaderService
 {
     private const int MaximumRequestsPerRefresh = 14;
 
@@ -51,6 +51,8 @@ public sealed class ServiceDataReaderService
         _databaseCatalog = databaseCatalog;
         _vehicleProfiles = vehicleProfiles;
         _readPhysicalOverride = readPhysicalOverride;
+        // Tests never reach the adapter: every physical read goes through the override.
+        _obd = null!;
     }
 
     public Task<ServiceDataReadResult> ReadAsync(
@@ -75,6 +77,7 @@ public sealed class ServiceDataReaderService
     {
         var resolved = _vehicleProfiles.Resolve(vehicle);
         _currentVehicleKey = VehicleKey(vehicle);
+        _verifiedGmResetProfile = IsFirstGenerationChevroletVolt(resolved);
 
         // GM oil life (read-only). Tried before the identity gate: the
         // learned source and the GM oil-life identifiers are harmless 0x22 /
@@ -85,7 +88,12 @@ public sealed class ServiceDataReaderService
         if (ShouldProbeGmOilLife(vehicle, resolved))
             gmOilLife = await TryReadFirstGenerationVoltOilLifeAsync(token).ConfigureAwait(false);
 
-        if (!resolved.CanUseManufacturerSpecificDefinitions)
+        // Sources the user confirmed against the dashboard with "Search"
+        // (this exact car). They are read first and also work when the VIN
+        // could not be decoded.
+        var preferred = await LoadPreferredCandidatesAsync(vehicle, token).ConfigureAwait(false);
+
+        if (!resolved.CanUseManufacturerSpecificDefinitions && preferred.Count == 0)
         {
             _readingSources.Clear();
             return gmOilLife is null
@@ -101,10 +109,17 @@ public sealed class ServiceDataReaderService
 
         await _databaseCatalog.EnsureLoadedAsync(token).ConfigureAwait(false);
 
-        var loaded = await LoadCandidatesAsync(resolved, token).ConfigureAwait(false);
+        var loaded = resolved.CanUseManufacturerSpecificDefinitions
+            ? await LoadCandidatesAsync(resolved, token).ConfigureAwait(false)
+            : new CandidateLoadResult(Array.Empty<ServicePidCandidate>(), 0);
         var production = loaded.Candidates.Where(item => !item.Debug).ToArray();
         var research = loaded.Candidates.Where(item => item.Debug).ToArray();
-        var selected = includeResearchDefinitions ? loaded.Candidates : production;
+        IReadOnlyList<ServicePidCandidate> selected = preferred
+            .Concat(includeResearchDefinitions ? loaded.Candidates : production)
+            .ToArray();
+        var preferredGroups = new HashSet<string>(
+            preferred.Select(item => $"{item.ServiceId:X2}|{AddressKey(item.Address, item.DataIdentifier)}"),
+            StringComparer.OrdinalIgnoreCase);
 
         var readings = new List<ServiceMetricReading>();
         _readingSources.Clear();
@@ -146,7 +161,8 @@ public sealed class ServiceDataReaderService
         // Read it once and decode every field from the same positive response.
         var groups = selected
             .GroupBy(item => $"{item.ServiceId:X2}|{AddressKey(item.Address, item.DataIdentifier)}", StringComparer.OrdinalIgnoreCase)
-            .OrderBy(group => group.Min(item => Priority(item.Kind)))
+            .OrderByDescending(group => preferredGroups.Contains(group.Key))
+            .ThenBy(group => group.Min(item => Priority(item.Kind)))
             .ThenBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
             .Take(MaximumRequestsPerRefresh)
             .ToArray();
@@ -515,7 +531,18 @@ public sealed class ServiceDataReaderService
     /// Learned sources are read-only. Reading a GMLAN $1A identifier does not
     /// authorize an inferred $3B write to the same identifier.
     /// </summary>
-    public static bool CanResetLearnedOilLife => false;
+    public bool CanResetLearnedOilLife =>
+        _verifiedGmResetProfile &&
+        LoadLearnedOilLifeSource() is { Service: 0x1A } source &&
+        source.Did is > 0 and < 0x90;
+
+    /// <summary>
+    /// The connected car is a VIN-verified first-generation Chevrolet Volt
+    /// (2011–2015). Only this profile may receive the GMLAN oil-life reset —
+    /// it was tested on a real Volt 2013 (write, read-back, dashboard).
+    /// Other GM models are added only after the same real-car test.
+    /// </summary>
+    private bool _verifiedGmResetProfile;
 
     /// <summary>Short text of the learned source, e.g. "GMLAN 1A $4F · A×100/255".</summary>
     public static string LearnedOilLifeDescription
@@ -604,14 +631,13 @@ public sealed class ServiceDataReaderService
         IProgress<string>? progress,
         CancellationToken token)
     {
-        // Fail before adapter initialization or any vehicle I/O. A GM reset
-        // must be represented by an exact reviewed vehicle/ECU operation with
-        // source-backed request bytes and a read-back verification step.
-        return OilLifeResetResult.NotSent(
-            OilLifeResetFailure.NoLearnedSource,
-            "inferred GMLAN oil-life writes are disabled; exact reviewed OEM operation required");
+        // Fail before adapter initialization or any vehicle I/O: only the
+        // verified vehicle profile (see _verifiedGmResetProfile) may be written.
+        if (!_verifiedGmResetProfile)
+            return OilLifeResetResult.NotSent(
+                OilLifeResetFailure.NoLearnedSource,
+                "GM oil-life reset is enabled only for a VIN-verified Chevrolet Volt 2011–2015");
 
-#pragma warning disable CS0162 // Retained temporarily as reference for a future exact-profile migration.
         var steps = new List<string>();
         var learned = LoadLearnedOilLifeSource();
         if (learned is not { Service: 0x1A } source || source.Did is <= 0 or >= 0x90)
@@ -753,7 +779,6 @@ public sealed class ServiceDataReaderService
             after,
             success ? OilLifeResetFailure.None : OilLifeResetFailure.NotChanged,
             string.Join(" · ", steps));
-#pragma warning restore CS0162
     }
 
     private async Task<string> SafeWriteAsync(int tx, int rx, int did, byte value, CancellationToken token)
@@ -1874,6 +1899,10 @@ public sealed class ServiceDataReaderService
         var normalized = Normalize(value);
         var aliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { value };
 
+        // The catalog's own spelling of the make (Mercedes, VauxhallOpel, Land …).
+        if (CatalogMakes.Known(value))
+            aliases.Add(CatalogMakes.For(value)[0]);
+
         if (normalized.Contains("mercedes"))
         {
             aliases.Add("Mercedes");
@@ -1893,28 +1922,8 @@ public sealed class ServiceDataReaderService
     }
 
     /// <summary>Catalog makes that share service identifiers with <paramref name="make"/>.</summary>
-    private static IEnumerable<string> BrandFamily(string make)
-    {
-        var normalized = Normalize(make);
-        string[][] families =
-        {
-            new[] { "Chevrolet", "GMC", "Buick", "Cadillac" },
-            new[] { "Ford", "Lincoln", "Mercury" },
-            new[] { "Toyota", "Lexus" },
-            new[] { "BMW", "MINI" },
-            new[] { "Mazda" },
-            new[] { "Mercedes", "Mercedes-Benz" },
-            new[] { "Honda", "Acura" }
-        };
-
-        foreach (var family in families)
-        {
-            if (family.Any(item => Normalize(item) == normalized || normalized.Contains(Normalize(item))))
-                return family;
-        }
-
-        return Array.Empty<string>();
-    }
+    private static IEnumerable<string> BrandFamily(string make) =>
+        CatalogMakes.Known(make) ? CatalogMakes.For(make) : Array.Empty<string>();
 
     private static bool IsBrandWideKind(ServiceMetricKind kind) => kind is
         ServiceMetricKind.OilLifePercent or

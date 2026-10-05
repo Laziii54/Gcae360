@@ -42,7 +42,7 @@ public sealed class UsageReportService(AccountService account)
                 platform = DeviceInfo.Current.Platform.ToString(),
                 osVersion = DeviceInfo.Current.VersionString,
                 model = $"{DeviceInfo.Current.Manufacturer} {DeviceInfo.Current.Model}".Trim(),
-                language = Preferences.Default.Get(LocalizationService.LanguageKey, "ქართული"),
+                language = Preferences.Default.Get(LocalizationService.LanguageKey, "English"),
                 notificationsAllowed = systemNotifications,
                 remindersOn = Preferences.Default.Get("notifications", false)
             });

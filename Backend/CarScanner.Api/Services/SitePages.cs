@@ -10,7 +10,7 @@ namespace CarScanner.Api.Services;
 /// </summary>
 public static class SitePages
 {
-    public const string PlayStoreUrl = "https://play.google.com/store/apps/details?id=com.Geogorgiancar360.app";
+    public const string PlayStoreUrl = "https://play.google.com/store/apps/details?id=com.gcar360.app";
 
     private static string Gel(decimal? value) =>
         (value ?? 0).ToString("0.00", CultureInfo.InvariantCulture);
@@ -362,7 +362,7 @@ document.addEventListener("DOMContentLoaded",function(){var btn=document.getElem
 <details><summary>{{T("უსაფრთხოა შეცდომების წაშლა?", "Is clearing codes safe?")}}</summary><p>{{T("წაშლა მხოლოდ თიშავს ნათურას. თუ პრობლემა არ გამოსწორდა, შეცდომა ისევ გამოჩნდება. სერიოზული შეცდომის დროს სჯობს მიმართოთ ხელოსანს.", "Clearing only turns the light off. If the problem is still there, the code comes back. For serious faults, see a mechanic first.")}}</p></details>
 <details><summary>{{T("რატომ არ ჩანს ზოგ VIN-ზე ფოტოები?", "Why are there no photos for some VINs?")}}</summary><p>{{T("ფოტოები არსებობს მხოლოდ მაშინ, თუ მანქანა აუქციონზე იყიდებოდა ან ინტერნეტშია გამოქვეყნებული.", "Photos only exist if the car went through an auction or was published online. In that case the check isn't counted.")}}</p></details>
 <details><summary>{{T("როგორ გადავიხადო?", "How do I pay?")}}</summary><p>{{T("აპში ან ვებგვერდზე ქართული ბანკის ბარათით (BOG ან TBC), ან Google Play-ით. ბარათის მონაცემებს ბანკის გვერდზე წერ და GCar360 მათ ვერ ხედავს.", "In the app or on the website with a Georgian bank card (BOG or TBC), or through Google Play. Card details are entered on the bank's page; GCar360 never sees them.")}}</p></details>
-<details><summary>{{T("როგორ გავაუქმო გამოწერა?", "How do I cancel?")}}</summary><p>{{T("ბარათით ნაყიდი გეგმა 30 დღე მოქმედებს და თავისით არ გრძელდება. Google Play-ის გამოწერა Google Play-ში უქმდება.", "Plans bought by card last 30 days and don't renew. Google Play subscriptions are cancelled in Google Play.")}}</p></details>
+<details><summary>{{T("როგორ გავაუქმო გამოწერა?", "How do I cancel?")}}</summary><p>{{T("ყოველთვიური გადახდა უქმდება გვერდზე „ჩემი გამოწერა“ ან აპში — PRO რჩება გადახდილი პერიოდის ბოლომდე. ერთჯერადი გადახდა 30 დღე მოქმედებს და თავისით არ გრძელდება.", "Cancel the monthly payment on the My subscription page or in the app — PRO stays on until the paid period ends. A one-time payment lasts 30 days and doesn't renew.")}} <a href="/account/subscription">{{T("ჩემი გამოწერა", "My subscription")}}</a></p></details>
 <details><summary>{{T("სად ინახება ჩემი მონაცემები?", "Where is my data kept?")}}</summary><p>{{T("დიაგნოსტიკის ისტორია შენს ტელეფონზე ინახება. დეტალები", "Your diagnostic history stays on your phone. Details are in the")}} <a href="/privacy-policy">{{T("კონფიდენციალურობის პოლიტიკაშია", "privacy policy")}}</a>.</p></details>
 </div></div></section>
 

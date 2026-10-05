@@ -9,6 +9,7 @@ public sealed class QrReportDraft
     public string Summary { get; init; } = string.Empty;
     public string DtcSummary { get; init; } = string.Empty;
     public string ReadinessSummary { get; init; } = string.Empty;
+    public string ServiceHistory { get; init; } = string.Empty;
 }
 
 public sealed class QrReportLink

@@ -136,10 +136,14 @@ public sealed partial class LivePidItem : ObservableObject
 
     private static string RangeFor(int pid, UnitSystemService units) => pid switch
     {
-        0x05 or 0x5C => $"ჩვეულებრივი: {units.FormatTemperature(75)}–{units.FormatTemperature(105)} · გაფრთხილება: {units.FormatTemperature(106)}–{units.FormatTemperature(115)} · კრიტიკული: >{units.FormatTemperature(115)}",
-        0x42 => "ჩვეულებრივი: 11.8–14.8 V · გაფრთხილება: 11.5–15.5 V",
-        0x06 or 0x07 or 0x08 or 0x09 => "ჩვეულებრივი: −10–10 % · გაფრთხილება: ±25 %",
-        0x2F => "0–100 % · მნიშვნელობა ავზის სენსორიდან",
+        0x05 => $"ნორმა: {units.FormatTemperature(105)}-მდე (გამთბარ ძრავაზე {units.FormatTemperature(80)}–{units.FormatTemperature(105)})",
+        0x5C => $"ნორმა: {units.FormatTemperature(130)}-მდე",
+        0x0F => $"ნორმა: {units.FormatTemperature(70)}-მდე",
+        0x42 => "ნორმა: 11.8–15.0 V (ძრავა ჩართული: 13.5–14.8 V)",
+        0x06 or 0x08 => "ნორმა: −20…+20 % (მოკლევადიანი კორექცია)",
+        0x07 or 0x09 => "ნორმა: −10…+10 % (გრძელვადიანი კორექცია)",
+        0x2F => "ნორმა: 10 %-ზე მეტი",
+        0x3C or 0x3D or 0x3E or 0x3F => $"ნორმა: {units.FormatTemperature(900)}-მდე",
         _ => "ECU-ის რეალური მონაცემი · შეფასება კონტექსტით ხდება"
     };
 

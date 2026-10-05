@@ -432,7 +432,7 @@ public sealed class AppDatabase
                     string.Empty),
                 Language = Microsoft.Maui.Storage.Preferences.Default.Get(
                     "language",
-                    "ქართული"),
+                    "English"),
                 Theme = Microsoft.Maui.Storage.Preferences.Default.Get(
                     "theme",
                     "Light"),

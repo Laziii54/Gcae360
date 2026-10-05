@@ -19,13 +19,13 @@
 		<GenerateDocumentationFile>false</GenerateDocumentationFile>
 
 		<ApplicationTitle>Georgian Car Scanner</ApplicationTitle>
-		<ApplicationId>com.gcar360.app</ApplicationId>
+		<ApplicationId>com.gcadr360.app</ApplicationId>
 		<!-- Keep the published Android identity unchanged. iOS uses the App Store
 		     bundle identifier expected by the purchase-verification backend. -->
 		<ApplicationId Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">com.gcar360.app</ApplicationId>
 
 		<ApplicationDisplayVersion>0.5.2</ApplicationDisplayVersion>
-		<ApplicationVersion>52</ApplicationVersion>
+		<ApplicationVersion>53</ApplicationVersion>
 
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
 

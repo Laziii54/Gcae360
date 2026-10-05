@@ -36,12 +36,12 @@ public sealed class ProService
     private const string HasVinKey = "pro.hasVin";
     private const string VinExpiresKey = "pro.vinExpires";
 
-    /// <summary>OBD PRO features (from OBD PRO, Full PRO or a promo code).</summary>
+    /// <summary>OBD PRO features (from OBD PRO, Full PRO or a plan given by the admin).</summary>
     public bool IsPro { get; private set; }
     public DateTime? ExpiresAt { get; private set; }
     public bool ServerVerified { get; private set; }
 
-    /// <summary>VIN PRO (from VIN PRO, Full PRO or a promo code).</summary>
+    /// <summary>VIN PRO (from VIN PRO, Full PRO or a plan given by the admin).</summary>
     public bool HasVin { get; private set; }
     public DateTime? VinExpiresAt { get; private set; }
 
@@ -89,68 +89,6 @@ public sealed class ProService
         await RefreshServerEntitlementAsync(
             userId,
             forceServerRefresh);
-    }
-
-    /// <summary>Why the last promo redemption failed (Georgian | English), empty on success.</summary>
-    public (string Ka, string En) LastPromoError { get; private set; } = (string.Empty, string.Empty);
-
-    public async Task<bool> RedeemPromoCodeAsync(string code)
-    {
-        LastPromoError = (string.Empty, string.Empty);
-        var endpoint = AIConfig.BackendBaseUrl.Trim();
-        var userId = _account.EffectiveUserId;
-        code = (code ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(endpoint) || string.IsNullOrWhiteSpace(code) ||
-            !Uri.TryCreate(endpoint, UriKind.Absolute, out var baseUri) || baseUri.Scheme != Uri.UriSchemeHttps)
-        {
-            LastPromoError = ("სერვერის მისამართი არ არის მითითებული.", "The server address is not configured.");
-            return false;
-        }
-
-        // The server links a promo code to an account.
-        if (!_account.IsSignedIn)
-        {
-            LastPromoError = ("პრომო კოდისთვის ჯერ შედი ანგარიშზე (პარამეტრები → ანგარიში).",
-                "Sign in to your account first (Settings → Account) to use a promo code.");
-            return false;
-        }
-
-        try
-        {
-            using var request = await _account.CreateAuthorizedRequestAsync(
-                HttpMethod.Post, "/api/promo/redeem");
-            request.Content = JsonContent.Create(new { userId, code });
-            var response = await _http.SendAsync(request);
-            if (!response.IsSuccessStatusCode)
-            {
-                var body = string.Empty;
-                try { body = await response.Content.ReadAsStringAsync(); } catch { }
-                LastPromoError = (int)response.StatusCode switch
-                {
-                    401 => ("ანგარიშის სესია ვადაგასულია — გამოდი და თავიდან შედი ანგარიშზე.",
-                            "Your account session expired — sign out and sign in again."),
-                    429 => ("ძალიან ბევრი ცდა — სცადე 15 წუთში.", "Too many attempts — try again in 15 minutes."),
-                    400 when body.Contains("already been used", StringComparison.OrdinalIgnoreCase) =>
-                        ("ეს კოდი ამ ანგარიშზე უკვე გამოყენებულია.", "This code was already used on this account."),
-                    400 => ("კოდი არასწორია, ვადა გაუვიდა ან ლიმიტი ამოიწურა.", "The code is invalid, expired or fully used."),
-                    404 => ("სერვერზე პრომო კოდის ფუნქცია არ არის (Backend-ის განახლებაა საჭირო).", "The server has no promo endpoint (the backend needs updating)."),
-                    _ => ($"სერვერის შეცდომა ({(int)response.StatusCode}). სცადე მოგვიანებით.", $"Server error ({(int)response.StatusCode}). Try again later.")
-                };
-                return false;
-            }
-
-            await LoadAsync(forceServerRefresh: true);
-            var active = (IsPro && ServerVerified) || HasVin;
-            if (!active)
-                LastPromoError = ("კოდი მიღებულია, მაგრამ PRO ვერ ჩაიტვირთა — დახურე და თავიდან გახსენი PRO გვერდი.",
-                    "The code was accepted but PRO did not load — reopen the PRO page.");
-            return active;
-        }
-        catch
-        {
-            LastPromoError = ("სერვერთან კავშირი ვერ დამყარდა. შეამოწმე ინტერნეტი.", "Could not reach the server. Check the internet connection.");
-            return false;
-        }
     }
 
     public async Task DeactivateAsync()
@@ -266,7 +204,7 @@ public sealed class ProService
             else if (vinActive)
             {
                 IsPro = false; ExpiresAt = null; ServerVerified = true;
-                await _db.SaveProAsync(new ProEntitlement { Id = "local", IsPro = false, VerifiedByServer = true, Source = payload.Source ?? "server", ProductId = payload.ProductId, UpdatedAt = DateTime.UtcNow });
+                await _db.SaveProAsync(new ProEntitlement { Id = "local", IsPro = false, VerifiedByServer = true, Source = payload.Source ?? "server", ProductId = payload.ProductId ?? string.Empty, UpdatedAt = DateTime.UtcNow });
                 ProChanged?.Invoke(this, false);
             }
             else

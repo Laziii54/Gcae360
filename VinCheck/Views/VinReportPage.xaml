@@ -285,6 +285,11 @@
                         IsVisible="{Binding Report,Converter={StaticResource NotNull}}"
                         BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="48" FontSize="14" />
 
+                <!-- Customs cost in Georgia for this car (year / engine / fuel from the report) -->
+                <Button Text="{Binding CustomsText}" Command="{Binding OpenCustomsCommand}"
+                        IsVisible="{Binding Report,Converter={StaticResource NotNull}}"
+                        Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="48" FontSize="14" />
+
                 <!-- ===== Paid full history: offer ===== -->
                 <Border Style="{StaticResource ListCardStyle}" Padding="16" IsVisible="{Binding ShowFullOffer}">
                     <VerticalStackLayout Spacing="10">

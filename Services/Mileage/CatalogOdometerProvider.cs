@@ -46,18 +46,39 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
         _obd = obd;
     }
 
-    public async Task<IReadOnlyList<MileageEvidence>> ReadAllAsync(
+    public Task<IReadOnlyList<MileageEvidence>> ReadAllAsync(
         VehicleInfo vehicle,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        ReadCoreAsync(vehicle, false, cancellationToken);
+
+    /// <summary>
+    /// First module that returns a valid odometer (Service page: the current
+    /// distance is enough, the comparison of modules is the Mileage page's job).
+    /// </summary>
+    public async Task<MileageEvidence?> ReadFirstAsync(
+        VehicleInfo vehicle,
+        CancellationToken cancellationToken = default) =>
+        (await ReadCoreAsync(vehicle, true, cancellationToken).ConfigureAwait(false)).FirstOrDefault();
+
+    private async Task<IReadOnlyList<MileageEvidence>> ReadCoreAsync(
+        VehicleInfo vehicle,
+        bool stopAfterFirst,
+        CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(vehicle.Manufacturer))
+        {
+            MileageTrace.Add("მწარმოებელი უცნობია — მოდულების ოდომეტრი ვერ მოიძებნება");
             return Array.Empty<MileageEvidence>();
+        }
 
         if (!_obd.IsInitialized)
             await _obd.InitializeAsync(cancellationToken).ConfigureAwait(false);
 
         var signals = await LoadSignalsAsync(vehicle, cancellationToken).ConfigureAwait(false);
         var evidence = new List<MileageEvidence>();
+        MileageTrace.Add(signals.Count == 0
+            ? $"{vehicle.Manufacturer}: ოდომეტრის ცნობილი მისამართები ბაზაში არ არის"
+            : $"{vehicle.Manufacturer}: {signals.Select(s => s.Key).Distinct().Count()} მოდულის მისამართი");
 
         // One request per module/identifier; the first signal that decodes is used.
         foreach (var group in signals
@@ -76,13 +97,19 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
             {
                 throw;
             }
-            catch
+            catch (Exception ex)
             {
+                MileageTrace.Add($"{first.Header} {first.ServiceId:X2} {first.Identifier:X}: შეცდომა ({ex.GetType().Name})");
                 continue;
             }
 
             if (data is null)
+            {
+                MileageTrace.Add($"{first.Header} {first.ServiceId:X2} {first.Identifier:X}: პასუხი არ არის");
                 continue;
+            }
+
+            var decodedAny = false;
 
             foreach (var signal in group.OrderByDescending(item => item.IsMetric))
             {
@@ -95,8 +122,16 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
                     kilometers,
                     signal.ExactModel ? 0.8 : 0.7,
                     $"0x{signal.ServiceId:X2} 0x{signal.Identifier:X4} · {signal.Address.Detail} · {signal.SignalName}"));
+                MileageTrace.Add($"{first.Header} {first.ServiceId:X2} {first.Identifier:X}: {kilometers:0} km ✓");
+                decodedAny = true;
                 break;
             }
+
+            if (decodedAny && stopAfterFirst)
+                break;
+
+            if (!decodedAny)
+                MileageTrace.Add($"{first.Header} {first.ServiceId:X2} {first.Identifier:X}: პასუხი მოვიდა, მაგრამ ვერ გაიშიფრა ({Convert.ToHexString(data.Take(8).ToArray())})");
         }
 
         return evidence;
@@ -119,7 +154,8 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
         double Add,
         bool Miles,
         bool ExactModel,
-        string Header)
+        string Header,
+        bool Meters = false)
     {
         public bool IsMetric => !Miles;
     }
@@ -192,7 +228,7 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
 
             var format = ParseFormat(row.FormatJson);
             var unit = (format?.Unit ?? row.Unit ?? string.Empty).ToLowerInvariant();
-            if (unit is not ("kilometers" or "kilometer" or "km" or "miles" or "mile"))
+            if (unit is not ("kilometers" or "kilometer" or "km" or "miles" or "mile" or "meters" or "meter"))
                 continue;
 
             var rowModel = Normalize(row.Model);
@@ -212,12 +248,16 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
                 format?.Add ?? 0d,
                 unit.StartsWith("mile", StringComparison.Ordinal),
                 exact,
-                (row.Header ?? string.Empty).ToUpperInvariant()));
+                (row.Header ?? string.Empty).ToUpperInvariant(),
+                unit.StartsWith("meter", StringComparison.Ordinal)));
         }
 
-        // Exact model first, then identifiers shared by the whole brand.
+        // Exact model first, then the identifiers most models of the brand
+        // share (asked first because they answer on most cars).
+        var shared = signals.GroupBy(signal => signal.Key).ToDictionary(group => group.Key, group => group.Count());
         return signals
             .OrderByDescending(signal => signal.ExactModel)
+            .ThenByDescending(signal => shared[signal.Key])
             .ToArray();
     }
 
@@ -358,6 +398,8 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
         var value = raw * signal.Mul / signal.Div + signal.Add;
         if (signal.Miles)
             value *= 1.609344d;
+        else if (signal.Meters)
+            value /= 1000d;
 
         if (!double.IsFinite(value) || value < 1 || value > 2_000_000)
             return false;
@@ -392,34 +434,6 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
     private static string Normalize(string? value) =>
         new string((value ?? string.Empty).Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
 
-    private static IReadOnlyList<string> MakeFamily(string manufacturer)
-    {
-        var value = Normalize(manufacturer);
-        string[][] families =
-        {
-            new[] { "Volkswagen", "Audi", "Seat", "Skoda", "Porsche" },
-            new[] { "BMW", "MINI", "Rolls" },
-            new[] { "Toyota", "Lexus", "Daihatsu" },
-            new[] { "Hyundai", "Kia" },
-            new[] { "Ford", "Lincoln", "Mercury" },
-            new[] { "Nissan", "Infiniti", "Renault" },
-            new[] { "Chevrolet", "GMC", "Buick", "Cadillac" },
-            new[] { "VauxhallOpel", "Opel", "Vauxhall" },
-            new[] { "Honda", "Acura" },
-            new[] { "Mazda" },
-            new[] { "Subaru" },
-            new[] { "Jaguar", "Land" },
-            new[] { "MG" },
-            new[] { "Haval" },
-            new[] { "Jeep" }
-        };
-
-        foreach (var family in families)
-        {
-            if (family.Any(item => value.Contains(Normalize(item)) || Normalize(item).Contains(value) && value.Length >= 3))
-                return family;
-        }
-
-        return new[] { manufacturer.Trim() };
-    }
+    private static IReadOnlyList<string> MakeFamily(string manufacturer) =>
+        CatalogMakes.For(manufacturer);
 }

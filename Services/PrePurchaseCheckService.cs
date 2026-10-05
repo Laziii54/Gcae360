@@ -88,7 +88,7 @@ public sealed class PrePurchaseCheckService
 
         // 5) VIN history (90–98 %), only with a real history provider.
         progress?.Report((90, string.Empty));
-        penalty += await AddHistoryAsync(result, report.Vehicle.VIN, token).ConfigureAwait(false);
+        penalty += await AddHistoryAsync(result, report.Vehicle.VIN, mileage?.FinalMileageKm, token).ConfigureAwait(false);
 
         // 6) Last 0–100 measurement of this car (optional, last 24 hours).
         await AddAccelerationAsync(result, report.Vehicle.VIN).ConfigureAwait(false);
@@ -455,7 +455,7 @@ public sealed class PrePurchaseCheckService
     // VIN history / acceleration
     // ------------------------------------------------------------------
 
-    private async Task<int> AddHistoryAsync(PrePurchaseResult result, string? vin, CancellationToken token)
+    private async Task<int> AddHistoryAsync(PrePurchaseResult result, string? vin, double? currentKm, CancellationToken token)
     {
         if (!VinHistoryAvailable || string.IsNullOrWhiteSpace(vin) || vin.Trim().Length != 17)
         {
@@ -473,6 +473,7 @@ public sealed class PrePurchaseCheckService
         try
         {
             var history = await _vinHistory.GetReportAsync(vin.Trim().ToUpperInvariant(), token).ConfigureAwait(false);
+            var auctionPenalty = AddAuctionMileage(result, history, vin.Trim(), currentKm);
             var issues = history.Alerts.Where(alert => alert.Status == "issue").ToList();
             var accidents = history.AccidentRecords.Count;
             if (issues.Count == 0 && accidents == 0)
@@ -485,7 +486,7 @@ public sealed class PrePurchaseCheckService
                     ValueEn = "no problem records",
                     Color = Green
                 });
-                return 0;
+                return auctionPenalty;
             }
 
             foreach (var alert in issues.Take(4))
@@ -512,7 +513,7 @@ public sealed class PrePurchaseCheckService
                 });
             }
 
-            return Math.Min(24, Math.Max(issues.Count, accidents > 0 ? 1 : 0) * 8);
+            return auctionPenalty + Math.Min(24, Math.Max(issues.Count, accidents > 0 ? 1 : 0) * 8);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
@@ -530,6 +531,96 @@ public sealed class PrePurchaseCheckService
             });
             return 0;
         }
+    }
+
+    private const double KmPerMile = 1.609344;
+
+    /// <summary>
+    /// Odometer at the auction(s) vs the car now. A car that shows LESS today
+    /// than at its last auction was very likely rolled back — or its US
+    /// cluster was switched to km while keeping the mile number.
+    /// </summary>
+    private static int AddAuctionMileage(PrePurchaseResult result, CarScanner.VinCheck.Models.VinReport history, string vin, double? currentKm)
+    {
+        var usVin = vin.Length > 0 && vin[0] is >= '1' and <= '5';
+        var records = history.AuctionRecords
+            .Where(r => r.OdometerValue is > 0)
+            .Select(r => (Value: (double)r.OdometerValue!.Value, Unit: r.OdometerUnit, Date: r.SaleDate, Source: r.AuctionName))
+            .Concat(history.MileageRecords
+                .Where(r => r.OdometerValue is > 0)
+                .Select(r => (Value: (double)r.OdometerValue!.Value, Unit: r.OdometerUnit, Date: r.Date, Source: r.Source)))
+            .Select(r =>
+            {
+                var unit = (r.Unit ?? string.Empty).Trim().ToLowerInvariant();
+                var miles = unit.StartsWith("mi") || (unit.Length == 0 && usVin);
+                return (r.Value, Km: miles ? r.Value * KmPerMile : r.Value, Miles: miles, r.Date, r.Source);
+            })
+            .ToList();
+
+        if (records.Count == 0)
+        {
+            if (history.Access is { HistoryLocked: true, AuctionCount: > 0 })
+            {
+                result.History.Add(new PrePurchaseFinding
+                {
+                    LabelKa = "🔁 აუქციონის გარბენი",
+                    LabelEn = "🔁 Auction odometer",
+                    ValueKa = $"{history.Access.AuctionCount} აუქციონი — შესადარებლად გახსენი ისტორია",
+                    ValueEn = $"{history.Access.AuctionCount} auction(s) — open the history to compare",
+                    Color = Grey
+                });
+            }
+            return 0;
+        }
+
+        var highest = records.OrderByDescending(r => r.Km).First();
+        var latest = records.OrderByDescending(r => r.Date ?? DateTime.MinValue).First();
+        var whereKa = $"{highest.Source ?? "აუქციონი"}{(highest.Date is { } d ? $", {d:yyyy}" : "")}";
+        var whereEn = $"{highest.Source ?? "auction"}{(highest.Date is { } d2 ? $", {d2:yyyy}" : "")}";
+        var shown = highest.Miles ? $"{highest.Value:N0} mi ({highest.Km:N0} km)" : $"{highest.Km:N0} km";
+
+        if (currentKm is not { } now || now <= 0)
+        {
+            result.History.Add(new PrePurchaseFinding
+            {
+                LabelKa = "🔁 აუქციონის გარბენი",
+                LabelEn = "🔁 Auction odometer",
+                ValueKa = $"{shown} · {whereKa} — შეადარე პანელს",
+                ValueEn = $"{shown} · {whereEn} — compare with the dashboard",
+                Color = Grey
+            });
+            return 0;
+        }
+
+        // Tolerance: 1 % or 300 km (rounding, unit conversion).
+        if (now + Math.Max(300, highest.Km * 0.01) < highest.Km)
+        {
+            // Same digits as the auction miles → the cluster was switched to km.
+            var sameDigits = highest.Miles && Math.Abs(now - highest.Value) <= Math.Max(500, highest.Value * 0.05);
+            result.History.Add(new PrePurchaseFinding
+            {
+                LabelKa = "⚠ გარბენი აუქციონზე მეტი იყო",
+                LabelEn = "⚠ Odometer was higher at the auction",
+                ValueKa = sameDigits
+                    ? $"{shown} ({whereKa}), ახლა {now:N0} კმ — მილები პირდაპირ კმ-ად ჩანს (პანელი გადაყვანილია). რეალური ≈ {now * KmPerMile:N0} კმ"
+                    : $"{shown} ({whereKa}), ახლა {now:N0} კმ — შესაძლოა გადახვეულია",
+                ValueEn = sameDigits
+                    ? $"{shown} ({whereEn}), now {now:N0} km — the miles appear as km (cluster converted). Real ≈ {now * KmPerMile:N0} km"
+                    : $"{shown} ({whereEn}), now {now:N0} km — possibly rolled back",
+                Color = Red
+            });
+            return 25;
+        }
+
+        result.History.Add(new PrePurchaseFinding
+        {
+            LabelKa = "🔁 აუქციონის გარბენი",
+            LabelEn = "🔁 Auction odometer",
+            ValueKa = $"{(latest.Miles ? $"{latest.Value:N0} mi" : $"{latest.Km:N0} km")} → ახლა {now:N0} კმ · ლოგიკურია",
+            ValueEn = $"{(latest.Miles ? $"{latest.Value:N0} mi" : $"{latest.Km:N0} km")} → now {now:N0} km · consistent",
+            Color = Green
+        });
+        return 0;
     }
 
     private async Task AddAccelerationAsync(PrePurchaseResult result, string? vin)

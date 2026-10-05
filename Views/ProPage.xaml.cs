@@ -34,5 +34,9 @@ public partial class ProPage : ContentPage
     {
         base.OnAppearing();
         ApplyUiLocalization();
+
+        // Monthly automatic payment from the website (status + cancel).
+        if (BindingContext is ProViewModel vm)
+            _ = vm.LoadWebSubscriptionAsync();
     }
 }

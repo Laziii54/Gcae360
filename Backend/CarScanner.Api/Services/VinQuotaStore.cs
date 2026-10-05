@@ -218,6 +218,58 @@ ON CONFLICT(UserId) DO UPDATE SET Credits=Credits+$n, UpdatedAt=$at";
         finally { _gate.Release(); }
     }
 
+    /// <summary>
+    /// Takes back the credits of a refunded purchase (never below zero).
+    /// The grant row stays (with 0 credits) so the same payment cannot be
+    /// granted again. Returns the number of credits removed.
+    /// </summary>
+    public async Task<int> RevokeCreditsAsync(string source, string transactionId, CancellationToken ct)
+    {
+        var now = DateTimeOffset.UtcNow.ToString("O");
+        await _gate.WaitAsync(ct);
+        try
+        {
+            using var c = new SqliteConnection(_connectionString); c.Open();
+            using var tx = c.BeginTransaction();
+
+            using var find = c.CreateCommand();
+            find.Transaction = tx;
+            find.CommandText = "SELECT UserId, Credits FROM VinCreditGrants WHERE Source=$s AND TransactionId=$t";
+            find.Parameters.AddWithValue("$s", source);
+            find.Parameters.AddWithValue("$t", transactionId);
+            string? userId = null;
+            var credits = 0;
+            using (var reader = find.ExecuteReader())
+            {
+                if (reader.Read())
+                {
+                    userId = reader.GetString(0);
+                    credits = reader.GetInt32(1);
+                }
+            }
+
+            if (userId is null || credits <= 0)
+            {
+                tx.Commit();
+                return 0;
+            }
+
+            using var take = c.CreateCommand();
+            take.Transaction = tx;
+            take.CommandText = @"UPDATE VinCredits SET Credits=MAX(0, Credits-$n), UpdatedAt=$at WHERE UserId=$u;
+UPDATE VinCreditGrants SET Credits=0 WHERE Source=$s AND TransactionId=$t;";
+            take.Parameters.AddWithValue("$n", credits);
+            take.Parameters.AddWithValue("$at", now);
+            take.Parameters.AddWithValue("$u", userId);
+            take.Parameters.AddWithValue("$s", source);
+            take.Parameters.AddWithValue("$t", transactionId);
+            take.ExecuteNonQuery();
+            tx.Commit();
+            return credits;
+        }
+        finally { _gate.Release(); }
+    }
+
     public async Task DeleteUserDataAsync(string userId, CancellationToken ct)
     {
         await _gate.WaitAsync(ct);

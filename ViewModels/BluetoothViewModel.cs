@@ -267,6 +267,8 @@ public partial class BluetoothViewModel : BaseViewModel
                     "Wi-Fi OBD is connected. Vehicle information will refresh on Home.",
                     "Wi-Fi OBD დაკავშირებულია. ავტომობილის ინფორმაცია მთავარ გვერდზე განახლდება.");
             }
+
+            await GoHomeAfterConnectAsync();
         }
         catch (ObdAdapterNotRespondingException)
         {
@@ -633,6 +635,8 @@ public partial class BluetoothViewModel : BaseViewModel
                 StatusMessage =
                     "OBD-II დაკავშირებულია. ავტომობილის ინფორმაცია Home-ზე ხელახლა განახლდება.";
             }
+
+            await GoHomeAfterConnectAsync();
         }
         catch (Exception ex)
         {
@@ -649,6 +653,28 @@ public partial class BluetoothViewModel : BaseViewModel
         finally
         {
             IsConnecting = false;
+        }
+    }
+
+    /// <summary>
+    /// After the adapter is connected and the VIN / vehicle info was read,
+    /// return to Home automatically (only if the user is still on this page).
+    /// </summary>
+    private static async Task GoHomeAfterConnectAsync()
+    {
+        try
+        {
+            // Let the "ready" message show for a moment.
+            await Task.Delay(900);
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                if (Shell.Current?.CurrentPage is Views.BluetoothPage)
+                    await Shell.Current.GoToAsync("//HomePage");
+            });
+        }
+        catch
+        {
+            // Staying on the connection page is fine.
         }
     }
 

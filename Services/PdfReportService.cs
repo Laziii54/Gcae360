@@ -13,7 +13,7 @@ public sealed class PdfReportService
 {
     private static bool IsEnglish =>
         string.Equals(
-            Preferences.Default.Get(LocalizationService.LanguageKey, "ქართული"),
+            Preferences.Default.Get(LocalizationService.LanguageKey, "English"),
             "English",
             StringComparison.OrdinalIgnoreCase);
 
@@ -102,6 +102,41 @@ public sealed class PdfReportService
         if (!Unknown(report.Protocol))
             vehicle.Add(new($"{L("პროტოკოლი", "Protocol")}: {report.Protocol}"));
         sections.Add(new(L("ავტომობილი", "Vehicle"), vehicle));
+
+        // Electronic service book: what was changed and when (kept by the app).
+        var history = CarScanner.Services.Maintenance.MaintenanceTrackerService.HistoryFor(report.Vehicle);
+        if (history.Count > 0)
+        {
+            var english = IsEnglish;
+            var lines = new List<ReportLine>();
+            foreach (var item in history)
+            {
+                var color = item.Status.State switch
+                {
+                    CarScanner.Services.Maintenance.PartState.Overdue => "#B91C1C",
+                    CarScanner.Services.Maintenance.PartState.Soon => "#B45309",
+                    _ => "#15803D"
+                };
+                var state = item.Status.State == CarScanner.Services.Maintenance.PartState.Unknown
+                    ? string.Empty
+                    : " · " + (item.Status.State == CarScanner.Services.Maintenance.PartState.Overdue
+                        ? L("ვადა გავიდა", "overdue")
+                        : L("დარჩა ", "left ") + CarScanner.ViewModels.MaintenanceText.ValueText(item.Status, english));
+                lines.Add(new($"{(english ? item.Part.NameEn : item.Part.NameKa)}{state}", true, color));
+                lines.Add(new($"  {L("ინტერვალი", "Interval")}: {CarScanner.ViewModels.MaintenanceText.IntervalText(item.Interval, english)}"));
+                foreach (var record in item.Records.Take(6))
+                {
+                    var date = record.DateUtc?.ToLocalTime().ToString("dd.MM.yyyy") ?? "—";
+                    var km = record.Km is { } value ? CarScanner.ViewModels.MaintenanceText.Km(value) : "—";
+                    lines.Add(new($"  • {date} · {km}"));
+                }
+            }
+
+            lines.Add(new(L(
+                "ჩანაწერები მფლობელმა შეიყვანა აპში; ისინი სერვისის ცენტრის მიერ დადასტურებული არ არის.",
+                "Records were entered by the owner in the app; they are not confirmed by a service centre."), false, "#64748B"));
+            sections.Add(new(L("სერვისის ისტორია", "Service history"), lines));
+        }
 
         var codes = report.StoredCodes.Select(code => (code, L("შენახული", "stored")))
             .Concat(report.PendingCodes.Select(code => (code, L("მოლოდინში", "pending"))))
@@ -232,8 +267,10 @@ public sealed class PdfReportService
                 FinishPage();
                 pageNumber++;
                 using var info = new Android.Graphics.Pdf.PdfDocument.PageInfo.Builder(PageWidth, PageHeight, pageNumber).Create();
-                page = document.StartPage(info);
-                canvas = page.Canvas;
+                var newPage = document.StartPage(info) ?? throw new InvalidOperationException("The PDF page could not be created.");
+                page = newPage;
+                var pageCanvas = newPage.Canvas ?? throw new InvalidOperationException("The PDF page has no canvas.");
+                canvas = pageCanvas;
                 y = Margin;
 
                 if (pageNumber == 1)

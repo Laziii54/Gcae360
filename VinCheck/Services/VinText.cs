@@ -188,7 +188,7 @@ public static class VinText
 
     public static bool IsGeorgian =>
         !string.Equals(
-            Preferences.Default.Get(LocalizationService.LanguageKey, "ქართული"),
+            Preferences.Default.Get(LocalizationService.LanguageKey, "English"),
             "English",
             StringComparison.OrdinalIgnoreCase);
 

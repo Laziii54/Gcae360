@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    x:Class="CarScanner.Views.ResetRecorderPage"
+    x:DataType="vm:ResetRecorderViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="{Binding PageTitle}">
+    <ScrollView>
+        <VerticalStackLayout Padding="16,12,16,32" Spacing="12">
+
+            <!-- Step 1 · how do you reset -->
+            <VerticalStackLayout IsVisible="{Binding IsChoosing}" Spacing="12">
+                <Border Style="{StaticResource ListCardStyle}" Padding="16,14">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="{Binding IntroTitle}" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                        <Label Text="{Binding IntroText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Label Text="{Binding HowTitle}" Style="{StaticResource SectionCaptionStyle}" />
+
+                <Border Style="{StaticResource ListCardStyle}" Padding="16,14">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding StartMenuCommand}" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="{Binding MenuTitle}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                            <Label Text="{Binding MenuText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="1" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource ListCardStyle}" Padding="16,14">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding StartToolCommand}" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="{Binding ToolTitle}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                            <Label Text="{Binding ToolText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="1" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                </Border>
+            </VerticalStackLayout>
+
+            <!-- Step 2 · listening -->
+            <VerticalStackLayout IsVisible="{Binding IsRecording}" Spacing="12">
+                <Grid HeightRequest="150" Margin="0,16,0,0">
+                    <Ellipse WidthRequest="130" HeightRequest="130" Fill="#FDECEC" HorizontalOptions="Center" VerticalOptions="Center" />
+                    <Ellipse WidthRequest="84" HeightRequest="84" Fill="#D32F2F" HorizontalOptions="Center" VerticalOptions="Center" />
+                </Grid>
+                <Label Text="{Binding ListeningTitle}" FontSize="18" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" />
+                <Label Text="{Binding TimerText}" FontSize="13" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                <Border Style="{StaticResource ListCardStyle}" Padding="16,14" Margin="0,6,0,0">
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="{Binding InstructionTitle}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                        <Label Text="{Binding InstructionText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
+                </Border>
+                <Button Text="{Binding DoneText}" Command="{Binding DoneCommand}" IsEnabled="{Binding IsBaseline, Converter={StaticResource InverseBoolConverter}}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="50" />
+                <Button Text="{Binding CancelText}" Command="{Binding CancelCommand}" HeightRequest="40" FontSize="13" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" BorderWidth="0" />
+            </VerticalStackLayout>
+
+            <!-- Step 3 · thank you / what next -->
+            <VerticalStackLayout IsVisible="{Binding IsFinished}" Spacing="12">
+                <Border Padding="16,14" BackgroundColor="{Binding ResultBackground}" Stroke="{Binding ResultColor}" StrokeThickness="1" StrokeShape="RoundRectangle 14">
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="{Binding ResultTitle}" TextColor="{Binding ResultColor}" FontSize="17" FontAttributes="Bold" LineBreakMode="WordWrap" />
+                        <Label Text="{Binding ResultText}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
+                </Border>
+                <Border IsVisible="{Binding HasOilChange}" Style="{StaticResource ListCardStyle}" Padding="14,12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="{Binding OilLabel}" FontSize="13" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="{Binding OilChangeText}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                    </Grid>
+                </Border>
+                <Button IsVisible="{Binding CanTryTool}" Text="{Binding TryToolText}" Command="{Binding StartToolCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="48" />
+                <Button Text="{Binding CloseText}" Command="{Binding CloseCommand}" HeightRequest="48" CornerRadius="12" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.2" />
+
+                <Button IsVisible="{Binding HasCandidates}" Text="{Binding TechnicalToggleText}" Command="{Binding ToggleTechnicalCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" FontSize="12" HeightRequest="34" Padding="0" HorizontalOptions="Center" />
+                <VerticalStackLayout IsVisible="{Binding ShowTechnical}" BindableLayout.ItemsSource="{Binding Candidates}" Spacing="3">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <Label Text="{Binding .}" FontFamily="monospace" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="CharacterWrap" />
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

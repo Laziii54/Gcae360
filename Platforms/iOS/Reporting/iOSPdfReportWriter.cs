@@ -45,15 +45,21 @@ internal static class iOSPdfReportWriter
                     Convert.ToByte(value.Substring(4, 2), 16));
             }
 
+            static UIFont Font(double size, bool bold) =>
+                (bold ? UIFont.BoldSystemFontOfSize((nfloat)size) : UIFont.SystemFontOfSize((nfloat)size))
+                ?? UIFont.PreferredBody;
+
+            static UIStringAttributes Attrs(UIFont font, UIColor color) =>
+                new() { Font = font, ForegroundColor = color };
+
+            static void DrawAt(string text, CGPoint point, UIFont font, UIColor color) =>
+                new NSString(text).DrawString(point, Attrs(font, color));
+
             void Footer()
             {
                 if (!pageOpen)
                     return;
-                UIColor.FromRGB(100, 116, 139).SetColor();
-                UIStringDrawing.DrawString(
-                    $"GCar360 · {pageNumber}",
-                    new CGPoint(Margin, PageHeight - 27),
-                    UIFont.SystemFontOfSize(9));
+                DrawAt($"GCar360 · {pageNumber}", new CGPoint(Margin, PageHeight - 27), Font(9, false), UIColor.FromRGB(100, 116, 139));
             }
 
             void NewPage()
@@ -71,23 +77,17 @@ internal static class iOSPdfReportWriter
                 cg.SetFillColor(Color("#185FA5").CGColor);
                 cg.FillRect(new CGRect(0, 0, PageWidth, 96));
 
-                UIColor.White.SetColor();
-                UIStringDrawing.DrawString(
-                    "GCar360",
-                    new CGPoint(Margin, 22),
-                    UIFont.BoldSystemFontOfSize(22));
-                UIStringDrawing.DrawString(
+                DrawAt("GCar360", new CGPoint(Margin, 22), Font(22, true), UIColor.White);
+                DrawAt(
                     subtitle ?? (isEnglish ? "Diagnostic report" : "დიაგნოსტიკური ანგარიში"),
                     new CGPoint(Margin, 52),
-                    UIFont.SystemFontOfSize(13));
+                    Font(13, false),
+                    UIColor.White);
 
                 var date = report.FinishedAt.ToString("dd.MM.yyyy HH:mm");
-                var dateFont = UIFont.SystemFontOfSize(10);
-                var dateSize = UIStringDrawing.StringSize(date, dateFont);
-                UIStringDrawing.DrawString(
-                    date,
-                    new CGPoint(PageWidth - Margin - dateSize.Width, 54),
-                    dateFont);
+                var dateFont = Font(10, false);
+                var dateSize = new NSString(date).GetSizeUsingAttributes(Attrs(dateFont, UIColor.White));
+                DrawAt(date, new CGPoint(PageWidth - Margin - dateSize.Width, 54), dateFont, UIColor.White);
 
                 y = 120;
                 var faults = report.StoredCodes.Count +
@@ -106,11 +106,7 @@ internal static class iOSPdfReportWriter
                     10);
                 Color(status.Item2).SetFill();
                 pill.Fill();
-                UIColor.White.SetColor();
-                UIStringDrawing.DrawString(
-                    status.Item1,
-                    new CGPoint(Margin + 14, y + 8),
-                    UIFont.BoldSystemFontOfSize(14));
+                DrawAt(status.Item1, new CGPoint(Margin + 14, y + 8), Font(14, true), UIColor.White);
                 y += 52;
             }
 
@@ -127,9 +123,8 @@ internal static class iOSPdfReportWriter
                 string color,
                 double indent = 0)
             {
-                var font = bold
-                    ? UIFont.BoldSystemFontOfSize((nfloat)size)
-                    : UIFont.SystemFontOfSize((nfloat)size);
+                var font = Font(size, bold);
+                var attrs = Attrs(font, Color(color));
                 var lineWidth = PageWidth - Margin * 2 - indent;
 
                 foreach (var paragraph in text.Replace("\r", string.Empty).Split('\n'))
@@ -141,19 +136,16 @@ internal static class iOSPdfReportWriter
                         continue;
                     }
 
-                    var measured = UIStringDrawing.StringSize(
-                        paragraph,
-                        font,
+                    var measured = new NSString(paragraph).GetBoundingRect(
                         new CGSize(lineWidth, 10_000),
-                        UILineBreakMode.WordWrap);
+                        NSStringDrawingOptions.UsesLineFragmentOrigin,
+                        attrs,
+                        null).Size;
                     var height = Math.Max(size * 1.45, Math.Ceiling(measured.Height / (size * 1.45)) * size * 1.45);
                     Ensure(height);
-                    Color(color).SetColor();
-                    UIStringDrawing.DrawString(
-                        paragraph,
+                    new NSString(paragraph).DrawString(
                         new CGRect(Margin + indent, y, lineWidth, height + size),
-                        font,
-                        UILineBreakMode.WordWrap);
+                        attrs);
                     y += height;
                 }
             }

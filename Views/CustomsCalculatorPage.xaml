@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    x:Class="CarScanner.Views.CustomsCalculatorPage"
+    x:DataType="vm:CustomsCalculatorViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="{Binding PageTitle}">
+    <ScrollView>
+        <VerticalStackLayout Padding="16,12,16,32" Spacing="12">
+            <Label Text="{Binding PageTitle}" Style="{StaticResource PageTitleStyle}" />
+
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,10">
+                <VerticalStackLayout Spacing="2">
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                        <VerticalStackLayout>
+                            <Label Text="{Binding YearLabel}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" />
+                            <Entry Text="{Binding YearText}" Keyboard="Numeric" MaxLength="4" Placeholder="2018" FontSize="16" TextColor="{DynamicResource TextColor}" PlaceholderColor="{DynamicResource SubTextColor}" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1">
+                            <Label Text="{Binding EngineLabel}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" />
+                            <Entry Text="{Binding EngineText}" Keyboard="Numeric" MaxLength="5" Placeholder="2.0" FontSize="16" TextColor="{DynamicResource TextColor}" PlaceholderColor="{DynamicResource SubTextColor}" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <Label Text="{Binding FuelLabel}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" Margin="0,6,0,0" />
+                    <Picker ItemsSource="{Binding FuelOptions}" SelectedIndex="{Binding FuelIndex}" FontSize="15" TextColor="{DynamicResource TextColor}" />
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                        <Label Text="{Binding RightHandLabel}" FontSize="14" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                        <Switch Grid.Column="1" IsToggled="{Binding RightHandDrive}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,10">
+                <VerticalStackLayout Spacing="2">
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                        <VerticalStackLayout>
+                            <Label Text="{Binding PriceLabel}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" />
+                            <Entry Text="{Binding PriceText}" Keyboard="Numeric" Placeholder="9000" FontSize="16" TextColor="{DynamicResource TextColor}" PlaceholderColor="{DynamicResource SubTextColor}" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1">
+                            <Label Text="{Binding ShippingLabel}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" />
+                            <Entry Text="{Binding ShippingText}" Keyboard="Numeric" Placeholder="1800" FontSize="16" TextColor="{DynamicResource TextColor}" PlaceholderColor="{DynamicResource SubTextColor}" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                        <VerticalStackLayout>
+                            <Label Text="{Binding OtherLabel}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                            <Entry Text="{Binding OtherText}" Keyboard="Numeric" Placeholder="0" FontSize="16" TextColor="{DynamicResource TextColor}" PlaceholderColor="{DynamicResource SubTextColor}" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1">
+                            <Label Text="{Binding RateLabel}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" />
+                            <Entry Text="{Binding UsdRateText}" Keyboard="Numeric" Placeholder="2.70" FontSize="16" TextColor="{DynamicResource TextColor}" PlaceholderColor="{DynamicResource SubTextColor}" />
+                        </VerticalStackLayout>
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Button Text="{Binding CalculateText}" Command="{Binding CalculateCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="50" />
+            <Label Text="{Binding ErrorText}" IsVisible="{Binding HasError}" TextColor="#B3361F" FontSize="12.5" />
+
+            <Border Style="{StaticResource ListCardStyle}" Padding="16,14" IsVisible="{Binding HasResult}">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="{Binding ExciseCaption}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                    <Label Text="{Binding ExciseText}" FontSize="26" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                    <Label Text="{Binding FormulaText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding AgeText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                    <BoxView HeightRequest="1" Color="{DynamicResource BorderColor}" Margin="0,8" />
+                    <Label Text="{Binding CarText}" FontSize="13" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding TotalCaption}" FontSize="12" TextColor="{DynamicResource SubTextColor}" Margin="0,6,0,0" />
+                    <HorizontalStackLayout Spacing="8">
+                        <Label Text="{Binding TotalText}" FontSize="24" FontAttributes="Bold" TextColor="{DynamicResource Primary}" />
+                        <Label Text="{Binding TotalUsdText}" FontSize="14" TextColor="{DynamicResource SubTextColor}" VerticalOptions="End" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="{Binding NoteText}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+            <Label Text="{Binding RulesText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+            <Button Text="{Binding OfficialText}" Command="{Binding OpenOfficialCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderWidth="0" FontAttributes="Bold" FontSize="13" HorizontalOptions="Start" Padding="0" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

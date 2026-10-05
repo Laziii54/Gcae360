@@ -506,7 +506,7 @@ public sealed class DiagnosticService
         var language =
             Preferences.Default.Get(
                 LocalizationService.LanguageKey,
-                "ქართული");
+                "English");
 
         return string.Equals(
             language,

@@ -10,7 +10,7 @@ namespace CarScanner.Services;
 /// actuator command is sent. A score is produced only from values that the
 /// connected vehicle actually returns.
 /// </summary>
-public sealed class HybridHealthService
+public sealed partial class HybridHealthService
 {
     private readonly OBDService _obd;
     private readonly ModuleLiveDataService _moduleLive;
@@ -28,13 +28,6 @@ public sealed class HybridHealthService
     {
         var profile = ResolveProfile(vehicle);
         var vehicleName = VehicleName(vehicle);
-        if (profile == HybridProfileKind.Unsupported)
-        {
-            return Empty(profile, vehicleName,
-                "მანქანა ელექტროდ ან ჰიბრიდად ვერ დადასტურდა.",
-                "თუ ეს ელექტრო/ჰიბრიდია, ჯერ განაახლე Vehicle Info ან აირჩიე სწორი ბრენდი/მოდელი.");
-        }
-
         if (!_obd.IsInitialized)
         {
             return Empty(profile, vehicleName,
@@ -42,8 +35,85 @@ public sealed class HybridHealthService
                 ValidationText(profile, false));
         }
 
+        var log = new System.Text.StringBuilder();
         progress?.Report("ECU-reported დარჩენილი სიცოცხლის შემოწმება…");
         var ecuLife = await TryReadRemainingLifeAsync(token).ConfigureAwait(false);
+        log.AppendLine($"01 5B (remaining life): {(ecuLife.HasValue ? $"{ecuLife:0.#}%" : "არ არის")}");
+
+        // Makes whose battery ECU we read directly: Toyota / Lexus, Hyundai / Kia / Genesis.
+        HvPackReading? pack = null;
+        if (IsToyotaFamily(vehicle) || profile == HybridProfileKind.ToyotaPrius)
+        {
+            progress?.Report("Toyota HV ბატარეის ECU-ს კითხვა (ბლოკების ძაბვა)…");
+            pack = await ReadToyotaPackAsync(vehicle, log, token).ConfigureAwait(false);
+        }
+        else if (HyundaiKiaBattery.IsHyundaiKia(vehicle.Manufacturer))
+        {
+            progress?.Report("Hyundai/Kia ბატარეის მართვის სისტემის (BMS) კითხვა…");
+            pack = await ReadHyundaiKiaPackAsync(log, token).ConfigureAwait(false);
+        }
+        else if (NissanLeafBattery.IsLeaf(vehicle.Manufacturer, vehicle.Model) ||
+                 (vehicle.Manufacturer ?? string.Empty).Contains("Nissan", StringComparison.OrdinalIgnoreCase) && profile == HybridProfileKind.GenericElectric)
+        {
+            progress?.Report("Nissan Leaf ბატარეის კონტროლერის (LBC) კითხვა…");
+            pack = await ReadLeafPackAsync(vehicle, log, token).ConfigureAwait(false);
+        }
+        else if (BmwI3Battery.IsI3(vehicle.Manufacturer, vehicle.Model))
+        {
+            progress?.Report("BMW i3 ბატარეის სისტემის (SME) კითხვა…");
+            pack = await ReadI3PackAsync(vehicle, log, token).ConfigureAwait(false);
+        }
+        else if (FordHybridBattery.IsFordHybrid(vehicle.Manufacturer, vehicle.Model) || FordHybridBattery.IsMachE(vehicle.Manufacturer, vehicle.Model))
+        {
+            progress?.Report("Ford ბატარეის (BECM) კითხვა…");
+            pack = await ReadFordPackAsync(FordHybridBattery.IsMachE(vehicle.Manufacturer, vehicle.Model), log, token).ConfigureAwait(false);
+        }
+        else if (AudiEtronBattery.IsEtron(vehicle.Manufacturer, vehicle.Model))
+        {
+            progress?.Report("Audi e-tron ბატარეის სისტემის კითხვა…");
+            pack = await ReadEtronPackAsync(log, progress, token).ConfigureAwait(false);
+        }
+        else if (AudiEtronBattery.IsTaycan(vehicle.Manufacturer, vehicle.Model))
+        {
+            progress?.Report("Porsche Taycan ბატარეის სისტემის კითხვა…");
+            pack = await ReadEtronPackAsync(log, progress, token, HvPackKind.PorscheTaycan).ConfigureAwait(false);
+        }
+        else if (HondaHybridBattery.IsHondaHybrid(vehicle.Manufacturer, vehicle.Model, int.TryParse(vehicle.Year, out var hondaYear) ? hondaYear : null))
+        {
+            progress?.Report("Honda ჰიბრიდის ბატარეის კითხვა…");
+            pack = await ReadHondaPackAsync(log, token).ConfigureAwait(false);
+        }
+        else if (JaguarIPaceBattery.IsIPace(vehicle.Manufacturer, vehicle.Model))
+        {
+            progress?.Report("Jaguar I-PACE ბატარეის კითხვა…");
+            pack = await ReadIPacePackAsync(log, token).ConfigureAwait(false);
+        }
+        else if (MgZsEvBattery.IsZsEv(vehicle.Manufacturer, vehicle.Model))
+        {
+            progress?.Report("MG ZS EV ბატარეის კითხვა…");
+            pack = await ReadMgZsEvPackAsync(log, token).ConfigureAwait(false);
+        }
+        else if (HavalHevBattery.IsJolionHev(vehicle.Manufacturer, vehicle.Model))
+        {
+            progress?.Report("Haval ჰიბრიდის ბატარეის კითხვა…");
+            pack = await ReadHavalPackAsync(log, token).ConfigureAwait(false);
+        }
+        else if (VwEGolfBattery.IsEGolf(vehicle.Manufacturer, vehicle.Model))
+        {
+            progress?.Report("e-Golf ბატარეის სისტემის კითხვა…");
+            pack = await ReadEGolfPackAsync(log, token).ConfigureAwait(false);
+        }
+        else if (GmVoltBoltBattery.IsBolt(vehicle.Manufacturer, vehicle.Model) is not null || profile == HybridProfileKind.ChevroletVolt)
+        {
+            progress?.Report("Volt/Bolt ბატარეის (BECM) კითხვა — 96 უჯრედი, ~10–20 წამი…");
+            pack = await ReadGmPackAsync(vehicle, GmVoltBoltBattery.IsBolt(vehicle.Manufacturer, vehicle.Model) == true, log, progress, token).ConfigureAwait(false);
+        }
+
+        if (pack is not null)
+            return BuildPackResult(profile, vehicleName, ecuLife, pack, log.ToString());
+
+        _sampler = null;
+        _lastPackKind = null;
 
         progress?.Report("HV Battery/BMS მოდულების უსაფრთხო read-only ძიება…");
         ModuleLiveDataService.DiscoveryResult? discovery = null;
@@ -93,6 +163,20 @@ public sealed class HybridHealthService
             .Where(value => value is > -50 and < 120)
             .ToArray();
 
+        log.AppendLine($"BMS მოდულების ძიება: {signals.Length} სიგნალი ({cells.Length} ძაბვა, {temperatures.Length} ტემპერატურა)");
+        return BuildResult(profile, vehicleName, ecuLife, cells, temperatures, false, discovery?.NoteKa, log.ToString());
+    }
+
+    private static HybridHealthResult BuildResult(
+        HybridProfileKind profile,
+        string vehicleName,
+        double? ecuLife,
+        double[] cells,
+        double[] temperatures,
+        bool blockVoltages,
+        string? discoveryNote,
+        string rawLog)
+    {
         var minimumCell = cells.Length > 0 ? cells.Min() : (double?)null;
         var maximumCell = cells.Length > 0 ? cells.Max() : (double?)null;
         var delta = cells.Length >= 2 ? maximumCell - minimumCell : null;
@@ -104,10 +188,16 @@ public sealed class HybridHealthService
 
         var evidence = string.Join(" · ", new[]
         {
-            cells.Length > 0 ? $"{cells.Length} voltage reading" : string.Empty,
+            cells.Length > 0 ? (blockVoltages ? $"{cells.Length} ბლოკის ძაბვა (HV ბატარეის ECU)" : $"{cells.Length} voltage reading") : string.Empty,
             temperatures.Length > 0 ? $"{temperatures.Length} temperature reading" : string.Empty,
             ecuLife.HasValue ? "PID 015B remaining life" : string.Empty
         }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+        var status = realDataReturned
+            ? "რეალური ECU/BMS მონაცემები მიღებულია."
+            : profile == HybridProfileKind.Unsupported
+                ? "HV ბატარეის მონაცემი ვერ მოიძებნა. მანქანა ჰიბრიდად/ელექტროდ ვერ დადასტურდა — შესაძლოა ეს ჩვეულებრივი ბენზინის ვერსიაა."
+                : discoveryNote ?? "HV ბატარეის ECU-მ არ უპასუხა. შეამოწმე, რომ ანთება ჩართულია (READY).";
 
         return new HybridHealthResult(
             profile,
@@ -123,19 +213,29 @@ public sealed class HybridHealthService
             ecuLife.HasValue,
             cells.Length,
             temperatures.Length,
-            realDataReturned
-                ? "რეალური ECU/BMS მონაცემები მიღებულია."
-                : discovery?.NoteKa ?? "HV Battery/BMS მონაცემი ვერ მოიძებნა.",
+            status,
             ValidationText(profile, realDataReturned),
-            string.IsNullOrWhiteSpace(evidence) ? "დადასტურებული მნიშვნელობა არ დაბრუნდა" : evidence);
+            string.IsNullOrWhiteSpace(evidence) ? "დადასტურებული მნიშვნელობა არ დაბრუნდა" : evidence,
+            blockVoltages,
+            rawLog);
     }
+
+    private static bool IsToyotaFamily(VehicleInfo vehicle) =>
+        ContainsAny(vehicle.Manufacturer ?? string.Empty, "Toyota", "Lexus");
+
+    private static string Shorten(string value, int max) =>
+        value.Length <= max ? value : value[..max] + "…";
 
     public static HybridProfileKind ResolveProfile(VehicleInfo vehicle)
     {
         var make = vehicle.Manufacturer ?? string.Empty;
         var model = vehicle.Model ?? string.Empty;
-        if (make.Contains("Toyota", StringComparison.OrdinalIgnoreCase) &&
-            model.Contains("Prius", StringComparison.OrdinalIgnoreCase))
+        if ((make.Contains("Toyota", StringComparison.OrdinalIgnoreCase) ||
+             make.Contains("Lexus", StringComparison.OrdinalIgnoreCase)) &&
+            (ContainsAny(model, "Prius", "Aqua", "hybrid", "ჰიბრიდ") ||
+             ContainsAny(vehicle.FuelType ?? string.Empty, "hybrid", "ჰიბრიდ") ||
+             (make.Contains("Lexus", StringComparison.OrdinalIgnoreCase) &&
+              System.Text.RegularExpressions.Regex.IsMatch(model, @"\b(CT|ES|IS|GS|LS|NX|RX|UX|RC|LC)\s?\d{3}h\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase))))
             return HybridProfileKind.ToyotaPrius;
         if ((make.Contains("Chevrolet", StringComparison.OrdinalIgnoreCase) ||
              make.Contains("Opel", StringComparison.OrdinalIgnoreCase) ||
@@ -241,7 +341,7 @@ public sealed class HybridHealthService
     {
         var name = profile switch
         {
-            HybridProfileKind.ToyotaPrius => "Prius · ეტაპი 1",
+            HybridProfileKind.ToyotaPrius => "Toyota/Lexus ჰიბრიდი",
             HybridProfileKind.ChevroletVolt => "Volt/Ampera · ეტაპი 2",
             HybridProfileKind.HyundaiIoniq => "Ioniq · ეტაპი 3",
             HybridProfileKind.Tesla => "Tesla · უნივერსალური BMS read-only",

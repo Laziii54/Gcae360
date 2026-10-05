@@ -12,9 +12,20 @@ public sealed record PerformanceTestDefinition(
     string DisplayName,
     double StartSpeedKph,
     double TargetSpeedKph,
-    IReadOnlyList<int> SplitTargetsKph)
+    IReadOnlyList<int> SplitTargetsKph,
+    double? TargetDistanceMeters = null)
 {
     public bool RequiresStationaryStart => StartSpeedKph <= 0.01d;
+
+    /// <summary>A distance run (¼ mile, ⅛ mile): timed to a distance, not a speed.</summary>
+    public bool IsDistanceTest => TargetDistanceMeters is > 0;
+
+    /// <summary>Speed that fills the gauge (distance runs never "reach" a target speed).</summary>
+    public double DisplayTargetSpeedKph => IsDistanceTest ? 200d : TargetSpeedKph;
+
+    /// <summary>Tests that have a public ranking.</summary>
+    public static bool IsRanked(string? testId) =>
+        testId is "0-100" or "0-60mph" or "quarter-mile";
     public string StartInstruction => RequiresStationaryStart
         ? "გააჩერე მანქანა 0–3 km/h-ზე, შემდეგ დაიწყე აჩქარება."
         : $"ჯერ ჩამოდი {StartSpeedKph:0} km/h-მდე ან ქვემოთ, შემდეგ დაიწყე აჩქარება.";
@@ -31,7 +42,11 @@ public static class PerformanceTests
         new("30-70", "30–70 km/h", 30, 70, [40, 50, 60]),
         new("60-100", "60–100 km/h", 60, 100, [70, 80, 90]),
         new("80-120", "80–120 km/h", 80, 120, [90, 100, 110]),
-        new("100-200", "100–200 km/h", 100, 200, [120, 140, 160, 180])
+        new("100-200", "100–200 km/h", 100, 200, [120, 140, 160, 180]),
+        // Distance runs (drag strip): time to 201 m / 402 m from a standstill,
+        // distance integrated from ECU speed. The speed target is never reached.
+        new("eighth-mile", "⅛ mile (201 m)", 0, 999, [50, 100], 201.168d),
+        new("quarter-mile", "¼ mile (402 m)", 0, 999, [60, 100, 150], 402.336d)
     ];
 
     public static PerformanceTestDefinition Default(UnitSystemService units) => units.IsImperial

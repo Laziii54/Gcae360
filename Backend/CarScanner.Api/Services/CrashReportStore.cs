@@ -80,7 +80,82 @@ VALUES($id,$occurred,$received,$app,$platform,$os,$type,$stack,$source,$fatal);
             _gate.Release();
         }
     }
+
+    /// <summary>
+    /// Crashes of the last <paramref name="days"/> days grouped by exception
+    /// type + first app frame, newest group first (admin page).
+    /// </summary>
+    public async Task<IReadOnlyList<CrashGroup>> GetGroupsAsync(int days, CancellationToken token)
+    {
+        var rows = new List<(string Type, string Stack, string App, string Platform, string Os, string Source, bool Fatal, DateTimeOffset At)>();
+        using (var connection = new SqliteConnection(_connectionString))
+        {
+            await connection.OpenAsync(token);
+            using var command = connection.CreateCommand();
+            command.CommandText =
+                "SELECT ExceptionType, StackTrace, AppVersion, Platform, OsVersion, Source, Fatal, ReceivedAt " +
+                "FROM CrashReports WHERE ReceivedAt >= $from ORDER BY ReceivedAt DESC LIMIT 2000;";
+            command.Parameters.AddWithValue("$from", DateTimeOffset.UtcNow.AddDays(-days).ToString("O"));
+            using var reader = await command.ExecuteReaderAsync(token);
+            while (await reader.ReadAsync(token))
+            {
+                rows.Add((
+                    reader.GetString(0),
+                    reader.GetString(1),
+                    reader.GetString(2),
+                    reader.GetString(3),
+                    reader.GetString(4),
+                    reader.GetString(5),
+                    reader.GetInt64(6) != 0,
+                    DateTimeOffset.TryParse(reader.GetString(7), out var at) ? at : DateTimeOffset.MinValue));
+            }
+        }
+
+        return rows
+            .GroupBy(row => (row.Type, Frame: FirstAppFrame(row.Stack)))
+            .Select(group =>
+            {
+                var latest = group.First();
+                return new CrashGroup(
+                    group.Key.Type,
+                    group.Key.Frame,
+                    group.Count(),
+                    group.Count(row => row.Fatal),
+                    latest.At,
+                    group.Select(row => row.App).Distinct().OrderByDescending(v => v).Take(4).ToArray(),
+                    group.Select(row => row.Platform).Distinct().ToArray(),
+                    latest.Os,
+                    latest.Source,
+                    latest.Stack);
+            })
+            .OrderByDescending(group => group.LastAt)
+            .ToArray();
+    }
+
+    /// <summary>First stack frame from the app's own code (CarScanner.*), else the first frame.</summary>
+    public static string FirstAppFrame(string stack)
+    {
+        var lines = (stack ?? string.Empty)
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(line => line.StartsWith("at ", StringComparison.Ordinal))
+            .ToArray();
+        var own = lines.FirstOrDefault(line => line.Contains("CarScanner.", StringComparison.Ordinal));
+        var frame = own ?? lines.FirstOrDefault() ?? string.Empty;
+        return frame.Length > 220 ? frame[..220] : frame;
+    }
 }
+
+public sealed record CrashGroup(
+    string ExceptionType,
+    string Frame,
+    int Count,
+    int FatalCount,
+    DateTimeOffset LastAt,
+    IReadOnlyList<string> AppVersions,
+    IReadOnlyList<string> Platforms,
+    string OsVersion,
+    string Source,
+    string SampleStack);
 
 public sealed record CrashReportRequest(
     string ReportId,

@@ -74,9 +74,10 @@ Ip TEXT NULL);";
 
     public static string ClientIp(HttpContext http)
     {
-        // Azure App Service puts the client address first in X-Forwarded-For.
+        // Azure's front end APPENDS the real client address to X-Forwarded-For;
+        // anything before it was sent by the client and can be forged.
         var forwarded = http.Request.Headers["X-Forwarded-For"].ToString();
-        var first = forwarded.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault();
+        var first = forwarded.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).LastOrDefault();
         if (!string.IsNullOrWhiteSpace(first))
             return first.Contains(':') && first.Count(ch => ch == ':') == 1 ? first.Split(':')[0] : first;
         return http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
@@ -132,7 +133,7 @@ Ip TEXT NULL);";
         response.Headers["Referrer-Policy"] = "no-referrer";
         response.Headers["X-Robots-Tag"] = "noindex, nofollow";
         response.Headers["Content-Security-Policy"] =
-            "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
+            "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; media-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
     }
 
     /// <summary>Checks a 6-digit authenticator code (±30 s), each code once.</summary>

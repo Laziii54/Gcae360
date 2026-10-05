@@ -29,13 +29,23 @@ ReadinessSummary TEXT NOT NULL,
 CreatedAt TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS IX_QrReports_ExpiresAt ON QrReports(ExpiresAt);";
         command.ExecuteNonQuery();
+
+        // Added later: owner-entered service history (older databases lack the column).
+        using var columns = connection.CreateCommand();
+        columns.CommandText = "SELECT COUNT(*) FROM pragma_table_info('QrReports') WHERE name='ServiceHistory'";
+        if (Convert.ToInt64(columns.ExecuteScalar()) == 0)
+        {
+            using var alter = connection.CreateCommand();
+            alter.CommandText = "ALTER TABLE QrReports ADD COLUMN ServiceHistory TEXT NULL";
+            alter.ExecuteNonQuery();
+        }
     }
 
     public static string? Validate(QrReportCreateRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Vehicle) || request.Vehicle.Trim().Length > 160) return "invalid vehicle";
         if (request.CheckedAt.ToUniversalTime() < DateTime.UtcNow.AddYears(-2) || request.CheckedAt.ToUniversalTime() > DateTime.UtcNow.AddMinutes(10)) return "invalid inspection date";
-        if (request.Status.Length > 120 || request.Summary.Length > 4000 || request.DtcSummary.Length > 8000 || request.ReadinessSummary.Length > 4000) return "report is too large";
+        if (request.Status.Length > 120 || request.Summary.Length > 4000 || request.DtcSummary.Length > 8000 || request.ReadinessSummary.Length > 4000 || (request.ServiceHistory?.Length ?? 0) > 4000) return "report is too large";
         return null;
     }
 
@@ -53,8 +63,8 @@ CREATE INDEX IF NOT EXISTS IX_QrReports_ExpiresAt ON QrReports(ExpiresAt);";
             await connection.OpenAsync(token);
             await using var command = connection.CreateCommand();
             command.CommandText = @"DELETE FROM QrReports WHERE ExpiresAt < $now;
-INSERT INTO QrReports(TokenHash,OwnerHash,Vehicle,VinMasked,CheckedAt,ExpiresAt,Status,Summary,DtcSummary,ReadinessSummary,CreatedAt)
-VALUES($t,$o,$v,$vin,$checked,$expires,$status,$summary,$dtc,$ready,$now);";
+INSERT INTO QrReports(TokenHash,OwnerHash,Vehicle,VinMasked,CheckedAt,ExpiresAt,Status,Summary,DtcSummary,ReadinessSummary,CreatedAt,ServiceHistory)
+VALUES($t,$o,$v,$vin,$checked,$expires,$status,$summary,$dtc,$ready,$now,$service);";
             command.Parameters.AddWithValue("$t", Hash(rawToken));
             command.Parameters.AddWithValue("$o", Hash(ownerKey));
             command.Parameters.AddWithValue("$v", request.Vehicle.Trim());
@@ -66,6 +76,7 @@ VALUES($t,$o,$v,$vin,$checked,$expires,$status,$summary,$dtc,$ready,$now);";
             command.Parameters.AddWithValue("$dtc", Cut(request.DtcSummary, 8000));
             command.Parameters.AddWithValue("$ready", Cut(request.ReadinessSummary, 4000));
             command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+            command.Parameters.AddWithValue("$service", string.IsNullOrWhiteSpace(request.ServiceHistory) ? DBNull.Value : Cut(request.ServiceHistory, 4000));
             await command.ExecuteNonQueryAsync(token);
         }
         finally { _gate.Release(); }
@@ -80,7 +91,7 @@ VALUES($t,$o,$v,$vin,$checked,$expires,$status,$summary,$dtc,$ready,$now);";
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(token);
         await using var command = connection.CreateCommand();
-        command.CommandText = @"SELECT Vehicle,VinMasked,CheckedAt,ExpiresAt,Status,Summary,DtcSummary,ReadinessSummary
+        command.CommandText = @"SELECT Vehicle,VinMasked,CheckedAt,ExpiresAt,Status,Summary,DtcSummary,ReadinessSummary,ServiceHistory
 FROM QrReports WHERE TokenHash=$t LIMIT 1";
         command.Parameters.AddWithValue("$t", Hash(tokenValue));
         await using var reader = await command.ExecuteReaderAsync(token);
@@ -88,7 +99,8 @@ FROM QrReports WHERE TokenHash=$t LIMIT 1";
         return new QrPublicReport(
             reader.GetString(0), reader.GetString(1), DateTime.Parse(reader.GetString(2), null, System.Globalization.DateTimeStyles.RoundtripKind),
             DateTime.Parse(reader.GetString(3), null, System.Globalization.DateTimeStyles.RoundtripKind), reader.GetString(4),
-            reader.GetString(5), reader.GetString(6), reader.GetString(7));
+            reader.GetString(5), reader.GetString(6), reader.GetString(7),
+            reader.IsDBNull(8) ? null : reader.GetString(8));
     }
 
     public static string RenderHtml(QrPublicReport report)
@@ -110,6 +122,7 @@ body{margin:0;background:#07111f;color:#eef5ff;font-family:system-ui,-apple-syst
 <div class="card"><h2>სკანის შეჯამება / Scan summary</h2><p>__SUMMARY__</p></div>
 <div class="card"><h2>შეცდომის კოდები / Trouble codes</h2><p>__DTC__</p></div>
 <div class="card"><h2>Check Engine / Readiness</h2><p>__READY__</p></div>
+__SERVICE__
 <p class="meta" style="margin-top:16px;text-align:center">ანგარიში ასახავს მხოლოდ შექმნის დროს მანქანიდან წაკითხულ მონაცემებს. / This report reflects data read from the vehicle when it was created.</p>
 </main></body></html>
 """
@@ -122,7 +135,11 @@ body{margin:0;background:#07111f;color:#eef5ff;font-family:system-ui,-apple-syst
             .Replace("__STATUS__", H(report.Status))
             .Replace("__SUMMARY__", H(report.Summary))
             .Replace("__DTC__", H(report.DtcSummary))
-            .Replace("__READY__", H(report.ReadinessSummary));
+            .Replace("__READY__", H(report.ReadinessSummary))
+            .Replace("__SERVICE__", string.IsNullOrWhiteSpace(report.ServiceHistory)
+                ? string.Empty
+                : "<div class=\"card\"><h2>სერვისის ისტორია / Service history</h2><p>" + H(report.ServiceHistory) +
+                  "</p><p class=\"meta\" style=\"margin-top:8px\">მფლობელის მიერ შეყვანილი, სერვისცენტრის მიერ დაუდასტურებელი. / Entered by the owner, not confirmed by a service centre.</p></div>");
     }
 
     public static string RenderExpiredHtml() => """
@@ -136,5 +153,5 @@ body{margin:0;background:#07111f;color:#eef5ff;font-family:system-ui,-apple-syst
     private static string Base64Url(byte[] bytes) => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 }
 
-public sealed record QrReportCreateRequest(string Vehicle, string? Vin, DateTime CheckedAt, string Status, string Summary, string DtcSummary, string ReadinessSummary);
-public sealed record QrPublicReport(string Vehicle, string VinMasked, DateTime CheckedAt, DateTime ExpiresAt, string Status, string Summary, string DtcSummary, string ReadinessSummary);
+public sealed record QrReportCreateRequest(string Vehicle, string? Vin, DateTime CheckedAt, string Status, string Summary, string DtcSummary, string ReadinessSummary, string? ServiceHistory = null);
+public sealed record QrPublicReport(string Vehicle, string VinMasked, DateTime CheckedAt, DateTime ExpiresAt, string Status, string Summary, string DtcSummary, string ReadinessSummary, string? ServiceHistory = null);

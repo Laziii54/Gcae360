@@ -15,4 +15,7 @@ public sealed class ActualMileageResult
     public string Details { get; set; } = string.Empty;
 
     public int SourceCount => Evidence.Count;
+
+    /// <summary>Requests sent to the car and their answers (for support).</summary>
+    public string Log { get; set; } = string.Empty;
 }

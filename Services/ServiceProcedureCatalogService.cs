@@ -163,7 +163,17 @@ public sealed class ServiceProcedureCatalogService
         ["kgmssangyong"] = "ssangyong",
         ["vauxhall"] = "vauxhall",
         ["gm"] = "chevrolet",
-        ["gmc"] = "gmc"
+        ["gmc"] = "gmc",
+        ["alfa"] = "alfaromeo",
+        ["greatwallmotor"] = "greatwall",
+        ["greatwallmotors"] = "greatwall",
+        ["teslamotors"] = "tesla",
+        ["teslainc"] = "tesla",
+        ["rollsroycemotorcars"] = "rollsroyce",
+        ["ramtrucks"] = "ram",
+        ["minicooper"] = "mini",
+        ["seatcupra"] = "cupra",
+        ["lynkco"] = "lynkco"
     };
 
     /// <summary>"Chrysler/Dodge/Jeep" or "KGM / SsangYong" → normalized keys.</summary>

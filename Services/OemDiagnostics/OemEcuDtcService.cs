@@ -192,7 +192,7 @@ public sealed class OemEcuDtcService
             }
         }
 
-        var english = Preferences.Default.Get(LocalizationService.LanguageKey, "ქართული")
+        var english = Preferences.Default.Get(LocalizationService.LanguageKey, "English")
             .Equals("English", StringComparison.OrdinalIgnoreCase);
         var title = catalogEntry is null
             ? string.Empty

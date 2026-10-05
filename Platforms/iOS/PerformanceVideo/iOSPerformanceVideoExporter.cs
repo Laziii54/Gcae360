@@ -43,7 +43,7 @@ public sealed class iOSPerformanceVideoExporter : IPerformanceVideoExporter
 
         using var exporter = AVAssetExportSession.FromAsset(
             asset,
-            AVAssetExportSessionPreset.HighestQuality.GetConstant())
+            (string?)AVAssetExportSessionPreset.HighestQuality.GetConstant() ?? "AVAssetExportPresetHighestQuality")
             ?? throw new InvalidOperationException("The iPhone cannot export this recording.");
 
         exporter.OutputUrl = NSUrl.FromFilename(outputPath);
@@ -190,6 +190,9 @@ public sealed class iOSPerformanceVideoExporter : IPerformanceVideoExporter
         return new OverlayLayerSet(parent, video, overlay, tool);
     }
 
+    /// <summary>Value of AVFoundation's AVCoreAnimationBeginTimeAtZero constant.</summary>
+    private const double AVCoreAnimationBeginTimeAtZero = 1e-100;
+
     private static CATextLayer TextLayer(
         string text,
         CGRect frame,
@@ -236,8 +239,9 @@ public sealed class iOSPerformanceVideoExporter : IPerformanceVideoExporter
         foreach (var frame in frames)
             Add(frame.TimeMs / (durationSeconds * 1000d), valueSelector(frame));
 
-        // Core Animation needs an end keyframe to retain the final value.
-        values.Add(new NSString(values[^1].ToString()));
+        // Discrete key-frame animations need one more key time than values
+        // (Apple: "the array should have one more entry than the values array"),
+        // ending at 1.0. With equal counts Core Animation ignores the key times.
         times.Add(NSNumber.FromDouble(1));
 
         layer.String = values[0].ToString();
@@ -245,7 +249,10 @@ public sealed class iOSPerformanceVideoExporter : IPerformanceVideoExporter
         animation.SetValues(values.ToArray());
         animation.KeyTimes = times.ToArray();
         animation.CalculationMode = CAAnimation.AnimationDiscrete;
-        animation.BeginTime = 0;
+        // In a video export, BeginTime 0 means "now" (CACurrentMediaTime), so the
+        // animation never runs and the layer keeps its first value (0 km/h).
+        // AVCoreAnimationBeginTimeAtZero (1e-100) anchors it to the video start.
+        animation.BeginTime = AVCoreAnimationBeginTimeAtZero;
         animation.Duration = durationSeconds;
         animation.RemovedOnCompletion = false;
         animation.FillMode = CAFillMode.Forwards;

@@ -5,80 +5,185 @@
     xmlns:vm="clr-namespace:CarScanner.ViewModels"
     x:Class="CarScanner.Views.TechnicalInspectionPage"
     x:DataType="vm:TechnicalInspectionViewModel"
+    x:Name="InspectionRoot"
     BackgroundColor="{DynamicResource PageBg}"
     Title="{Binding Title}">
 
-    <ScrollView>
-        <VerticalStackLayout Padding="16,14,16,32" Spacing="12">
-            <Label Text="{Binding PageHeading}" Style="{StaticResource PageTitleStyle}" />
-            <Label Text="{Binding PageSubtitle}" FontSize="13" TextColor="{DynamicResource SubTextColor}" Margin="2,-7,2,4" LineBreakMode="WordWrap" />
+    <ScrollView x:Name="PageScroll">
+        <Grid>
+            <!-- ======================= HUB: categories · OBD · result ======================= -->
+            <VerticalStackLayout IsVisible="{Binding IsHubMode}" Padding="16,14,16,32" Spacing="12">
+                <Label Text="{Binding PageHeading}" Style="{StaticResource PageTitleStyle}" />
+                <Label Text="{Binding PageSubtitle}" FontSize="13" TextColor="{DynamicResource SubTextColor}" Margin="2,-7,2,0" LineBreakMode="WordWrap" />
 
-            <Button
-                Text="{Binding CheckButtonText}"
-                Command="{Binding CheckCommand}"
-                IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
-                Style="{StaticResource PrimaryButtonStyle}"
-                HeightRequest="64"
-                MinimumHeightRequest="64"
-                FontSize="16"
-                FontAttributes="Bold" />
-
-            <Border IsVisible="{Binding IsBusy}" Style="{StaticResource ListCardStyle}" Padding="16,14">
-                <VerticalStackLayout Spacing="10">
-                    <ActivityIndicator IsRunning="True" Color="{DynamicResource Primary}" />
-                    <Label Text="{Binding StatusText}" FontSize="13" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="{Binding OverallProgressText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                    <ProgressBar Progress="{Binding OverallProgress}" ProgressColor="{DynamicResource Primary}" BackgroundColor="{DynamicResource DividerColor}" HeightRequest="6" />
                 </VerticalStackLayout>
-            </Border>
 
-            <Border IsVisible="{Binding HasResult}" Style="{StaticResource ListCardStyle}" Padding="18,18">
-                <VerticalStackLayout Spacing="7" HorizontalOptions="Fill">
-                    <Border WidthRequest="112" HeightRequest="112" BackgroundColor="{Binding ResultColor}" StrokeThickness="0" StrokeShape="RoundRectangle 56" HorizontalOptions="Center">
-                        <Label Text="{Binding ResultAnswer}" TextColor="White" FontSize="30" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
-                    </Border>
-                    <Label Text="{Binding ResultTitle}" FontSize="18" FontAttributes="Bold" TextColor="{Binding ResultColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
-                    <Label Text="{Binding ResultExplanation}" FontSize="13" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
-                    <Label Text="{Binding StatusText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
-                </VerticalStackLayout>
-            </Border>
+                <Label Text="{Binding CategoriesCaption}" Style="{StaticResource SectionCaptionStyle}" />
+                <Border Style="{StaticResource ListCardStyle}">
+                    <VerticalStackLayout Spacing="0">
+                        <!-- OBD row (automatic) -->
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding CheckCommand}" />
+                            </Grid.GestureRecognizers>
+                            <Path Data="M7,7 L17,7 L17,17 L7,17 Z M10,3 L10,7 M14,3 L14,7 M10,17 L10,21 M14,17 L14,21 M3,10 L7,10 M3,14 L7,14 M17,10 L21,10 M17,14 L21,14" Style="{StaticResource RowIconStyle}" />
+                            <Label Grid.Column="1" Text="{Binding ObdRowTitle}" Style="{StaticResource RowTitleStyle}" LineBreakMode="WordWrap" />
+                            <Grid Grid.Column="2" VerticalOptions="Center">
+                                <ActivityIndicator IsVisible="{Binding IsBusy}" IsRunning="{Binding IsBusy}" HeightRequest="18" WidthRequest="18" Color="{DynamicResource Primary}" />
+                                <Label IsVisible="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" Text="{Binding ObdRowStatus}" FontSize="12" FontAttributes="Bold" TextColor="{Binding ObdRowColor}" VerticalTextAlignment="Center" />
+                            </Grid>
+                        </Grid>
 
-            <Label IsVisible="{Binding HasIssues}" Text="{Binding IssuesHeading}" Style="{StaticResource SectionCaptionStyle}" />
-            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Issues}" Spacing="10">
-                <BindableLayout.ItemTemplate>
-                    <DataTemplate x:DataType="vm:TechnicalInspectionIssueDisplay">
-                        <Border Style="{StaticResource ListCardStyle}" Padding="14,13">
-                            <VerticalStackLayout Spacing="7">
-                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                                    <VerticalStackLayout Spacing="2">
-                                        <Label Text="{Binding Code}" FontSize="12" FontAttributes="Bold" TextColor="{Binding Color}" />
-                                        <Label Text="{Binding Title}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                                        <Label Text="{Binding Category}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                        <!-- ABS / airbag modules (PRO; skipped without PRO) -->
+                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding OpenModulesCommand}" />
+                            </Grid.GestureRecognizers>
+                            <Path Data="M12,3 L20,6 L20,12 C20,17 16.5,20 12,21 C7.5,20 4,17 4,12 L4,6 Z" Style="{StaticResource RowIconStyle}" />
+                            <Label Grid.Column="1" Text="{Binding ModuleRowTitle}" Style="{StaticResource RowTitleStyle}" LineBreakMode="WordWrap" />
+                            <Label Grid.Column="2" Text="{Binding ModuleRowStatus}" FontSize="12" FontAttributes="Bold" TextColor="{Binding ModuleRowColor}" VerticalTextAlignment="Center" />
+                        </Grid>
+
+                        <!-- Nine categories -->
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Categories}" Spacing="0">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="vm:InspectionCategoryRow">
+                                    <VerticalStackLayout Spacing="0">
+                                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
+                                            <Grid.GestureRecognizers>
+                                                <TapGestureRecognizer Command="{Binding x:DataType=vm:TechnicalInspectionViewModel, Source={RelativeSource AncestorType={x:Type vm:TechnicalInspectionViewModel}}, Path=OpenCategoryCommand}" CommandParameter="{Binding .}" />
+                                            </Grid.GestureRecognizers>
+                                            <Path Data="{Binding Icon}" Style="{StaticResource RowIconStyle}" />
+                                            <Label Grid.Column="1" Text="{Binding Title}" Style="{StaticResource RowTitleStyle}" LineBreakMode="WordWrap" />
+                                            <Label Grid.Column="2" Text="{Binding Status}" FontSize="12" FontAttributes="Bold" TextColor="{Binding StatusColor}" VerticalTextAlignment="Center" />
+                                        </Grid>
                                     </VerticalStackLayout>
-                                    <Border Grid.Column="1" BackgroundColor="{Binding Color}" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="9,4" VerticalOptions="Start">
-                                        <Label Text="{Binding Severity}" TextColor="White" FontSize="10" FontAttributes="Bold" />
-                                    </Border>
-                                </Grid>
-                                <BoxView Style="{StaticResource RowDividerStyle}" />
-                                <Label Text="{Binding ImpactLabel}" FontSize="10" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
-                                <Label Text="{Binding Impact}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                                <Label Text="{Binding CheckLabel}" FontSize="10" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
-                                <Label Text="{Binding Check}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                                <Label Text="{Binding FixLabel}" FontSize="10" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
-                                <Label Text="{Binding Fix}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                            </VerticalStackLayout>
-                        </Border>
-                    </DataTemplate>
-                </BindableLayout.ItemTemplate>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Button Text="{Binding ContinueButtonText}" Command="{Binding ContinueCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" Style="{StaticResource PrimaryButtonStyle}" HeightRequest="52" FontSize="15" CornerRadius="12" />
+
+                <Label IsVisible="{Binding IsBusy}" Text="{Binding StatusText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+
+                <!-- Result -->
+                <Label IsVisible="{Binding HasResult}" Text="{Binding ResultCaption}" Style="{StaticResource SectionCaptionStyle}" />
+                <Border IsVisible="{Binding HasResult}" Style="{StaticResource ListCardStyle}" Padding="18,16">
+                    <VerticalStackLayout Spacing="6" HorizontalOptions="Fill">
+                        <Label Text="{Binding ResultAnswer}" FontSize="34" FontAttributes="Bold" TextColor="{Binding ResultColor}" HorizontalTextAlignment="Center" />
+                        <Label Text="{Binding ResultTitle}" FontSize="17" FontAttributes="Bold" TextColor="{Binding ResultColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                        <Label Text="{Binding ResultExplanation}" FontSize="13" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                        <Label IsVisible="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" Text="{Binding StatusText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Label IsVisible="{Binding HasIssues}" Text="{Binding IssuesHeading}" Style="{StaticResource SectionCaptionStyle}" />
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding Issues}" Spacing="10">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:TechnicalInspectionIssueDisplay">
+                            <Border Style="{StaticResource ListCardStyle}" Padding="14,13">
+                                <VerticalStackLayout Spacing="7">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <VerticalStackLayout Spacing="2">
+                                            <Label IsVisible="{Binding HasCode}" Text="{Binding Code}" FontSize="12" FontAttributes="Bold" TextColor="{Binding Color}" />
+                                            <Label Text="{Binding Title}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                                            <Label Text="{Binding Category}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                        </VerticalStackLayout>
+                                        <Border Grid.Column="1" BackgroundColor="Transparent" Stroke="{Binding Color}" StrokeThickness="1" StrokeShape="RoundRectangle 8" Padding="8,3" VerticalOptions="Start">
+                                            <Label Text="{Binding Severity}" TextColor="{Binding Color}" FontSize="10" FontAttributes="Bold" />
+                                        </Border>
+                                    </Grid>
+                                    <BoxView Style="{StaticResource RowDividerStyle}" />
+                                    <Label Text="{Binding ImpactLabel}" FontSize="10" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
+                                    <Label Text="{Binding Impact}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                                    <Label Text="{Binding CheckLabel}" FontSize="10" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
+                                    <Label Text="{Binding Check}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                                    <Label Text="{Binding FixLabel}" FontSize="10" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
+                                    <Label Text="{Binding Fix}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+
+                <Button IsVisible="{Binding HasResult}" Text="{Binding ResetButtonText}" Command="{Binding ResetAnswersCommand}" HeightRequest="44" FontSize="13" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" />
+
+                <Label Text="{Binding DisclaimerText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" Margin="4,2" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
             </VerticalStackLayout>
 
-            <Label Text="{Binding PhysicalHeading}" Style="{StaticResource SectionCaptionStyle}" />
-            <Border Style="{StaticResource ListCardStyle}" Padding="14,13">
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                    <Label Text="!" FontSize="18" FontAttributes="Bold" TextColor="#F59E0B" />
-                    <Label Grid.Column="1" Text="{Binding PhysicalText}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                </Grid>
-            </Border>
+            <!-- ======================= QUESTION ======================= -->
+            <VerticalStackLayout IsVisible="{Binding IsQuestionMode}" Padding="16,10,16,32" Spacing="12">
+                <Button Text="{Binding BackToListText}" Command="{Binding CloseQuestionCommand}" HorizontalOptions="Start" Padding="0" HeightRequest="36" MinimumHeightRequest="36" FontSize="13" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderWidth="0" />
 
-            <Label Text="{Binding DisclaimerText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" Margin="4,2" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
-        </VerticalStackLayout>
+                <Label Text="{Binding QuestionCategoryTitle}" Style="{StaticResource PageTitleStyle}" LineBreakMode="WordWrap" />
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="{Binding QuestionProgressText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                    <ProgressBar Progress="{Binding QuestionProgress}" ProgressColor="{DynamicResource Primary}" BackgroundColor="{DynamicResource DividerColor}" HeightRequest="6" />
+                </VerticalStackLayout>
+
+                <Border Style="{StaticResource ListCardStyle}" Padding="16,14">
+                    <VerticalStackLayout Spacing="8">
+                        <Border BackgroundColor="Transparent" Stroke="{Binding SeverityColor}" StrokeThickness="1" StrokeShape="RoundRectangle 7" Padding="8,2" HorizontalOptions="Start">
+                            <Label Text="{Binding SeverityText}" FontSize="11" FontAttributes="Bold" TextColor="{Binding SeverityColor}" />
+                        </Border>
+                        <Label Text="{Binding QuestionText}" FontSize="19" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border Style="{StaticResource ListCardStyle}" Padding="14,12">
+                    <VerticalStackLayout Spacing="6">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Path Data="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M12,11 L12,16 M12,8 L12,8.01" Stroke="{DynamicResource TextColor}" StrokeThickness="1.7" StrokeLineCap="Round" WidthRequest="16" HeightRequest="16" Aspect="Uniform" VerticalOptions="Center" />
+                            <Label Grid.Column="1" Text="{Binding HowLabel}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalTextAlignment="Center" />
+                        </Grid>
+                        <Label Text="{Binding HowText}" FontSize="13" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" LineHeight="1.2" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Answers -->
+                <Border Padding="16,14" BackgroundColor="{DynamicResource CardBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1.5" StrokeShape="RoundRectangle 12">
+                    <Border.Triggers>
+                        <DataTrigger TargetType="Border" Binding="{Binding IsOkSelected}" Value="True">
+                            <Setter Property="Stroke" Value="#1F8A4C" />
+                        </DataTrigger>
+                    </Border.Triggers>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding AnswerOkCommand}" />
+                    </Border.GestureRecognizers>
+                    <Label Text="{Binding AnswerOkText}" FontSize="15" FontAttributes="Bold" TextColor="#1F8A4C" />
+                </Border>
+                <Border Padding="16,14" BackgroundColor="{DynamicResource CardBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1.5" StrokeShape="RoundRectangle 12">
+                    <Border.Triggers>
+                        <DataTrigger TargetType="Border" Binding="{Binding IsProblemSelected}" Value="True">
+                            <Setter Property="Stroke" Value="#B3361F" />
+                        </DataTrigger>
+                    </Border.Triggers>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding AnswerProblemCommand}" />
+                    </Border.GestureRecognizers>
+                    <Label Text="{Binding AnswerProblemText}" FontSize="15" FontAttributes="Bold" TextColor="#B3361F" />
+                </Border>
+                <Border Padding="16,14" BackgroundColor="{DynamicResource CardBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1.5" StrokeShape="RoundRectangle 12">
+                    <Border.Triggers>
+                        <DataTrigger TargetType="Border" Binding="{Binding IsUnknownSelected}" Value="True">
+                            <Setter Property="Stroke" Value="#C98A1A" />
+                        </DataTrigger>
+                    </Border.Triggers>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding AnswerUnknownCommand}" />
+                    </Border.GestureRecognizers>
+                    <Label Text="{Binding AnswerUnknownText}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
+                </Border>
+
+                <Button IsVisible="{Binding CanGoBack}" Text="{Binding PreviousText}" Command="{Binding PreviousQuestionCommand}" HorizontalOptions="Start" Padding="0" HeightRequest="36" MinimumHeightRequest="36" FontSize="13" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderWidth="0" />
+            </VerticalStackLayout>
+        </Grid>
     </ScrollView>
 </ContentPage>

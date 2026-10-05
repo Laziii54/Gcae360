@@ -2,7 +2,7 @@
 
 ## Fixed identifiers
 
-- App/package/bundle ID: `com.georgiancarscanner.app`
+- App/package/bundle ID: `com.gcar360.app`
 - PRO monthly subscription: `com.georgiancarscanner.pro.monthly`
 - Current internal-test version: `0.5.0` (`versionCode` 50)
 - Android target API: 36
@@ -39,12 +39,12 @@ Production secrets belong only in the backend environment:
 
 - `GEMINI_API_KEY`
 - `GCS_GOOGLE_SERVICE_ACCOUNT_JSON`
-- `GCS_ANDROID_PACKAGE_NAME=com.georgiancarscanner.app`
+- `GCS_ANDROID_PACKAGE_NAME=com.gcar360.app`
 - `GCS_APPLE_ISSUER_ID`
 - `GCS_APPLE_KEY_ID`
 - `GCS_APPLE_PRIVATE_KEY_P8`
 - `GCS_APPLE_ENVIRONMENT=auto`
-- `GCS_APPLE_BUNDLE_ID=com.georgiancarscanner.app`
+- `GCS_APPLE_BUNDLE_ID=com.gcar360.app`
 - `GCS_STORE_WEBHOOK_SECRET`
 
 Never put these values in the mobile app, repository, screenshots or store
@@ -59,7 +59,7 @@ state to a managed database before scaling to multiple API instances.
 
 ## Google Play
 
-1. Create the app with package ID `com.georgiancarscanner.app`.
+1. Create the app with package ID `com.gcar360.app`.
 2. Enrol in Play App Signing and create/back up one upload keystore.
 3. Create the monthly auto-renewing subscription with product ID
    `com.georgiancarscanner.pro.monthly` and at least one active base plan.
@@ -89,7 +89,7 @@ The password file and keystore must stay outside the repository.
 The iOS archive must be compiled and signed on a Mac with Xcode and an active
 Apple Developer membership.
 
-1. Register bundle ID `com.georgiancarscanner.app`.
+1. Register bundle ID `com.gcar360.app`.
 2. Create the App Store Connect app and monthly auto-renewable subscription
    `com.georgiancarscanner.pro.monthly`.
 3. Complete Agreements, Tax and Banking.

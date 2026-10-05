@@ -43,6 +43,8 @@
                         <Label Text="რეალური OBD სიჩქარე" TextColor="{DynamicResource SubTextColor}" FontSize="11" HorizontalTextAlignment="Center" />
                         <Label AutomationId="DynamicTextAccelerationSpeed" Text="{Binding AccelerationSpeed}" TextColor="{DynamicResource TextColor}" FontSize="56" FontAttributes="Bold" HorizontalTextAlignment="Center" />
                         <Label AutomationId="DynamicTextAccelerationSpeedUnit" Text="{Binding AccelerationSpeedUnit}" TextColor="{DynamicResource SubTextColor}" FontSize="13" HorizontalTextAlignment="Center" />
+                        <!-- Adapter speed-sample rate: how accurate the timing can be -->
+                        <Label AutomationId="DynamicTextAccelerationRate" Text="{Binding AccelerationRateText}" TextColor="{Binding AccelerationRateColor}" FontSize="11" FontAttributes="Bold" HorizontalTextAlignment="Center" Margin="0,6,0,0" />
                     </VerticalStackLayout>
 
                     <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" />
@@ -64,6 +66,11 @@
 
                     <Label AutomationId="DynamicTextAccelerationSpeedSource" Text="{Binding AccelerationSpeedSource}" TextColor="{DynamicResource SubTextColor}" FontSize="11" HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" Margin="14,0,14,12" />
                 </VerticalStackLayout>
+            </Border>
+
+            <!-- Big state: stop → ready, go! → measuring → result -->
+            <Border Padding="14,12" BackgroundColor="{DynamicResource CardBg}" Stroke="{Binding AccelerationPhaseBrush}" StrokeThickness="2" StrokeShape="RoundRectangle 12">
+                <Label AutomationId="DynamicTextAccelerationPhase" Text="{Binding AccelerationPhaseText}" TextColor="{Binding AccelerationPhaseColor}" FontSize="20" FontAttributes="Bold" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
             </Border>
 
             <!-- Splits -->
@@ -102,14 +109,21 @@
 
             <!-- Last result -->
             <Label Text="შედეგები" Style="{StaticResource SectionCaptionStyle}" />
-            <Border Style="{StaticResource ListCardStyle}" Padding="16,14">
+            <Border x:Name="ResultCard" Style="{StaticResource ListCardStyle}" Padding="16,14">
                 <VerticalStackLayout Spacing="4">
-                    <Label Text="ბოლო შედეგი" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="ბოლო შედეგი" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
+                        <Label Grid.Column="1" Text="GCar360" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" />
+                    </Grid>
+                    <Label AutomationId="DynamicTextAccelerationVehicle" Text="{Binding VehicleName}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" LineBreakMode="TailTruncation" />
                     <Label AutomationId="DynamicTextAccelerationResult" Text="{Binding AccelerationResult}" TextColor="{DynamicResource TextColor}" FontSize="26" FontAttributes="Bold" />
                     <Label AutomationId="DynamicTextAccelerationStatus" Text="{Binding AccelerationStatus}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
                     <Label AutomationId="DynamicTextAccelerationMetrics" Text="{Binding AccelerationMetrics}" TextColor="{DynamicResource SubTextColor}" FontSize="11" Margin="0,4,0,0" />
                 </VerticalStackLayout>
             </Border>
+
+            <!-- Share the result card as a picture -->
+            <Button AutomationId="DynamicTextAccelerationShare" Text="{Binding AccelerationShareText}" Clicked="OnShareResultClicked" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderColor="{DynamicResource Primary}" BorderWidth="1.5" CornerRadius="12" HeightRequest="44" FontAttributes="Bold" />
 
             <Button Text="გაზომვების ისტორია" Command="{Binding GoToAccelerationHistoryCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="48" FontAttributes="Bold" />
             <Button Text="0–100 რეიტინგი" Command="{Binding GoToAccelerationLeaderboardCommand}" Style="{StaticResource PrimaryButtonStyle}" />

@@ -23,4 +23,9 @@ public sealed class FuelTripRecord
     public double? AverageFuelLPer100Km { get; set; }
     public double? FuelPricePerLiter { get; set; }
     public string FuelDataSource { get; set; } = string.Empty;
+
+    // Electric / hybrid trips: net battery energy (used − regenerated).
+    public double? EnergyKWh { get; set; }
+    public double? RegeneratedKWh { get; set; }
+    public double? EnergyPricePerKWh { get; set; }
 }

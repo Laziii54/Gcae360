@@ -4,7 +4,7 @@ Implemented in this build:
 
 1. OBD Bluetooth scan deduplication: generic OBD/ELM-style adapters are collapsed to one representative device (strongest RSSI), avoiding multiple duplicate OBD2 entries.
 2. Settings: Theme (Dark/Light/System) and Language (ქართული/English) are persisted with MAUI Preferences and applied live. The Settings page labels Settings/Theme/Language stay in English as requested.
-3. New Contact page in Settings. Messages are addressed to `zukalazashvili1999@gmail.com` through the user's mail composer.
+3. New Contact page in Settings. Messages are addressed to `gcar360support@gmail.com` through the user's mail composer.
 4. App language defaults to Georgian and persists between launches. Static UI strings are translated for both Georgian and English; AI is instructed to answer in the selected language. User preferences persist locally.
 5. Local notification reminder: after a successful diagnostic/full scan, a new reminder is scheduled for 14 days later. Notification can be disabled from Settings.
 6. PRO price changed to 3.99 GEL/month and product ID changed to `com.georgiancarscanner.pro.monthly`. Billing is wired to a recurring store subscription API. Restore purchase is included.

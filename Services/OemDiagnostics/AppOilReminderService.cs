@@ -95,7 +95,12 @@ public sealed class AppOilReminderService
 
         var odometer = _obd.IsInitialized ? await ReadOdometerAsync(token).ConfigureAwait(false) : null;
         if (odometer is null)
-            return ToStatus(state) with { IsStarted = false, OdometerAvailable = false };
+        {
+            // The car does not report an odometer (many cars do not support
+            // PID A6): the reminder still works by date (12 months).
+            Save(vehicleKey, state);
+            return ToStatus(state) with { OdometerAvailable = false };
+        }
 
         state.OdometerAtChange = odometer;
         state.HasDistance = true;

@@ -24,7 +24,23 @@ public sealed class UnitSystemService
 
     public UnitSystemService()
     {
+        // First launch: miles/mph/°F in the United States (and Liberia, Myanmar),
+        // metric everywhere else. A choice made in Settings always wins.
+        if (!Preferences.Default.ContainsKey(PreferenceKey))
+            Preferences.Default.Set(PreferenceKey, DefaultForRegion());
         _current = Parse(Preferences.Default.Get(PreferenceKey, "Metric"));
+    }
+
+    private static string DefaultForRegion()
+    {
+        try
+        {
+            return RegionInfo.CurrentRegion.TwoLetterISORegionName is "US" or "LR" or "MM" ? "Imperial" : "Metric";
+        }
+        catch (ArgumentException)
+        {
+            return "Metric";
+        }
     }
 
     public UnitSystem Current => _current;

@@ -11,14 +11,27 @@
     <ScrollView>
         <VerticalStackLayout Padding="16,12,16,32" Spacing="12">
 
-            <!-- Top bar: brand · PRO · language -->
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
-                <Border WidthRequest="30" HeightRequest="30" BackgroundColor="{DynamicResource Primary}" StrokeThickness="0" StrokeShape="RoundRectangle 8" VerticalOptions="Center">
+            <!-- Top bar: back to start (OBD2 / VIN) · brand · PRO · language · account -->
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" ColumnSpacing="8">
+                <Border WidthRequest="30" HeightRequest="34" BackgroundColor="Transparent" StrokeThickness="0" VerticalOptions="Center" SemanticProperties.Description="Back">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnBackToStartTapped" />
+                    </Border.GestureRecognizers>
+                    <Path Data="M15,5 L8,12 L15,19" Stroke="{DynamicResource Primary}" StrokeThickness="2.2" StrokeLineCap="Round" StrokeLineJoin="Round" WidthRequest="18" HeightRequest="18" Aspect="Uniform" HorizontalOptions="Center" VerticalOptions="Center" InputTransparent="True" />
+                </Border>
+                <Border Grid.Column="1" WidthRequest="30" HeightRequest="30" BackgroundColor="{DynamicResource Primary}" StrokeThickness="0" StrokeShape="RoundRectangle 8" VerticalOptions="Center">
                     <Label Text="G" TextColor="White" FontSize="14" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
                 </Border>
-                <Label Grid.Column="1" Text="GCar360" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
-                <Button Grid.Column="2" Text="PRO" Command="{Binding GoToProCommand}" BackgroundColor="{DynamicResource ProBadgeBg}" TextColor="{DynamicResource ProBadgeText}" BorderWidth="0" CornerRadius="16" Padding="14,0" HeightRequest="34" MinimumHeightRequest="34" FontAttributes="Bold" FontSize="12" HorizontalOptions="End" />
-                <Button x:Name="LanguageToggleButton" Grid.Column="3" Text="EN" Command="{Binding ToggleLanguageCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="16" Padding="10,0" HeightRequest="34" MinimumHeightRequest="34" MinimumWidthRequest="44" FontSize="12" FontAttributes="Bold" HorizontalOptions="End" />
+                <Label Grid.Column="2" Text="GCar360" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                <Button Grid.Column="3" Text="PRO" Command="{Binding GoToProCommand}" BackgroundColor="{DynamicResource ProBadgeBg}" TextColor="{DynamicResource ProBadgeText}" BorderWidth="0" CornerRadius="16" Padding="14,0" HeightRequest="34" MinimumHeightRequest="34" FontAttributes="Bold" FontSize="12" HorizontalOptions="End" />
+                <Button x:Name="LanguageToggleButton" Grid.Column="4" Text="EN" Command="{Binding ToggleLanguageCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="16" Padding="10,0" HeightRequest="34" MinimumHeightRequest="34" MinimumWidthRequest="44" FontSize="12" FontAttributes="Bold" HorizontalOptions="End" />
+                <!-- Account: sign in / register -->
+                <Border Grid.Column="5" WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource CardBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 17" VerticalOptions="Center" SemanticProperties.Description="Account">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnAccountTapped" />
+                    </Border.GestureRecognizers>
+                    <Path Data="M12,12 A4,4 0 1 0 12,4 A4,4 0 1 0 12,12 M4,21 C4,17 8,15 12,15 C16,15 20,17 20,21" Stroke="{DynamicResource TextColor}" StrokeThickness="1.7" StrokeLineCap="Round" WidthRequest="18" HeightRequest="18" Aspect="Uniform" HorizontalOptions="Center" VerticalOptions="Center" InputTransparent="True" />
+                </Border>
             </Grid>
 
             <!-- Connection -->
@@ -47,7 +60,19 @@
             <Border Style="{StaticResource ListCardStyle}" Padding="14,12">
                 <VerticalStackLayout Spacing="4">
                     <Label AutomationId="DynamicTextVehicle" Text="{Binding VehicleName}" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
-                    <Label AutomationId="DynamicTextVin" Text="{Binding VinNumber}" FontSize="12" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <Label AutomationId="DynamicTextVin" Text="{Binding VinNumber}" FontSize="12" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" VerticalOptions="Center" />
+                        <!-- Copy the VIN (shown only when a real VIN was read) -->
+                        <Border x:Name="CopyVinButton" Grid.Column="1" IsVisible="{Binding HasCopyableVin}" Padding="8,3" BackgroundColor="Transparent" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 8" VerticalOptions="Center">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnCopyVinTapped" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout Spacing="4" InputTransparent="True">
+                                <Path x:Name="CopyVinIcon" Data="M9,9 L20,9 L20,20 L9,20 Z M5,15 L5,4 L16,4" Stroke="{DynamicResource Primary}" StrokeThickness="1.7" StrokeLineJoin="Round" WidthRequest="12" HeightRequest="12" Aspect="Uniform" VerticalOptions="Center" />
+                                <Label x:Name="CopyVinLabel" Text="copy" FontSize="11" FontAttributes="Bold" TextColor="{DynamicResource Primary}" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </Border>
+                    </Grid>
                     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" RowDefinitions="Auto,Auto" RowSpacing="2" Margin="0,4,0,0">
                         <Label AutomationId="DynamicTextTrimLabel" Text="{Binding TrimLabel}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
                         <Label AutomationId="DynamicTextTrim" Grid.Column="1" Text="{Binding VehicleTrim}" FontSize="12" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="End" LineBreakMode="TailTruncation" />
@@ -58,183 +83,313 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Main action -->
-            <Button Text="სკანირება" Command="{Binding GoToModulesCommand}" IsEnabled="{Binding IsConnected}" Style="{StaticResource PrimaryButtonStyle}" HeightRequest="52" />
-
-            <Label Text="ძირითადი დიაგნოსტიკა" Style="{StaticResource SectionCaptionStyle}" />
-            <Border Style="{StaticResource ListCardStyle}" IsEnabled="{Binding IsConnected}" Opacity="0.45">
-                    <Border.Triggers>
-                        <DataTrigger TargetType="Border" Binding="{Binding IsConnected}" Value="True">
-                            <Setter Property="Opacity" Value="1" />
-                        </DataTrigger>
-                    </Border.Triggers>
-                <VerticalStackLayout Spacing="0">
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToLiveDataCommand}" /></Grid.GestureRecognizers>
-                            <Path Data="M3,12 L7,12 L10,5 L14,19 L17,12 L21,12" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="Live Data" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+            <!-- Featured: AI diagnostics (PRO) -->
+            <Border Padding="14" BackgroundColor="{DynamicResource CardBg}" Stroke="{DynamicResource Primary}" StrokeThickness="1.5" StrokeShape="RoundRectangle 14" IsEnabled="{Binding IsConnected}" Opacity="0.45">
+                <Border.Triggers>
+                    <DataTrigger TargetType="Border" Binding="{Binding IsConnected}" Value="True">
+                        <Setter Property="Opacity" Value="1" />
+                    </DataTrigger>
+                </Border.Triggers>
+                <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToAiCommand}" /></Border.GestureRecognizers>
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                    <Border WidthRequest="46" HeightRequest="46" BackgroundColor="{DynamicResource Primary}" StrokeThickness="0" StrokeShape="RoundRectangle 12" VerticalOptions="Center">
+                        <Path Data="M12,3 L14,9 L20,11 L14,13 L12,19 L10,13 L4,11 L10,9 Z" Style="{StaticResource RowIconStyle}" Stroke="White" HorizontalOptions="Center" />
+                    </Border>
+                    <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                        <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="8">
+                            <Label Text="AI დიაგნოსტიკა" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                            <Border Grid.Column="1" Style="{StaticResource ProBadgeStyle}" VerticalOptions="Center"><Label Text="PRO" Style="{StaticResource ProBadgeTextStyle}" /></Border>
                         </Grid>
-                        <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToSensorsCommand}" /></Grid.GestureRecognizers>
-                            <Path Data="M4,12 A8,8 0 1 0 20,12 A8,8 0 1 0 4,12 M12,8 L12,12 L15,14" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="ყველა სენსორი" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
-                        </Grid>
-                        <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToServiceCommand}" /></Grid.GestureRecognizers>
-                            <Path Data="M14,4 L20,10 L11,19 L5,19 L5,13 Z" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="სერვისი / კოდირება" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
-                        </Grid>
-                        <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToEmissionsCommand}" /></Grid.GestureRecognizers>
-                            <Path Data="M4,17 C4,13 8,13 8,9 M10,17 C10,13 14,13 14,9 M16,17 C16,13 20,13 20,9" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="ემისია / მზადყოფნა" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
-                        </Grid>
-                        <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToTechnicalInspectionCommand}" /></Grid.GestureRecognizers>
-                            <Path Data="M5,4 L19,4 L19,20 L5,20 Z M8,9 L10,11 L15,7 M8,15 L10,17 L15,13" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="ტექდათვალიერების შემოწმება" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
-                        </Grid>
-                        <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToEcuCommand}" /></Grid.GestureRecognizers>
-                            <Path Data="M6,6 L18,6 L18,18 L6,18 Z M9,3 L9,6 M15,3 L15,6 M9,18 L9,21 M15,18 L15,21 M3,9 L6,9 M3,15 L6,15 M18,9 L21,9 M18,15 L21,15" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="ECU ინფორმაცია" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
-                        </Grid>
-                </VerticalStackLayout>
-            </Border>
-
-            <Label Text="სერვისები" Style="{StaticResource SectionCaptionStyle}" />
-            <Border Style="{StaticResource ListCardStyle}" IsEnabled="{Binding IsConnected}" Opacity="0.45">
-                    <Border.Triggers>
-                        <DataTrigger TargetType="Border" Binding="{Binding IsConnected}" Value="True">
-                            <Setter Property="Opacity" Value="1" />
-                        </DataTrigger>
-                    </Border.Triggers>
-                <VerticalStackLayout Spacing="0">
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnPrePurchaseTapped" /></Grid.GestureRecognizers>
-                            <Path Data="M5,12 L9,16 L19,6" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="ყიდვისწინა შემოწმება" Style="{StaticResource RowTitleStyle}" />
-                            <Border Grid.Column="2" Style="{StaticResource ProBadgeStyle}"><Label Text="PRO" Style="{StaticResource ProBadgeTextStyle}" /></Border>
-                        </Grid>
-                        <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToAiCommand}" /></Grid.GestureRecognizers>
-                            <Path Data="M12,3 L14,9 L20,11 L14,13 L12,19 L10,13 L4,11 L10,9 Z" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="AI დიაგნოსტიკა" Style="{StaticResource RowTitleStyle}" />
-                            <Border Grid.Column="2" Style="{StaticResource ProBadgeStyle}"><Label Text="PRO" Style="{StaticResource ProBadgeTextStyle}" /></Border>
-                        </Grid>
-                        <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToMileageCommand}" /></Grid.GestureRecognizers>
-                            <Path Data="M4,19 L20,19 M6,19 L6,10 M12,19 L12,5 M18,19 L18,13" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="გარბენის გადამოწმება" Style="{StaticResource RowTitleStyle}" />
-                            <Border Grid.Column="2" Style="{StaticResource ProBadgeStyle}"><Label Text="PRO" Style="{StaticResource ProBadgeTextStyle}" /></Border>
-                        </Grid>
-                        <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToFuelCommand}" /></Grid.GestureRecognizers>
-                            <Path Data="M5,20 L5,5 L13,5 L13,20 Z M5,11 L13,11 M13,8 L17,11 L17,17 C17,19 19,19 19,17 L19,9" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="საწვავის ხარჯი" Style="{StaticResource RowTitleStyle}" />
-                            <Border Grid.Column="2" Style="{StaticResource ProBadgeStyle}"><Label Text="PRO" Style="{StaticResource ProBadgeTextStyle}" /></Border>
-                        </Grid>
-                        <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToDiagnosticReportCommand}" /></Grid.GestureRecognizers>
-                            <Path Data="M6,3 L14,3 L19,8 L19,21 L6,21 Z M14,3 L14,8 L19,8 M9,13 L16,13 M9,17 L16,17" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="დიაგნოსტიკური ანგარიში" Style="{StaticResource RowTitleStyle}" />
-                            <Border Grid.Column="2" Style="{StaticResource ProBadgeStyle}"><Label Text="PRO" Style="{StaticResource ProBadgeTextStyle}" /></Border>
-                        </Grid>
-                        <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToFreezeFrameCommand}" /></Grid.GestureRecognizers>
-                            <Path Data="M12,3 L12,21 M4,7.5 L20,16.5 M20,7.5 L4,16.5" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" AutomationId="DynamicTextFreezeFrameButton" Text="{Binding FreezeFrameButtonText}" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
-                        </Grid>
-                        <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToAccelerationCommand}" /></Grid.GestureRecognizers>
-                            <Path Data="M4,16 A8,8 0 1 1 20,16 M12,16 L16,10" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" AutomationId="DynamicTextAccelerationButton" Text="{Binding AccelerationTestLabel}" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
-                        </Grid>
-                </VerticalStackLayout>
-            </Border>
-
-            <Label Text="ინსტრუმენტები" Style="{StaticResource SectionCaptionStyle}" />
-            <Border Style="{StaticResource ListCardStyle}" IsEnabled="{Binding IsConnected}" Opacity="0.45">
-                    <Border.Triggers>
-                        <DataTrigger TargetType="Border" Binding="{Binding IsConnected}" Value="True">
-                            <Setter Property="Opacity" Value="1" />
-                        </DataTrigger>
-                    </Border.Triggers>
-                <VerticalStackLayout Spacing="0">
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToCapabilitiesCommand}" /></Grid.GestureRecognizers>
-                            <Path Data="M4,6 L20,6 M4,12 L20,12 M4,18 L14,18" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="ავტომობილის შესაძლებლობები" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
-                        </Grid>
-                        <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToVehicleHealthCommand}" /></Grid.GestureRecognizers>
-                            <Path Data="M12,20 C5,15 3,11 3,8 C3,5 5,3 8,3 C10,3 11,4 12,6 C13,4 14,3 16,3 C19,3 21,5 21,8 C21,11 19,15 12,20 Z" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="Vehicle Health" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
-                        </Grid>
-                        <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToBatteryCommand}" /></Grid.GestureRecognizers>
-                            <Path Data="M3,8 L19,8 L19,17 L3,17 Z M21,11 L21,14 M7,12.5 L11,12.5 M9,10.5 L9,14.5 M14,12.5 L17,12.5" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="Battery / Charging" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
-                        </Grid>
-                        <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToHybridHealthCommand}" /></Grid.GestureRecognizers>
-                            <Path Data="M4,8 L18,8 L18,18 L4,18 Z M20,11 L20,15 M8,11 L8,15 M6,13 L10,13 M13,13 L16,13" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="ელექტრო / ჰიბრიდის ჯანმრთელობა" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
-                        </Grid>
-                        <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToAdapterCenterCommand}" /></Grid.GestureRecognizers>
-                            <Path Data="M8,3 L8,8 M16,3 L16,8 M5,8 L19,8 L19,12 C19,16 16,18 12,18 C8,18 5,16 5,12 Z M12,18 L12,21" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="OBD Adapter Center" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
-                        </Grid>
-                </VerticalStackLayout>
-            </Border>
-
-
-            <Border Style="{StaticResource ListCardStyle}">
-                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                    <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToCalendarCommand}" /></Grid.GestureRecognizers>
-                    <Path Data="M5,5 L19,5 L19,20 L5,20 Z M8,3 L8,7 M16,3 L16,7 M5,9 L19,9 M9,13 L9,13.1 M12,13 L12,13.1 M15,13 L15,13.1 M9,17 L9,17.1 M12,17 L12,17.1" Style="{StaticResource RowIconStyle}" />
-                    <Label Grid.Column="1" Text="კალენდარი" Style="{StaticResource RowTitleStyle}" />
+                        <Label Text="აღწერე პრობლემა ან დაასკანერე — AI გეტყვის მიზეზს" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
                     <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
                 </Grid>
             </Border>
 
-            <Border Style="{StaticResource ListCardStyle}">
+            <!-- PRO tiles 2 x 2 -->
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8" IsEnabled="{Binding IsConnected}" Opacity="0.45">
+                <Grid.Triggers>
+                    <DataTrigger TargetType="Grid" Binding="{Binding IsConnected}" Value="True">
+                        <Setter Property="Opacity" Value="1" />
+                    </DataTrigger>
+                </Grid.Triggers>
+                <Border Grid.Column="0" Grid.Row="0" Style="{StaticResource ListCardStyle}" Padding="12,11">
+                    <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToModulesCommand}" /></Border.GestureRecognizers>
+                    <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="4">
+                        <Path Data="M4,8 L4,4 L8,4 M16,4 L20,4 L20,8 M20,16 L20,20 L16,20 M8,20 L4,20 L4,16 M8,12 L16,12" Style="{StaticResource RowIconStyle}" Stroke="{DynamicResource Primary}" HorizontalOptions="Start" />
+                        <Border Style="{StaticResource ProBadgeStyle}" HorizontalOptions="End" VerticalOptions="Start"><Label Text="PRO" Style="{StaticResource ProBadgeTextStyle}" /></Border>
+                        <Label Grid.Row="1" Text="მოდულების დიაგნოსტიკა" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" Margin="0,4,0,0" />
+                        <Label Grid.Row="2" Text="ABS, აირბეგი, ძარა და სხვა" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    </Grid>
+                </Border>
+                <Border Grid.Column="1" Grid.Row="0" Style="{StaticResource ListCardStyle}" Padding="12,11">
+                    <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnPrePurchaseTapped" /></Border.GestureRecognizers>
+                    <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="4">
+                        <Path Data="M5,12 L9,16 L19,6" Style="{StaticResource RowIconStyle}" Stroke="{DynamicResource Primary}" HorizontalOptions="Start" />
+                        <Border Style="{StaticResource ProBadgeStyle}" HorizontalOptions="End" VerticalOptions="Start"><Label Text="PRO" Style="{StaticResource ProBadgeTextStyle}" /></Border>
+                        <Label Grid.Row="1" Text="ყიდვისწინა შემოწმება" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" Margin="0,4,0,0" />
+                        <Label Grid.Row="2" Text="მანქანის შეფასება ყიდვამდე" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    </Grid>
+                </Border>
+                <Border Grid.Column="0" Grid.Row="1" Style="{StaticResource ListCardStyle}" Padding="12,11">
+                    <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToMileageCommand}" /></Border.GestureRecognizers>
+                    <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="4">
+                        <Path Data="M4,19 L20,19 M6,19 L6,10 M12,19 L12,5 M18,19 L18,13" Style="{StaticResource RowIconStyle}" Stroke="{DynamicResource Primary}" HorizontalOptions="Start" />
+                        <Border Style="{StaticResource ProBadgeStyle}" HorizontalOptions="End" VerticalOptions="Start"><Label Text="PRO" Style="{StaticResource ProBadgeTextStyle}" /></Border>
+                        <Label Grid.Row="1" Text="გარბენის გადამოწმება" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" Margin="0,4,0,0" />
+                        <Label Grid.Row="2" Text="ოდომეტრის შედარება მოდულებთან" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    </Grid>
+                </Border>
+                <Border Grid.Column="1" Grid.Row="1" Style="{StaticResource ListCardStyle}" Padding="12,11">
+                    <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToFuelCommand}" /></Border.GestureRecognizers>
+                    <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="4">
+                        <Path Data="M5,20 L5,5 L13,5 L13,20 Z M5,11 L13,11 M13,8 L17,11 L17,17 C17,19 19,19 19,17 L19,9" Style="{StaticResource RowIconStyle}" Stroke="{DynamicResource Primary}" HorizontalOptions="Start" />
+                        <Border Style="{StaticResource ProBadgeStyle}" HorizontalOptions="End" VerticalOptions="Start"><Label Text="PRO" Style="{StaticResource ProBadgeTextStyle}" /></Border>
+                        <Label Grid.Row="1" Text="საწვავის ხარჯი" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" Margin="0,4,0,0" />
+                        <Label Grid.Row="2" Text="რეალური ხარჯი მგზავრობისას" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- Features grouped as lists (diagnostics / data / service); rarely used tools fold under "Technical". -->
+            <Label Text="დიაგნოსტიკა" Style="{StaticResource SectionCaptionStyle}" Margin="2,6,0,0" />
+            <Border Style="{StaticResource ListCardStyle}" Padding="0">
                 <VerticalStackLayout Spacing="0">
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
-                            <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToSettingsCommand}" /></Grid.GestureRecognizers>
-                            <Path Data="M4,7 L20,7 M4,17 L20,17 M9,4 L9,10 M15,14 L15,20" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="პარამეტრები" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
-                        </Grid>
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToTroubleCodesCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M12,4 L21,19 L3,19 Z M12,10 L12,14 M12,16.5 L12,16.6" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="შეცდომების სკანი" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                                <Label Text="ძრავის შეცდომები და მათი წაშლა" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="58,0,0,0" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToVehicleHealthCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M12,20 C5,15 3,11 3,8 C3,5 5,3 8,3 C10,3 11,4 12,6 C13,4 14,3 16,3 C19,3 21,5 21,8 C21,11 19,15 12,20 Z" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="მანქანის ჯანმრთელობა" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                                <Label Text="ქულა და მოკლე შეჯამება" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="58,0,0,0" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToTechnicalInspectionCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M5,4 L19,4 L19,20 L5,20 Z M8,9 L10,11 L15,7 M8,15 L10,17 L15,13" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="ტექდათვალიერება" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                                <Label Text="შემოწმება ტექდათვალიერებამდე" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+            <Label Text="მონაცემები" Style="{StaticResource SectionCaptionStyle}" Margin="2,6,0,0" />
+            <Border Style="{StaticResource ListCardStyle}" Padding="0">
+                <VerticalStackLayout Spacing="0">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToLiveDataCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M3,12 L7,12 L10,5 L14,19 L17,12 L21,12" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="ცოცხალი მონაცემები" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                                <Label Text="სიჩქარე, ტემპერატურა, ბრუნები" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="58,0,0,0" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToBatteryCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M3,8 L19,8 L19,17 L3,17 Z M21,11 L21,14 M7,12.5 L11,12.5 M9,10.5 L9,14.5 M14,12.5 L17,12.5" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="აკუმულატორი" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                                <Label Text="ძაბვა და დამუხტვა" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="58,0,0,0" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToAccelerationCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M4,16 A8,8 0 1 1 20,16 M12,16 L16,10" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label AutomationId="DynamicTextAccelerationButton" Text="{Binding AccelerationTestLabel}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                                <Label Text="აჩქარების გაზომვა" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+            <Label Text="სერვისი" Style="{StaticResource SectionCaptionStyle}" Margin="2,6,0,0" />
+            <Border Style="{StaticResource ListCardStyle}" Padding="0">
+                <VerticalStackLayout Spacing="0">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToServiceCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M14,4 L20,10 L11,19 L5,19 L5,13 Z" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="სერვისი" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                                <Label Text="ზეთი, ფილტრები, შეხსენებები" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="58,0,0,0" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToDiagnosticReportCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M6,3 L14,3 L19,8 L19,21 L6,21 Z M14,3 L14,8 L19,8 M9,13 L16,13 M9,17 L16,17" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="ანგარიში" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                                <Label Text="შენახული შემოწმებები, PDF" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+            <Label Text="ყიდვა და იმპორტი" Style="{StaticResource SectionCaptionStyle}" Margin="2,6,0,0" />
+            <Border Style="{StaticResource ListCardStyle}" Padding="0">
+                <VerticalStackLayout Spacing="0">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnCustomsTapped" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M6,3 L18,3 L18,21 L6,21 Z M9,7 L15,7 M9,11 L10,11 M12,11 L13,11 M15,11 L15,11.1 M9,14 L10,14 M12,14 L13,14 M15,14 L15,17 M9,17 L13,17" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="განბაჟების კალკულატორი" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                            <Label Text="აქციზი 2026 წლის წესებით + ფასი და ტრანსპორტი" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+            <Border Style="{StaticResource ListCardStyle}" Padding="0" Margin="0,6,0,0">
+                <VerticalStackLayout Spacing="0">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnTechnicalTapped" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M5,12 L5.1,12 M12,12 L12.1,12 M19,12 L19.1,12" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="ტექნიკური" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                                <Label Text="სენსორები, ემისია, ECU, ადაპტერი და სხვა" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label x:Name="TechnicalChevron" Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                    <VerticalStackLayout x:Name="TechnicalRows" IsVisible="False" Spacing="0">
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="58,0,0,0" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToSensorsCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M4,12 A8,8 0 1 0 20,12 A8,8 0 1 0 4,12 M12,8 L12,12 L15,14" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="სენსორები" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="58,0,0,0" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToFreezeFrameCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M12,3 L12,21 M4,7.5 L20,16.5 M20,7.5 L4,16.5" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label AutomationId="DynamicTextFreezeFrameButton" Text="{Binding FreezeFrameButtonText}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="58,0,0,0" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToEmissionsCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M4,17 C4,13 8,13 8,9 M10,17 C10,13 14,13 14,9 M16,17 C16,13 20,13 20,9" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="ემისია" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="58,0,0,0" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToEcuCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M6,6 L18,6 L18,18 L6,18 Z M9,3 L9,6 M15,3 L15,6 M9,18 L9,21 M15,18 L15,21 M3,9 L6,9 M3,15 L6,15 M18,9 L21,9 M18,15 L21,15" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="ECU ინფო" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="58,0,0,0" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToCalendarCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M5,5 L19,5 L19,20 L5,20 Z M8,3 L8,7 M16,3 L16,7 M5,9 L19,9" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="კალენდარი" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="58,0,0,0" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToHybridHealthCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M13,3 L6,14 L11,14 L10,21 L17,10 L12,10 Z" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="ჰიბრიდი" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="58,0,0,0" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToCapabilitiesCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M4,6 L20,6 M4,12 L20,12 M4,18 L14,18" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="შესაძლებლობები" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="58,0,0,0" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToAdapterCenterCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M8,3 L8,8 M16,3 L16,8 M5,8 L19,8 L19,12 C19,16 16,18 12,18 C8,18 5,16 5,12 Z M12,18 L12,21" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="ადაპტერი" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                    </VerticalStackLayout>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="58,0,0,0" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToSettingsCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M4,7 L20,7 M4,17 L20,17 M9,4 L9,10 M15,14 L15,20" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="პარამეტრები" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
                 </VerticalStackLayout>
             </Border>
 

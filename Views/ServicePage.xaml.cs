@@ -36,6 +36,7 @@ public partial class ServicePage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        _viewModel.ReloadMaintenanceParts();
 
         // Let the page open smoothly first; the ECU reads start right after.
         await Task.Delay(250);
@@ -49,6 +50,23 @@ public partial class ServicePage : ContentPage
         {
             // Refresh reports its own errors on the page.
         }
+    }
+
+    /// <summary>A search value tapped: confirm it is what the dashboard shows.</summary>
+    private async void OnSearchHitTapped(object? sender, TappedEventArgs e)
+    {
+        if ((sender as BindableObject)?.BindingContext is not ServiceSearchHitRow row || !row.CanConfirm)
+            return;
+
+        var english = Application.Current?.Handler?.MauiContext?.Services
+            .GetService<CarScanner.Services.Localization.LocalizationService>()?.IsEnglish == true;
+        var yes = await DisplayAlertAsync(
+            row.Title,
+            english ? "Does the car's dashboard show the same value?" : "მანქანის პანელზეც იგივე მნიშვნელობა ჩანს?",
+            english ? "Yes, correct" : "კი, სწორია",
+            english ? "No" : "არა");
+        if (yes)
+            await _viewModel.ConfirmSearchHitAsync(row);
     }
 
     protected override void OnDisappearing()

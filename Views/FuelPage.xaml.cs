@@ -10,6 +10,8 @@ using CarScanner.ViewModels; namespace CarScanner.Views; public partial class Fu
     {
         base.OnAppearing();
         ApplyUiLocalization();
+        if (BindingContext is FuelViewModel viewModel)
+            viewModel.OnPageAppearing();
     }
 
     protected override async void OnDisappearing()

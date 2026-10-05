@@ -1,72 +1,122 @@
-# Store listing draft
+# Store listing — GCar360
+
+App ID (Android package and iOS bundle): `com.gcar360.app`
 
 ## Name
 
-Georgian Car Scanner
+GCar360 — OBD2 car scanner
 
-## Short description — English
+(Apple allows 30 characters: `GCar360: OBD2 Car Scanner`.)
 
-OBD-II diagnostics, live data, DTC explanations and vehicle health insights.
+## Short description — English (max 80)
 
-## მოკლე აღწერა — ქართული
+OBD2 diagnostics, fault codes, service reminders and 0–100 timing.
 
-OBD-II დიაგნოსტიკა, ცოცხალი მონაცემები და შეცდომის კოდების გასაგები ახსნა.
+## მოკლე აღწერა — ქართული (max 80)
+
+OBD2 დიაგნოსტიკა, შეცდომის კოდები, სერვისის შეხსენება და 0–100 გაზომვა.
 
 ## Full description — English
 
-Georgian Car Scanner helps drivers and technicians inspect information that a
-connected vehicle and OBD adapter actually make available. View live engine
-data, scan diagnostic trouble codes, inspect emissions readiness, review ECU
-information, analyse battery voltage, record performance and trip data, and
-create diagnostic reports.
+GCar360 turns your phone and an OBD2 adapter into a car scanner. It shows
+only what your car and adapter actually report — unsupported values are
+marked as unavailable, never invented.
 
-Capability detection keeps results honest: unsupported sensors, modules and
-service functions are shown as unavailable instead of displaying invented
-values. Available features vary by vehicle, ECU, protocol and adapter.
+Diagnostics
+• Read and clear fault codes (DTC) with clear explanations
+• ABS, airbag and other modules on supported cars
+• Live data, freeze frame, emissions readiness, Mode 06
+• AI assistant that explains likely causes and a check plan (PRO)
 
-PRO includes advanced analysis and the AI Diagnostic Assistant. AI conclusions
-are expressed as likely or possible causes and use available DTC, freeze-frame
-and live data to build an understandable diagnostic plan. They are not a repair
-guarantee or a substitute for a qualified professional.
+Service
+• Every service item on its own: oil, filters, spark plugs, brake fluid,
+  coolant, transmission fluid, brake pads
+• Manufacturer intervals for Toyota/Lexus, Mercedes-Benz, Hyundai/Kia,
+  BMW/MINI and VW/Audi; every interval can be changed
+• Odometer read from the car where supported
+• Phone reminders before an item is due
 
-For safety, do not operate the app while driving. Active tests, service actions
-and coding must only be used on explicitly supported vehicles and under the
-displayed safety conditions.
+Fuel and energy
+• Fuel consumption (L/100 km), trip history and cost
+• Electric and hybrid cars: kWh/100 km, regeneration and battery data on
+  supported models
+
+More
+• 0–100 km/h timing from the car's own speed, video with overlay, leaderboard
+• Pre-purchase check and technical inspection checklist
+• Mileage check across several modules
+• PDF report and a 30-day QR report for buyers, with service history
+
+PRO features are available by subscription. Features depend on the vehicle,
+ECU, protocol and adapter. Do not use the app while driving. AI answers are
+informational and do not replace a qualified mechanic.
 
 ## სრული აღწერა — ქართული
 
-Georgian Car Scanner მომხმარებელსა და სპეციალისტს აჩვენებს მხოლოდ იმ
-ინფორმაციას, რომელსაც დაკავშირებული ავტომობილი და OBD ადაპტერი რეალურად
-იძლევა. შესაძლებელია ცოცხალი მონაცემების ნახვა, შეცდომის კოდების სკანირება,
-ემისიის მზადყოფნის შემოწმება, ECU ინფორმაციის დათვალიერება, აკუმულატორის
-ძაბვის ანალიზი, მგზავრობისა და აჩქარების მონაცემების ჩაწერა და დიაგნოსტიკური
-ანგარიშის შექმნა.
+GCar360 ტელეფონს და OBD2 ადაპტერს მანქანის სკანერად აქცევს. აპი აჩვენებს
+მხოლოდ იმას, რასაც მანქანა და ადაპტერი რეალურად აბრუნებს. რაც მიუწვდომელია,
+ასეც მოინიშნება და გამოგონილი ციფრი არასდროს ჩანს.
 
-Capability Detection განსაზღვრავს კონკრეტული მანქანის შესაძლებლობებს.
-მხარდაუჭერელი სენსორი, მოდული ან სერვისული ფუნქცია მოინიშნება როგორც
-მიუწვდომელი და აპი არ აჩვენებს გამოგონილ მნიშვნელობებს. ფუნქციები იცვლება
-ავტომობილის, ECU-ს, პროტოკოლისა და ადაპტერის მიხედვით.
+დიაგნოსტიკა
+• შეცდომის კოდების წაკითხვა და წაშლა გასაგები ახსნით
+• ABS, აირბაგი და სხვა მოდულები მხარდაჭერილ მანქანებზე
+• ცოცხალი მონაცემები, Freeze Frame, ემისიის მზადყოფნა, Mode 06
+• AI ასისტენტი: სავარაუდო მიზეზები და შემოწმების გეგმა (PRO)
 
-PRO ვერსია შეიცავს გაფართოებულ ანალიზსა და AI Diagnostic Assistant-ს. AI
-იყენებს ხელმისაწვდომ DTC, Freeze Frame და Live Data ინფორმაციას, შესაძლო
-მიზეზებს პრიორიტეტებად ალაგებს და გასაგებ შემოწმების გეგმას ქმნის. AI პასუხი
-არ არის შეკეთების გარანტია და ვერ ცვლის კვალიფიციურ სპეციალისტს.
+სერვისი
+• თითო ნაწილი ცალ-ცალკე: ზეთი, ფილტრები, სანთლები, სამუხრუჭე სითხე,
+  გაგრილების სითხე, კოლოფის ზეთი, ხუნდები
+• მწარმოებლის ინტერვალები: Toyota/Lexus, Mercedes-Benz, Hyundai/Kia,
+  BMW/MINI, VW/Audi; ყველა ინტერვალი იცვლება
+• გარბენი მანქანიდან, სადაც მანქანა იძლევა
+• შეხსენება ტელეფონზე ვადამდე
 
-უსაფრთხოებისთვის აპი მართვის დროს არ გამოიყენოთ. Active Test, Service და
-Coding ფუნქციები გამოიყენეთ მხოლოდ მკაფიოდ მხარდაჭერილ ავტომობილზე და
-ეკრანზე ნაჩვენები ყველა უსაფრთხოების პირობის დაცვით.
+საწვავი და ენერგია
+• საწვავის ხარჯი (L/100 კმ), მოგზაურობების ისტორია და ღირებულება
+• ელექტრო და ჰიბრიდი: kWh/100 კმ, რეკუპერაცია და ბატარეის მონაცემები
+  მხარდაჭერილ მოდელებზე
+
+სხვა
+• 0–100 კმ/სთ მანქანის საკუთარი სიჩქარით, ვიდეო მონაცემებით, რეიტინგი
+• ყიდვისწინა შემოწმება და ტექდათვალიერების სია
+• გარბენის გადამოწმება რამდენიმე მოდულით
+• PDF ანგარიში და 30-დღიანი QR ანგარიში მყიდველისთვის, სერვისის ისტორიით
+
+PRO ფუნქციები ხელმისაწვდომია გამოწერით. ფუნქციები დამოკიდებულია მანქანაზე,
+ECU-ზე, პროტოკოლსა და ადაპტერზე. მართვისას აპი არ გამოიყენოთ. AI-ს პასუხი
+საინფორმაციოა და კვალიფიციურ ხელოსანს ვერ ჩაანაცვლებს.
+
+## Keywords (Apple, max 100 characters)
+
+obd2,obd,car scanner,diagnostic,elm327,check engine,dtc,service,oil,0-100,mileage,ev,hybrid
 
 ## URLs
 
 - Privacy: `https://georgian-car-scanner-api-cyawhhdygecng6bt.germanywestcentral-01.azurewebsites.net/privacy-policy`
 - Terms: `https://georgian-car-scanner-api-cyawhhdygecng6bt.germanywestcentral-01.azurewebsites.net/terms-of-use`
 - Support: `https://georgian-car-scanner-api-cyawhhdygecng6bt.germanywestcentral-01.azurewebsites.net/support`
-- Support email: `zukalazashvili1999@gmail.com`
+- Support email: `gcar360support@gmail.com`
 
-## Suggested category and declarations
+## In-app products (create with exactly these IDs)
 
-- Category: Auto & Vehicles
-- Ads: No, unless an advertising SDK is added later
-- Target audience: adults/general automotive users; not designed for children
-- Login required: No
-- Hardware: compatible Bluetooth/BLE/Wi-Fi OBD adapter and supported vehicle
+| Product | ID | Type |
+| --- | --- | --- |
+| OBD PRO | `com.georgiancarscanner.pro.monthly` | Auto-renewable, 1 month |
+| VIN PRO | `com.georgiancarscanner.vin.monthly` | Auto-renewable, 1 month |
+| Full PRO | `com.georgiancarscanner.full.monthly` | Auto-renewable, 1 month |
+| VIN 1 report | `com.georgiancarscanner.vin.single` | Consumable |
+| VIN 5 reports | `com.georgiancarscanner.vin.pack5` | Consumable |
+| VIN 10 reports | `com.georgiancarscanner.vin.pack10` | Consumable |
+
+On Apple, put the three subscriptions in one subscription group.
+
+## Category and declarations
+
+- Google Play category: Auto & Vehicles
+- Apple primary category: Utilities
+- Ads: No
+- Target audience: adults / general automotive users; not designed for children
+- Login required: No (optional account for restoring PRO)
+- Hardware: compatible Bluetooth/BLE/Wi-Fi OBD2 adapter and supported vehicle
+- Reviewer note: the app needs an OBD2 adapter and a car; without them the
+  screens show "not connected". PRO can be tested with store test accounts.

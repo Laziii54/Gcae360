@@ -74,44 +74,36 @@
                 <Label Text="რას შეამოწმებს" Style="{StaticResource SectionCaptionStyle}" />
                 <Border Style="{StaticResource ListCardStyle}">
                     <VerticalStackLayout Spacing="0">
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,11">
-                            <Path Data="M5,12 L9,16 L19,6" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="შეცდომები ყველა მოდულში (ძრავი, ABS, აირბაგი…)" Style="{StaticResource RowTitleStyle}" FontSize="13" LineBreakMode="WordWrap" />
+                        <Grid Padding="14,11">
+                            <Label Text="შეცდომები ყველა მოდულში (ძრავი, ABS, აირბაგი…)" Style="{StaticResource RowTitleStyle}" FontSize="13" LineBreakMode="WordWrap" />
                         </Grid>
                         <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,11">
-                            <Path Data="M5,12 L9,16 L19,6" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="მოდულები, ვერსიები და ნომრები" Style="{StaticResource RowTitleStyle}" FontSize="13" LineBreakMode="WordWrap" />
+                        <Grid Padding="14,11">
+                            <Label Text="მოდულები, ვერსიები და ნომრები" Style="{StaticResource RowTitleStyle}" FontSize="13" LineBreakMode="WordWrap" />
                         </Grid>
                         <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,11">
-                            <Path Data="M5,12 L9,16 L19,6" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="გარბენის შედარება მოდულებს შორის" Style="{StaticResource RowTitleStyle}" FontSize="13" LineBreakMode="WordWrap" />
+                        <Grid Padding="14,11">
+                            <Label Text="გარბენის შედარება მოდულებს შორის" Style="{StaticResource RowTitleStyle}" FontSize="13" LineBreakMode="WordWrap" />
                         </Grid>
                         <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,11">
-                            <Path Data="M5,12 L9,16 L19,6" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="ძრავის და სენსორების ცოცხალი მონაცემები" Style="{StaticResource RowTitleStyle}" FontSize="13" LineBreakMode="WordWrap" />
+                        <Grid Padding="14,11">
+                            <Label Text="ძრავის და სენსორების ცოცხალი მონაცემები" Style="{StaticResource RowTitleStyle}" FontSize="13" LineBreakMode="WordWrap" />
                         </Grid>
                         <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,11">
-                            <Path Data="M5,12 L9,16 L19,6" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="ბატარეა და დამუხტვა" Style="{StaticResource RowTitleStyle}" FontSize="13" LineBreakMode="WordWrap" />
+                        <Grid Padding="14,11">
+                            <Label Text="ბატარეა და დამუხტვა" Style="{StaticResource RowTitleStyle}" FontSize="13" LineBreakMode="WordWrap" />
                         </Grid>
                         <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,11">
-                            <Path Data="M5,12 L9,16 L19,6" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="მზადყოფნა ტექდათვალიერებისთვის" Style="{StaticResource RowTitleStyle}" FontSize="13" LineBreakMode="WordWrap" />
+                        <Grid Padding="14,11">
+                            <Label Text="მზადყოფნა ტექდათვალიერებისთვის" Style="{StaticResource RowTitleStyle}" FontSize="13" LineBreakMode="WordWrap" />
                         </Grid>
                         <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,11">
-                            <Path Data="M5,12 L9,16 L19,6" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="VIN ისტორია (ავარიები, აუქციონი)" Style="{StaticResource RowTitleStyle}" FontSize="13" LineBreakMode="WordWrap" />
+                        <Grid Padding="14,11">
+                            <Label Text="VIN ისტორია (ავარიები, აუქციონი)" Style="{StaticResource RowTitleStyle}" FontSize="13" LineBreakMode="WordWrap" />
                         </Grid>
                         <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,11">
-                            <Path Data="M5,12 L9,16 L19,6" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="0–100 (არასავალდებულო)" Style="{StaticResource RowTitleStyle}" FontSize="13" LineBreakMode="WordWrap" />
+                        <Grid Padding="14,11">
+                            <Label Text="0–100 (არასავალდებულო)" Style="{StaticResource RowTitleStyle}" FontSize="13" LineBreakMode="WordWrap" />
                         </Grid>
                     </VerticalStackLayout>
                 </Border>

@@ -18,6 +18,7 @@ public sealed class AccelerationMeasurementService
     private readonly VehicleInfoService _vehicles;
     private readonly VehicleProfileResolverService _profiles;
     private readonly UserProfileService _users;
+    private readonly RunGpsRecorder _gps;
     private readonly object _gate = new();
 
     private bool _isArmed;
@@ -41,6 +42,8 @@ public sealed class AccelerationMeasurementService
     private PerformanceTestDefinition _activeTest;
     private double _startSpeedKph;
     private double _targetSpeedKph = 100d;
+    private double? _targetDistanceMeters;
+    private double _trapSpeedKph;
     private int[] _splitTargetsKph;
     private readonly List<ObdTelemetrySample> _runSamples = new();
     public int CurrentSpeed { get; private set; }
@@ -56,6 +59,29 @@ public sealed class AccelerationMeasurementService
     public IReadOnlyList<ObdTelemetrySample> RunSamples { get { lock (_gate) return _runSamples.ToArray(); } }
 
     public bool IsArmed { get { lock (_gate) return _isArmed; } }
+
+    /// <summary>True while a run is being timed (after the car pulled away).</summary>
+    public bool IsTiming { get { lock (_gate) return _isArmed && _startedAt.HasValue; } }
+
+    /// <summary>True when armed and the start condition (standstill) was seen.</summary>
+    public bool IsReadyToGo { get { lock (_gate) return _isArmed && !_startedAt.HasValue && _startConditionObserved; } }
+
+    /// <summary>Real ECU speed samples per second over the last 2 seconds.</summary>
+    public double SpeedSampleRate
+    {
+        get
+        {
+            lock (_gate)
+            {
+                var cutoff = DateTime.UtcNow.AddSeconds(-2);
+                while (_speedSampleTimes.Count > 0 && _speedSampleTimes.Peek() < cutoff)
+                    _speedSampleTimes.Dequeue();
+                return _speedSampleTimes.Count / 2d;
+            }
+        }
+    }
+
+    private readonly Queue<DateTime> _speedSampleTimes = new();
     public bool HasCurrentSpeed { get { lock (_gate) return _hasCurrentSpeed; } }
     // Distinguishes "no ECU reading has arrived yet" from a genuine 0 value
     // (idle RPM at engine-off, or 0% throttle) so the UI never shows a
@@ -101,8 +127,10 @@ public sealed class AccelerationMeasurementService
         UnitSystemService units,
         VehicleInfoService vehicles,
         VehicleProfileResolverService profiles,
-        UserProfileService users)
+        UserProfileService users,
+        RunGpsRecorder gps)
     {
+        _gps = gps;
         _liveData = liveData;
         _database = database;
         _units = units;
@@ -191,15 +219,68 @@ public sealed class AccelerationMeasurementService
             await _liveData.StopAsync().ConfigureAwait(false);
     }
 
+    /// <summary>True while a run is timed from the phone GPS (no OBD adapter).</summary>
+    public bool GpsMode { get; private set; }
+
     public async Task StartAsync(CancellationToken token = default)
     {
+        StopGpsMode();
         await StartPreviewAsync(token).ConfigureAwait(false);
+        Arm();
 
+        // Phone GPS runs alongside: the ranking checks ECU speed against it.
+        _ = _gps.StartAsync();
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Times a run from the phone GPS when no OBD adapter is connected (or the
+    /// car does not give its speed, e.g. Tesla). GPS updates about once a
+    /// second, so the result is an estimate and is not ranked.
+    /// </summary>
+    public async Task<bool> StartGpsAsync()
+    {
+        StopGpsMode();
+        await _gps.StartAsync().ConfigureAwait(false);
+        if (!_gps.IsAvailable)
+        {
+            lock (_gate)
+                Status = Preferences.Default.Get("language", "English") == "English"
+                    ? "GPS is not available. Allow location for GCar360 and try outdoors."
+                    : "GPS მიუწვდომელია. მიეცი GCar360-ს ლოკაციის ნებართვა და სცადე ღია ცის ქვეშ.";
+            StateChanged?.Invoke(this, EventArgs.Empty);
+            return false;
+        }
+
+        GpsMode = true;
+        _gps.SpeedSample += OnGpsSpeed;
+        Arm();
+        StateChanged?.Invoke(this, EventArgs.Empty);
+        return true;
+    }
+
+    private void StopGpsMode()
+    {
+        if (!GpsMode)
+            return;
+        _gps.SpeedSample -= OnGpsSpeed;
+        GpsMode = false;
+    }
+
+    // GPS speed jitters by a few km/h while standing still; below 4 km/h it
+    // counts as 0 so the run does not start by itself.
+    private void OnGpsSpeed(DateTime utc, double kph) =>
+        OnLiveDataUpdated(this, new LiveDataModel { Timestamp = utc, Speed = kph < 4 ? 0 : (int)Math.Round(kph), HasSpeed = true });
+
+    private void Arm()
+    {
         lock (_gate)
         {
             _activeTest = _selectedTest;
             _startSpeedKph = _activeTest.StartSpeedKph;
             _targetSpeedKph = _activeTest.TargetSpeedKph;
+            _targetDistanceMeters = _activeTest.TargetDistanceMeters;
+            _trapSpeedKph = 0;
             _splitTargetsKph = _activeTest.SplitTargetsKph.ToArray();
             _isArmed = true;
             _startedAt = null;
@@ -212,8 +293,6 @@ public sealed class AccelerationMeasurementService
             DistanceMeters = 0; PeakAcceleration = 0;
             Status = $"READY — {_activeTest.StartInstruction}";
         }
-
-        StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void Cancel(string message = "გაზომვა გაუქმდა")
@@ -225,11 +304,17 @@ public sealed class AccelerationMeasurementService
             Status = message;
         }
 
+        StopGpsMode();
+        _gps.Stop();
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnLiveDataUpdated(object? sender, LiveDataModel data)
     {
+        // In GPS mode only GPS samples time the run.
+        if (GpsMode && !ReferenceEquals(sender, this))
+            return;
+
         DateTime? completionAt = null;
         DateTime? startedAt = null;
         int sampleCount = 0;
@@ -258,6 +343,9 @@ public sealed class AccelerationMeasurementService
                 CurrentSpeed = data.Speed;
                 _hasCurrentSpeed = true;
                 _lastSpeedAt = now;
+                _speedSampleTimes.Enqueue(DateTime.UtcNow);
+                while (_speedSampleTimes.Count > 200)
+                    _speedSampleTimes.Dequeue();
                 if (data.HasRpm) { CurrentRpm = data.Rpm; _hasCurrentRpm = true; }
                 if (data.HasThrottlePosition) { CurrentThrottle = data.ThrottlePosition; _hasCurrentThrottle = true; }
                 publishState = true;
@@ -341,8 +429,10 @@ public sealed class AccelerationMeasurementService
                         _samples++;
                         var previousAt = _previousAt ?? now;
                         var elapsedSeconds = Math.Max(0, (now - previousAt).TotalSeconds);
+                        DateTime? distanceReachedAt = null;
                         if (elapsedSeconds > 0)
                         {
+                            var distanceBefore = _distanceMeters;
                             var acceleration = ((data.Speed - _previousSpeed) / 3.6) / elapsedSeconds;
                             if (acceleration > 0)
                             {
@@ -353,6 +443,17 @@ public sealed class AccelerationMeasurementService
                             _distanceMeters += ((_previousSpeed + data.Speed) / 2d / 3.6) * elapsedSeconds;
                             DistanceMeters = _distanceMeters;
                             PeakAcceleration = _peakAcceleration;
+
+                            // Distance runs (¼ / ⅛ mile): the finish line is
+                            // placed inside this sample interval by distance.
+                            if (_targetDistanceMeters is { } finishMeters && _distanceMeters >= finishMeters && _distanceMeters > distanceBefore)
+                            {
+                                var fraction = Math.Clamp((finishMeters - distanceBefore) / (_distanceMeters - distanceBefore), 0d, 1d);
+                                distanceReachedAt = previousAt.AddTicks((long)((now - previousAt).Ticks * fraction));
+                                _trapSpeedKph = _previousSpeed + (data.Speed - _previousSpeed) * fraction;
+                                _distanceMeters = finishMeters;
+                                DistanceMeters = finishMeters;
+                            }
                         }
 
                         foreach (var split in _splitTargetsKph)
@@ -368,9 +469,9 @@ public sealed class AccelerationMeasurementService
                             _splits[split] = Math.Max(0, (splitAt - _startedAt.Value).TotalSeconds);
                         }
 
-                        if (data.Speed >= _targetSpeedKph)
+                        if (distanceReachedAt is not null || (_targetDistanceMeters is null && data.Speed >= _targetSpeedKph))
                         {
-                            completionAt = InterpolateTargetTime(
+                            completionAt = distanceReachedAt ?? InterpolateTargetTime(
                                 _previousAt ?? now,
                                 _previousSpeed,
                                 now,
@@ -381,17 +482,19 @@ public sealed class AccelerationMeasurementService
                             // splits dictionary so it renders as one more field
                             // alongside 20/40/60/80, instead of only appearing
                             // in the separate "latest result" summary.
-                            _splits[(int)Math.Round(_targetSpeedKph)] =
-                                Math.Max(0, (completionAt.Value - _startedAt.Value).TotalSeconds);
+                            if (_targetDistanceMeters is null)
+                                _splits[(int)Math.Round(_targetSpeedKph)] =
+                                    Math.Max(0, (completionAt.Value - _startedAt.Value).TotalSeconds);
                             _isArmed = false;
                             Status = "შედეგი ინახება…";
                             completedDetails = new CompletedRunDetails(
                                 _activeTest,
-                                MaximumSpeed,
+                                _targetDistanceMeters is null ? MaximumSpeed : (int)Math.Round(_trapSpeedKph),
                                 MaximumRpm,
                                 _distanceMeters,
                                 _peakAcceleration,
-                                new Dictionary<int, double>(_splits));
+                                new Dictionary<int, double>(_splits),
+                                _runSamples.ToArray());
                         }
                         else
                         {
@@ -407,27 +510,69 @@ public sealed class AccelerationMeasurementService
             StateChanged?.Invoke(this, EventArgs.Empty);
 
         if (completionAt.HasValue && startedAt.HasValue && completedDetails is not null)
+        {
+            // Beep + vibration at the target speed, so the driver does not need to look at the screen.
+            CarScanner.Helpers.PerformanceBeep.Play();
             _ = SaveCompletedRunAsync(startedAt.Value, completionAt.Value, sampleCount, completedDetails);
+        }
     }
 
     private async Task SaveCompletedRunAsync(DateTime startedAt, DateTime finishedAt, int sampleCount, CompletedRunDetails details)
     {
         var seconds = Math.Max(0, (finishedAt - startedAt).TotalSeconds);
+
+        // Evidence for the ranking: ECU speed and phone GPS speed, both as
+        // (seconds from the start, km/h). GPS gets a few seconds extra on
+        // both sides because it lags behind the ECU.
+        var startUtc = startedAt.ToUniversalTime();
+        var speedTrace = details.Samples
+            .Select(s => new[] { Math.Round((s.Timestamp.ToUniversalTime() - startUtc).TotalSeconds, 2), Math.Round(s.Value, 1) })
+            .Where(p => p[0] >= -3)
+            .ToArray();
+        var gpsSamples = _gps.Between(startUtc.AddSeconds(-3), finishedAt.ToUniversalTime().AddSeconds(4));
+        var timedByGps = GpsMode;
+        StopGpsMode();
+        _gps.Stop();
+        var gpsTrace = gpsSamples
+            .Select(s => new[]
+            {
+                Math.Round((s.Utc - startUtc).TotalSeconds, 2), Math.Round(s.Kph, 1),
+                Math.Round(s.Latitude, 6), Math.Round(s.Longitude, 6), Math.Round(s.AccuracyMeters, 1)
+            })
+            .ToArray();
+        var gpsCheck = RunGpsCheck.Check(
+            speedTrace.Select(p => (p[0], p[1])).ToArray(),
+            gpsTrace.Select(p => (p[0], p[1])).ToArray());
         var vehicle = _vehicles.CurrentVehicle;
         var resolved = _profiles.Current;
         var validVin = vehicle is not null && VinResponseParser.IsValidVin(vehicle.VIN);
         var verifiedModel = resolved is not null &&
             resolved.HasValidVin && resolved.HasVerifiedModel && resolved.HasVerifiedYear;
-        var isZeroToHundred = details.Test.Id.Equals("0-100", StringComparison.OrdinalIgnoreCase) &&
-            details.Test.StartSpeedKph <= 0.5 && details.Test.TargetSpeedKph >= 99;
-        var plausible = seconds is >= 1.2 and <= 60 && sampleCount >= 5 && details.MaxSpeedKph >= 100;
-        var eligible = isZeroToHundred && validVin && verifiedModel && plausible;
+        // Ranked tests: 0–100 km/h, 0–60 mph and ¼ mile.
+        var ranked = PerformanceTestDefinition.IsRanked(details.Test.Id) && details.Test.StartSpeedKph <= 0.5;
+        var (minSeconds, minSamples) = details.Test.Id switch
+        {
+            "quarter-mile" => (6.0, 8),
+            _ => (1.2, 5)
+        };
+        var reachedTarget = details.Test.IsDistanceTest
+            ? details.DistanceMeters >= details.Test.TargetDistanceMeters!.Value - 1
+            : details.MaxSpeedKph >= details.Test.TargetSpeedKph - 1;
+        var plausible = seconds >= minSeconds && seconds <= 60 && sampleCount >= minSamples && reachedTarget;
+        var gpsOk = gpsCheck.Status == RunGpsCheck.Passed;
+        // GPS-timed runs are estimates (≈1 update a second): never ranked.
+        var eligible = !timedByGps && ranked && validVin && verifiedModel && plausible && gpsOk;
+        var en = Preferences.Default.Get("language", "English") == "English";
         var rejection = eligible ? string.Empty
-            : !isZeroToHundred ? "რეიტინგში მხოლოდ 0–100 km/h ტესტი მიიღება."
-            : !validVin || !verifiedModel ? "VIN-ით მოდელი და წელი დადასტურებული არ არის."
-            : seconds < 1.2 ? "შედეგი ფიზიკურად შეუძლებლად სწრაფია."
-            : sampleCount < 5 ? "ECU სიჩქარის ნიმუშები საკმარისი არ არის."
-            : "გაზომვის მონაცემები რეიტინგის წესებს არ აკმაყოფილებს.";
+            : timedByGps ? (en ? "Timed by phone GPS (no adapter): an estimate, not ranked." : "გაიზომა ტელეფონის GPS-ით (ადაპტერის გარეშე): შეფასებაა და რეიტინგში არ შედის.")
+            : !ranked ? (en ? "Only 0–100 km/h, 0–60 mph and ¼ mile runs are ranked." : "რეიტინგში მიიღება მხოლოდ 0–100 km/h, 0–60 mph და ¼ მილი.")
+            : !validVin || !verifiedModel ? (en ? "The model and year are not confirmed by VIN." : "VIN-ით მოდელი და წელი დადასტურებული არ არის.")
+            : seconds < minSeconds ? (en ? "The result is physically impossible." : "შედეგი ფიზიკურად შეუძლებლად სწრაფია.")
+            : sampleCount < minSamples ? (en ? "Not enough ECU speed samples." : "ECU სიჩქარის ნიმუშები საკმარისი არ არის.")
+            : !plausible ? (en ? "The measurement does not meet the ranking rules." : "გაზომვის მონაცემები რეიტინგის წესებს არ აკმაყოფილებს.")
+            : gpsCheck.Status == RunGpsCheck.Missing
+                ? (en ? "No GPS during the run. Turn on location for GCar360 and measure again outdoors." : "გაზომვისას GPS არ იყო. ჩართე ლოკაცია GCar360-ისთვის და გაზომე ღია ცის ქვეშ.")
+                : (en ? $"GPS speed does not match the car's speed (difference {gpsCheck.MedianDiffKph:0} km/h)." : $"GPS-ის სიჩქარე მანქანის სიჩქარეს არ ემთხვევა (სხვაობა {gpsCheck.MedianDiffKph:0} km/h).");
         var run = new AccelerationRun
         {
             StartedAt = startedAt.ToLocalTime(),
@@ -437,12 +582,12 @@ public sealed class AccelerationMeasurementService
             VIN = validVin ? vehicle!.VIN.Trim().ToUpperInvariant() : string.Empty,
             DurationSeconds = Math.Round(seconds, 2),
             SampleCount = sampleCount,
-            Source = $"OBD · {details.Test.DisplayName}",
-            Confidence = sampleCount >= 25 ? "High" : sampleCount >= 12 ? "Medium" : "Low",
+            Source = timedByGps ? $"GPS · {details.Test.DisplayName}" : $"OBD · {details.Test.DisplayName}",
+            Confidence = timedByGps ? "Low" : sampleCount >= 25 ? "High" : sampleCount >= 12 ? "Medium" : "Low",
             TestId = details.Test.Id,
             TestName = details.Test.DisplayName,
             StartSpeedKph = details.Test.StartSpeedKph,
-            TargetSpeedKph = details.Test.TargetSpeedKph,
+            TargetSpeedKph = details.Test.IsDistanceTest ? 0 : details.Test.TargetSpeedKph,
             MaxSpeedKph = details.MaxSpeedKph,
             MaxRpm = details.MaxRpm,
             DistanceMeters = Math.Round(details.DistanceMeters, 1),
@@ -454,14 +599,20 @@ public sealed class AccelerationMeasurementService
             VehicleDisplayName = resolved?.DisplayName ?? string.Empty,
             VinVerified = validVin && verifiedModel,
             LeaderboardEligible = eligible,
-            LeaderboardRejectionReason = rejection
+            LeaderboardRejectionReason = rejection,
+            SpeedTraceJson = JsonSerializer.Serialize(speedTrace),
+            GpsTraceJson = JsonSerializer.Serialize(gpsTrace),
+            GpsStatus = gpsCheck.Status,
+            GpsMedianDiffKph = gpsCheck.MedianDiffKph
         };
 
         try
         {
             await _database.SaveAccelerationRunAsync(run);
             lock (_gate)
-                Status = $"{details.Test.DisplayName}: {run.DurationSeconds:F2} წმ (OBD შეფასება)";
+                Status = details.Test.IsDistanceTest
+                    ? $"{details.Test.DisplayName}: {run.DurationSeconds:F2} s @ {_units.FormatSpeed(details.MaxSpeedKph)} ({(timedByGps ? "GPS" : "OBD")})"
+                    : $"{details.Test.DisplayName}: {run.DurationSeconds:F2} s ({(timedByGps ? "GPS" : "OBD")})";
         }
         catch (Exception ex)
         {
@@ -499,7 +650,9 @@ public sealed class AccelerationMeasurementService
 
     /// <summary>A run that takes longer than this is not a real acceleration test.</summary>
     private static double MaxRunSeconds(PerformanceTestDefinition test) =>
-        Math.Max(30d, 20d + (test.TargetSpeedKph - test.StartSpeedKph) * 0.6d);
+        test.IsDistanceTest
+            ? 45d
+            : Math.Max(30d, 20d + (test.TargetSpeedKph - test.StartSpeedKph) * 0.6d);
 
     private sealed record CompletedRunDetails(
         PerformanceTestDefinition Test,
@@ -507,7 +660,8 @@ public sealed class AccelerationMeasurementService
         int MaxRpm,
         double DistanceMeters,
         double PeakAcceleration,
-        Dictionary<int, double> Splits);
+        Dictionary<int, double> Splits,
+        ObdTelemetrySample[] Samples);
 
     private DateTime InterpolateTargetTime(
         DateTime previousAt, int previousSpeed, DateTime currentAt, int currentSpeed)

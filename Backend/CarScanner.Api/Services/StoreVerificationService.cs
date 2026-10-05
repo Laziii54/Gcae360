@@ -8,7 +8,7 @@ namespace CarScanner.Api.Services;
 public sealed class StoreVerificationService
 {
     private const string AndroidPackageName =
-        "com.Geogorgiancar360.app"; // must equal ApplicationId in CarScanner.csproj
+        "com.gcar360.app"; // must equal ApplicationId in CarScanner.csproj
 
     private readonly IHttpClientFactory _clients;
     private readonly IConfiguration _config;
@@ -585,7 +585,7 @@ public sealed class StoreVerificationService
             _config["Stores:Apple:BundleId"]
             ?? Environment.GetEnvironmentVariable(
                 "GCS_APPLE_BUNDLE_ID")
-            ?? "com.Gcar360.app";
+            ?? "com.gcar360.app";
 
         if (string.IsNullOrWhiteSpace(issuer) ||
             string.IsNullOrWhiteSpace(keyId) ||

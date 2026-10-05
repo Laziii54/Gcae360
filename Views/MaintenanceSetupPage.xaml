@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    x:Class="CarScanner.Views.MaintenanceSetupPage"
+    x:DataType="vm:MaintenanceSetupViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,14,16,32" Spacing="12">
+            <Label Text="{Binding HeaderText}" Style="{StaticResource PageTitleStyle}" />
+            <Label Text="{Binding IntroText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
+
+            <Border Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding Rows}" Spacing="0" Margin="0,-1,0,0">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:MaintenanceSetupRow">
+                            <VerticalStackLayout Spacing="0">
+                                <BoxView Style="{StaticResource RowDividerStyle}" />
+                                <Grid ColumnDefinitions="*,92,92" ColumnSpacing="8" Padding="14,6">
+                                    <Label Text="{Binding Name}" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" LineBreakMode="WordWrap" />
+                                    <Entry Grid.Column="1" Text="{Binding KmText}" Keyboard="Numeric" Placeholder="km" HorizontalTextAlignment="End" TextColor="{DynamicResource TextColor}" FontSize="13" />
+                                    <Entry Grid.Column="2" Text="{Binding DateText}" Placeholder="03.2024" HorizontalTextAlignment="End" TextColor="{DynamicResource TextColor}" FontSize="13" />
+                                </Grid>
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="{Binding MessageText}" IsVisible="{Binding HasMessage}" TextColor="#C0392B" FontSize="12" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+            <Button Text="{Binding SaveText}" Command="{Binding SaveCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="48" />
+            <Label Text="{Binding NoteText}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="WordWrap" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

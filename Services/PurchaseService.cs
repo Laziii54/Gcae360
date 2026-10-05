@@ -245,6 +245,32 @@ public sealed class PurchaseService
             System.Diagnostics.Debug.WriteLine($"App Store purchase failed: {ex.GetType().Name}");
             return "ERROR:UNEXPECTED";
         }
+#elif IOS
+        try
+        {
+            var purchaseResult = await _iosBilling.PurchaseProductAsync(productId, token);
+            if (string.IsNullOrWhiteSpace(purchaseResult))
+                return "ERROR:EMPTY_PURCHASE_RESULT";
+            if (purchaseResult == "USER_CANCELED")
+                return "CANCELLED";
+            if (purchaseResult.StartsWith("ERROR:", StringComparison.Ordinal))
+                return purchaseResult;
+
+            if (!await SyncWithServerAsync(_account.EffectiveUserId, "apple", productId, purchaseResult, token))
+                return "ERROR:SERVER_VERIFICATION_FAILED";
+
+            await _pro.LoadAsync(forceServerRefresh: true);
+            return IsCovered(productId) ? "SUCCESS" : "ERROR:ENTITLEMENT_NOT_ACTIVE";
+        }
+        catch (OperationCanceledException)
+        {
+            return "ERROR:CANCELLED_BY_APP";
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"App Store purchase failed: {ex.GetType().Name}");
+            return "ERROR:UNEXPECTED";
+        }
 #else
         await Task.CompletedTask;
         return "STORE_UNAVAILABLE";
@@ -318,6 +344,32 @@ public sealed class PurchaseService
                 productId,
                 purchaseResult,
                 token)
+                ? "SUCCESS"
+                : "ERROR:SERVER_VERIFICATION_FAILED";
+        }
+        catch (OperationCanceledException)
+        {
+            return "ERROR:CANCELLED_BY_APP";
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"App Store purchase failed: {ex.GetType().Name}");
+            return "ERROR:UNEXPECTED";
+        }
+#elif IOS
+        try
+        {
+            // The App Store finishes the consumable transaction itself; the
+            // server adds the credits once per transaction ID.
+            var purchaseResult = await _iosBilling.PurchaseProductAsync(productId, token);
+            if (string.IsNullOrWhiteSpace(purchaseResult))
+                return "ERROR:EMPTY_PURCHASE_RESULT";
+            if (purchaseResult == "USER_CANCELED")
+                return "CANCELLED";
+            if (purchaseResult.StartsWith("ERROR:", StringComparison.Ordinal))
+                return purchaseResult;
+
+            return await SyncWithServerAsync(_account.EffectiveUserId, "apple", productId, purchaseResult, token)
                 ? "SUCCESS"
                 : "ERROR:SERVER_VERIFICATION_FAILED";
         }

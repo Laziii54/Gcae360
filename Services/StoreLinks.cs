@@ -11,7 +11,7 @@ public static class StoreLinks
 
     public static string ManageSubscriptionUrl => DeviceInfo.Platform == DevicePlatform.iOS
         ? "https://apps.apple.com/account/subscriptions"
-        : "https://play.google.com/store/account/subscriptions?package=com.georgiancarscanner.app&sku=com.georgiancarscanner.pro.monthly";
+        : "https://play.google.com/store/account/subscriptions?package=com.gcar360.app&sku=com.georgiancarscanner.pro.monthly";
 
     public static Task OpenAsync(string url) => Launcher.Default.OpenAsync(url);
 }

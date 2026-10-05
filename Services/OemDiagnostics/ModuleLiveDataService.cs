@@ -947,7 +947,7 @@ public sealed class ModuleLiveDataService
         _namesKa is not null && _namesKa.TryGetValue(name.Trim(), out var ka) ? ka : string.Empty;
 
     private static bool IsEnglish() =>
-        Preferences.Default.Get("language", "ქართული").Equals("English", StringComparison.OrdinalIgnoreCase);
+        Preferences.Default.Get("language", "English").Equals("English", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsExcludedPath(string? path) =>
         !string.IsNullOrWhiteSpace(path) &&
@@ -967,6 +967,11 @@ public sealed class ModuleLiveDataService
     {
         var make = (vehicle.Manufacturer ?? string.Empty).Trim().ToUpperInvariant();
         bool Has(params string[] names) => names.Any(name => make.Contains(name, StringComparison.Ordinal));
+
+        // Shared make families of the catalog (Peugeot/Citroën/Opel, Fiat/Alfa, Chrysler,
+        // Mitsubishi, Lotus, smart …). Qualified: this method has the same name as the class.
+        if (CarScanner.Services.CatalogMakes.Known(vehicle.Manufacturer))
+            return CarScanner.Services.CatalogMakes.For(vehicle.Manufacturer).ToArray();
 
         if (Has("CHEVROLET", "GMC", "BUICK", "CADILLAC", "GENERAL MOTORS", "HOLDEN")) return new[] { "Chevrolet", "GMC" };
         if (Has("FORD", "LINCOLN")) return new[] { "Ford" };

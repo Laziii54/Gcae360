@@ -10,115 +10,110 @@
     Title="{Binding PageTitleText}">
 
     <ScrollView>
-        <VerticalStackLayout Padding="16,14,16,32" Spacing="12">
+        <VerticalStackLayout Padding="16,14,16,32" Spacing="10">
 
-            <!-- Intro card -->
-            <Border Style="{StaticResource ListCardStyle}" Padding="14,13">
-                <VerticalStackLayout Spacing="4">
-                    <Label Text="GCar360 PRO" FontSize="18" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
-                    <Label Text="{Binding ProSubtitleText}" FontSize="13" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                </VerticalStackLayout>
-            </Border>
-
-            <!-- Current plan -->
-            <Border Style="{StaticResource ListCardStyle}">
-                <VerticalStackLayout Spacing="0">
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,13">
-                        <Path Data="M6,11 L18,11 L18,21 L6,21 Z M8.5,11 L8.5,7.5 C8.5,3.5 15.5,3.5 15.5,7.5 L15.5,11" Style="{StaticResource RowIconStyle}" />
-                        <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
-                            <Label Text="{Binding CurrentPlanTitleText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
-                            <Label Text="{Binding CurrentPlanText}" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                            <Label Text="{Binding VinQuotaText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                        </VerticalStackLayout>
-                    </Grid>
-                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
-                    <Button
-                        x:Name="AccountButton"
-                        Clicked="OnAccountClicked"
-                        BackgroundColor="Transparent"
-                        TextColor="{DynamicResource Primary}"
-                        BorderWidth="0"
-                        FontAttributes="Bold"
-                        FontSize="14"
-                        CornerRadius="0"
-                        HeightRequest="46" />
-                </VerticalStackLayout>
-            </Border>
-
-            <Label Text="{Binding PlansTitleText}" Style="{StaticResource SectionCaptionStyle}" />
-
-            <!-- PLANS: OBD PRO / VIN PRO / FULL PRO -->
-            <VerticalStackLayout Spacing="8" BindableLayout.ItemsSource="{Binding Plans}">
+            <!-- Plans, one per row: PRO · VIN PRO · Full PRO · Free. Tap a card to buy (iPhone) or sign in (Android). -->
+            <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding Plans}">
                 <BindableLayout.ItemTemplate>
                     <DataTemplate x:DataType="vm:ProPlanItem">
-                        <!-- Stroke stays bound: highlights the selected / recommended plan -->
                         <Border
                             Padding="14,13"
                             BackgroundColor="{DynamicResource CardBg}"
                             Stroke="{Binding StrokeColor}"
-                            StrokeThickness="1"
-                            StrokeShape="RoundRectangle 12">
-                            <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="8">
-                                <Path Data="M5,12 L9,16 L19,6" Style="{StaticResource RowIconStyle}" VerticalOptions="Start" Margin="0,2,0,0" />
-                                <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                                    <Label Text="{Binding Title}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
-                                    <Label Text="{Binding Subtitle}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                                </VerticalStackLayout>
-                                <VerticalStackLayout Grid.Column="2" Spacing="4" HorizontalOptions="End" VerticalOptions="Center">
-                                    <Border IsVisible="{Binding HasBadge}" Style="{StaticResource ProBadgeStyle}" HorizontalOptions="End">
-                                        <Label Text="{Binding BadgeText}" Style="{StaticResource ProBadgeTextStyle}" />
+                            StrokeThickness="1.5"
+                            StrokeShape="RoundRectangle 16">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding x:DataType=vm:ProViewModel, Source={RelativeSource AncestorType={x:Type vm:ProViewModel}}, Path=OpenPlanCommand}" CommandParameter="{Binding .}" />
+                            </Border.GestureRecognizers>
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="6">
+                                <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                                    <Label Text="{Binding Title}" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                                    <Border IsVisible="{Binding HasTag}" BackgroundColor="{Binding TagBackground}" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="8,2" VerticalOptions="Center">
+                                        <Label Text="{Binding TagText}" TextColor="{Binding TagTextColor}" FontSize="10" FontAttributes="Bold" />
                                     </Border>
-                                    <Label Text="{Binding ButtonText}" FontSize="13" FontAttributes="Bold" HorizontalTextAlignment="End" TextColor="{DynamicResource Primary}" />
-                                </VerticalStackLayout>
-                                <Label Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Features}" FontSize="12" LineHeight="1.25" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                </HorizontalStackLayout>
+                                <Label Grid.Column="1" Text="{Binding PriceText}" IsVisible="{Binding ShowPrice}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                                <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <Label Text="{Binding Features}" FontSize="12" LineHeight="1.3" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                                    <Label Grid.Column="1" Text="›" IsVisible="{Binding CanOpen}" FontSize="22" TextColor="{DynamicResource SubTextColor}" VerticalOptions="End" />
+                                </Grid>
                             </Grid>
                         </Border>
                     </DataTemplate>
                 </BindableLayout.ItemTemplate>
             </VerticalStackLayout>
 
-            <!-- Restore purchase -->
-            <Button
-                Text="{Binding RestorePurchaseText}"
-                Command="{Binding RestoreCommand}"
-                IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
-                BackgroundColor="Transparent"
-                TextColor="{DynamicResource TextColor}"
-                BorderColor="{DynamicResource TextColor}"
-                BorderWidth="1.5"
-                CornerRadius="12"
-                HeightRequest="48"
-                FontAttributes="Bold" />
-
-            <!-- Promo code -->
-            <Label Text="{Binding PromoTitleText}" Style="{StaticResource SectionCaptionStyle}" />
-            <Border Style="{StaticResource ListCardStyle}" Padding="14,4">
-                <Entry
-                    Text="{Binding Promo}"
-                    Placeholder="{Binding PromoPlaceholderText}"
-                    TextColor="{DynamicResource TextColor}"
-                    PlaceholderColor="{DynamicResource SubTextColor}"
-                    BackgroundColor="Transparent"
-                    FontSize="14" />
+            <!-- Monthly automatic payment bought on the website (BOG): status + cancel -->
+            <Border IsVisible="{Binding ShowWebSubscription}" Padding="14,13" BackgroundColor="{DynamicResource CardBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 16">
+                <VerticalStackLayout Spacing="8">
+                    <Border IsVisible="{Binding ShowWebSubAlert}" Padding="11,9" BackgroundColor="#FDECEA" Stroke="#E9A99D" StrokeThickness="1" StrokeShape="RoundRectangle 10">
+                        <Label Text="{Binding WebSubAlertText}" FontSize="12" TextColor="#7A2416" LineBreakMode="WordWrap" />
+                    </Border>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <Label Text="{Binding WebSubTitleText}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" LineBreakMode="WordWrap" />
+                        <Border Grid.Column="1" BackgroundColor="{Binding WebSubStateBackground}" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="8,2" VerticalOptions="Center">
+                            <Label Text="{Binding WebSubStateText}" TextColor="{Binding WebSubStateColor}" FontSize="10" FontAttributes="Bold" />
+                        </Border>
+                    </Grid>
+                    <Label Text="{Binding WebSubDetailsText}" FontSize="12" LineHeight="1.3" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    <Button
+                        IsVisible="{Binding CanCancelWebSub}"
+                        Text="{Binding CancelWebSubText}"
+                        Command="{Binding CancelWebSubscriptionCommand}"
+                        BackgroundColor="Transparent"
+                        TextColor="#B3361F"
+                        BorderColor="#EFC5BD"
+                        BorderWidth="1.5"
+                        CornerRadius="10"
+                        HeightRequest="44"
+                        FontAttributes="Bold"
+                        FontSize="13" />
+                </VerticalStackLayout>
             </Border>
-            <Button
-                Text="{Binding ActivatePromoText}"
-                Command="{Binding RedeemCommand}"
-                IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
-                BackgroundColor="Transparent"
-                TextColor="{DynamicResource TextColor}"
-                BorderColor="{DynamicResource TextColor}"
-                BorderWidth="1.5"
-                CornerRadius="12"
-                HeightRequest="48"
-                FontAttributes="Bold" />
+
+            <Label Text="{Binding VinQuotaText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
 
             <!-- Loading / status -->
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" HorizontalOptions="Center" />
             <Label Text="{Binding Status}" TextColor="{Binding StatusColor}" FontSize="12" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
 
-            <!-- Subscription information -->
-            <Label Text="{Binding SubscriptionInfoText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,4,4,0" />
+            <!-- Extra VIN checks: iPhone only, for VIN PRO / Full PRO -->
+            <VerticalStackLayout IsVisible="{Binding ShowPacks}" Spacing="8">
+                <Label Text="{Binding PacksTitleText}" Style="{StaticResource SectionCaptionStyle}" />
+                <Label Text="{Binding PacksHintText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                <VerticalStackLayout Spacing="8" BindableLayout.ItemsSource="{Binding Packs}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ProPackItem">
+                            <Button Text="{Binding ButtonText}" Command="{Binding x:DataType=vm:ProViewModel, Source={RelativeSource AncestorType={x:Type vm:ProViewModel}}, Path=BuyPackCommand}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="10" HeightRequest="44" FontAttributes="Bold" />
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+
+            <!-- Restore (iPhone) / refresh status (Android) -->
+            <Button
+                Text="{Binding RestorePurchaseText}"
+                Command="{Binding RestoreCommand}"
+                IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
+                BackgroundColor="Transparent"
+                TextColor="{DynamicResource Primary}"
+                BorderWidth="0"
+                FontAttributes="Bold"
+                FontSize="13"
+                HeightRequest="40" />
+
+            <!-- Account (sign in / signed-in email) -->
+            <Button
+                x:Name="AccountButton"
+                Clicked="OnAccountClicked"
+                BackgroundColor="Transparent"
+                TextColor="{DynamicResource Primary}"
+                BorderWidth="0"
+                FontAttributes="Bold"
+                FontSize="13"
+                HeightRequest="40" />
+
+            <Label Text="{Binding SubscriptionInfoText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" Margin="4,0" />
 
             <!-- Privacy / terms -->
             <Grid ColumnDefinitions="*,*" ColumnSpacing="8">

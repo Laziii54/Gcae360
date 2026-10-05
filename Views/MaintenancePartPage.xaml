@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    x:Class="CarScanner.Views.MaintenancePartPage"
+    x:DataType="vm:MaintenancePartViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,14,16,32" Spacing="12">
+            <Label Text="{Binding PartName}" Style="{StaticResource PageTitleStyle}" />
+
+            <!-- Status · last change · interval -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,12">
+                <VerticalStackLayout Spacing="6">
+                    <Label AutomationId="DynamicTextPartState" Text="{Binding StateText}" TextColor="{Binding StateColor}" FontSize="20" FontAttributes="Bold" />
+                    <Label Text="{Binding LastText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="0,4" />
+                    <Label Text="{Binding IntervalCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
+                    <Grid ColumnDefinitions="*,Auto,*,Auto" ColumnSpacing="8">
+                        <Entry Text="{Binding IntervalKmText}" Keyboard="Numeric" Placeholder="15000" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="End" />
+                        <Label Grid.Column="1" Text="{Binding KmCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="13" VerticalOptions="Center" />
+                        <Entry Grid.Column="2" Text="{Binding IntervalMonthsText}" Keyboard="Numeric" Placeholder="12" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="End" />
+                        <Label Grid.Column="3" Text="{Binding MonthsCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="13" VerticalOptions="Center" />
+                    </Grid>
+                    <Label Text="{Binding StandardText}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <Button Text="{Binding SaveIntervalText}" Command="{Binding SaveIntervalCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="10" HeightRequest="38" FontSize="12" FontAttributes="Bold" Padding="6,0" />
+                        <Button Grid.Column="1" Text="{Binding RestoreText}" Command="{Binding RestoreStandardCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="10" HeightRequest="38" FontSize="12" FontAttributes="Bold" Padding="6,0" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="{Binding MessageText}" IsVisible="{Binding HasMessage}" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+
+            <Button AutomationId="DynamicTextPartToday" Text="{Binding TodayButtonText}" Command="{Binding MarkTodayCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="48" />
+            <Button Text="{Binding OtherDateText}" Command="{Binding ToggleCustomCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="48" FontAttributes="Bold" />
+
+            <!-- Another date / odometer -->
+            <Border IsVisible="{Binding ShowCustom}" Style="{StaticResource ListCardStyle}" Padding="14,12">
+                <VerticalStackLayout Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                        <Label Text="{Binding DateCaption}" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
+                        <DatePicker Grid.Column="1" Date="{Binding CustomDate}" Format="dd.MM.yyyy" MinimumDate="1990-01-01" TextColor="{DynamicResource TextColor}" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                        <Label Text="{Binding KmAtChangeCaption}" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
+                        <Entry Grid.Column="1" Text="{Binding CustomKmText}" Keyboard="Numeric" Placeholder="61500" WidthRequest="120" HorizontalTextAlignment="End" TextColor="{DynamicResource TextColor}" />
+                    </Grid>
+                    <Button Text="{Binding SaveRecordText}" Command="{Binding SaveCustomCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="44" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- History -->
+            <Label Text="{Binding HistoryCaption}" Style="{StaticResource SectionCaptionStyle}" IsVisible="{Binding HasHistory}" />
+            <Border IsVisible="{Binding HasHistory}" Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout Spacing="0">
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding History}" Spacing="0">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <Label Text="{Binding .}" TextColor="{DynamicResource TextColor}" FontSize="13" Padding="14,10" />
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                    <BoxView Style="{StaticResource RowDividerStyle}" />
+                    <Button Text="{Binding RemoveLastText}" Command="{Binding RemoveLastCommand}" BackgroundColor="Transparent" TextColor="#C0392B" BorderWidth="0" HeightRequest="40" FontSize="12" FontAttributes="Bold" HorizontalOptions="Start" Padding="14,0" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Dashboard reminder reset (manual, brand instructions) -->
+            <Border IsVisible="{Binding HasInstruction}" Style="{StaticResource ListCardStyle}" Padding="14,12">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="{Binding InstructionCaption}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" />
+                    <Label Text="{Binding InstructionText}" TextColor="{DynamicResource TextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding InstructionNote}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

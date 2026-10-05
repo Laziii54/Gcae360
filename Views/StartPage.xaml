@@ -37,7 +37,7 @@
                     x:Name="LanguageButton"
                     Grid.Column="2"
                     AutomationId="DynamicTextLanguage"
-                    Text="EN"
+                    Text="KA"
                     Clicked="OnLanguageClicked"
                     BackgroundColor="{DynamicResource ButtonBg}"
                     TextColor="{DynamicResource SubTextColor}"

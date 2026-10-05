@@ -4,7 +4,7 @@ namespace CarScanner.Services;
 
 public sealed class ContactService
 {
-    public const string ContactEmail = "zukalazashvili1999@gmail.com";
+    public const string ContactEmail = "gcar360support@gmail.com";
     public async Task SendAsync(string subject, string message)
     {
         try

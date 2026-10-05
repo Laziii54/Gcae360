@@ -31,7 +31,12 @@ public sealed class EntitlementStore
             if(records==null) return;
             foreach(var r in records.Values) UpsertAsync(r).GetAwaiter().GetResult();
             File.Move(legacy, legacy+".migrated", true);
-        } catch { }
+        }
+        catch (Exception ex)
+        {
+            // Visible in the Azure log stream; the legacy file stays in place for a retry.
+            Console.Error.WriteLine($"[EntitlementStore] Legacy entitlements.json migration failed: {ex.GetType().Name}: {ex.Message}");
+        }
     }
 
     private void Initialize()
@@ -114,6 +119,24 @@ ON CONFLICT(UserId,ProductId) DO UPDATE SET Source=$s,ExpiresAt=$e,UpdatedAt=$up
         }
 
         await UpsertAsync(record, token);
+    }
+
+    /// <summary>
+    /// Refund of one web-paid period: the plan end moves back by that period.
+    /// When nothing paid is left, the plan is switched off.
+    /// </summary>
+    public async Task RemoveWebPeriodAsync(string userId, string productId, int days, string transactionId, CancellationToken token = default)
+    {
+        var expiry = await GetSubscriptionExpiryAsync(userId, productId, token);
+        if (expiry is null)
+            return;
+
+        var now = DateTimeOffset.UtcNow;
+        var newEnd = expiry.Value.AddDays(-days);
+        var stillPaid = newEnd > now;
+        await UpsertSubscriptionAsync(
+            new EntitlementRecord(userId, stillPaid, "web", productId, stillPaid ? newEnd : now, now, transactionId),
+            token);
     }
 
     /// <summary>Expiry of one active subscription row (null when none).</summary>

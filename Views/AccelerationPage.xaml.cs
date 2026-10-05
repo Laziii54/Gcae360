@@ -45,6 +45,32 @@ public partial class AccelerationPage : ContentPage
         }
     }
 
+    /// <summary>Takes a picture of the result card and opens the share sheet.</summary>
+    private async void OnShareResultClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            var shot = await ResultCard.CaptureAsync();
+            if (shot is null)
+                return;
+
+            var path = Path.Combine(FileSystem.CacheDirectory, $"gcar360-0-100-{DateTime.Now:yyyyMMdd-HHmmss}.png");
+            await using (var source = await shot.OpenReadAsync(ScreenshotFormat.Png))
+            await using (var target = File.Create(path))
+                await source.CopyToAsync(target);
+
+            await Share.Default.RequestAsync(new ShareFileRequest
+            {
+                Title = "GCar360 0–100",
+                File = new ShareFile(path)
+            });
+        }
+        catch
+        {
+            // Sharing is optional; never close the page because of it.
+        }
+    }
+
     protected override async void OnDisappearing()
     {
         base.OnDisappearing();

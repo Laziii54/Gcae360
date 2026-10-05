@@ -144,7 +144,13 @@
                             <DataTemplate x:DataType="m:BleDeviceItem">
                                 <VerticalStackLayout Spacing="0">
                                     <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" />
-                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,8">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,8" BackgroundColor="Transparent">
+                                        <!-- The whole row connects (name, icon or the button) -->
+                                        <Grid.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding x:DataType=vm:BluetoothViewModel, Source={RelativeSource AncestorType={x:Type vm:BluetoothViewModel}}, Path=ConnectCommand}"
+                                                CommandParameter="{Binding .}" />
+                                        </Grid.GestureRecognizers>
                                         <Path Data="M7,7 L17,17 L12,21 L12,3 L17,7 L7,17" Style="{StaticResource RowIconStyle}" />
                                         <Label
                                             Grid.Column="1"

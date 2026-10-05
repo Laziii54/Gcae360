@@ -529,6 +529,13 @@ namespace CarScanner.Services.OBD
             /// every frame the car broadcast with that ID. Nothing is sent to the car.
             /// </summary>
             Task<string> MonitorBroadcastAsync(int canId, bool extended29Bit, int milliseconds, CancellationToken token);
+
+            /// <summary>
+            /// Listens to the bus ("ATMA") for the given time and returns every frame
+            /// that passes the filter (filter/mask as in ATCF/ATCM; null = all frames).
+            /// Nothing is sent to the car. Used by the reset recorder.
+            /// </summary>
+            Task<string> MonitorRawAsync(int? filter, int? mask, bool extended29Bit, int milliseconds, CancellationToken token);
         }
 
         private sealed class DtcModuleSession : IDtcModuleSession
@@ -716,6 +723,55 @@ namespace CarScanner.Services.OBD
                     maxRetries: 1,
                     treatNegativeStatusAsError: false,
                     token).ConfigureAwait(false);
+            }
+
+            public async Task<string> MonitorRawAsync(int? filter, int? mask, bool extended29Bit, int milliseconds, CancellationToken token)
+            {
+                if (extended29Bit != _is29Bit)
+                {
+                    var number = GetCompatibleElmCanProtocolNumber(_originalProtocol, extended29Bit);
+                    await SetAsync($"ATSP{number}", token).ConfigureAwait(false);
+                    _is29Bit = extended29Bit;
+                    _protocolSwitched = extended29Bit != Is29BitCanProtocol(_originalProtocol);
+                    _header = null;
+                }
+
+                if (_caf != false)
+                {
+                    await SetAsync("ATCAF0", token).ConfigureAwait(false);
+                    _caf = false;
+                }
+
+                var width = extended29Bit ? 8 : 3;
+                if (filter is { } f && mask is { } m)
+                {
+                    await SetAsync($"ATCF{f.ToString($"X{width}")}", token).ConfigureAwait(false);
+                    await SetAsync($"ATCM{m.ToString($"X{width}")}", token).ConfigureAwait(false);
+                }
+                else
+                {
+                    // No receive address and no filter: every frame on the bus.
+                    await TryAsync("ATCRA", token).ConfigureAwait(false);
+                    await TryAsync("ATCF" + new string('0', width), token).ConfigureAwait(false);
+                    await TryAsync("ATCM" + new string('0', width), token).ConfigureAwait(false);
+                }
+
+                // The next normal request sets its own receive address again.
+                _receive = null;
+
+                try
+                {
+                    return await _elm.SendCommandInternalAsync(
+                        ObdMonitorCommand.Create("ATMA", milliseconds),
+                        TimeSpan.FromMilliseconds(milliseconds + 4000),
+                        maxRetries: 1,
+                        treatNegativeStatusAsError: false,
+                        token).ConfigureAwait(false);
+                }
+                finally
+                {
+                    await TryAsync("ATCRA", CancellationToken.None).ConfigureAwait(false);
+                }
             }
 
             public async Task<string> ListenBroadcastAsync(int canId, CancellationToken token)

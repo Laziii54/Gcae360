@@ -868,6 +868,54 @@ public sealed class LocalizationService
     private static readonly Dictionary<string, string> UiKaToEn =
         new(StringComparer.OrdinalIgnoreCase)
         {
+            // Fuel page — battery energy (EV / hybrid)
+            ["მოგზაურობების ისტორია"] = "Trip history",
+            ["ბატარეის ენერგია"] = "Battery energy",
+            ["◀ რეკუპერაცია"] = "◀ Regeneration",
+            ["ხარჯი ▶"] = "Use ▶",
+            ["ბატარეის ძაბვა"] = "Battery voltage",
+            ["დენი"] = "Current",
+            ["დამუხტვა (SoC)"] = "State of charge (SoC)",
+            ["ფასი 1 kWh (₾)"] = "Price per kWh (₾)",
+            ["ღირებულება"] = "Cost",
+            ["ლოგის კოპირება"] = "Copy log",
+            ["ბატარეის ტევადობა (kWh)"] = "Battery capacity (kWh)",
+            ["დამუხტვა"] = "Charge",
+            ["მიახლოებითი ხარჯი"] = "Approximate use",
+            // Home page (layout E)
+            ["DTC სკანი"] = "DTC scan",
+            ["სერვისი"] = "Service",
+            ["ემისია"] = "Emissions",
+            ["ECU ინფო"] = "ECU info",
+            ["აკუმულატორი"] = "Battery",
+            ["ჯანმრთელობა"] = "Health",
+            ["შესაძლებლობები"] = "Capabilities",
+            ["ანგარიში"] = "Report",
+            ["ყველა ფუნქცია"] = "All features",
+            ["შეცდომების სკანი"] = "Trouble code scan",
+            ["ძრავის შეცდომები და მათი წაშლა"] = "Engine trouble codes and clearing",
+            ["მანქანის ჯანმრთელობა"] = "Vehicle health",
+            ["ქულა და მოკლე შეჯამება"] = "Score and short summary",
+            ["შემოწმება ტექდათვალიერებამდე"] = "Check before the inspection",
+            ["მონაცემები"] = "Data",
+            ["სიჩქარე, ტემპერატურა, ბრუნები"] = "Speed, temperature, RPM",
+            ["ძაბვა და დამუხტვა"] = "Voltage and charging",
+            ["აჩქარების გაზომვა"] = "Acceleration timing",
+            ["ზეთი, ფილტრები, შეხსენებები"] = "Oil, filters, reminders",
+            ["შენახული შემოწმებები, PDF"] = "Saved checks, PDF",
+            ["ტექნიკური"] = "Technical",
+            ["რესეტის ჩაწერა"] = "Reset recorder",
+            ["ყიდვა და იმპორტი"] = "Buying and import",
+            ["განბაჟების კალკულატორი"] = "Customs calculator",
+            ["აქციზი 2026 წლის წესებით + ფასი და ტრანსპორტი"] = "2026 excise rules + price and shipping",
+            ["არ არის ზეთის ან Service due ღილაკი? ჩაიწერე, როგორ ნულდება მენიუდან — ბრძანებას შევამოწმებთ და ჩავრთავთ."] = "No oil or Service due button? Record how it is reset from the menu — we review the command and enable it.",
+            ["სენსორები, ემისია, ECU, ადაპტერი და სხვა"] = "Sensors, emissions, ECU, adapter and more",
+            ["მოდულების დიაგნოსტიკა"] = "Module diagnostics",
+            ["აღწერე პრობლემა ან დაასკანერე — AI გეტყვის მიზეზს"] = "Describe the problem or scan — AI tells you the cause",
+            ["ABS, აირბეგი, ძარა და სხვა"] = "ABS, airbag, body and more",
+            ["მანქანის შეფასება ყიდვამდე"] = "Check a car before buying",
+            ["ოდომეტრის შედარება მოდულებთან"] = "Compare the odometer across modules",
+            ["რეალური ხარჯი მგზავრობისას"] = "Real consumption while driving",
             ["AI დიაგნოსტიკა"] = "AI diagnostics",
             ["ინსტრუმენტები"] = "Tools",
             ["0–100 km/h ისტორია"] = "0–100 km/h history",
@@ -1441,6 +1489,7 @@ public sealed class LocalizationService
             ["Supported · ECU პასუხი არ არის"] = "Supported · no ECU reply",
             ["ყურადღება"] = "Attention",
             ["ნორმა"] = "Normal",
+            ["ნორმაში არ არის"] = "Not normal",
             ["NOT SUPPORTED · OEM დიაგნოსტიკა საჭიროა"] = "NOT SUPPORTED · OEM diagnostics required",
             ["რეალური ECU snapshot"] = "Real ECU snapshot",
             ["Bluetooth Classic • დაპეარებული"] = "Bluetooth Classic • paired",
@@ -2284,7 +2333,7 @@ public sealed class LocalizationService
 
     public bool IsEnglish =>
         Preferences.Default
-            .Get(LanguageKey, "ქართული")
+            .Get(LanguageKey, "English")
             .Equals(
                 "English",
                 StringComparison.OrdinalIgnoreCase);
@@ -2463,6 +2512,10 @@ public sealed class LocalizationService
 
     public static void RegisterDisplayTranslation()
     {
+        // OBD definitions/records (platform-independent) ask the language through this hook.
+        CarScanner.Services.OBD.ObdLang.IsEnglishProvider = static () =>
+            Preferences.Default.Get(LanguageKey, "English").Equals("English", StringComparison.OrdinalIgnoreCase);
+
 #if ANDROID
         Microsoft.Maui.Handlers.LabelHandler.Mapper.AppendToMapping(nameof(Label.Text), (handler, view) =>
         {
@@ -2485,6 +2538,32 @@ public sealed class LocalizationService
                 var translated = _current?.Translate(button.Text) ?? button.Text;
                 if (!string.Equals(translated, button.Text, StringComparison.Ordinal))
                     textView.Text = translated;
+            }
+        });
+#elif IOS || MACCATALYST
+        // Same display-only translation as Android: bound texts written in
+        // Georgian by view models are shown in English when English is chosen.
+        Microsoft.Maui.Handlers.LabelHandler.Mapper.AppendToMapping(nameof(Label.Text), (handler, view) =>
+        {
+            if (view is Label { TextType: TextType.Text, FormattedText: null } label &&
+                handler.PlatformView is UIKit.UILabel uiLabel &&
+                !string.IsNullOrWhiteSpace(label.Text))
+            {
+                var translated = _current?.Translate(label.Text) ?? label.Text;
+                if (!string.Equals(translated, label.Text, StringComparison.Ordinal))
+                    uiLabel.Text = translated;
+            }
+        });
+
+        Microsoft.Maui.Handlers.ButtonHandler.Mapper.AppendToMapping(nameof(Button.Text), (handler, view) =>
+        {
+            if (view is Button button &&
+                handler.PlatformView is UIKit.UIButton uiButton &&
+                !string.IsNullOrWhiteSpace(button.Text))
+            {
+                var translated = _current?.Translate(button.Text) ?? button.Text;
+                if (!string.Equals(translated, button.Text, StringComparison.Ordinal))
+                    uiButton.SetTitle(translated, UIKit.UIControlState.Normal);
             }
         });
 #endif

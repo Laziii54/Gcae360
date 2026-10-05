@@ -198,9 +198,9 @@ public sealed class LiveDataEngine : IAsyncDisposable
                     isSpeedOnlyPolling = _performanceSpeedOnly;
                 }
 
-                // Speed-only (camera) mode polls back to back: the adapter
-                // round trip itself is the rate limit.
-                var performanceFloor = TimeSpan.FromMilliseconds(isSpeedOnlyPolling ? 10 : 100);
+                // Performance modes poll back to back: the adapter round trip
+                // itself is the rate limit (speed is read on every tick).
+                var performanceFloor = TimeSpan.FromMilliseconds(10);
 
                 var profile = Preferences.Default.Get("polling", "Balanced");
                 var fast = isPerformancePolling
