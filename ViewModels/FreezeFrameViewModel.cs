@@ -110,6 +110,8 @@ public partial class FreezeFrameViewModel : BaseViewModel
     [RelayCommand]
     private async Task Read()
     {
+        try
+        {
         if (IsReading)
             return;
 
@@ -154,11 +156,18 @@ public partial class FreezeFrameViewModel : BaseViewModel
         {
             IsReading = false;
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "FreezeFrameViewModel.Read");
+        }
     }
 
     [RelayCommand]
     private async Task Copy()
     {
+        try
+        {
         if (_snapshot is null || !_snapshot.HasFrame)
             return;
 
@@ -178,6 +187,11 @@ public partial class FreezeFrameViewModel : BaseViewModel
         catch
         {
             StateDetail = L("კოპირება ვერ მოხერხდა.", "Copy failed.");
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "FreezeFrameViewModel.Copy");
         }
     }
 

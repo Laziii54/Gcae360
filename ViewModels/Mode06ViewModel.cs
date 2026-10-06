@@ -126,6 +126,8 @@ public partial class Mode06ViewModel : BaseViewModel
     [RelayCommand]
     private async Task Refresh()
     {
+        try
+        {
         if (IsBusy)
             return;
 
@@ -207,6 +209,11 @@ public partial class Mode06ViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "Mode06ViewModel.Refresh");
         }
     }
 }

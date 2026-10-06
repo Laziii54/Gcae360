@@ -48,17 +48,31 @@ public partial class VinHistoryViewModel(IVinHistoryDatabaseService database) : 
     [RelayCommand]
     private async Task DeleteAsync(VinSearchHistory item)
     {
+        try
+        {
         await database.DeleteHistoryAsync(item.Id);
         History.Remove(item);
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VinHistoryViewModel.DeleteAsync");
+        }
     }
 
     [RelayCommand]
     private async Task ClearAsync()
     {
+        try
+        {
         if (await Shell.Current.DisplayAlertAsync(Title, ClearText + "?", VinText.T("Yes"), VinText.T("No")))
         {
             await database.ClearHistoryAsync();
             History.Clear();
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VinHistoryViewModel.ClearAsync");
         }
     }
 }

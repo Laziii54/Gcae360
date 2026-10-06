@@ -14,7 +14,14 @@ public partial class AccelerationHistoryPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        try
+        {
         base.OnAppearing();
         await _viewModel.RefreshAsync();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AccelerationHistoryPage.OnAppearing");
+        }
     }
 }

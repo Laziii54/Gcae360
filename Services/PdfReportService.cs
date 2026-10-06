@@ -45,6 +45,62 @@ public sealed class PdfReportService
         return await WriteAsync(report, sections, path, L("ყიდვისწინა შემოწმება", "Pre-purchase check"), token);
     }
 
+    /// <summary>
+    /// Combined vehicle report: the overall verdict, every check of the
+    /// report (scan, battery, mileage …), then the detailed scan pages.
+    /// </summary>
+    public async Task<string> ExportCombinedAsync(
+        CarScanner.Services.Reports.VehicleReport report,
+        ObdScanReport? scan,
+        VehicleInfo? vehicle,
+        CancellationToken token = default)
+    {
+        var path = Path.Combine(FileSystem.CacheDirectory, $"GCar360-vehicle-report-{DateTime.Now:yyyyMMdd-HHmmss}.pdf");
+        var header = scan ?? new ObdScanReport
+        {
+            Vehicle = vehicle ?? new VehicleInfo { VIN = report.Vin },
+            StartedAt = report.StartedAt,
+            FinishedAt = report.UpdatedAt,
+            Protocol = "—"
+        };
+
+        static string StatusColor(CarScanner.Services.Reports.ReportStatus status) => status switch
+        {
+            CarScanner.Services.Reports.ReportStatus.Ok => "#1E8A4C",
+            CarScanner.Services.Reports.ReportStatus.Warning => "#D0701F",
+            CarScanner.Services.Reports.ReportStatus.Bad => "#C2372B",
+            _ => "#5D636B"
+        };
+
+        var score = CarScanner.Services.Reports.VehicleReportService.Score(report);
+        var ordered = report.Sections.OrderBy(section => section.At).ToList();
+        var sections = new List<ReportSection>();
+
+        var overview = new List<ReportLine>
+        {
+            new($"{L("შეფასება", "Score")}: {score}/100", true, score >= 85 ? "#1E8A4C" : score >= 60 ? "#D0701F" : "#C2372B"),
+            new($"{report.Vehicle}{(string.IsNullOrWhiteSpace(report.Vin) ? string.Empty : " · VIN " + report.Vin)}"),
+            new($"{report.StartedAt:dd.MM.yyyy HH:mm} – {report.UpdatedAt:HH:mm}")
+        };
+        overview.AddRange(ordered.Select((section, index) =>
+            new ReportLine($"{index + 2}. {section.Title}: {section.Summary}", false, StatusColor(section.Status))));
+        sections.Add(new ReportSection(L("1. შეჯამება", "1. Summary"), overview));
+
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            var section = ordered[i];
+            var lines = new List<ReportLine> { new(section.Summary, true, StatusColor(section.Status)) };
+            lines.AddRange(section.Lines.Select(line =>
+                new ReportLine(string.IsNullOrWhiteSpace(line.Label) ? line.Value : $"{line.Label}: {line.Value}")));
+            sections.Add(new ReportSection($"{i + 2}. {section.Title} ({section.At:HH:mm})", lines));
+        }
+
+        if (scan is not null)
+            sections.AddRange(BuildSections(scan));
+
+        return await WriteAsync(header, sections, path, L("მანქანის ანგარიში", "Vehicle report"), token);
+    }
+
     private static async Task<string> WriteAsync(
         ObdScanReport report,
         List<ReportSection> sections,

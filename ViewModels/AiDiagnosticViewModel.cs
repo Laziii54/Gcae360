@@ -71,11 +71,14 @@ public partial class AiDiagnosticViewModel : BaseViewModel
             MainThread.BeginInvokeOnMainThread(() =>
                 AiThinkingText = _localization.IsEnglish ? "AI is analyzing..." : "AI აანალიზებს...");
         Title = "AI Diagnostic";
+        RestoreSession();
     }
 
     [RelayCommand]
     private async Task Analyze()
     {
+        try
+        {
         if (IsBusy) return;
         if (!await EnsureProAsync()) return;
 
@@ -141,8 +144,11 @@ public partial class AiDiagnosticViewModel : BaseViewModel
                     _vehicle,
                     _codes,
                     _sensors);
+                AddAiToReport(Result);
 
-                ChatMessages.Add("AI: სკანი დასრულდა. დამისვი კითხვა ამ კონკრეტული მონაცემების შესახებ.");
+                ChatMessages.Add(_localization.IsEnglish
+                    ? "AI: The scan is complete. Ask me anything about this data."
+                    : "AI: სკანი დასრულდა. დამისვი კითხვა ამ კონკრეტული მონაცემების შესახებ.");
                 SetStage(100, "AI დიაგნოსტიკა მზადაა — დასკვნები არის სავარაუდო, არა საბოლოო რემონტის დადასტურება.");
             }
             catch (Exception ex)
@@ -166,12 +172,53 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         {
             IsAnalyzing = false;
             IsBusy = false;
+            SaveSession();
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AiDiagnosticViewModel.Analyze");
+        }
+    }
+
+    /// <summary>The AI conclusion becomes the "ai" part of the combined report.</summary>
+    private void AddAiToReport(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return;
+
+        var english = _localization.IsEnglish;
+        var paragraphs = text.Replace("\r", string.Empty)
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(line => line.TrimStart('*', '#', ' '))
+            .Where(line => line.Length > 0)
+            .ToList();
+
+        var section = new CarScanner.Services.Reports.ReportSectionItem
+        {
+            Kind = "ai",
+            Icon = "AI",
+            Title = english ? "AI conclusion" : "AI დასკვნა",
+            Status = CarScanner.Services.Reports.ReportStatus.Info,
+            Summary = paragraphs.FirstOrDefault() is { } first ? (first.Length > 160 ? first[..160] + "…" : first) : string.Empty
+        };
+
+        var total = 0;
+        foreach (var paragraph in paragraphs.Skip(1))
+        {
+            if ((total += paragraph.Length) > 2500)
+                break;
+            section.Lines.Add(new() { Label = string.Empty, Value = paragraph });
+        }
+
+        CarScanner.Services.Reports.VehicleReportService.Instance?.AddOrReplace(section);
     }
 
     [RelayCommand]
     private async Task SendMessage()
     {
+        try
+        {
         var question = ChatInput?.Trim();
         if (string.IsNullOrWhiteSpace(question) || IsBusy) return;
         if (!await EnsureProAsync()) return;
@@ -182,7 +229,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
             return;
         }
 
-        ChatMessages.Add($"თქვენ: {question}");
+        ChatMessages.Add(AiDiagnosticService.AnswerInEnglish(question) ? $"You: {question}" : $"თქვენ: {question}");
         ChatInput = string.Empty;
         try
         {
@@ -207,8 +254,135 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         {
             IsAiThinking = false;
             IsBusy = false;
+            SaveSession();
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AiDiagnosticViewModel.SendMessage");
         }
     }
+
+    // =========================================================
+    // CHAT SESSION (kept when leaving the page and after a restart)
+    // =========================================================
+
+    private static string SessionPath =>
+        Path.Combine(FileSystem.AppDataDirectory, "ai_chat_session.json");
+
+    /// <summary>The last scan and its chat; replaced only by a new "Start AI Diagnostic".</summary>
+    private sealed class AiChatSession
+    {
+        public DateTime SavedAt { get; set; }
+        public VehicleInfo? Vehicle { get; set; }
+        public List<ErrorCode> Codes { get; set; } = new();
+        public List<SensorValue> Sensors { get; set; } = new();
+        public List<string> Messages { get; set; } = new();
+        public string Result { get; set; } = string.Empty;
+        public string ConnectionStatus { get; set; } = string.Empty;
+        public string VehicleSummary { get; set; } = string.Empty;
+        public string VinText { get; set; } = string.Empty;
+        public string ModuleSummary { get; set; } = string.Empty;
+        public string DtcSummary { get; set; } = string.Empty;
+        public string LiveDataSummary { get; set; } = string.Empty;
+        public string EmissionsSummary { get; set; } = string.Empty;
+        public string LastScanText { get; set; } = string.Empty;
+        public string EvidenceSummary { get; set; } = string.Empty;
+        public string FreezeFrameSummary { get; set; } = string.Empty;
+        public string ScanStage { get; set; } = string.Empty;
+    }
+
+    private void SaveSession()
+    {
+        if (_vehicle is null)
+            return;
+
+        try
+        {
+            var session = new AiChatSession
+            {
+                SavedAt = DateTime.Now,
+                Vehicle = _vehicle,
+                Codes = _codes.Select(code => new ErrorCode
+                {
+                    Code = code.Code,
+                    TitleKa = code.TitleKa,
+                    TitleEn = code.TitleEn,
+                    DescriptionKa = code.DescriptionKa,
+                    DescriptionEn = code.DescriptionEn,
+                    PossibleCausesKa = code.PossibleCausesKa,
+                    PossibleCausesEn = code.PossibleCausesEn,
+                    SymptomsKa = code.SymptomsKa,
+                    SymptomsEn = code.SymptomsEn,
+                    ChecksKa = code.ChecksKa,
+                    Severity = code.Severity,
+                    Status = code.Status
+                }).ToList(),
+                Sensors = _sensors.ToList(),
+                Messages = ChatMessages.TakeLast(60).ToList(),
+                Result = Result,
+                ConnectionStatus = ConnectionStatus,
+                VehicleSummary = VehicleSummary,
+                VinText = VinText,
+                ModuleSummary = ModuleSummary,
+                DtcSummary = DtcSummary,
+                LiveDataSummary = LiveDataSummary,
+                EmissionsSummary = EmissionsSummary,
+                LastScanText = LastScanText,
+                EvidenceSummary = EvidenceSummary,
+                FreezeFrameSummary = FreezeFrameSummary,
+                ScanStage = ScanStage
+            };
+
+            File.WriteAllText(SessionPath, JsonSerializer.Serialize(session, SessionJson));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"AI chat save failed: {ex.Message}");
+        }
+    }
+
+    private void RestoreSession()
+    {
+        try
+        {
+            if (!File.Exists(SessionPath))
+                return;
+
+            var session = JsonSerializer.Deserialize<AiChatSession>(File.ReadAllText(SessionPath), SessionJson);
+            if (session?.Vehicle is null || DateTime.Now - session.SavedAt > TimeSpan.FromDays(30))
+                return;
+
+            _vehicle = session.Vehicle;
+            _codes = session.Codes;
+            _sensors = session.Sensors;
+            foreach (var message in session.Messages)
+                ChatMessages.Add(message);
+
+            Result = session.Result;
+            ConnectionStatus = session.ConnectionStatus;
+            VehicleSummary = session.VehicleSummary;
+            VinText = session.VinText;
+            ModuleSummary = session.ModuleSummary;
+            DtcSummary = session.DtcSummary;
+            LiveDataSummary = session.LiveDataSummary;
+            EmissionsSummary = session.EmissionsSummary;
+            LastScanText = session.LastScanText;
+            EvidenceSummary = session.EvidenceSummary;
+            FreezeFrameSummary = session.FreezeFrameSummary;
+            ScanStage = session.ScanStage;
+        }
+        catch (Exception ex)
+        {
+            // A damaged file must never block the page; start empty instead.
+            System.Diagnostics.Debug.WriteLine($"AI chat restore failed: {ex.Message}");
+        }
+    }
+
+    private static readonly JsonSerializerOptions SessionJson = new()
+    {
+        IgnoreReadOnlyProperties = true
+    };
 
     [RelayCommand]
     private Task OpenLiveData() => Shell.Current.GoToAsync(nameof(Views.LiveDataPage));
@@ -216,6 +390,8 @@ public partial class AiDiagnosticViewModel : BaseViewModel
     [RelayCommand]
     private async Task RunGuidedFuelTrimTest()
     {
+        try
+        {
         if (IsBusy) return;
         if (!await EnsureProAsync()) return;
 
@@ -281,11 +457,18 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         {
             IsBusy = false;
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AiChatSession.RunGuidedFuelTrimTest");
+        }
     }
 
     [RelayCommand]
     private async Task SaveBeforeRepairBaseline()
     {
+        try
+        {
         if (!await EnsureProAsync()) return;
         if (_vehicle is null || IsUnknownVin(_vehicle.VIN))
         {
@@ -310,11 +493,18 @@ public partial class AiDiagnosticViewModel : BaseViewModel
 
         Preferences.Default.Set(RepairBaselinePreferenceKey, JsonSerializer.Serialize(baseline));
         RepairVerificationSummary = $"Before Repair baseline შენახულია: {baseline.CapturedAt:dd.MM.yyyy HH:mm} · DTC: {baseline.DtcCodes.Count} · PID: {baseline.Sensors.Count}.";
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AiChatSession.SaveBeforeRepairBaseline");
+        }
     }
 
     [RelayCommand]
     private async Task VerifyRepair()
     {
+        try
+        {
         if (IsBusy) return;
         if (!await EnsureProAsync()) return;
 
@@ -358,6 +548,11 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AiChatSession.VerifyRepair");
         }
     }
 

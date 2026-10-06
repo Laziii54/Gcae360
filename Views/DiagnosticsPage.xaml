@@ -89,6 +89,25 @@
 
                 </Grid>
 
+                <!-- All-module scan (ABS, airbag, body …): the only entry point to ModuleScanPage. -->
+                <Border
+                    BackgroundColor="{DynamicResource CardBg}"
+                    Stroke="{DynamicResource BorderColor}"
+                    StrokeThickness="1"
+                    StrokeShape="RoundRectangle 12">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding OpenFullVehicleScanCommand}" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,12">
+                        <Path Data="M4,8 L4,4 L8,4 M16,4 L20,4 L20,8 M20,16 L20,20 L16,20 M8,20 L4,20 L4,16 M8,12 L16,12" Style="{StaticResource RowIconStyle}" Stroke="{DynamicResource Primary}" VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="ყველა მოდულის სკანი" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                            <Label Text="ABS, აირბეგი, ძარა, გადაცემათა კოლოფი…" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                </Border>
+
                 <Button
                     Text="რამდენი დამიჯდება?"
                     Command="{Binding OpenRepairCostsCommand}"
@@ -176,7 +195,7 @@
                                 <Label Text="{Binding DisplayTitle}" Style="{StaticResource ReportBodyStyle}" FontAttributes="Bold" />
                                 <Label Text="{Binding DisplayDescription}" Style="{StaticResource ReportBodyStyle}" FontSize="13" />
 
-                                <Label Text="Recommended checks" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" Margin="0,6,0,0" />
+                                <Label Text="რეკომენდებული შემოწმება" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" Margin="0,6,0,0" />
                                 <Label AutomationId="DynamicTextDtcChecks" Text="{Binding DisplayChecks}" Style="{StaticResource ReportMetaStyle}" FontSize="13" />
 
                                 <Label Text="შესაძლო მიზეზები" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" Margin="0,6,0,0" />

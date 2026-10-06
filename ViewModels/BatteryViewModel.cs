@@ -35,6 +35,8 @@ public partial class BatteryViewModel : BaseViewModel
     [RelayCommand]
     private async Task Refresh()
     {
+        try
+        {
         if (IsBusy) return;
 
         try
@@ -73,6 +75,11 @@ public partial class BatteryViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "BatteryViewModel.Refresh");
         }
     }
 

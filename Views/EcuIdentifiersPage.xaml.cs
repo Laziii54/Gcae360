@@ -11,6 +11,8 @@ public partial class EcuIdentifiersPage:ContentPage
 
     protected override async void OnAppearing()
     {
+        try
+        {
         base.OnAppearing();
         ApplyUiLocalization();
         if (BindingContext is EcuIdentifiersViewModel viewModel)
@@ -22,13 +24,25 @@ public partial class EcuIdentifiersPage:ContentPage
             }
             catch { }
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "EcuIdentifiersPage.OnAppearing");
+        }
     }
 
     protected override async void OnDisappearing()
     {
+        try
+        {
         base.OnDisappearing();
         if (BindingContext is EcuIdentifiersViewModel viewModel)
             await viewModel.StopPidUpdatesAsync();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "EcuIdentifiersPage.OnDisappearing");
+        }
     }
 
     private void ApplyUiLocalization()

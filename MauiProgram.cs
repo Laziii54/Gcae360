@@ -312,7 +312,6 @@ public static class MauiProgram
 
         builder.Services.AddSingleton<BluetoothViewModel>();
 
-        builder.Services.AddTransient<DiagnosticsViewModel>();
 
         builder.Services.AddSingleton<LiveDataViewModel>();
         builder.Services.AddTransient<RecordingHistoryViewModel>();
@@ -340,9 +339,14 @@ public static class MauiProgram
 
         builder.Services.AddTransient<ProViewModel>();
 
-        builder.Services.AddTransient<AiDiagnosticViewModel>();
+        builder.Services.AddSingleton<AiDiagnosticViewModel>();
 
-        builder.Services.AddTransient<FuelViewModel>();
+        builder.Services.AddSingleton<FuelViewModel>();
+        builder.Services.AddSingleton<GraphStudioViewModel>();
+        builder.Services.AddSingleton<CarScanner.Services.Coding.CodingService>();
+        builder.Services.AddSingleton<CodingViewModel>();
+        builder.Services.AddSingleton<CarScanner.Services.Reports.VehicleReportService>();
+        builder.Services.AddSingleton<VehicleReportViewModel>();
 
         builder.Services.AddTransient<ServiceViewModel>();
         builder.Services.AddTransient<CalendarViewModel>();
@@ -408,7 +412,6 @@ public static class MauiProgram
         builder.Services.AddTransient<LiveDataPage>();
         builder.Services.AddTransient<RecordingHistoryPage>();
 
-        builder.Services.AddTransient<DiagnosticsPage>();
 
         builder.Services.AddTransient<HistoryPage>();
 
@@ -439,6 +442,10 @@ public static class MauiProgram
         builder.Services.AddTransient<AiPage>();
 
         builder.Services.AddTransient<FuelPage>();
+        builder.Services.AddTransient<GraphStudioPage>();
+        builder.Services.AddTransient<CodingPage>();
+        builder.Services.AddTransient<VehicleReportPage>();
+        builder.Services.AddTransient<GraphChannelsPage>();
 
         builder.Services.AddTransient<ServicePage>();
         builder.Services.AddTransient<CalendarPage>();

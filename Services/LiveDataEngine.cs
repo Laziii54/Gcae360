@@ -25,6 +25,7 @@ public sealed class LiveDataEngine : IAsyncDisposable
     private bool _performanceMode;
     private bool _performanceSpeedOnly;
     private bool _fuelAnalyticsEnabled;
+    private int[] _graphPids = Array.Empty<int>();
     private CancellationTokenSource? _cts;
     private Task? _task;
     private bool _disposed;
@@ -43,7 +44,37 @@ public sealed class LiveDataEngine : IAsyncDisposable
     public event EventHandler<LiveDataModel>? LiveDataUpdated;
     public event EventHandler<IReadOnlyList<SensorValue>>? LiveValuesUpdated;
     public LiveDataEngine(OBDService obd, IBluetoothService bluetooth, ILogger<LiveDataEngine> logger) { _obd = obd; _bluetooth = bluetooth; _logger = logger; _bluetooth.ConnectionChanged += OnConnectionChanged; }
-    private void OnConnectionChanged(object? sender, bool connected) { if (!connected) _cts?.Cancel(); }
+    private volatile bool _resumeAfterReconnect;
+
+    /// <summary>
+    /// Link lost: stop polling, but remember it was running. When the adapter
+    /// reconnects by itself, polling (and a running fuel trip) continues.
+    /// </summary>
+    private void OnConnectionChanged(object? sender, bool connected)
+    {
+        if (!connected)
+        {
+            _resumeAfterReconnect = IsRunning || KeepRunningForTrip;
+            _cts?.Cancel();
+            return;
+        }
+
+        if (!_resumeAfterReconnect)
+            return;
+
+        _resumeAfterReconnect = false;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await StartAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Live data could not resume after reconnect.");
+            }
+        });
+    }
 
     /// <summary>
     /// Adds up to three non-core PIDs to the live polling loop. Core speed,
@@ -59,6 +90,23 @@ public sealed class LiveDataEngine : IAsyncDisposable
                 .Distinct()
                 .Take(3)
                 .ToArray();
+        }
+    }
+
+    /// <summary>
+    /// Graph Studio: poll exactly these PIDs (plus the core signals) on every
+    /// tick and skip the slow round-robin, so every graph line stays smooth.
+    /// Empty list = normal polling.
+    /// </summary>
+    public void SetGraphPids(IEnumerable<int>? pids)
+    {
+        lock (_dashboardGate)
+        {
+            _graphPids = pids?
+                .Where(pid => !CorePids.Contains(pid))
+                .Distinct()
+                .Take(10)
+                .ToArray() ?? Array.Empty<int>();
         }
     }
 
@@ -109,9 +157,16 @@ public sealed class LiveDataEngine : IAsyncDisposable
         finally { _gate.Release(); }
     }
 
-    public async Task StopAsync()
+    /// <summary>
+    /// True while a fuel/energy trip records. Other pages (live data, 0–100 …)
+    /// may then ask to stop, but polling keeps running until the trip ends.
+    /// </summary>
+    public bool KeepRunningForTrip { get; set; }
+
+    public async Task StopAsync(bool force = false)
     {
         if (_disposed) return;
+        if (KeepRunningForTrip && !force) return;
         await _gate.WaitAsync().ConfigureAwait(false);
         try
         {
@@ -132,11 +187,16 @@ public sealed class LiveDataEngine : IAsyncDisposable
                 var started = DateTime.UtcNow;
                 try
                 {
+                    // After the adapter reconnected by itself it must be set up again.
+                    if (!_obd.IsInitialized)
+                        await _obd.InitializeAsync(token).ConfigureAwait(false);
+
                     bool performanceMode;
                     bool performanceSpeedOnly;
                     bool fuelAnalyticsEnabled;
                     int[] extras;
                     int? focusedPid;
+                    int[] graphPids;
                     lock (_dashboardGate)
                     {
                         performanceMode = _performanceMode;
@@ -144,6 +204,7 @@ public sealed class LiveDataEngine : IAsyncDisposable
                         fuelAnalyticsEnabled = _fuelAnalyticsEnabled;
                         extras = _dashboardExtras;
                         focusedPid = _focusedPid;
+                        graphPids = _graphPids;
                     }
 
                     var data = performanceMode
@@ -156,8 +217,11 @@ public sealed class LiveDataEngine : IAsyncDisposable
                     var fuelPids = fuelAnalyticsEnabled && !performanceMode
                         ? GetFuelAnalyticsPids()
                         : Array.Empty<int>();
+                    var graphMode = graphPids.Length > 0 && !performanceMode;
                     var priorityPids = performanceMode
                         ? Array.Empty<int>()
+                        : graphMode
+                            ? fuelPids.Concat(graphPids).Distinct().ToArray()
                         : focusedPid.HasValue
                             ? fuelPids.Concat(extras).Append(focusedPid.Value).Distinct().Take(4).ToArray()
                             : fuelPids.Concat(extras).Distinct().Take(4).ToArray();
@@ -166,7 +230,7 @@ public sealed class LiveDataEngine : IAsyncDisposable
                     // successive ticks instead of only ever reading the
                     // priority set above. Skipped in performance mode so the
                     // 0-60 measurement loop stays speed-first.
-                    var rotationBatch = performanceMode
+                    var rotationBatch = performanceMode || graphMode
                         ? Array.Empty<int>()
                         : NextRotationBatch(priorityPids);
 
@@ -289,5 +353,5 @@ public sealed class LiveDataEngine : IAsyncDisposable
         Value = value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)
     };
 
-    public async ValueTask DisposeAsync() { if (_disposed) return; _disposed = true; await StopAsync().ConfigureAwait(false); _gate.Dispose(); }
+    public async ValueTask DisposeAsync() { if (_disposed) return; _disposed = true; await StopAsync(force: true).ConfigureAwait(false); _gate.Dispose(); }
 }

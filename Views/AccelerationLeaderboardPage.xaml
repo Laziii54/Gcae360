@@ -6,123 +6,290 @@
              x:DataType="vm:AccelerationLeaderboardViewModel"
              BackgroundColor="{DynamicResource PageBg}"
              Title="{Binding Title}">
-    <ScrollView>
-        <VerticalStackLayout Padding="16,14,16,32" Spacing="12">
-            <Label Text="{Binding Heading}" Style="{StaticResource PageTitleStyle}" />
-            <Label Text="{Binding Subtitle}" FontSize="13" TextColor="{DynamicResource SubTextColor}" Margin="2,-7,2,2" />
 
-            <!-- Ranked test -->
-            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="7">
-                <Button Text="{Binding ZeroHundredText}" Command="{Binding ShowZeroHundredCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="18" HeightRequest="38" MinimumHeightRequest="38" FontSize="11" FontAttributes="Bold" Padding="5,0">
-                    <Button.Triggers>
-                        <DataTrigger TargetType="Button" Binding="{Binding IsZeroHundredSelected}" Value="True">
-                            <Setter Property="BackgroundColor" Value="{DynamicResource TextColor}" />
-                            <Setter Property="TextColor" Value="{DynamicResource PageBg}" />
-                            <Setter Property="BorderColor" Value="{DynamicResource TextColor}" />
+    <ContentPage.Resources>
+        <!-- Option in the filter sheet. -->
+        <DataTemplate x:Key="FilterOptionTemplate" x:DataType="vm:LeaderboardFilterOption">
+            <Border Padding="16,0" HeightRequest="42" Margin="0,0,8,8" StrokeThickness="1.5" StrokeShape="RoundRectangle 21"
+                    BackgroundColor="{DynamicResource CardBg}" Stroke="{DynamicResource BorderColor}">
+                <Border.Triggers>
+                    <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                        <Setter Property="BackgroundColor" Value="{DynamicResource Primary}" />
+                        <Setter Property="Stroke" Value="{DynamicResource Primary}" />
+                    </DataTrigger>
+                </Border.Triggers>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding TapCommand}" />
+                </Border.GestureRecognizers>
+                <Label Text="{Binding Text}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" TextColor="{DynamicResource TextColor}">
+                    <Label.Triggers>
+                        <DataTrigger TargetType="Label" Binding="{Binding IsSelected}" Value="True">
+                            <Setter Property="TextColor" Value="White" />
                         </DataTrigger>
-                    </Button.Triggers>
-                </Button>
-                <Button Grid.Column="1" Text="{Binding ZeroSixtyText}" Command="{Binding ShowZeroSixtyCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="18" HeightRequest="38" MinimumHeightRequest="38" FontSize="11" FontAttributes="Bold" Padding="5,0">
-                    <Button.Triggers>
-                        <DataTrigger TargetType="Button" Binding="{Binding IsZeroSixtySelected}" Value="True">
-                            <Setter Property="BackgroundColor" Value="{DynamicResource TextColor}" />
-                            <Setter Property="TextColor" Value="{DynamicResource PageBg}" />
-                            <Setter Property="BorderColor" Value="{DynamicResource TextColor}" />
-                        </DataTrigger>
-                    </Button.Triggers>
-                </Button>
-                <Button Grid.Column="2" Text="{Binding QuarterMileText}" Command="{Binding ShowQuarterMileCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="18" HeightRequest="38" MinimumHeightRequest="38" FontSize="11" FontAttributes="Bold" Padding="5,0">
-                    <Button.Triggers>
-                        <DataTrigger TargetType="Button" Binding="{Binding IsQuarterMileSelected}" Value="True">
-                            <Setter Property="BackgroundColor" Value="{DynamicResource TextColor}" />
-                            <Setter Property="TextColor" Value="{DynamicResource PageBg}" />
-                            <Setter Property="BorderColor" Value="{DynamicResource TextColor}" />
-                        </DataTrigger>
-                    </Button.Triggers>
-                </Button>
-            </Grid>
+                    </Label.Triggers>
+                </Label>
+            </Border>
+        </DataTemplate>
+    </ContentPage.Resources>
 
-            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="7">
-                <Button Text="{Binding AllText}" Command="{Binding ShowAllCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="18" HeightRequest="38" MinimumHeightRequest="38" FontSize="11" FontAttributes="Bold" Padding="5,0">
-                    <Button.Triggers>
-                        <DataTrigger TargetType="Button" Binding="{Binding IsAllSelected}" Value="True">
-                            <Setter Property="BackgroundColor" Value="{DynamicResource Primary}" />
-                            <Setter Property="TextColor" Value="White" />
-                            <Setter Property="BorderColor" Value="{DynamicResource Primary}" />
-                        </DataTrigger>
-                    </Button.Triggers>
-                </Button>
-                <Button Grid.Column="1" Text="{Binding MyModelText}" Command="{Binding ShowMyModelCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="18" HeightRequest="38" MinimumHeightRequest="38" FontSize="11" FontAttributes="Bold" Padding="5,0">
-                    <Button.Triggers>
-                        <DataTrigger TargetType="Button" Binding="{Binding IsMyModelSelected}" Value="True">
-                            <Setter Property="BackgroundColor" Value="{DynamicResource Primary}" />
-                            <Setter Property="TextColor" Value="White" />
-                            <Setter Property="BorderColor" Value="{DynamicResource Primary}" />
-                        </DataTrigger>
-                    </Button.Triggers>
-                </Button>
-                <Button Grid.Column="2" Text="{Binding ThisMonthText}" Command="{Binding ShowThisMonthCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="18" HeightRequest="38" MinimumHeightRequest="38" FontSize="11" FontAttributes="Bold" Padding="5,0">
-                    <Button.Triggers>
-                        <DataTrigger TargetType="Button" Binding="{Binding IsThisMonthSelected}" Value="True">
-                            <Setter Property="BackgroundColor" Value="{DynamicResource Primary}" />
-                            <Setter Property="TextColor" Value="White" />
-                            <Setter Property="BorderColor" Value="{DynamicResource Primary}" />
-                        </DataTrigger>
-                    </Button.Triggers>
-                </Button>
-            </Grid>
+    <Grid>
+        <ScrollView>
+            <VerticalStackLayout Padding="16,14,16,32" Spacing="14">
 
-            <!-- My place: always visible -->
-            <Border IsVisible="{Binding HasMyPlace}" Padding="14,12" BackgroundColor="{DynamicResource CardBg}" Stroke="{DynamicResource Primary}" StrokeThickness="1.5" StrokeShape="RoundRectangle 12">
-                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="2">
-                    <Label Grid.RowSpan="2" Text="{Binding MyPlaceRank}" FontSize="24" FontAttributes="Bold" TextColor="{DynamicResource Primary}" VerticalOptions="Center" />
-                    <Label Grid.Column="1" Text="{Binding MyPlaceCaption}" FontSize="11" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
-                    <Label Grid.Column="2" Text="{Binding MyPlaceTime}" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
-                    <Label Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding MyPlaceDetail}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                <!-- ===== Title + filter (☰) button ===== -->
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                        <Label Text="{Binding Heading}" Style="{StaticResource PageTitleStyle}" />
+                        <Label Text="{Binding ActiveFilterText}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource Primary}"
+                               LineBreakMode="TailTruncation" />
+                    </VerticalStackLayout>
+                    <Grid Grid.Column="1" WidthRequest="50" HeightRequest="50" VerticalOptions="Center">
+                        <Border StrokeThickness="1" Stroke="{DynamicResource BorderColor}" BackgroundColor="{DynamicResource CardBg}"
+                                StrokeShape="RoundRectangle 14">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding OpenFiltersCommand}" />
+                            </Border.GestureRecognizers>
+                            <Path Data="M5,7 L19,7 M5,12 L19,12 M5,17 L19,17" Stroke="{DynamicResource TextColor}" StrokeThickness="2.2"
+                                  StrokeLineCap="Round" HorizontalOptions="Center" VerticalOptions="Center" WidthRequest="24" HeightRequest="24" />
+                        </Border>
+                        <Border IsVisible="{Binding HasActiveFilters}" WidthRequest="20" HeightRequest="20" StrokeThickness="0"
+                                StrokeShape="RoundRectangle 10" BackgroundColor="{DynamicResource Primary}"
+                                HorizontalOptions="End" VerticalOptions="Start" Margin="0,-6,-6,0" InputTransparent="True">
+                            <Label Text="{Binding ActiveFilterCount}" FontSize="11" FontAttributes="Bold" TextColor="White"
+                                   HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                    </Grid>
                 </Grid>
-            </Border>
 
-            <Button Text="{Binding PublishText}" Command="{Binding PublishLatestCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" Style="{StaticResource PrimaryButtonStyle}" />
-            <!-- My result is under review: video -->
-            <Button IsVisible="{Binding HasVideoToSend}" Text="{Binding SendVideoText}" Command="{Binding SendVideoCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="46" FontAttributes="Bold" FontSize="13" />
-            <Border IsVisible="{Binding NeedsVideo}" Padding="12,10" BackgroundColor="{DynamicResource CardBg}" Stroke="#E0B34A" StrokeThickness="1.5" StrokeShape="RoundRectangle 12">
-                <Label Text="{Binding VideoHintText}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-            </Border>
-            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" />
-            <Label Text="{Binding StatusMessage}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                <!-- ===== Podium: places 1–3 ===== -->
+                <Grid IsVisible="{Binding HasPodium}" ColumnDefinitions="*,*,*" ColumnSpacing="8" HeightRequest="214">
+                    <!-- 2nd -->
+                    <Border Grid.Column="0" VerticalOptions="End" HeightRequest="186" Padding="8,12" StrokeThickness="1"
+                            Stroke="{DynamicResource BorderColor}" BackgroundColor="{DynamicResource CardBg}" StrokeShape="RoundRectangle 16">
+                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                            <Grid WidthRequest="48" HeightRequest="48" HorizontalOptions="Center">
+                                <Border StrokeThickness="3" Stroke="#A7B0BA" BackgroundColor="{DynamicResource PageBg}" StrokeShape="RoundRectangle 24">
+                                    <Label Text="{Binding Second.Initial}" FontSize="18" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
+                                           HorizontalOptions="Center" VerticalOptions="Center" />
+                                </Border>
+                            </Grid>
+                            <Label Text="2" FontSize="13" FontAttributes="Bold" TextColor="#8A939D" HorizontalOptions="Center" />
+                            <Label Text="{Binding Second.UserName}" FontSize="12.5" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
+                                   HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
+                            <Label Text="{Binding Second.VehicleModel}" FontSize="10.5" TextColor="{DynamicResource SubTextColor}"
+                                   HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="2" />
+                            <Label HorizontalOptions="Center">
+                                <Label.FormattedText>
+                                    <FormattedString>
+                                        <Span Text="{Binding Second.TimeText}" FontSize="19" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                        <Span Text=" " />
+                                        <Span Text="{Binding Second.SecondsUnit}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                    </FormattedString>
+                                </Label.FormattedText>
+                            </Label>
+                        </VerticalStackLayout>
+                    </Border>
 
-            <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasRows}">
-                <VerticalStackLayout BindableLayout.ItemsSource="{Binding Rows}" Spacing="0">
-                    <BindableLayout.ItemTemplate>
-                        <DataTemplate x:DataType="vm:AccelerationLeaderboardRow">
-                            <VerticalStackLayout Spacing="0">
-                                <VerticalStackLayout.Triggers>
-                                    <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding IsMine}" Value="True">
-                                        <Setter Property="BackgroundColor" Value="{DynamicResource ProBadgeBg}" />
-                                    </DataTrigger>
-                                </VerticalStackLayout.Triggers>
-                                <Grid ColumnDefinitions="42,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10" RowSpacing="2" Padding="12,11">
-                                    <Label Text="{Binding Rank}" Grid.RowSpan="3" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource Primary}" VerticalOptions="Center" />
-                                    <Label Grid.Column="1" Text="{Binding UserName}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
-                                    <Label Grid.Column="2" Text="{Binding TimeText}" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
-                                    <Label Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding VehicleModel}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
-                                    <Label Grid.Row="2" Grid.Column="1" Text="{Binding VerificationText}" FontSize="10" FontAttributes="Bold" TextColor="{Binding VerificationColor}" />
-                                    <Label Grid.Row="2" Grid.Column="2" Text="{Binding DateText}" FontSize="10" TextColor="{DynamicResource SubTextColor}" />
-                                </Grid>
-                                <BoxView Style="{StaticResource RowDividerStyle}" Margin="42,0,0,0" />
-                            </VerticalStackLayout>
-                        </DataTemplate>
-                    </BindableLayout.ItemTemplate>
+                    <!-- 1st -->
+                    <Border Grid.Column="1" VerticalOptions="End" HeightRequest="214" Padding="8,12" StrokeThickness="0"
+                            BackgroundColor="#0F1B33" StrokeShape="RoundRectangle 16">
+                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                            <Label Text="👑" FontSize="18" HorizontalOptions="Center" />
+                            <Grid WidthRequest="56" HeightRequest="56" HorizontalOptions="Center">
+                                <Border StrokeThickness="3" Stroke="#E8B323" BackgroundColor="#1C2B4A" StrokeShape="RoundRectangle 28">
+                                    <Label Text="{Binding First.Initial}" FontSize="21" FontAttributes="Bold" TextColor="White"
+                                           HorizontalOptions="Center" VerticalOptions="Center" />
+                                </Border>
+                            </Grid>
+                            <Label Text="{Binding First.UserName}" FontSize="13" FontAttributes="Bold" TextColor="White"
+                                   HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
+                            <Label Text="{Binding First.VehicleModel}" FontSize="10.5" TextColor="#9FB3D9"
+                                   HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="2" />
+                            <Label HorizontalOptions="Center">
+                                <Label.FormattedText>
+                                    <FormattedString>
+                                        <Span Text="{Binding First.TimeText}" FontSize="23" FontAttributes="Bold" TextColor="#F5C842" />
+                                        <Span Text=" " />
+                                        <Span Text="{Binding First.SecondsUnit}" FontSize="11" TextColor="#9FB3D9" />
+                                    </FormattedString>
+                                </Label.FormattedText>
+                            </Label>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- 3rd -->
+                    <Border Grid.Column="2" VerticalOptions="End" HeightRequest="172" Padding="8,12" StrokeThickness="1"
+                            Stroke="{DynamicResource BorderColor}" BackgroundColor="{DynamicResource CardBg}" StrokeShape="RoundRectangle 16">
+                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                            <Grid WidthRequest="44" HeightRequest="44" HorizontalOptions="Center">
+                                <Border StrokeThickness="3" Stroke="#C7834A" BackgroundColor="{DynamicResource PageBg}" StrokeShape="RoundRectangle 22">
+                                    <Label Text="{Binding Third.Initial}" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
+                                           HorizontalOptions="Center" VerticalOptions="Center" />
+                                </Border>
+                            </Grid>
+                            <Label Text="3" FontSize="13" FontAttributes="Bold" TextColor="#B0703A" HorizontalOptions="Center" />
+                            <Label Text="{Binding Third.UserName}" FontSize="12.5" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
+                                   HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
+                            <Label Text="{Binding Third.VehicleModel}" FontSize="10.5" TextColor="{DynamicResource SubTextColor}"
+                                   HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
+                            <Label HorizontalOptions="Center">
+                                <Label.FormattedText>
+                                    <FormattedString>
+                                        <Span Text="{Binding Third.TimeText}" FontSize="18" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                        <Span Text=" " />
+                                        <Span Text="{Binding Third.SecondsUnit}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                    </FormattedString>
+                                </Label.FormattedText>
+                            </Label>
+                        </VerticalStackLayout>
+                    </Border>
+                </Grid>
+
+                <!-- ===== My place ===== -->
+                <Border IsVisible="{Binding HasMyPlace}" Padding="16,14" BackgroundColor="{DynamicResource CardBg}"
+                        Stroke="{DynamicResource Primary}" StrokeThickness="1.5" StrokeShape="RoundRectangle 16">
+                    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="2">
+                        <Border Grid.RowSpan="2" WidthRequest="52" HeightRequest="52" StrokeThickness="0" StrokeShape="RoundRectangle 14"
+                                BackgroundColor="{DynamicResource Primary}" VerticalOptions="Center">
+                            <Label Text="{Binding MyPlaceRank}" FontSize="17" FontAttributes="Bold" TextColor="White"
+                                   HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <Label Grid.Column="1" Text="{Binding MyPlaceCaption}" FontSize="11" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
+                        <Label Grid.Column="2" Text="{Binding MyPlaceTime}" FontSize="18" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                        <Label Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding MyPlaceDetail}" FontSize="12"
+                               TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                    </Grid>
+                </Border>
+
+                <Button Text="{Binding PublishText}" Command="{Binding PublishLatestCommand}"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
+                        Style="{StaticResource PrimaryButtonStyle}" CornerRadius="14" />
+                <Button IsVisible="{Binding HasVideoToSend}" Text="{Binding SendVideoText}" Command="{Binding SendVideoCommand}"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" BackgroundColor="Transparent"
+                        TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1.5"
+                        CornerRadius="14" HeightRequest="46" FontAttributes="Bold" FontSize="13" />
+                <Border IsVisible="{Binding NeedsVideo}" Padding="12,10" BackgroundColor="{DynamicResource CardBg}" Stroke="#E0B34A"
+                        StrokeThickness="1.5" StrokeShape="RoundRectangle 12">
+                    <Label Text="{Binding VideoHintText}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                </Border>
+                <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" />
+                <Label Text="{Binding StatusMessage}" FontSize="12" TextColor="{DynamicResource SubTextColor}"
+                       HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+
+                <!-- ===== Places 4+ (or all, when fewer than three) ===== -->
+                <Label Text="{Binding ResultsCountText}" Style="{StaticResource SectionCaptionStyle}" IsVisible="{Binding HasAnyResult}" />
+                <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasRows}">
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding Rows}" Spacing="0">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:AccelerationLeaderboardRow">
+                                <VerticalStackLayout Spacing="0">
+                                    <VerticalStackLayout.Triggers>
+                                        <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding IsMine}" Value="True">
+                                            <Setter Property="BackgroundColor" Value="{DynamicResource ProBadgeBg}" />
+                                        </DataTrigger>
+                                    </VerticalStackLayout.Triggers>
+                                    <Grid ColumnDefinitions="30,40,*,Auto" ColumnSpacing="10" Padding="14,12">
+                                        <Label Text="{Binding Rank}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}"
+                                               VerticalOptions="Center" HorizontalTextAlignment="Center" />
+                                        <Border Grid.Column="1" WidthRequest="38" HeightRequest="38" StrokeThickness="0" StrokeShape="RoundRectangle 19"
+                                                BackgroundColor="{DynamicResource PageBg}" VerticalOptions="Center">
+                                            <Label Text="{Binding Initial}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
+                                                   HorizontalOptions="Center" VerticalOptions="Center" />
+                                        </Border>
+                                        <VerticalStackLayout Grid.Column="2" Spacing="1" VerticalOptions="Center">
+                                            <Label Text="{Binding UserName}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
+                                                   LineBreakMode="TailTruncation" />
+                                            <Label Text="{Binding VehicleModel}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                                            <Label Text="{Binding VerificationText}" IsVisible="{Binding HasVerification}" FontSize="10"
+                                                   FontAttributes="Bold" TextColor="{Binding VerificationColor}" />
+                                        </VerticalStackLayout>
+                                        <VerticalStackLayout Grid.Column="3" Spacing="1" VerticalOptions="Center">
+                                            <Label HorizontalOptions="End">
+                                                <Label.FormattedText>
+                                                    <FormattedString>
+                                                        <Span Text="{Binding TimeText}" FontSize="18" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                                        <Span Text=" " />
+                                                        <Span Text="{Binding SecondsUnit}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                                    </FormattedString>
+                                                </Label.FormattedText>
+                                            </Label>
+                                            <Label Text="{Binding DateText}" FontSize="10" TextColor="{DynamicResource SubTextColor}" HorizontalOptions="End" />
+                                        </VerticalStackLayout>
+                                    </Grid>
+                                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="94,0,0,0" />
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border IsVisible="{Binding HasAnyResult, Converter={StaticResource InverseBoolConverter}}" Style="{StaticResource ListCardStyle}" Padding="16,22">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="🏁" FontSize="28" HorizontalOptions="Center" />
+                        <Label Text="{Binding EmptyText}" FontSize="13" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- ===== Rules (collapsible) ===== -->
+                <Border Style="{StaticResource ListCardStyle}" Padding="14,12">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ToggleRulesCommand}" />
+                    </Border.GestureRecognizers>
+                    <VerticalStackLayout Spacing="8">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                            <Path Data="M12,3 L20,6 L20,12 C20,17 16.5,20 12,21 C7.5,20 4,17 4,12 L4,6 Z" Style="{StaticResource RowIconStyle}" VerticalOptions="Center" />
+                            <Label Grid.Column="1" Text="{Binding RulesTitle}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                            <Label Grid.Column="2" Text="⌄" FontSize="16" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
+                        </Grid>
+                        <Label IsVisible="{Binding IsRulesOpen}" Text="{Binding RulesText}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- ===== Filter sheet ===== -->
+        <Grid IsVisible="{Binding IsFilterOpen}">
+            <BoxView Color="#000000" Opacity="0.45">
+                <BoxView.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding CloseFiltersCommand}" />
+                </BoxView.GestureRecognizers>
+            </BoxView>
+            <Border VerticalOptions="End" Padding="20,10,20,26" StrokeThickness="0" BackgroundColor="{DynamicResource CardBg}"
+                    StrokeShape="RoundRectangle 24,24,0,0">
+                <VerticalStackLayout Spacing="16">
+                    <BoxView WidthRequest="40" HeightRequest="5" CornerRadius="3" Color="{DynamicResource BorderColor}" HorizontalOptions="Center" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="{Binding FilterTitle}" FontSize="20" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="{Binding ResetText}" Command="{Binding ResetFiltersCommand}" BackgroundColor="Transparent"
+                                TextColor="{DynamicResource Primary}" FontAttributes="Bold" FontSize="13" BorderWidth="0" Padding="0" />
+                    </Grid>
+
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="{Binding TestSectionText}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
+                        <FlexLayout Wrap="Wrap" BindableLayout.ItemsSource="{Binding TestOptions}" BindableLayout.ItemTemplate="{StaticResource FilterOptionTemplate}" />
+                    </VerticalStackLayout>
+
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="{Binding VehicleSectionText}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
+                        <FlexLayout Wrap="Wrap" BindableLayout.ItemsSource="{Binding VehicleOptions}" BindableLayout.ItemTemplate="{StaticResource FilterOptionTemplate}" />
+                    </VerticalStackLayout>
+
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="{Binding PeriodSectionText}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
+                        <FlexLayout Wrap="Wrap" BindableLayout.ItemsSource="{Binding PeriodOptions}" BindableLayout.ItemTemplate="{StaticResource FilterOptionTemplate}" />
+                    </VerticalStackLayout>
+
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                            <Label Text="{Binding VerifiedOnlyText}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                            <Label Text="{Binding VerifiedOnlyHint}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" />
+                        </VerticalStackLayout>
+                        <Switch Grid.Column="1" IsToggled="{Binding VerifiedOnly}" OnColor="{DynamicResource Primary}" VerticalOptions="Center" />
+                    </Grid>
+
+                    <Button Text="{Binding ShowResultsText}" Command="{Binding CloseFiltersCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="14" />
                 </VerticalStackLayout>
             </Border>
-
-            <Label IsVisible="{Binding HasRows, Converter={StaticResource InverseBoolConverter}}" Text="{Binding EmptyText}" FontSize="13" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" Margin="0,20" />
-            <Border Style="{StaticResource ListCardStyle}" Padding="14,12">
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
-                    <Path Data="M12,3 L20,6 L20,12 C20,17 16.5,20 12,21 C7.5,20 4,17 4,12 L4,6 Z" Style="{StaticResource RowIconStyle}" VerticalOptions="Start" />
-                    <Label Grid.Column="1" Text="{Binding RulesText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                </Grid>
-            </Border>
-        </VerticalStackLayout>
-    </ScrollView>
+        </Grid>
+    </Grid>
 </ContentPage>

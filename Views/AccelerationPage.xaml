@@ -115,7 +115,7 @@
                         <Label Text="ბოლო შედეგი" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
                         <Label Grid.Column="1" Text="GCar360" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" />
                     </Grid>
-                    <Label AutomationId="DynamicTextAccelerationVehicle" Text="{Binding VehicleName}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" LineBreakMode="TailTruncation" />
+                    <Label AutomationId="DynamicTextAccelerationVehicle" Text="{Binding AccelerationResultVehicle}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" LineBreakMode="TailTruncation" />
                     <Label AutomationId="DynamicTextAccelerationResult" Text="{Binding AccelerationResult}" TextColor="{DynamicResource TextColor}" FontSize="26" FontAttributes="Bold" />
                     <Label AutomationId="DynamicTextAccelerationStatus" Text="{Binding AccelerationStatus}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
                     <Label AutomationId="DynamicTextAccelerationMetrics" Text="{Binding AccelerationMetrics}" TextColor="{DynamicResource SubTextColor}" FontSize="11" Margin="0,4,0,0" />

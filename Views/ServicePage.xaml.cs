@@ -35,6 +35,8 @@ public partial class ServicePage : ContentPage
 
     protected override async void OnAppearing()
     {
+        try
+        {
         base.OnAppearing();
         _viewModel.ReloadMaintenanceParts();
 
@@ -50,11 +52,18 @@ public partial class ServicePage : ContentPage
         {
             // Refresh reports its own errors on the page.
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ServicePage.OnAppearing");
+        }
     }
 
     /// <summary>A search value tapped: confirm it is what the dashboard shows.</summary>
     private async void OnSearchHitTapped(object? sender, TappedEventArgs e)
     {
+        try
+        {
         if ((sender as BindableObject)?.BindingContext is not ServiceSearchHitRow row || !row.CanConfirm)
             return;
 
@@ -67,6 +76,11 @@ public partial class ServicePage : ContentPage
             english ? "No" : "არა");
         if (yes)
             await _viewModel.ConfirmSearchHitAsync(row);
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ServicePage.OnSearchHitTapped");
+        }
     }
 
     protected override void OnDisappearing()

@@ -68,14 +68,15 @@
         <CollectionView.Footer>
             <VerticalStackLayout Padding="16,14,16,56" Spacing="12">
                 <Border Style="{StaticResource ListCardStyle}" Padding="14,12">
-                    <VerticalStackLayout Spacing="10">
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                            <Path Data="M4,19 L20,19 M4,19 L4,5 M7,15 L11,10 L14,13 L19,7" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="Graph Studio" TextColor="{DynamicResource TextColor}" FontSize="15" FontAttributes="Bold" VerticalOptions="Center" />
-                            <Button Grid.Column="2" Text="Reset" Command="{Binding ResetGraphCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="10" Padding="14,0" HeightRequest="34" MinimumHeightRequest="34" FontSize="12" VerticalOptions="Center" />
-                        </Grid>
-                        <controls:TelemetryGraphView Samples="{Binding GraphSamples}" Pids="{Binding GraphPidIds}" Title="რეალური მონაცემების გრაფიკი" HeightRequest="220" />
-                    </VerticalStackLayout>
+                    <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnGraphStudioTapped" /></Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                        <Path Data="M4,19 L20,19 M4,19 L4,5 M7,15 L11,10 L14,13 L19,7" Style="{StaticResource RowIconStyle}" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="Graph Studio-ში გახსნა" TextColor="{DynamicResource TextColor}" FontSize="15" FontAttributes="Bold" />
+                            <Label Text="ცალკე ფანჯრები, შედარება, ბადე, X–Y, ჩაწერა" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
                 </Border>
                 <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" />
             </VerticalStackLayout>

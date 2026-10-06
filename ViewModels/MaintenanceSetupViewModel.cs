@@ -102,6 +102,8 @@ public partial class MaintenanceSetupViewModel : BaseViewModel
     [RelayCommand]
     private async Task Save()
     {
+        try
+        {
         var key = _tracker.CurrentKey;
         var saved = 0;
 
@@ -150,6 +152,11 @@ public partial class MaintenanceSetupViewModel : BaseViewModel
         }
 
         await Shell.Current.GoToAsync("..");
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "MaintenanceSetupViewModel.Save");
+        }
     }
 
     private void Say(string text)

@@ -18,12 +18,19 @@ public partial class HomePage : ContentPage
 
     protected override async void OnAppearing()
     {
+        try
+        {
         base.OnAppearing();
         ApplyUiLocalization();
         UpdateLanguageToggle();
 
         if (BindingContext is HomeViewModel viewModel)
             await viewModel.RefreshConnectionSummaryAsync(forceVinRefresh: true);
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomePage.OnAppearing");
+        }
     }
 
     private void OnLanguageChanged(object? sender, EventArgs eventArgs)
@@ -57,6 +64,8 @@ public partial class HomePage : ContentPage
     /// <summary>Copies the VIN; shows "copied" in green for 2 seconds.</summary>
     private async void OnCopyVinTapped(object? sender, TappedEventArgs e)
     {
+        try
+        {
         if (BindingContext is not HomeViewModel { CopyableVin: { } vin })
             return;
 
@@ -86,6 +95,11 @@ public partial class HomePage : ContentPage
                 .ConvertFromInvariantString("M9,9 L20,9 L20,20 L9,20 Z M5,15 L5,4 L16,4")!;
             CopyVinIcon.SetDynamicResource(Microsoft.Maui.Controls.Shapes.Shape.StrokeProperty, "Primary");
             CopyVinButton.SetDynamicResource(Border.StrokeProperty, "BorderColor");
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomePage.OnCopyVinTapped");
         }
     }
 

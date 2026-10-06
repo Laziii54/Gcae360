@@ -23,6 +23,8 @@ public partial class RecordingHistoryViewModel : BaseViewModel
     [RelayCommand]
     public async Task Load()
     {
+        try
+        {
         if (IsBusy)
             return;
 
@@ -40,11 +42,18 @@ public partial class RecordingHistoryViewModel : BaseViewModel
         {
             IsBusy = false;
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "RecordingHistoryViewModel.Load");
+        }
     }
 
     [RelayCommand]
     private async Task ShareCsv(RecordingSession? session)
     {
+        try
+        {
         if (session is null)
             return;
         var path = await _recordings.CreateCsvExportAsync(session);
@@ -54,11 +63,18 @@ public partial class RecordingHistoryViewModel : BaseViewModel
             return;
         }
         await Share.Default.RequestAsync(new ShareFileRequest { Title = "Live Data CSV", File = new ShareFile(path) });
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "RecordingHistoryViewModel.ShareCsv");
+        }
     }
 
     [RelayCommand]
     private async Task ShareJson(RecordingSession? session)
     {
+        try
+        {
         if (session is null)
             return;
         var path = await _recordings.CreateJsonExportAsync(session);
@@ -68,6 +84,11 @@ public partial class RecordingHistoryViewModel : BaseViewModel
             return;
         }
         await Share.Default.RequestAsync(new ShareFileRequest { Title = "Live Data JSON", File = new ShareFile(path) });
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "RecordingHistoryViewModel.ShareJson");
+        }
     }
 
     [RelayCommand]
@@ -99,6 +120,8 @@ public partial class RecordingHistoryViewModel : BaseViewModel
     [RelayCommand]
     private async Task Delete(RecordingSession? session)
     {
+        try
+        {
         if (session is null)
             return;
 
@@ -114,5 +137,10 @@ public partial class RecordingHistoryViewModel : BaseViewModel
         Sessions.Remove(session);
         EmptyMessage = Sessions.Count == 0 ? "ჩაწერილი Live Data სესიები ჯერ არ არის." : string.Empty;
         StatusMessage = "ჩანაწერი წაიშალა.";
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "RecordingHistoryViewModel.Delete");
+        }
     }
 }

@@ -68,6 +68,8 @@ public partial class PrePurchaseAiViewModel : BaseViewModel
     [RelayCommand]
     private async Task Send()
     {
+        try
+        {
         var text = Input?.Trim();
         if (string.IsNullOrWhiteSpace(text) || IsThinking)
             return;
@@ -78,6 +80,11 @@ public partial class PrePurchaseAiViewModel : BaseViewModel
 
         Input = string.Empty;
         await AskAsync(result, text, showQuestion: true);
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "PrePurchaseAiViewModel.Send");
+        }
     }
 
     private async Task AskAsync(PrePurchaseResult result, string question, bool showQuestion)

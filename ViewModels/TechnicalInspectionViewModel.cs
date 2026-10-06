@@ -114,6 +114,8 @@ public partial class TechnicalInspectionViewModel : BaseViewModel
     [RelayCommand]
     private async Task Check()
     {
+        try
+        {
         if (IsBusy)
             return;
 
@@ -139,6 +141,12 @@ public partial class TechnicalInspectionViewModel : BaseViewModel
         {
             IsBusy = false;
             RebuildAll();
+            AddInspectionToReport();
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "TechnicalInspectionViewModel.Check");
         }
     }
 
@@ -180,6 +188,37 @@ public partial class TechnicalInspectionViewModel : BaseViewModel
 
         _moduleFaults = safety.SelectMany(m => m.Codes.Select(c => (m, c))).ToList();
         _moduleState = _moduleFaults.Count > 0 ? ModuleState.Faults : ModuleState.Clean;
+    }
+
+    /// <summary>The OBD inspection check becomes the "inspection" part of the combined report.</summary>
+    private void AddInspectionToReport()
+    {
+        if (_lastResult is not { } result || result.Verdict is TechnicalInspectionVerdict.NotChecked or TechnicalInspectionVerdict.Unavailable)
+            return;
+
+        var section = new CarScanner.Services.Reports.ReportSectionItem
+        {
+            Kind = "inspection",
+            Icon = "✓",
+            Title = En ? "Technical inspection (OBD)" : "ტექდათვალიერება (OBD)",
+            Status = result.Verdict switch
+            {
+                TechnicalInspectionVerdict.Pass => CarScanner.Services.Reports.ReportStatus.Ok,
+                TechnicalInspectionVerdict.Dangerous => CarScanner.Services.Reports.ReportStatus.Bad,
+                _ => CarScanner.Services.Reports.ReportStatus.Warning
+            },
+            Summary = string.Join(" · ", new[] { ResultAnswer, ResultTitle }.Where(part => !string.IsNullOrWhiteSpace(part) && part != "—"))
+        };
+
+        section.Lines.Add(new() { Label = En ? "Readiness monitors" : "მზადყოფნის მონიტორები", Value = $"{result.CompleteMonitorCount}/{result.SupportedMonitorCount}" });
+        if (result.MilOn is { } mil)
+            section.Lines.Add(new() { Label = "MIL", Value = mil ? (En ? "ON" : "ჩართულია") : (En ? "OFF" : "გამორთულია") });
+        foreach (var issue in result.Issues)
+            section.Lines.Add(new() { Label = string.IsNullOrWhiteSpace(issue.Code) ? (En ? issue.CategoryEn : issue.CategoryKa) : issue.Code, Value = En ? issue.TitleEn : issue.TitleKa });
+        if (!string.IsNullOrWhiteSpace(ResultExplanation))
+            section.Lines.Add(new() { Label = string.Empty, Value = ResultExplanation });
+
+        CarScanner.Services.Reports.VehicleReportService.Instance?.AddOrReplace(section);
     }
 
     /// <summary>Called when the page appears (e.g. after returning from the module scan).</summary>

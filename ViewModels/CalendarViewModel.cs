@@ -18,8 +18,12 @@ public partial class CalendarViewModel : BaseViewModel
 
     public ObservableCollection<CalendarDayItem> Days { get; } = new();
     public ObservableCollection<CalendarReminderItem> SelectedReminders { get; } = new();
-    public IReadOnlyList<string> Categories { get; } =
-        new[] { "ზეთი", "დაზღვევა", "ტექდათვალიერება", "ფილტრი", "საბურავები", "სხვა" };
+    private static readonly string[] CategoryNames =
+        { "ზეთი", "დაზღვევა", "ტექდათვალიერება", "ფილტრი", "საბურავები", "სხვა" };
+
+    // Picker items are not drawn through a Label, so translate them here.
+    public IReadOnlyList<string> Categories =>
+        CategoryNames.Select(name => LocalizationService.T(name)).ToArray();
 
     [ObservableProperty] private string monthTitle = string.Empty;
     [ObservableProperty] private string selectedDateTitle = string.Empty;
@@ -40,11 +44,14 @@ public partial class CalendarViewModel : BaseViewModel
     {
         _calendar = calendar;
         _localization = localization;
+        SelectedCategory = LocalizationService.T("დაზღვევა");
     }
 
     [RelayCommand]
     private async Task Load()
     {
+        try
+        {
         if (IsBusy) return;
         try
         {
@@ -55,6 +62,11 @@ public partial class CalendarViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "CalendarViewModel.Load");
         }
     }
 
@@ -96,6 +108,8 @@ public partial class CalendarViewModel : BaseViewModel
     [RelayCommand]
     private async Task AddReminder()
     {
+        try
+        {
         ValidationMessage = string.Empty;
         if (string.IsNullOrWhiteSpace(NewTitle))
         {
@@ -111,11 +125,18 @@ public partial class CalendarViewModel : BaseViewModel
         _selectedDate = NewDueDate.Date;
         _visibleMonth = new DateTime(NewDueDate.Year, NewDueDate.Month, 1);
         await Load();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "CalendarViewModel.AddReminder");
+        }
     }
 
     [RelayCommand]
     private async Task Complete(CalendarReminderItem? row)
     {
+        try
+        {
         if (row is null) return;
         var page = Shell.Current?.CurrentPage ?? Application.Current?.Windows.FirstOrDefault()?.Page;
         if (page is not null)
@@ -130,6 +151,11 @@ public partial class CalendarViewModel : BaseViewModel
 
         await _calendar.CompleteAsync(row.Model);
         await Load();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "CalendarViewModel.Complete");
+        }
     }
 
     private void BuildMonth()

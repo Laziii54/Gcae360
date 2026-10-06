@@ -3,6 +3,7 @@ using CarScanner.Services;
 using CarScanner.Services.Energy;
 using CarScanner.Database;
 using CarScanner.Services.Localization;
+using CarScanner.Services.Background;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
@@ -105,12 +106,15 @@ public partial class FuelViewModel : BaseViewModel
     [RelayCommand]
     private async Task Start()
     {
+        try
+        {
         if (!await _pro.EnsureProAsync())
         {
             await Shell.Current.DisplayAlertAsync(CarScanner.Services.Localization.LocalizationService.T("PRO ფუნქცია"), CarScanner.Services.Localization.LocalizationService.T("Fuel consumption statistics ხელმისაწვდომია PRO-ში."), CarScanner.Services.Localization.LocalizationService.T("კარგი"));
             return;
         }
 
+        IsTripSummaryVisible = false;
         Subscribe();
         _engine.SetFuelAnalyticsEnabled(true);
         if (_tripStartedAt is null)
@@ -119,37 +123,70 @@ public partial class FuelViewModel : BaseViewModel
             _tripStartedAt = DateTime.Now;
         }
         await _engine.StartAsync();
+        _engine.KeepRunningForTrip = true;
         StartEnergyLoop();
         Status = RunningStatus();
+
+        // Keep recording when the app goes to the background or the screen turns off.
+        TripKeepAlive.Start(
+            L("GCar360 — მოგზაურობა იწერება", "GCar360 — trip is recording"),
+            L("შეეხე აპის გასახსნელად", "Tap to open the app"));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "FuelViewModel.Start");
+        }
     }
 
     [RelayCommand]
     private async Task Pause()
     {
+        try
+        {
         StopEnergyLoop();
-        await _engine.StopAsync();
+        _engine.KeepRunningForTrip = false;
+        TripKeepAlive.Stop();
+        await _engine.StopAsync(force: true);
         Unsubscribe();
         _engine.SetFuelAnalyticsEnabled(false);
         _last = null;
         Status = _localization.IsEnglish ? "Paused" : "დაპაუზებულია";
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "FuelViewModel.Pause");
+        }
     }
 
     [RelayCommand]
     private async Task Stop()
     {
+        try
+        {
         StopEnergyLoop();
-        await _engine.StopAsync();
+        _engine.KeepRunningForTrip = false;
+        TripKeepAlive.Stop();
+        await _engine.StopAsync(force: true);
         Unsubscribe();
         _engine.SetFuelAnalyticsEnabled(false);
+        if (_tripStartedAt is not null)
+            BuildTripSummary();
         var saveResult = await SaveCurrentTripIfUsableAsync();
         Status = _localization.IsEnglish
             ? "Stopped"
             : saveResult ?? "გაჩერებულია";
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "FuelViewModel.Stop");
+        }
     }
 
     [RelayCommand]
     private async Task Reset()
     {
+        try
+        {
         if (!await _pro.EnsureProAsync())
         {
             await Shell.Current.DisplayAlertAsync(CarScanner.Services.Localization.LocalizationService.T("PRO ფუნქცია"), CarScanner.Services.Localization.LocalizationService.T("Fuel consumption statistics ხელმისაწვდომია PRO-ში."), CarScanner.Services.Localization.LocalizationService.T("კარგი"));
@@ -158,6 +195,11 @@ public partial class FuelViewModel : BaseViewModel
 
         ResetCurrentTrip();
         RefreshPresentation();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "FuelViewModel.Reset");
+        }
     }
 
     private void ResetCurrentTrip()
@@ -231,7 +273,8 @@ public partial class FuelViewModel : BaseViewModel
             _latestFuelLevelPercent = data.FuelLevel;
 
         var now = data.Timestamp;
-        var seconds = _last is null ? 0 : Math.Clamp((now - _last.Value).TotalSeconds, 0, 5);
+        // Battery reads share the adapter, so samples can be a few seconds apart.
+        var seconds = _last is null ? 0 : Math.Clamp((now - _last.Value).TotalSeconds, 0, 10);
         _last = now;
         var measurement = FuelConsumptionService.ResolveFuelRate(
             _latestFuelRateLitersPerHour,
@@ -249,6 +292,7 @@ public partial class FuelViewModel : BaseViewModel
             {
                 var travelledMeters = data.Speed / 3.6d * seconds;
                 _distanceMeters += travelledMeters;
+                TrackDrive(data.HasRpm, data.Rpm, true, travelledMeters);
                 _movingSeconds += seconds;
                 if (data.HasRpm && data.Rpm < 100)
                     _electricMovingSeconds += seconds;
@@ -270,7 +314,12 @@ public partial class FuelViewModel : BaseViewModel
             else
             {
                 _idleSeconds += seconds;
+                TrackDrive(data.HasRpm, data.Rpm, true, 0);
             }
+        }
+        else if (data.HasRpm)
+        {
+            TrackDrive(true, data.Rpm, false, 0);
         }
 
         if (data.HasRpm && seconds > 0)
@@ -330,6 +379,11 @@ public partial class FuelViewModel : BaseViewModel
             ? $"₾{_fuelLiters * price:0.00}"
             : "ფასის შეყვანის შემდეგ გამოჩნდება";
         RefreshEnergyPresentation();
+
+        if (TripKeepAlive.IsActive)
+            TripKeepAlive.Update(_mode == EnergyMode.Electric
+                ? $"{Distance} · {TripDurationText}"
+                : $"{Distance} · {L("საშუალო", "Average")} {Average} · {FuelUsed}");
     }
 
     partial void OnFuelPriceTextChanged(string value)
@@ -341,6 +395,8 @@ public partial class FuelViewModel : BaseViewModel
     [RelayCommand]
     private async Task AddRefuel()
     {
+        try
+        {
         if (!await _pro.EnsureProAsync())
         {
             await Shell.Current.DisplayAlertAsync(CarScanner.Services.Localization.LocalizationService.T("PRO ფუნქცია"), CarScanner.Services.Localization.LocalizationService.T("Refuel Log ხელმისაწვდომია PRO-ში."), CarScanner.Services.Localization.LocalizationService.T("კარგი"));
@@ -381,6 +437,11 @@ public partial class FuelViewModel : BaseViewModel
         RefuelOdometerText = string.Empty;
         RefuelNotes = string.Empty;
         await LoadRefuelHistoryAsync();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "FuelViewModel.AddRefuel");
+        }
     }
 
     public async Task LoadRefuelHistoryAsync()
@@ -549,15 +610,17 @@ public partial class FuelViewModel : BaseViewModel
             : $"შენახულია {_tripHistoryRecords.Count} მოგზაურობა ამ VIN-ზე.";
     }
 
-    public async Task OnPageDisappearingAsync()
+    public Task OnPageDisappearingAsync()
     {
-        StopEnergyLoop();
+        // A started (or paused) trip keeps going when the user leaves the page
+        // or the app; only Stop ends it. This view model is a singleton, so the
+        // page shows the same trip again when it is reopened.
         if (_tripStartedAt is not null)
-            await Stop();
-        else
-        {
-            Unsubscribe();
-            _engine.SetFuelAnalyticsEnabled(false);
-        }
+            return Task.CompletedTask;
+
+        StopEnergyLoop();
+        Unsubscribe();
+        _engine.SetFuelAnalyticsEnabled(false);
+        return Task.CompletedTask;
     }
 }

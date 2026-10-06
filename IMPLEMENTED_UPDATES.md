@@ -7,11 +7,9 @@
 - Device-local `AccelerationRun` history stored in SQLite.
 - A run starts only after a 0–3 km/h sample; a missing speed PID cannot manufacture a result.
 
-## Promo and AI protection
+## AI protection
 
-- Promo codes are configured only on the server through `GCS_PROMO_CODES`; no production promo code is embedded in the app source.
-- Server storage keeps only a SHA-256 code digest, enforces expiry, a redemption limit and one redemption per user ID.
-- Example format: `WELCOME30|30|500|2027-01-31`.
+- Promo codes were removed. PRO is granted only from the admin panel (Users → PRO-ს მიცემა).
 - AI requests now include the app's user identifier and the backend serves them only to an active PRO entitlement.
 
 ## Reliability and interface

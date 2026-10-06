@@ -37,6 +37,8 @@ public partial class QrReportViewModel : BaseViewModel
     [RelayCommand]
     public async Task Create()
     {
+        try
+        {
         if (IsBusy || _session.Draft is null) return;
         _cancellation?.Cancel();
         _cancellation?.Dispose();
@@ -66,24 +68,43 @@ public partial class QrReportViewModel : BaseViewModel
             System.Diagnostics.Debug.WriteLine($"QR report creation failed: {ex}");
         }
         finally { IsBusy = false; }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "QrReportViewModel.Create");
+        }
     }
 
     [RelayCommand]
     private async Task Share()
     {
+        try
+        {
         if (!HasQr) return;
         await Microsoft.Maui.ApplicationModel.DataTransfer.Share.Default.RequestAsync(new ShareTextRequest
         {
-            Title = "GCar360 — QR Report",
+            Title = _localization.IsEnglish ? "GCar360 — QR Report" : "GCar360 — QR ანგარიში",
             Text = PublicUrl
         });
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "QrReportViewModel.Share");
+        }
     }
 
     [RelayCommand]
     private async Task Open()
     {
+        try
+        {
         if (HasQr && Uri.TryCreate(PublicUrl, UriKind.Absolute, out var uri))
             await Launcher.Default.OpenAsync(uri);
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "QrReportViewModel.Open");
+        }
     }
 
     public void Cancel() => _cancellation?.Cancel();

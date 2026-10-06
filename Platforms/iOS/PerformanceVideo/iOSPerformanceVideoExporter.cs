@@ -104,7 +104,7 @@ public sealed class iOSPerformanceVideoExporter : IPerformanceVideoExporter
         overlay.AddSublayer(bar);
 
         var columnWidth = bar.Bounds.Width / PerformanceSplitTracker.Targets.Length;
-        var dynamicLayers = new List<CATextLayer>();
+        var splitSlots = new List<TextSlot>();
         for (var i = 0; i < PerformanceSplitTracker.Targets.Length; i++)
         {
             if (i > 0)
@@ -125,14 +125,13 @@ public sealed class iOSPerformanceVideoExporter : IPerformanceVideoExporter
                 false);
             bar.AddSublayer(title);
 
-            var value = TextLayer(
-                "—",
+            splitSlots.Add(new TextSlot(
+                bar,
                 new CGRect(columnWidth * i, barHeight * 0.12, columnWidth, barHeight * 0.42),
                 unit * 0.048,
                 style.AccentColor,
-                true);
-            bar.AddSublayer(value);
-            dynamicLayers.Add(value);
+                true,
+                CATextLayerAlignmentMode.Center));
         }
 
         var speedPanelWidth = unit * 0.39;
@@ -149,15 +148,13 @@ public sealed class iOSPerformanceVideoExporter : IPerformanceVideoExporter
         };
         overlay.AddSublayer(speedPanel);
 
-        var speed = TextLayer(
-            "—",
+        var speedSlot = new TextSlot(
+            speedPanel,
             new CGRect(unit * 0.025, unit * 0.015, speedPanelWidth * 0.66, speedPanelHeight * 0.86),
             unit * 0.17,
             style.TextColor,
             true,
             CATextLayerAlignmentMode.Left);
-        speedPanel.AddSublayer(speed);
-        dynamicLayers.Add(speed);
 
         speedPanel.AddSublayer(TextLayer(
             telemetry.SpeedUnit,
@@ -168,8 +165,8 @@ public sealed class iOSPerformanceVideoExporter : IPerformanceVideoExporter
             CATextLayerAlignmentMode.Left));
 
         var frames = telemetry.Snapshot();
-        AddTextAnimation(
-            speed,
+        AddTimedText(
+            speedSlot,
             frames,
             durationSeconds,
             frame => frame.Speed?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "—");
@@ -177,8 +174,8 @@ public sealed class iOSPerformanceVideoExporter : IPerformanceVideoExporter
         for (var i = 0; i < PerformanceSplitTracker.Targets.Length; i++)
         {
             var splitIndex = i;
-            AddTextAnimation(
-                dynamicLayers[i],
+            AddTimedText(
+                splitSlots[i],
                 frames,
                 durationSeconds,
                 frame => splitIndex < frame.Splits.Length && frame.Splits[splitIndex] is { } seconds
@@ -215,8 +212,26 @@ public sealed class iOSPerformanceVideoExporter : IPerformanceVideoExporter
         return layer;
     }
 
-    private static void AddTextAnimation(
-        CATextLayer layer,
+    /// <summary>Where one changing value (speed or a split) is drawn.</summary>
+    private sealed record TextSlot(
+        CALayer Parent,
+        CGRect Frame,
+        double FontSize,
+        string Color,
+        bool Bold,
+        CATextLayerAlignmentMode Alignment);
+
+    /// <summary>
+    /// Shows the value that was live at each moment of the video.
+    ///
+    /// CATextLayer.string is not animatable, so a key-frame animation on
+    /// "string" is ignored by AVFoundation's export and the saved video keeps
+    /// the first value (the "frozen speed" bug). Instead every distinct text
+    /// gets its own layer, and only its opacity (which is animatable) is
+    /// switched on for the time ranges in which that text was live.
+    /// </summary>
+    private static void AddTimedText(
+        TextSlot slot,
         PerformanceOverlayFrame[] sourceFrames,
         double durationSeconds,
         Func<PerformanceOverlayFrame, string> valueSelector)
@@ -225,44 +240,107 @@ public sealed class iOSPerformanceVideoExporter : IPerformanceVideoExporter
             ? new[] { new PerformanceOverlayFrame(0, null, new double?[PerformanceSplitTracker.Targets.Length]) }
             : sourceFrames;
 
-        var values = new List<NSString>();
-        var times = new List<NSNumber>();
-        void Add(double normalizedTime, string value)
+        // Consecutive (start time, text) segments on a 0..1 timeline.
+        var segments = new List<(double Start, string Text)>();
+        var durationMs = Math.Max(1d, durationSeconds * 1000d);
+        foreach (var frame in frames)
         {
-            if (values.Count > 0 && string.Equals(values[^1].ToString(), value, StringComparison.Ordinal))
-                return;
-            values.Add(new NSString(value));
-            times.Add(NSNumber.FromDouble(Math.Clamp(normalizedTime, 0, 1)));
+            var start = segments.Count == 0 ? 0d : Math.Clamp(frame.TimeMs / durationMs, 0d, 1d);
+            var text = valueSelector(frame);
+            if (segments.Count > 0 && string.Equals(segments[^1].Text, text, StringComparison.Ordinal))
+                continue;
+            if (segments.Count > 0 && start >= 1d)
+                break;
+            if (segments.Count > 0 && start <= segments[^1].Start)
+            {
+                // Same instant: the later sample wins.
+                segments[^1] = (segments[^1].Start, text);
+                if (segments.Count > 1 && string.Equals(segments[^2].Text, text, StringComparison.Ordinal))
+                    segments.RemoveAt(segments.Count - 1);
+                continue;
+            }
+            segments.Add((start, text));
         }
 
-        Add(0, valueSelector(frames[0]));
-        foreach (var frame in frames)
-            Add(frame.TimeMs / (durationSeconds * 1000d), valueSelector(frame));
+        // Only one value for the whole video: a plain static layer.
+        if (segments.Count == 1)
+        {
+            slot.Parent.AddSublayer(TextLayer(segments[0].Text, slot.Frame, slot.FontSize, slot.Color, slot.Bold, slot.Alignment));
+            return;
+        }
 
-        // Discrete key-frame animations need one more key time than values
-        // (Apple: "the array should have one more entry than the values array"),
-        // ending at 1.0. With equal counts Core Animation ignores the key times.
-        times.Add(NSNumber.FromDouble(1));
+        // Visible ranges per distinct text.
+        var ranges = new Dictionary<string, List<(double Start, double End)>>(StringComparer.Ordinal);
+        for (var i = 0; i < segments.Count; i++)
+        {
+            var end = i + 1 < segments.Count ? segments[i + 1].Start : 1d;
+            if (end <= segments[i].Start)
+                continue;
+            if (!ranges.TryGetValue(segments[i].Text, out var list))
+                ranges[segments[i].Text] = list = new List<(double, double)>();
+            list.Add((segments[i].Start, end));
+        }
 
-        layer.String = values[0].ToString();
-        var animation = CAKeyFrameAnimation.FromKeyPath("string");
-        animation.SetValues(values.ToArray());
-        animation.KeyTimes = times.ToArray();
-        animation.CalculationMode = CAAnimation.AnimationDiscrete;
-        // In a video export, BeginTime 0 means "now" (CACurrentMediaTime), so the
-        // animation never runs and the layer keeps its first value (0 km/h).
-        // AVCoreAnimationBeginTimeAtZero (1e-100) anchors it to the video start.
-        animation.BeginTime = AVCoreAnimationBeginTimeAtZero;
-        animation.Duration = durationSeconds;
-        animation.RemovedOnCompletion = false;
-        animation.FillMode = CAFillMode.Forwards;
-        layer.AddAnimation(animation, "gcar360-telemetry");
+        foreach (var (text, list) in ranges)
+        {
+            // Discrete key frames: N opacity values need N + 1 key times (0 … 1).
+            var values = new List<float>();
+            var times = new List<double>();
+            void Push(double time, float opacity)
+            {
+                if (values.Count > 0 && values[^1] == opacity)
+                    return;
+                if (times.Count > 0 && time <= times[^1])
+                {
+                    values[^1] = opacity;
+                    if (values.Count > 1 && values[^2] == opacity)
+                    {
+                        values.RemoveAt(values.Count - 1);
+                        times.RemoveAt(times.Count - 1);
+                    }
+                    return;
+                }
+                values.Add(opacity);
+                times.Add(time);
+            }
 
-        foreach (var value in values)
-            value.Dispose();
-        foreach (var time in times)
-            time.Dispose();
-        animation.Dispose();
+            Push(0, 0f);
+            foreach (var (start, end) in list)
+            {
+                Push(start, 1f);
+                Push(end, 0f);
+            }
+            times.Add(1d);
+
+            var layer = TextLayer(text, slot.Frame, slot.FontSize, slot.Color, slot.Bold, slot.Alignment);
+            // Model value = what is visible at the first video frame.
+            layer.Opacity = values[0];
+            slot.Parent.AddSublayer(layer);
+
+            if (values.Count == 1)
+                continue;
+
+            var nsValues = values.Select(value => (NSObject)NSNumber.FromFloat(value)).ToArray();
+            var nsTimes = times.Select(time => NSNumber.FromDouble(Math.Clamp(time, 0d, 1d))).ToArray();
+
+            var animation = CAKeyFrameAnimation.FromKeyPath("opacity");
+            animation.SetValues(nsValues);
+            animation.KeyTimes = nsTimes;
+            animation.CalculationMode = CAAnimation.AnimationDiscrete;
+            // In a video export, BeginTime 0 means "now" (CACurrentMediaTime);
+            // AVCoreAnimationBeginTimeAtZero (1e-100) anchors it to the video start.
+            animation.BeginTime = AVCoreAnimationBeginTimeAtZero;
+            animation.Duration = durationSeconds;
+            animation.RemovedOnCompletion = false;
+            animation.FillMode = CAFillMode.Both;
+            layer.AddAnimation(animation, "gcar360-telemetry");
+
+            foreach (var value in nsValues)
+                value.Dispose();
+            foreach (var time in nsTimes)
+                time.Dispose();
+            animation.Dispose();
+        }
     }
 
     private static CGColor ParseColor(string hex)

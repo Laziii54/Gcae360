@@ -210,6 +210,8 @@ public partial class BluetoothViewModel : BaseViewModel
     [RelayCommand]
     private async Task ConnectWifi()
     {
+        try
+        {
         if (IsWifiConnecting)
             return;
 
@@ -302,6 +304,11 @@ public partial class BluetoothViewModel : BaseViewModel
         {
             IsWifiConnecting = false;
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "BluetoothViewModel.ConnectWifi");
+        }
     }
 
     [RelayCommand]
@@ -363,6 +370,8 @@ public partial class BluetoothViewModel : BaseViewModel
     [RelayCommand]
     private async Task StartScan()
     {
+        try
+        {
         if (IsBusy)
             return;
 
@@ -480,6 +489,11 @@ public partial class BluetoothViewModel : BaseViewModel
             IsScanning = false;
             IsBusy = false;
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "BluetoothViewModel.StartScan");
+        }
     }
 
 
@@ -587,6 +601,8 @@ public partial class BluetoothViewModel : BaseViewModel
     private async Task Connect(
         BleDeviceItem? item)
     {
+        try
+        {
         if (item == null ||
             IsConnecting)
             return;
@@ -653,6 +669,11 @@ public partial class BluetoothViewModel : BaseViewModel
         finally
         {
             IsConnecting = false;
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "BluetoothViewModel.Connect");
         }
     }
 

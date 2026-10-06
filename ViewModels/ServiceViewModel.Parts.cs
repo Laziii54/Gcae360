@@ -158,9 +158,16 @@ public partial class ServiceViewModel
     [RelayCommand]
     private async Task OpenMaintenancePart(MaintenancePartRow? row)
     {
+        try
+        {
         if (row is null)
             return;
         await Shell.Current.GoToAsync($"{nameof(MaintenancePartPage)}?part={row.Id}");
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ServiceViewModel.OpenMaintenancePart");
+        }
     }
 
     [RelayCommand]
@@ -170,6 +177,8 @@ public partial class ServiceViewModel
     [RelayCommand]
     private async Task EditOdometer()
     {
+        try
+        {
         var tracker = Maintenance;
         if (tracker is null)
             return;
@@ -191,6 +200,11 @@ public partial class ServiceViewModel
         {
             tracker.SetManualOdometer(tracker.CurrentKey, MaintenanceText.FromDisplay(shown));
             ReloadMaintenanceParts();
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ServiceViewModel.EditOdometer");
         }
     }
 }

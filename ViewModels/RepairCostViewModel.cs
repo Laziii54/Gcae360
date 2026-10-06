@@ -25,9 +25,34 @@ public partial class RepairCostViewModel : BaseViewModel
         _costs = costs;
     }
 
+    /// <summary>The cost estimate becomes the "repair" part of the combined report.</summary>
+    private void AddCostsToReport()
+    {
+        var english = Preferences.Default.Get("language", "English").Equals("English", StringComparison.OrdinalIgnoreCase);
+        var min = Estimates.Sum(item => item.PartMinGel + item.LaborMinGel);
+        var max = Estimates.Sum(item => item.PartMaxGel + item.LaborMaxGel);
+        var section = new CarScanner.Services.Reports.ReportSectionItem
+        {
+            Kind = "repair",
+            Icon = "₾",
+            Title = english ? "Repair cost" : "შეკეთების ფასი",
+            Status = Estimates.Any(item => item.Urgency == RepairUrgency.StopNow)
+                ? CarScanner.Services.Reports.ReportStatus.Bad
+                : CarScanner.Services.Reports.ReportStatus.Warning,
+            Summary = $"≈ {min:N0}–{max:N0} ₾".Replace(',', ' ')
+        };
+
+        foreach (var item in Estimates)
+            section.Lines.Add(new() { Label = $"{item.Code} {item.ProblemName}".Trim(), Value = $"{item.TotalPriceText} · {item.UrgencyText}" });
+
+        CarScanner.Services.Reports.VehicleReportService.Instance?.AddOrReplace(section);
+    }
+
     [RelayCommand]
     private async Task Load()
     {
+        try
+        {
         if (IsBusy) return;
         try
         {
@@ -54,6 +79,8 @@ public partial class RepairCostViewModel : BaseViewModel
             SourceMessage = result.SourceMessage;
             if (Estimates.Count == 0)
                 EmptyMessage = "ამ კოდებისთვის ფასის დიაპაზონი ვერ მომზადდა.";
+            else
+                AddCostsToReport();
         }
         catch (Exception ex)
         {
@@ -66,6 +93,11 @@ public partial class RepairCostViewModel : BaseViewModel
             IsBusy = false;
             OnPropertyChanged(nameof(HasEstimates));
             OnPropertyChanged(nameof(HasNoEstimates));
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "RepairCostViewModel.Load");
         }
     }
 }

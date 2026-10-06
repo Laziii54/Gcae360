@@ -74,6 +74,20 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
 
     private bool _disposed;
 
+    // ---- Keeping the link alive ----------------------------------------
+    // A slow or silent ECU is not a lost adapter. Commands that time out are
+    // followed by a short adapter check; only when the adapter itself stops
+    // answering several times in a row is the link treated as lost, and then
+    // the app reconnects to the same adapter on its own.
+    private int _failedAdapterChecks;
+    private BleDeviceItem? _lastDevice;
+    private volatile bool _userDisconnect;
+    private int _reconnecting;
+    private readonly SemaphoreSlim _connectGate = new(1, 1);
+
+    /// <summary>True while the app is reconnecting after the link dropped.</summary>
+    public bool IsReconnecting => Volatile.Read(ref _reconnecting) == 1;
+
     public bool IsConnected { get; private set; }
 
     public string ConnectedDeviceName { get; private set; } = string.Empty;
@@ -308,6 +322,24 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         if (item == null)
             throw new ArgumentNullException(nameof(item));
 
+        await _connectGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await ConnectCoreAsync(item, cancellationToken).ConfigureAwait(false);
+            _lastDevice = item;
+            _userDisconnect = false;
+            _failedAdapterChecks = 0;
+        }
+        finally
+        {
+            _connectGate.Release();
+        }
+    }
+
+    private async Task ConnectCoreAsync(
+        BleDeviceItem item,
+        CancellationToken cancellationToken)
+    {
         await StopScanAsync()
             .ConfigureAwait(false);
 
@@ -344,7 +376,8 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
                 .ConnectToDeviceAsync(
                     item.Device,
                     new ConnectParameters(
-                        forceBleTransport: true))
+                        forceBleTransport: true),
+                    cancellationToken)
                 .ConfigureAwait(false);
 
             // Keep a strong reference to the active peripheral on iOS and use
@@ -390,6 +423,8 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
 
     public async Task DisconnectAsync()
     {
+        // The user (or a new connection) ends this link: never auto-reconnect it.
+        _userDisconnect = true;
         var connectedBleDevice = _connectedBleDevice;
 
         try
@@ -473,11 +508,13 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
 
             if (_classicSocket != null)
             {
-                return await SendClassicCommandAsync(
+                var classicAnswer = await SendClassicCommandAsync(
                     command,
                     timeout ?? TimeSpan.FromSeconds(5),
                     cancellationToken)
                     .ConfigureAwait(false);
+                _failedAdapterChecks = 0;
+                return classicAnswer;
             }
 
 #endif
@@ -563,20 +600,26 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
                     $"OBD2 ადაპტერმა არ უპასუხა: {command}");
             }
 
-            return await _pendingResponse.Task
+            var answer = await _pendingResponse.Task
                 .ConfigureAwait(false);
+            _failedAdapterChecks = 0;
+            return answer;
         }
         catch (TimeoutException)
         {
-            await DisconnectUnresponsiveBleDeviceAsync()
+            // The ECU (not necessarily the adapter) did not answer in time.
+            await CheckAdapterAfterFailureAsync()
                 .ConfigureAwait(false);
             throw;
         }
         catch (Exception ex) when (
             _connectedBleDevice != null &&
-            ex is not System.OperationCanceledException)
+            IsConnected &&
+            ex is not System.OperationCanceledException &&
+            ex is not IOException)
         {
-            await DisconnectUnresponsiveBleDeviceAsync()
+            // A single failed BLE write is often a short radio hiccup.
+            await CheckAdapterAfterFailureAsync()
                 .ConfigureAwait(false);
             throw;
         }
@@ -1223,6 +1266,23 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
                         "OBD2 Bluetooth კავშირი გაითიშა.",
                         ex));
         }
+
+        // The socket closed by itself (adapter unplugged, out of range …).
+        if (!token.IsCancellationRequested && !_userDisconnect)
+            _ = Task.Run(HandleClassicLinkLostAsync);
+    }
+
+    private async Task HandleClassicLinkLostAsync()
+    {
+        var wasConnected = IsConnected;
+        await DisconnectClassicAsync().ConfigureAwait(false);
+        IsConnected = false;
+        ConnectedDeviceName = string.Empty;
+        if (wasConnected)
+        {
+            ConnectionChanged?.Invoke(this, false);
+            StartAutoReconnect();
+        }
     }
 
 
@@ -1509,7 +1569,152 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
             ConnectionChanged?.Invoke(
                 this,
                 false);
+
+            if (!_userDisconnect)
+                StartAutoReconnect();
         }
+    }
+
+    // =========================================================
+    // ADAPTER CHECK + AUTOMATIC RECONNECT
+    // =========================================================
+
+    /// <summary>
+    /// After a command failed: ask the adapter itself ("ATI"). If it answers,
+    /// the link is fine and only the car was slow. Only after the adapter
+    /// stayed silent twice in a row (plus one more check) is the link closed,
+    /// which then starts the automatic reconnect.
+    /// Runs inside the command lock.
+    /// </summary>
+    private async Task CheckAdapterAfterFailureAsync()
+    {
+        if (!IsConnected)
+            return;
+
+        try
+        {
+            if (await RawExchangeAsync("ATI", TimeSpan.FromSeconds(2)).ConfigureAwait(false) is not null)
+            {
+                _failedAdapterChecks = 0;
+                await SettleAsync().ConfigureAwait(false);
+                return;
+            }
+
+            _failedAdapterChecks++;
+            if (_failedAdapterChecks < 2)
+                return;
+
+            if (await RawExchangeAsync("ATI", TimeSpan.FromSeconds(3)).ConfigureAwait(false) is not null)
+            {
+                _failedAdapterChecks = 0;
+                await SettleAsync().ConfigureAwait(false);
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Adapter check failed.");
+        }
+
+        _logger.LogInformation("OBD adapter stopped answering; reconnecting.");
+        _failedAdapterChecks = 0;
+#if ANDROID
+        if (_classicSocket != null)
+        {
+            _ = Task.Run(HandleClassicLinkLostAsync);
+            return;
+        }
+#endif
+        await DisconnectUnresponsiveBleDeviceAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>A late answer of the aborted command must not reach the next one.</summary>
+    private async Task SettleAsync()
+    {
+        await Task.Delay(120).ConfigureAwait(false);
+        lock (_responseBuffer)
+            _responseBuffer.Clear();
+    }
+
+    /// <summary>One raw command without the command lock (already held). Null on timeout.</summary>
+    private async Task<string?> RawExchangeAsync(string command, TimeSpan timeout)
+    {
+        lock (_responseBuffer)
+            _responseBuffer.Clear();
+
+        var pending = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _pendingResponse = pending;
+        var payload = Encoding.ASCII.GetBytes(command + "\r");
+
+#if ANDROID
+        if (_classicSocket != null)
+        {
+            if (_classicOutput == null)
+                return null;
+            await _classicOutput.WriteAsync(payload, 0, payload.Length).ConfigureAwait(false);
+            await _classicOutput.FlushAsync().ConfigureAwait(false);
+        }
+        else
+#endif
+        {
+            if (_writeCharacteristic == null)
+                return null;
+            await WriteBlePayloadAsync(payload, CancellationToken.None).ConfigureAwait(false);
+        }
+
+        var completed = await Task.WhenAny(pending.Task, Task.Delay(timeout)).ConfigureAwait(false);
+        return completed == pending.Task && pending.Task.Status == TaskStatus.RanToCompletion
+            ? pending.Task.Result
+            : null;
+    }
+
+    private void StartAutoReconnect()
+    {
+        if (_disposed || _userDisconnect || _lastDevice is null)
+            return;
+        if (!Microsoft.Maui.Storage.Preferences.Default.Get("auto_reconnect", true))
+            return;
+        if (Interlocked.Exchange(ref _reconnecting, 1) == 1)
+            return;
+
+        var device = _lastDevice;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                foreach (var seconds in new[] { 1, 2, 3, 5, 8, 13, 20 })
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(seconds)).ConfigureAwait(false);
+                    if (_disposed || _userDisconnect || IsConnected)
+                        return;
+
+                    if (!await _connectGate.WaitAsync(0).ConfigureAwait(false))
+                        return; // the user is connecting right now
+
+                    try
+                    {
+                        using var attempt = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+                        await ConnectCoreAsync(device, attempt.Token).ConfigureAwait(false);
+                        _userDisconnect = false;
+                        _failedAdapterChecks = 0;
+                        _logger.LogInformation("OBD adapter reconnected.");
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Automatic reconnect attempt failed.");
+                    }
+                    finally
+                    {
+                        _connectGate.Release();
+                    }
+                }
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _reconnecting, 0);
+            }
+        });
     }
 
 

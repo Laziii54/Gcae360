@@ -154,7 +154,7 @@ public sealed class FreezeFrameReaderService
                 if (string.IsNullOrWhiteSpace(raw) || ObdResponseParser.IsNegative(raw))
                     continue;
 
-                var data = ExtractValue(raw, pid, command.Length == 6);
+                var data = ExtractMode02Value(raw, pid, command.Length == 6);
                 if (data is not null)
                     return data;
             }
@@ -168,7 +168,11 @@ public sealed class FreezeFrameReaderService
         return null;
     }
 
-    private static byte[]? ExtractValue(string raw, int pid, bool requestedFrame)
+    /// <summary>
+    /// Value bytes of a service 02 reply ("42 PID FRAME data…") with the
+    /// frame-number byte removed. Shared with OBDService's quick snapshot.
+    /// </summary>
+    public static byte[]? ExtractMode02Value(string raw, int pid, bool requestedFrame)
     {
         DataLength.TryGetValue(pid, out var length);
         byte[]? best = null;
@@ -213,7 +217,8 @@ public sealed class FreezeFrameReaderService
     {
         if (pid == 0x03)
         {
-            var status = data.Length > 0 ? data[0] : (byte)0;
+            // Fuel system 1 status, or system 2 when system 1 is not present.
+            var status = data.Length > 0 && data[0] != 0 ? data[0] : data.Length > 1 ? data[1] : (byte)0;
             return status == 0 ? null : new Mode02FreezeFrameValue { Pid = pid, Text = $"FUEL_STATUS_{status}" };
         }
 

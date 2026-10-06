@@ -219,7 +219,33 @@ public class MileageViewModel : BaseViewModel
             IsBusy = false;
             Present();
             OnPropertyChanged(nameof(IsIntro));
+            AddMileageToReport();
         }
+    }
+
+    /// <summary>The mileage check becomes the "mileage" part of the combined report.</summary>
+    private void AddMileageToReport()
+    {
+        var result = _lastResult;
+        if (result is null || (result.FinalMileageKm is null && result.Evidence.Count == 0))
+            return;
+
+        var section = new CarScanner.Services.Reports.ReportSectionItem
+        {
+            Kind = "mileage",
+            Icon = "⏱",
+            Title = L("რეალური გარბენი", "Real mileage"),
+            Status = result.HasMismatch ? CarScanner.Services.Reports.ReportStatus.Bad : CarScanner.Services.Reports.ReportStatus.Ok,
+            Summary = string.Join(" · ", new[] { ResultValue, ResultTitle, VerdictText }
+                .Where(part => !string.IsNullOrWhiteSpace(part) && part != "—").Distinct())
+        };
+
+        foreach (var module in Modules)
+            section.Lines.Add(new() { Label = module.Name, Value = string.Join(" · ", new[] { module.ValueText, module.DiffText }.Where(p => !string.IsNullOrWhiteSpace(p))) });
+        if (!string.IsNullOrWhiteSpace(VerdictNote))
+            section.Lines.Add(new() { Label = string.Empty, Value = VerdictNote });
+
+        CarScanner.Services.Reports.VehicleReportService.Instance?.AddOrReplace(section);
     }
 
     // ------------------------------------------------------------------

@@ -241,6 +241,8 @@ public partial class MaintenancePartViewModel : BaseViewModel
     [RelayCommand]
     private async Task RemoveLast()
     {
+        try
+        {
         var confirm = await Shell.Current.DisplayAlertAsync(
             PartName,
             L("წავშალო ბოლო ჩანაწერი?", "Delete the last record?"),
@@ -252,5 +254,10 @@ public partial class MaintenancePartViewModel : BaseViewModel
         _tracker.RemoveLastRecord(_tracker.CurrentKey, _part);
         Say(L("ბოლო ჩანაწერი წაიშალა.", "Last record deleted."));
         Reload();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "MaintenancePartViewModel.RemoveLast");
+        }
     }
 }

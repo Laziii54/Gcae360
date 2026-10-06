@@ -41,6 +41,8 @@ public partial class AccelerationHistoryViewModel : BaseViewModel
     [RelayCommand]
     public async Task RefreshAsync()
     {
+        try
+        {
         if (IsBusy)
             return;
 
@@ -65,11 +67,18 @@ public partial class AccelerationHistoryViewModel : BaseViewModel
         {
             IsBusy = false;
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AccelerationHistoryViewModel.RefreshAsync");
+        }
     }
 
     [RelayCommand]
     private async Task DeleteRun(AccelerationRunDisplay? item)
     {
+        try
+        {
         if (item is null)
             return;
 
@@ -85,11 +94,18 @@ public partial class AccelerationHistoryViewModel : BaseViewModel
         Runs.Remove(item);
         HasRuns = Runs.Count > 0;
         BestResultText = BuildBestText(await _database.GetAccelerationRunsAsync());
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AccelerationHistoryViewModel.DeleteRun");
+        }
     }
 
     [RelayCommand]
     private async Task ClearAll()
     {
+        try
+        {
         if (Runs.Count == 0)
             return;
 
@@ -105,6 +121,11 @@ public partial class AccelerationHistoryViewModel : BaseViewModel
         Runs.Clear();
         HasRuns = false;
         BestResultText = string.Empty;
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AccelerationHistoryViewModel.ClearAll");
+        }
     }
 
     private AccelerationRunDisplay ToDisplay(AccelerationRun run)
@@ -126,7 +147,9 @@ public partial class AccelerationHistoryViewModel : BaseViewModel
         {
             Id = run.Id,
             TestName = testName,
-            DateText = run.FinishedAt.ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture),
+            DateText = run.FinishedAt.ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture) +
+                (!string.IsNullOrWhiteSpace(run.VehicleDisplayName) ? " · " + run.VehicleDisplayName
+                    : !string.IsNullOrWhiteSpace(run.VIN) ? " · VIN " + run.VIN : string.Empty),
             TimeText = $"{run.DurationSeconds:F2} {L("წმ", "s")}",
             SplitsText = BuildSplitsText(run),
             DetailsText = string.Join(" · ", details)

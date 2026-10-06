@@ -65,6 +65,16 @@ public partial class FuelViewModel
     [ObservableProperty] private string socFallbackText = "—";
     [ObservableProperty] private string approxConsumptionText = "—";
 
+    // Trip summary tiles shown in every mode (distance like the fuel page).
+    [ObservableProperty] private string tripDistanceText = "0.0 km";
+    [ObservableProperty] private string tripDurationText = "0 min";
+    [ObservableProperty] private string tripCostTotalText = "—";
+    [ObservableProperty] private string distanceCaption = "მანძილი";
+    [ObservableProperty] private string durationCaption = "დრო";
+    [ObservableProperty] private string costCaption = "ღირებულება";
+    [ObservableProperty] private string energyPerKmText = "—";
+    [ObservableProperty] private string energyPerKmCaption = "";
+
     private string L(string ka, string en) => _localization.IsEnglish ? en : ka;
 
     private string? CurrentVin()
@@ -77,6 +87,7 @@ public partial class FuelViewModel
     {
         ElectricityPriceText = Preferences.Default.Get("ev_price_per_kwh", string.Empty);
         BatteryCapacityText = Preferences.Default.Get("ev_capacity_kwh", string.Empty);
+        _ev.SignLearned += sign => MainThread.BeginInvokeOnMainThread(() => OnSignLearned(sign));
         DetectMode();
     }
 
@@ -84,7 +95,15 @@ public partial class FuelViewModel
     public void OnPageAppearing()
     {
         if (_tripStartedAt is null)
+        {
             DetectMode();
+            if (CurrentVin() is { } vin)
+            {
+                var capacity = Preferences.Default.Get($"ev_capacity_{vin}", string.Empty);
+                if (!string.IsNullOrWhiteSpace(capacity))
+                    BatteryCapacityText = capacity;
+            }
+        }
         RefreshPresentation();
         _ = LoadFuelHistoryAsync();
     }
@@ -105,7 +124,16 @@ public partial class FuelViewModel
         }
 
         _modeOverridden = false;
-        var detected = EvSignalDecoder.ModeFromText(_vehicle.CurrentVehicle?.FuelType)
+        var car = _vehicle.CurrentVehicle;
+        // Chevrolet Volt is a plug-in hybrid, Bolt is electric, whatever the VIN text says.
+        var gm = CarScanner.Services.GmVoltBoltBattery.IsBolt(car?.Manufacturer, car?.Model) switch
+        {
+            true => EnergyMode.Electric,
+            false => EnergyMode.Hybrid,
+            _ => (EnergyMode?)null
+        };
+        var detected = gm
+                       ?? EvSignalDecoder.ModeFromText(car?.FuelType)
                        ?? EvSignalDecoder.ModeFromFuelTypeCode(_latestFuelTypeCode)
                        ?? EnergyMode.Fuel;
         ApplyMode(detected);
@@ -117,7 +145,8 @@ public partial class FuelViewModel
     /// </summary>
     private void OnFuelTypeCodeReceived(int code)
     {
-        if (_modeOverridden || EvSignalDecoder.ModeFromText(_vehicle.CurrentVehicle?.FuelType) is not null)
+        if (_modeOverridden || EvSignalDecoder.ModeFromText(_vehicle.CurrentVehicle?.FuelType) is not null ||
+            CarScanner.Services.GmVoltBoltBattery.IsBolt(_vehicle.CurrentVehicle?.Manufacturer, _vehicle.CurrentVehicle?.Model) is not null)
             return;
 
         if (EvSignalDecoder.ModeFromFuelTypeCode(code) is { } mode && mode != EnergyMode.Fuel && mode != _mode)
@@ -179,6 +208,8 @@ public partial class FuelViewModel
         if (_mode == EnergyMode.Fuel)
             return;
 
+        PrepareSignForCurrentCar();
+
         var cts = new CancellationTokenSource();
         _evCts = cts;
         _ = RunEnergyLoopAsync(cts.Token);
@@ -200,6 +231,7 @@ public partial class FuelViewModel
     private void ResetEnergy()
     {
         _ev.Reset();
+        ResetDashboard();
         _electricMovingSeconds = 0;
         _socStart = null;
         _socNow = null;
@@ -243,7 +275,18 @@ public partial class FuelViewModel
             while (!token.IsCancellationRequested)
             {
                 var started = DateTime.UtcNow;
-                var reading = await _evReader.ReadAsync(active, tick++ % 10 == 0, token).ConfigureAwait(false);
+                EvBatteryReading? reading;
+                try
+                {
+                    reading = await _evReader.ReadAsync(active, tick++ % 10 == 0, token).ConfigureAwait(false);
+                }
+                catch (Exception) when (!token.IsCancellationRequested)
+                {
+                    // Short link drop: keep the trip and try again (the adapter reconnects by itself).
+                    last = null;
+                    await Task.Delay(TimeSpan.FromSeconds(2), token).ConfigureAwait(false);
+                    continue;
+                }
                 if (reading is { } value)
                 {
                     var now = DateTime.UtcNow;
@@ -253,7 +296,8 @@ public partial class FuelViewModel
                     {
                         if (token.IsCancellationRequested)
                             return;
-                        _ev.Add(value.Volts, value.Amps, seconds, _latestSpeedKph);
+                        _ev.Add(value.Volts, value.Amps, seconds, _latestSpeedKph, EngineRunning);
+                        PushPower(_ev.PowerKw);
                         if (value.SocPercent is { } soc)
                         {
                             _socStart ??= soc;
@@ -264,7 +308,9 @@ public partial class FuelViewModel
                     });
                 }
 
-                var wait = TimeSpan.FromSeconds(1) - (DateTime.UtcNow - started);
+                // Brand identifiers need their own adapter session: every 2 s
+                // leaves room for the speed readings that give the distance.
+                var wait = TimeSpan.FromSeconds(active.IsStandard ? 1 : 2) - (DateTime.UtcNow - started);
                 if (wait > TimeSpan.Zero)
                     await Task.Delay(wait, token).ConfigureAwait(false);
             }
@@ -306,12 +352,19 @@ public partial class FuelViewModel
     [RelayCommand]
     private async Task CopyEnergyLog()
     {
+        try
+        {
         var log = _evReader.Log;
         if (string.IsNullOrWhiteSpace(log))
             return;
 
         await Clipboard.Default.SetTextAsync(log);
         EnergySourceTitle = L("ლოგი დაკოპირდა", "Log copied");
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "FuelViewModel.CopyEnergyLog");
+        }
     }
 
     partial void OnElectricityPriceTextChanged(string value)
@@ -323,6 +376,8 @@ public partial class FuelViewModel
     partial void OnBatteryCapacityTextChanged(string value)
     {
         Preferences.Default.Set("ev_capacity_kwh", value ?? string.Empty);
+        if (CurrentVin() is { } vin)
+            Preferences.Default.Set($"ev_capacity_{vin}", value ?? string.Empty);
         RefreshPresentation();
     }
 
@@ -385,6 +440,25 @@ public partial class FuelViewModel
                 break;
         }
 
+        // Summary tiles (all modes)
+        DistanceCaption = L("გავლილი მანძილი", "Distance");
+        DurationCaption = L("მოძრაობის დრო", "Driving time");
+        CostCaption = L("ღირებულება", "Cost");
+        TripDistanceText = _units.FormatDistance(km);
+        TripDurationText = $"{(_movingSeconds + _idleSeconds) / 60d:0} {L("წთ", "min")}";
+        double? fuelCost = _mode != EnergyMode.Electric && TryGetFuelPrice(out var litrePrice) && _fuelLiters > 0 ? _fuelLiters * litrePrice : null;
+        var tripEnergy = _ev.HasSample ? _ev.NetKWh : ApproxKWh();
+        double? energyCost = _mode != EnergyMode.Fuel && TryParsePositive(ElectricityPriceText, out var kwhPrice) && tripEnergy is { } usedKwh
+            ? Math.Max(0, usedKwh) * kwhPrice
+            : null;
+        TripCostTotalText = fuelCost is null && energyCost is null
+            ? "—"
+            : $"₾{((fuelCost ?? 0) + (energyCost ?? 0)).ToString("0.00", invariant)}";
+        EnergyPerKmCaption = L("ენერგია 100 კმ-ზე", "Energy per 100 km");
+        EnergyPerKmText = tripEnergy is { } tripKwh && EvEnergyAccumulator.KWhPer100Km(tripKwh, km) is { } per100Km
+            ? $"{per100Km.ToString("0.0", invariant)} kWh"
+            : "—";
+
         // Power bar
         ShowPower = ShowEnergy && _ev.HasSample;
         var power = _ev.PowerKw;
@@ -429,7 +503,7 @@ public partial class FuelViewModel
             EnergySourceTitle = L("მონაცემის წყარო", "Data source");
             EnergySourceText = $"● {source.Label}\n" + (source.IsStandard
                 ? L("სტანდარტული OBD · ძაბვა × დენი, წამში ერთხელ", "Standard OBD · voltage × current, once per second")
-                : L("მარკის კოდი კატალოგიდან · ძაბვა × დენი, წამში ერთხელ", "Brand identifier from the catalog · voltage × current, once per second"))
+                : L("მარკის კოდი · ძაბვა × დენი, ყოველ 2 წამში", "Brand identifier · voltage × current, every 2 seconds"))
                 + (_ev.IsSignConfirmed
                     ? string.Empty
                     : "\n" + L("დენის მიმართულება ჯერ დგინდება: ერთხელ აჩქარდი.", "Current direction is still being learned: accelerate once."));
@@ -461,5 +535,8 @@ public partial class FuelViewModel
             ? $"{approx.ToString("0.0", invariant)} kWh" +
               (EvEnergyAccumulator.KWhPer100Km(approx, km) is { } per100 ? $" · {per100.ToString("0.0", invariant)} kWh/100km" : string.Empty)
             : "—";
+
+        if (ShowEnergy)
+            RefreshDashboard();
     }
 }

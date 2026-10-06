@@ -28,6 +28,7 @@
     <Compile Include="../../Services/OBD/ObdLanguage.cs" Link="ObdLanguage.cs" />
     <Compile Include="../../Services/Energy/EvEnergyMath.cs" Link="Energy/EvEnergyMath.cs" />
     <Compile Include="../../Services/Maintenance/MaintenanceSchedule.cs" Link="Maintenance/MaintenanceSchedule.cs" />
+    <Compile Include="../../Services/Customs/CustomsCalculator.cs" Link="Customs/CustomsCalculator.cs" />
     <Compile Include="../../Models/AdvancedObdTest.cs" Link="AdvancedObdTest.cs" />
     <Compile Include="../../Models/DiagnosticCode.cs" Link="DiagnosticCode.cs" />
     <Compile Include="../../Models/DiagnosticOperationResult.cs" Link="DiagnosticOperationResult.cs" />

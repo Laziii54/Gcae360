@@ -15,8 +15,15 @@ public partial class CustomsCalculatorPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        try
+        {
         base.OnAppearing();
         try { await _viewModel.LoadAsync(); }
         catch { }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "CustomsCalculatorPage.OnAppearing");
+        }
     }
 }

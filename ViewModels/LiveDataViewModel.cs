@@ -490,6 +490,8 @@ public partial class LiveDataViewModel : BaseViewModel
     [RelayCommand]
     private async Task SelectPid(LivePidItem? item)
     {
+        try
+        {
         if (item is null)
             return;
 
@@ -552,6 +554,11 @@ public partial class LiveDataViewModel : BaseViewModel
             SelectedPidStatusColor = "#F59E0B";
             StatusMessage = "არჩეული PID-ის წაკითხვა ვერ დაიწყო. სცადე თავიდან.";
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "LiveDataViewModel.SelectPid");
+        }
     }
 
     [RelayCommand]
@@ -573,6 +580,8 @@ public partial class LiveDataViewModel : BaseViewModel
     [RelayCommand]
     private async Task ExportCsv()
     {
+        try
+        {
         if (_recorder.Samples.Count == 0)
         {
             StatusMessage = "ჯერ დაიწყე Record, რომ CSV შეინახოს.";
@@ -582,11 +591,18 @@ public partial class LiveDataViewModel : BaseViewModel
         var path = Path.Combine(FileSystem.CacheDirectory, $"live-data-{DateTime.Now:yyyyMMdd-HHmmss}.csv");
         await File.WriteAllTextAsync(path, _recorder.ExportCsv());
         await Share.Default.RequestAsync(new ShareFileRequest { Title = "Live Data CSV", File = new ShareFile(path) });
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "LiveDataViewModel.ExportCsv");
+        }
     }
 
     [RelayCommand]
     private async Task ExportJson()
     {
+        try
+        {
         if (_recorder.Samples.Count == 0)
         {
             StatusMessage = "ჯერ დაიწყე Record, რომ JSON შეინახოს.";
@@ -596,6 +612,11 @@ public partial class LiveDataViewModel : BaseViewModel
         var path = Path.Combine(FileSystem.CacheDirectory, $"live-data-{DateTime.Now:yyyyMMdd-HHmmss}.json");
         await File.WriteAllTextAsync(path, _recorder.ExportJson());
         await Share.Default.RequestAsync(new ShareFileRequest { Title = "Live Data JSON", File = new ShareFile(path) });
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "LiveDataViewModel.ExportJson");
+        }
     }
 
     private void SyncDashboard()
@@ -691,6 +712,8 @@ public partial class LiveDataViewModel : BaseViewModel
     [RelayCommand]
     private async Task Refresh()
     {
+        try
+        {
         if (IsBusy)
             return;
 
@@ -711,11 +734,18 @@ public partial class LiveDataViewModel : BaseViewModel
         {
             IsBusy = false;
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "LiveDataViewModel.Refresh");
+        }
     }
 
     [RelayCommand]
     private async Task StartLiveData()
     {
+        try
+        {
         if (IsBusy)
             return;
 
@@ -738,19 +768,33 @@ public partial class LiveDataViewModel : BaseViewModel
         {
             IsBusy = false;
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "LiveDataViewModel.StartLiveData");
+        }
     }
 
     [RelayCommand]
     private async Task PauseLiveData()
     {
+        try
+        {
         await _engine.StopAsync();
         IsPaused = true;
         StatusMessage = "Live data დაპაუზებულია";
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "LiveDataViewModel.PauseLiveData");
+        }
     }
 
     [RelayCommand]
     private async Task StopLiveData()
     {
+        try
+        {
         await _engine.StopAsync();
         await _oemLiveData.StopAsync();
 
@@ -759,11 +803,18 @@ public partial class LiveDataViewModel : BaseViewModel
 
         IsPaused = true;
         StatusMessage = "Live data შეჩერებულია";
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "LiveDataViewModel.StopLiveData");
+        }
     }
 
     [RelayCommand]
     private async Task StartOemLiveData()
     {
+        try
+        {
         if (IsBusy) return;
         try
         {
@@ -785,6 +836,11 @@ public partial class LiveDataViewModel : BaseViewModel
         {
             IsBusy = false;
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "LiveDataViewModel.StartOemLiveData");
+        }
     }
 
     [RelayCommand]
@@ -799,6 +855,8 @@ public partial class LiveDataViewModel : BaseViewModel
     [RelayCommand]
     private async Task StopRecording()
     {
+        try
+        {
         _recorder.Stop();
         IsRecording = false;
         var samples = _recorder.Samples;
@@ -817,12 +875,18 @@ public partial class LiveDataViewModel : BaseViewModel
 
         LastRecordingText = $"შენახულია: {saved.SampleCount} მონაცემი · {saved.FileSizeText}";
         StatusMessage = $"ჩაწერა დასრულდა და მოწყობილობაზე შეინახა: {saved.SampleCount} მონაცემი.";
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "LiveDataViewModel.StopRecording");
+        }
     }
 
     partial void OnRoundRecordingValuesChanged(bool value) => Preferences.Default.Set("round_live_recording_values", value);
 
     [RelayCommand]
-    private Task OpenRecordingHistory() => Shell.Current.GoToAsync(nameof(Views.RecordingHistoryPage));
+    // Recordings now live in Graph Studio (old RecordingHistoryPage removed).
+    private Task OpenRecordingHistory() => Shell.Current.GoToAsync(nameof(Views.GraphStudioPage));
 
     public IReadOnlyList<ObdTelemetrySample> GetRecording()
     {

@@ -64,6 +64,8 @@ public partial class VinLookupViewModel(
     [RelayCommand]
     private async Task ScanAsync()
     {
+        try
+        {
         VinScanBridge.Request(vin => MainThread.BeginInvokeOnMainThread(() => Vin = vin));
         try
         {
@@ -72,6 +74,11 @@ public partial class VinLookupViewModel(
         catch
         {
             ErrorMessage = VinText.T("ScanCameraError");
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VinLookupViewModel.ScanAsync");
         }
     }
 
@@ -109,6 +116,8 @@ public partial class VinLookupViewModel(
     [RelayCommand(CanExecute = nameof(CanSearch))]
     private async Task SearchAsync()
     {
+        try
+        {
         if (!validator.IsValid(Vin, out var error)) { ErrorMessage = error; return; }
         if (Connectivity.Current.NetworkAccess != NetworkAccess.Internet && vinService is not MockVinHistoryService)
         {
@@ -139,6 +148,11 @@ public partial class VinLookupViewModel(
         }
         catch (Exception) { ErrorMessage = VinText.T("Unavailable"); }
         finally { IsLoading = false; }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VinLookupViewModel.SearchAsync");
+        }
     }
 
     [RelayCommand]

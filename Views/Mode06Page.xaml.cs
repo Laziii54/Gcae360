@@ -14,8 +14,15 @@ public partial class Mode06Page : ContentPage
 
     protected override async void OnAppearing()
     {
+        try
+        {
         base.OnAppearing();
         if (!_viewModel.IsBusy)
             await _viewModel.RefreshCommand.ExecuteAsync(null);
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "Mode06Page.OnAppearing");
+        }
     }
 }

@@ -26,6 +26,26 @@ public sealed class AiDiagnosticService
     // LANGUAGE
     // =========================================================
 
+    /// <summary>
+    /// Language of a chat answer: the language the user writes in (or asks for),
+    /// otherwise the app language.
+    /// </summary>
+    public static bool AnswerInEnglish(string? question)
+    {
+        if (!string.IsNullOrWhiteSpace(question))
+        {
+            var text = question.ToLowerInvariant();
+            if (text.Contains("ქართულ") || text.Contains("georgian") || text.Contains("qartul"))
+                return false;
+            if (text.Contains("ინგლისურ") || text.Contains("in english") || text.Contains("inglisur"))
+                return true;
+            if (System.Text.RegularExpressions.Regex.IsMatch(question, "[\u10A0-\u10FF]"))
+                return false;
+        }
+
+        return IsEnglish();
+    }
+
     private static bool IsEnglish()
     {
         var language = Preferences.Default.Get("language", "English");
@@ -227,7 +247,7 @@ Do not copy any fault code from examples unless that code exists in the real sca
         var prompt = new StringBuilder();
 
         prompt.AppendLine(
-            BuildPrompt(vehicle, codes, sensors));
+            BuildPrompt(vehicle, codes, sensors, AnswerInEnglish(question)));
 
         prompt.AppendLine();
         prompt.AppendLine("===== RECENT CONVERSATION =====");
@@ -504,7 +524,8 @@ from an ECU-confirmed fault.
     public static string BuildPrompt(
         VehicleInfo vehicle,
         IEnumerable<ErrorCode> codes,
-        IEnumerable<SensorValue>? sensors)
+        IEnumerable<SensorValue>? sensors,
+        bool? english = null)
     {
         var userName =
             Preferences.Default.Get(
@@ -512,7 +533,7 @@ from an ECU-confirmed fault.
                 "მომხმარებელი");
 
         var responseLanguage =
-            IsEnglish()
+            (english ?? IsEnglish())
                 ? "English"
                 : "Georgian";
 
@@ -566,6 +587,11 @@ so explain technical information in simple human language.
 LANGUAGE RULES:
 
 Always answer in the Required response language shown above.
+Never tell the user that you are configured for one language or cannot answer in another.
+If the latest user message is written in Georgian or asks for Georgian, answer in Georgian;
+if it asks for English, answer in English.
+Always finish your answer completely; never stop in the middle of a sentence or list.
+Keep chat answers focused: usually 3–8 short paragraphs or a short list.
 
 If Required response language is Georgian:
 - Respond naturally in Georgian.

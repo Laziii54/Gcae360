@@ -134,7 +134,14 @@ public static class EvSignalDecoder
             return null;
 
         var text = fuelType.ToLowerInvariant();
-        if (text.Contains("hybrid") || text.Contains("hev") || text.Contains("ჰიბრიდ"))
+        if (text.Contains("hybrid") || text.Contains("hev") || text.Contains("ჰიბრიდ") ||
+            text.Contains("plug-in") || text.Contains("plug in") || text.Contains("erev") || text.Contains("range extender"))
+            return EnergyMode.Hybrid;
+        // "Electric, Gasoline" (e.g. Chevrolet Volt): an electric car with an engine = hybrid page.
+        var hasElectric = text.Contains("electric") || text.Contains("ელექტრ");
+        var hasEngine = text.Contains("gasoline") || text.Contains("petrol") || text.Contains("diesel") ||
+                        text.Contains("ბენზ") || text.Contains("flex");
+        if (hasElectric && hasEngine)
             return EnergyMode.Hybrid;
         if (text.Contains("electric") || text.Contains("bev") || text.Contains("ელექტრ"))
             return EnergyMode.Electric;
@@ -144,20 +151,30 @@ public static class EvSignalDecoder
 
 /// <summary>
 /// Adds up battery energy from voltage × current samples. Energy that leaves
-/// the battery is "consumed", energy that goes back in is "regenerated".
-/// Brands use opposite current signs, so the sign is learned while the car
-/// accelerates (the battery must be giving energy then).
+/// the battery is "consumed", energy that goes back in is "regenerated"; both
+/// only ever grow, the net value is their difference.
+///
+/// Brands use opposite current signs. The sign is learned once and then
+/// locked: from strong acceleration with the engine off (the battery must be
+/// giving energy) and from standing still with the engine off (only
+/// consumers run). Once learned the sign is locked, so a downhill (speed
+/// rising while the battery charges) can never swap "used" and "recovered";
+/// only the user can flip it.
 /// </summary>
 public sealed class EvEnergyAccumulator
 {
     private const double MaximumGapSeconds = 5;
     private const int VotesNeeded = 3;
+    private const double AccelerationVoteWatts = 10000;
+    private const double AccelerationVoteKph = 5;
 
     private double _positiveWh;
     private double _negativeWh;
     private int _votesPositive;
     private int _votesNegative;
     private double? _lastSpeedKph;
+    private DateTime _lastStandstillVote = DateTime.MinValue;
+    private int? _lockedSign;
 
     /// <summary>+1 = positive current means the battery is discharging.</summary>
     public int DefaultSign { get; set; } = 1;
@@ -165,11 +182,13 @@ public sealed class EvEnergyAccumulator
     public double LastAmps { get; private set; }
     public bool HasSample { get; private set; }
 
-    public bool IsSignConfirmed => _votesPositive + _votesNegative >= VotesNeeded;
+    /// <summary>The sign is known (learned, saved for this car, or set by the user).</summary>
+    public bool IsSignConfirmed => _lockedSign is not null;
 
-    public int Sign => IsSignConfirmed
-        ? (_votesNegative > _votesPositive ? -1 : 1)
-        : DefaultSign;
+    public int Sign => _lockedSign ?? DefaultSign;
+
+    /// <summary>Raised once when the sign is learned, so it can be saved for this car.</summary>
+    public event Action<int>? SignLearned;
 
     /// <summary>kW out of the battery (+) or into it (−).</summary>
     public double PowerKw => HasSample ? LastVolts * LastAmps * Sign / 1000d : 0;
@@ -178,18 +197,38 @@ public sealed class EvEnergyAccumulator
     public double RegeneratedKWh => (Sign > 0 ? _negativeWh : _positiveWh) / 1000d;
     public double NetKWh => ConsumedKWh - RegeneratedKWh;
 
+    /// <summary>Uses a sign saved for this car (or chosen by the user); stops learning.</summary>
+    public void LockSign(int sign) => _lockedSign = sign >= 0 ? 1 : -1;
+
+    /// <summary>Another car: learn its sign again.</summary>
+    public void ForgetSign()
+    {
+        _lockedSign = null;
+        _votesPositive = _votesNegative = 0;
+    }
+
+    /// <summary>"Used" and "recovered" were swapped: the user flips the direction.</summary>
+    public int FlipSign()
+    {
+        _lockedSign = -Sign;
+        return _lockedSign.Value;
+    }
+
     public void Reset()
     {
         _positiveWh = _negativeWh = 0;
-        _votesPositive = _votesNegative = 0;
         _lastSpeedKph = null;
         LastVolts = LastAmps = 0;
         HasSample = false;
+        // A locked sign belongs to the car, not to the trip: keep it.
+        if (_lockedSign is null)
+            _votesPositive = _votesNegative = 0;
     }
 
     /// <param name="seconds">Time since the previous sample (0 for the first one).</param>
     /// <param name="speedKph">Latest vehicle speed, used to learn the current sign.</param>
-    public void Add(double volts, double amps, double seconds, double? speedKph)
+    /// <param name="engineRunning">Plug-in/hybrid engine is running (it can charge the battery).</param>
+    public void Add(double volts, double amps, double seconds, double? speedKph, bool engineRunning = false)
     {
         if (!EvSignalDecoder.IsPlausibleVoltage(volts) || !EvSignalDecoder.IsPlausibleCurrent(amps))
             return;
@@ -210,19 +249,46 @@ public sealed class EvEnergyAccumulator
 
         if (speedKph is { } speed)
         {
-            if (_lastSpeedKph is { } previous &&
-                speed > 5 &&
-                speed - previous >= 3 &&
-                Math.Abs(watts) >= 5000)
-            {
-                if (watts > 0)
-                    _votesPositive++;
-                else
-                    _votesNegative++;
-            }
-
+            if (_lockedSign is null && !engineRunning)
+                Learn(watts, speed);
             _lastSpeedKph = speed;
         }
+    }
+
+    private void Learn(double watts, double speed)
+    {
+        // Strong acceleration with the engine off: the battery is discharging.
+        if (_lastSpeedKph is { } previous &&
+            speed > 5 &&
+            speed - previous >= AccelerationVoteKph &&
+            Math.Abs(watts) >= AccelerationVoteWatts)
+        {
+            Vote(watts);
+        }
+        // Standing still with the engine off: only consumers (A/C, 12 V) draw power.
+        else if (speed < 1 &&
+                 Math.Abs(watts) is >= 300 and <= 8000 &&
+                 DateTime.UtcNow - _lastStandstillVote >= TimeSpan.FromSeconds(5))
+        {
+            _lastStandstillVote = DateTime.UtcNow;
+            Vote(watts);
+        }
+
+        var leading = Math.Max(_votesPositive, _votesNegative);
+        var trailing = Math.Min(_votesPositive, _votesNegative);
+        if (leading >= VotesNeeded && leading >= trailing * 3)
+        {
+            _lockedSign = _votesNegative > _votesPositive ? -1 : 1;
+            SignLearned?.Invoke(_lockedSign.Value);
+        }
+    }
+
+    private void Vote(double watts)
+    {
+        if (watts > 0)
+            _votesPositive++;
+        else
+            _votesNegative++;
     }
 
     public static double? KWhPer100Km(double kilowattHours, double kilometers) =>

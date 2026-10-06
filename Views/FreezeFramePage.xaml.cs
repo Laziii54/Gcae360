@@ -13,11 +13,18 @@ public partial class FreezeFramePage : ContentPage
 
     protected override async void OnAppearing()
     {
+        try
+        {
         base.OnAppearing();
         ApplyUiLocalization();
 
         if (BindingContext is FreezeFrameViewModel vm)
             await vm.OnAppearingAsync();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "FreezeFramePage.OnAppearing");
+        }
     }
 
     protected override void OnDisappearing()

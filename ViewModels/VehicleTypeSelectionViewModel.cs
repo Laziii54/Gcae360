@@ -20,9 +20,16 @@ public partial class VehicleTypeSelectionViewModel : BaseViewModel
     [RelayCommand]
     private async Task Select(string kindName)
     {
+        try
+        {
         if (!Enum.TryParse<VehicleKind>(kindName, true, out var kind)) return;
         SelectedKind = kind;
         _context.SetVehicleKind(kind);
         await Shell.Current.GoToAsync("..");
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VehicleTypeSelectionViewModel.Select");
+        }
     }
 }

@@ -736,6 +736,44 @@ public sealed class OBDService
     }
 
     /// <summary>
+    /// Coding page only (Services/Coding/CodingService). The caller has already
+    /// matched a catalog option that was verified on the same car, created a
+    /// backup and checked speed/engine/voltage. Accepted requests:
+    /// 10 01 / 10 03 (default / extended session), 3E 00 (tester present),
+    /// 22 (read) and 2E (write, 1-4 data bytes). Security access (27),
+    /// routines (31), flashing (34/36/37), memory writes and resets are never
+    /// accepted here.
+    /// </summary>
+    public Task<string> SendCodingRequestAsync(ServiceDiagnosticAddress address, byte[] payload, TimeSpan timeout, CancellationToken token = default)
+    {
+        EnsureInitialized();
+        if (payload is null || payload.Length == 0)
+            throw new ArgumentException("Empty coding request.", nameof(payload));
+        var allowed = payload[0] switch
+        {
+            0x10 => payload.Length == 2 && payload[1] is 0x01 or 0x03,
+            0x3E => payload.Length == 2 && payload[1] == 0x00,
+            0x22 => payload.Length == 3,
+            0x2E => payload.Length is >= 4 and <= 7,
+            _ => false
+        };
+        if (!allowed)
+            throw new InvalidOperationException("This request is not allowed by the coding path.");
+        if (address.ExtendedAddress.HasValue)
+            throw new NotSupportedException("Extended CAN addressing is not supported for coding writes.");
+        if (address.ReceiveCanId is null)
+            throw new InvalidOperationException("Coding requires an exact receive address.");
+        return _protocol.SendCanIsoTpPayloadAsync(payload, address.TransmitCanId, address.ReceiveCanId.Value, address.Extended29Bit, timeout, token);
+    }
+
+    /// <summary>Adapter supply voltage (ATRV), e.g. "12.6V".</summary>
+    public Task<string> ReadAdapterVoltageAsync(CancellationToken token = default)
+    {
+        EnsureInitialized();
+        return _protocol.GetAdapterVoltageAsync(token);
+    }
+
+    /// <summary>
     /// Sends one read-only service 02 (Freeze Frame) request, e.g. "020C00".
     /// Used by FreezeFrameReaderService; only service 02 is accepted.
     /// </summary>
@@ -770,52 +808,17 @@ public sealed class OBDService
         EnsureInitialized();
         var frame = new FreezeFrame { TriggerCode = triggerCode ?? string.Empty };
 
-        // PID 02 identifies the DTC that caused the Mode 02 snapshot. Probe
-        // it first: without a positive response there is no real Freeze Frame
-        // to display, so avoid issuing a long sequence of empty PID requests.
-        try
-        {
-            var triggerRaw = await SendTrackedAsync("0202", token, TimeSpan.FromMilliseconds(900), 1, false).ConfigureAwait(false);
-            if (triggerRaw.Contains("NO DATA", StringComparison.OrdinalIgnoreCase))
-                return frame;
-
-            var triggerBytes = PIDDecoder.ParseHexBytes(triggerRaw);
-            var triggerIndex = Find(triggerBytes, 0x42, 0x02);
-            if (triggerIndex < 0 || triggerIndex + 3 >= triggerBytes.Length)
-                return frame;
-
-            var capturedCode = DecodeStandardDtc(triggerBytes[triggerIndex + 2], triggerBytes[triggerIndex + 3]);
-            if (capturedCode is null)
-                return frame;
-
-            frame.TriggerCode = capturedCode;
-            frame.Values["Freeze-frame DTC"] = capturedCode;
-        }
-        catch (Exception ex) when (ex is Elm327CommandException or Elm327TimeoutException or FormatException)
-        {
-            _logger.LogDebug(ex, "Freeze-frame trigger PID is unavailable");
+        // PID 02 identifies the DTC that caused the Mode 02 snapshot. Without
+        // it there is no real Freeze Frame, so no further requests are sent.
+        if (!await ReadFreezeFrameTriggerAsync(frame, TimeSpan.FromMilliseconds(900), token).ConfigureAwait(false))
             return frame;
-        }
 
         // These six values cover the useful diagnostic context while keeping
         // a valid snapshot responsive on lower-speed ELM327 adapters.
         foreach (var pid in new[] { 0x04, 0x05, 0x0B, 0x0C, 0x0D, 0x11 })
         {
             token.ThrowIfCancellationRequested();
-            try
-            {
-                var raw = await SendTrackedAsync($"02{pid:X2}", token, TimeSpan.FromMilliseconds(600), 1, false).ConfigureAwait(false);
-                if (raw.Contains("NO DATA", StringComparison.OrdinalIgnoreCase)) continue;
-                if (!_decoder.TryDecodeFreezeFrame(pid, raw, out var value)) continue;
-                var definition = PidRegistry.Get(pid);
-                var label = definition?.Name ?? $"PID 02{pid:X2}";
-                var unit = definition?.Unit ?? string.Empty;
-                frame.Values[label] = $"{value:0.##} {unit}".Trim();
-            }
-            catch (Exception ex) when (ex is Elm327CommandException or Elm327TimeoutException or FormatException)
-            {
-                _logger.LogDebug(ex, "Freeze-frame PID {Pid:X2} unavailable", pid);
-            }
+            await AddFreezeFrameValueAsync(frame, pid, TimeSpan.FromMilliseconds(600), token).ConfigureAwait(false);
         }
 
         return frame;
@@ -835,29 +838,8 @@ public sealed class OBDService
         var frame = new FreezeFrame { TriggerCode = requestedTriggerCode ?? string.Empty };
         progress?.Report((5, "Freeze Frame DTC-ის არსებობის შემოწმება…"));
 
-        try
-        {
-            var triggerRaw = await SendTrackedAsync("0202", token, TimeSpan.FromMilliseconds(900), 1, false).ConfigureAwait(false);
-            if (triggerRaw.Contains("NO DATA", StringComparison.OrdinalIgnoreCase) || ObdResponseParser.IsNegative(triggerRaw))
-                return frame;
-
-            var triggerBytes = PIDDecoder.ParseHexBytes(triggerRaw);
-            var triggerIndex = Find(triggerBytes, 0x42, 0x02);
-            if (triggerIndex < 0 || triggerIndex + 3 >= triggerBytes.Length)
-                return frame;
-
-            var capturedCode = DecodeStandardDtc(triggerBytes[triggerIndex + 2], triggerBytes[triggerIndex + 3]);
-            if (capturedCode is null)
-                return frame;
-
-            frame.TriggerCode = capturedCode;
-            frame.Values["Freeze-frame DTC"] = capturedCode;
-        }
-        catch (Exception ex) when (ex is Elm327CommandException or Elm327TimeoutException or FormatException)
-        {
-            _logger.LogDebug(ex, "Detailed freeze-frame trigger is unavailable");
+        if (!await ReadFreezeFrameTriggerAsync(frame, TimeSpan.FromMilliseconds(900), token).ConfigureAwait(false))
             return frame;
-        }
 
         var snapshotPids = new[] { 0x04, 0x05, 0x06, 0x07, 0x0A, 0x0B, 0x0C, 0x0D, 0x0F, 0x10, 0x11, 0x42 };
         for (var index = 0; index < snapshotPids.Length; index++)
@@ -867,26 +849,70 @@ public sealed class OBDService
             var percent = 10 + (int)Math.Round((index + 1) * 85d / snapshotPids.Length);
             var definition = PidRegistry.Get(pid);
             progress?.Report((percent, $"{definition?.Name ?? $"PID 02{pid:X2}"} წაიკითხება…"));
-
-            try
-            {
-                var raw = await SendTrackedAsync($"02{pid:X2}", token, TimeSpan.FromMilliseconds(650), 1, false).ConfigureAwait(false);
-                if (raw.Contains("NO DATA", StringComparison.OrdinalIgnoreCase) ||
-                    !_decoder.TryDecodeFreezeFrame(pid, raw, out var value))
-                    continue;
-
-                var label = definition?.Name ?? $"PID 02{pid:X2}";
-                var unit = definition?.Unit ?? string.Empty;
-                frame.Values[label] = $"{value:0.##} {unit}".Trim();
-            }
-            catch (Exception ex) when (ex is Elm327CommandException or Elm327TimeoutException or FormatException)
-            {
-                _logger.LogDebug(ex, "Detailed freeze-frame PID {Pid:X2} unavailable", pid);
-            }
+            await AddFreezeFrameValueAsync(frame, pid, TimeSpan.FromMilliseconds(650), token).ConfigureAwait(false);
         }
 
         progress?.Report((100, "Freeze Frame დასრულდა."));
         return frame;
+    }
+
+    /// <summary>
+    /// Mode 02 replies carry the frame number right after the PID
+    /// ("42 0C 00 1A F8"). Reading the value from the frame byte gave wrong
+    /// numbers (speed always 0, coolant −40 °C, a wrong trigger DTC), so the
+    /// frame byte is removed by the same parser the Freeze Frame page uses.
+    /// </summary>
+    private async Task<byte[]?> ReadMode02ValueAsync(int pid, TimeSpan timeout, CancellationToken token)
+    {
+        foreach (var command in new[] { $"02{pid:X2}00", $"02{pid:X2}" })
+        {
+            try
+            {
+                var raw = await SendTrackedAsync(command, token, timeout, 1, false).ConfigureAwait(false);
+                if (string.IsNullOrWhiteSpace(raw) ||
+                    raw.Contains("NO DATA", StringComparison.OrdinalIgnoreCase) ||
+                    ObdResponseParser.IsNegative(raw))
+                    continue;
+
+                var data = FreezeFrameReaderService.ExtractMode02Value(raw, pid, command.Length == 6);
+                if (data is not null)
+                    return data;
+            }
+            catch (Exception ex) when (ex is Elm327CommandException or Elm327TimeoutException or FormatException)
+            {
+                _logger.LogDebug(ex, "Freeze-frame request {Command} unavailable", command);
+            }
+        }
+
+        return null;
+    }
+
+    private async Task<bool> ReadFreezeFrameTriggerAsync(FreezeFrame frame, TimeSpan timeout, CancellationToken token)
+    {
+        var data = await ReadMode02ValueAsync(0x02, timeout, token).ConfigureAwait(false);
+        var capturedCode = data is { Length: >= 2 } ? DecodeStandardDtc(data[0], data[1]) : null;
+        if (capturedCode is null)
+            return false;
+
+        frame.TriggerCode = capturedCode;
+        frame.Values["Freeze-frame DTC"] = capturedCode;
+        return true;
+    }
+
+    private async Task AddFreezeFrameValueAsync(FreezeFrame frame, int pid, TimeSpan timeout, CancellationToken token)
+    {
+        var data = await ReadMode02ValueAsync(pid, timeout, token).ConfigureAwait(false);
+        if (data is null)
+            return;
+
+        var normalized = "41 " + pid.ToString("X2") + " " + string.Join(" ", data.Select(b => b.ToString("X2")));
+        if (!_decoder.TryDecode(pid, normalized, out var value))
+            return;
+
+        var definition = PidRegistry.Get(pid);
+        var label = definition?.Name ?? $"PID 02{pid:X2}";
+        var unit = definition?.Unit ?? string.Empty;
+        frame.Values[label] = $"{value:0.##} {unit}".Trim();
     }
 
     private static string? DecodeStandardDtc(byte high, byte low)

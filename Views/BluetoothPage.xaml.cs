@@ -19,10 +19,17 @@ public partial class BluetoothPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        try
+        {
         base.OnAppearing();
         ApplyUiLocalization();
 
         if (BindingContext is BluetoothViewModel viewModel)
             await viewModel.OnPageAppearingAsync();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "BluetoothPage.OnAppearing");
+        }
     }
 }

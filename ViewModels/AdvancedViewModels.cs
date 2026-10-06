@@ -294,6 +294,8 @@ public partial class EmissionsViewModel : BaseViewModel
     [RelayCommand]
     public async Task Load()
     {
+        try
+        {
         if (IsBusy)
             return;
 
@@ -323,6 +325,11 @@ public partial class EmissionsViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "EmissionsViewModel.Load");
         }
     }
 
@@ -738,6 +745,8 @@ public partial class EcuIdentifiersViewModel : BaseViewModel
     [RelayCommand]
     public async Task Load()
     {
+        try
+        {
         if (IsBusy) return;
         try
         {
@@ -816,6 +825,11 @@ public partial class EcuIdentifiersViewModel : BaseViewModel
             OemIdentificationStatus = "ERROR — OEM identification ვერ შესრულდა.";
         }
         finally { IsBusy = false; }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "EcuIdentifiersViewModel.Load");
+        }
     }
 
     private static bool UiEnglish =>
@@ -882,8 +896,15 @@ public partial class EcuIdentifiersViewModel : BaseViewModel
     [RelayCommand]
     private async Task UnlockModuleInfo()
     {
+        try
+        {
         if (await ProGate.EnsureAsync(_pro, "მოდულების ინფორმაცია", "Module information"))
             await RefreshModuleInfoAsync();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "EcuIdentifiersViewModel.UnlockModuleInfo");
+        }
     }
 
     [RelayCommand]
@@ -1319,6 +1340,8 @@ public partial class ProViewModel : BaseViewModel
     [RelayCommand]
     public async Task BuyPlan(ProPlanItem? plan)
     {
+        try
+        {
         if (plan is null || IsBusy)
             return;
 
@@ -1375,6 +1398,11 @@ public partial class ProViewModel : BaseViewModel
         {
             IsBusy = false;
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ProViewModel.BuyPlan");
+        }
     }
 
     /// <summary>
@@ -1384,6 +1412,8 @@ public partial class ProViewModel : BaseViewModel
     [RelayCommand]
     public async Task OpenPlan(ProPlanItem? plan)
     {
+        try
+        {
         if (plan is null || plan.IsFree || IsBusy)
             return;
 
@@ -1414,11 +1444,18 @@ public partial class ProViewModel : BaseViewModel
                 $"{plan.Title} is not active on your account ({_account.Email}) yet.");
             StatusColor = Color.FromArgb("#B45309");
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ProViewModel.OpenPlan");
+        }
     }
 
     [RelayCommand]
     public async Task BuyPack(ProPackItem? pack)
     {
+        try
+        {
         if (pack is null || IsBusy)
             return;
 
@@ -1461,6 +1498,11 @@ public partial class ProViewModel : BaseViewModel
         {
             IsBusy = false;
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ProViewModel.BuyPack");
+        }
     }
 
     // ============================================================
@@ -1470,6 +1512,8 @@ public partial class ProViewModel : BaseViewModel
     [RelayCommand]
     public async Task Restore()
     {
+        try
+        {
         if (IsBusy)
             return;
 
@@ -1537,6 +1581,11 @@ public partial class ProViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ProViewModel.Restore");
         }
     }
 
@@ -1793,9 +1842,16 @@ public partial class ServiceViewModel : BaseViewModel
     [RelayCommand]
     private async Task CopyDiscoveryReport()
     {
+        try
+        {
         if (string.IsNullOrWhiteSpace(DiscoveryReport))
             return;
         try { await Clipboard.Default.SetTextAsync(DiscoveryReport); } catch { }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ServiceViewModel.CopyDiscoveryReport");
+        }
     }
 
     public ObservableCollection<ServiceSearchHitRow> SearchHits { get; } = new();
@@ -2051,6 +2107,8 @@ public partial class ServiceViewModel : BaseViewModel
     [RelayCommand]
     private async Task RefreshOilLife()
     {
+        try
+        {
         if (IsBusy || IsOilResetRunning)
             return;
 
@@ -2091,6 +2149,11 @@ public partial class ServiceViewModel : BaseViewModel
         finally
         {
             IsOilResetRunning = false;
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ServiceViewModel.RefreshOilLife");
         }
     }
 
@@ -2653,6 +2716,8 @@ public partial class ServiceViewModel : BaseViewModel
     [RelayCommand]
     public async Task Refresh()
     {
+        try
+        {
         if (IsBusy)
             return;
 
@@ -2841,6 +2906,11 @@ public partial class ServiceViewModel : BaseViewModel
             _refreshCancellation?.Dispose();
             _refreshCancellation = null;
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ServiceViewModel.Refresh");
+        }
     }
 
     private async Task AddGuidedServiceResetsAsync(CancellationToken token)
@@ -2877,6 +2947,8 @@ public partial class ServiceViewModel : BaseViewModel
     [RelayCommand]
     private async Task CaptureOemData()
     {
+        try
+        {
         if (IsBusy)
             return;
 
@@ -2923,6 +2995,11 @@ public partial class ServiceViewModel : BaseViewModel
         {
             IsValidationCaptureRunning = false;
             IsBusy = false;
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ServiceViewModel.CaptureOemData");
         }
     }
 
@@ -3300,6 +3377,8 @@ public partial class ServiceViewModel : BaseViewModel
     [RelayCommand]
     private async Task MarkOilChanged()
     {
+        try
+        {
         if (_appOilVehicleKey is null || IsAppOilBusy)
             return;
 
@@ -3342,6 +3421,11 @@ public partial class ServiceViewModel : BaseViewModel
         {
             IsAppOilBusy = false;
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ServiceViewModel.MarkOilChanged");
+        }
     }
 
     private static bool IsLearnedGmOilReading(ServiceMetricReading reading) =>
@@ -3358,6 +3442,8 @@ public partial class ServiceViewModel : BaseViewModel
     [RelayCommand]
     private async Task ResetReminder(ServiceReminderRow? row)
     {
+        try
+        {
         if (row?.ResetReading is not { } reading || IsBusy || IsOilResetRunning || IsReminderResetRunning)
             return;
 
@@ -3412,6 +3498,11 @@ public partial class ServiceViewModel : BaseViewModel
         finally
         {
             IsReminderResetRunning = false;
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ServiceViewModel.ResetReminder");
         }
     }
 
@@ -3746,6 +3837,8 @@ public partial class ServiceViewModel : BaseViewModel
     [RelayCommand]
     private async Task ExecuteOemOperation(ServiceProcedureItem? item)
     {
+        try
+        {
         if (item is null || !item.IsAvailable || IsBusy)
             return;
 
@@ -3923,6 +4016,11 @@ public partial class ServiceViewModel : BaseViewModel
             _activeTestCancellation = null;
             IsBusy = false;
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ServiceViewModel.ExecuteOemOperation");
+        }
     }
 
     [RelayCommand]
@@ -3940,6 +4038,8 @@ public partial class ServiceViewModel : BaseViewModel
     [RelayCommand]
     private async Task RestoreCodingBackup()
     {
+        try
+        {
         if (IsBusy || _currentOemVehicle is null || !CanRestoreCodingBackup)
             return;
 
@@ -3972,6 +4072,11 @@ public partial class ServiceViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ServiceViewModel.RestoreCodingBackup");
         }
     }
 
@@ -4012,6 +4117,9 @@ public partial class ServiceViewModel : BaseViewModel
     }
 }
 
+/// <summary>One line of the "what happened after clearing" card.</summary>
+public sealed record ClearResultRow(string Title, string Detail, Color DotColor);
+
 public partial class ModuleScanViewModel : BaseViewModel
 {
     private readonly DtcCatalogService _dtcCatalog;
@@ -4028,7 +4136,17 @@ public partial class ModuleScanViewModel : BaseViewModel
     private readonly CarScanner.AI.AiDiagnosticService _ai;
     private readonly ProService _pro;
     private readonly ModuleLiveDataService _moduleLive;
+    private readonly RepairCostSession _repairCosts;
     public ObservableCollection<ModuleScanItem> Modules { get; } = new();
+    /// <summary>Engine Freeze Frame snapshot read during the scan (speed, rpm, temperature …).</summary>
+    public ObservableCollection<FreezeFrameValue> FreezeFrameRows { get; } = new();
+    [ObservableProperty] private bool hasFreezeFrame;
+    [ObservableProperty] private string freezeFrameTitleText = "Freeze Frame";
+    public bool HasFaults => ModuleFaults.Count > 0;
+    public string FreezeFrameHintText => _localization.IsEnglish
+        ? "Engine conditions at the moment the fault was stored"
+        : "ძრავის მდგომარეობა შეცდომის დაფიქსირების მომენტში";
+    public string RepairCostButtonText => _localization.IsEnglish ? "How much will it cost?" : "რამდენი დამიჯდება?";
     public ObservableCollection<ModuleFaultItem> ModuleFaults { get; } = new();
     public ObservableCollection<ModuleStatusRow> ModuleRows { get; } = new();
     [ObservableProperty] private bool hasModuleRows;
@@ -4080,8 +4198,10 @@ public partial class ModuleScanViewModel : BaseViewModel
     ModuleDtcScanService moduleDtc,
     CarScanner.AI.AiDiagnosticService ai,
     ProService pro,
-    ModuleLiveDataService moduleLive)
+    ModuleLiveDataService moduleLive,
+    RepairCostSession repairCosts)
     {
+        _repairCosts = repairCosts;
         _moduleDtc = moduleDtc;
         _ai = ai;
         _pro = pro;
@@ -4098,17 +4218,21 @@ public partial class ModuleScanViewModel : BaseViewModel
         _dtcCatalog = dtcCatalog;
 
         UpdateLanguageTexts();
-        ModuleFaults.CollectionChanged += (_, _) => OnPropertyChanged(nameof(FaultSummaryTitle));
+        ModuleFaults.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(FaultSummaryTitle));
+            OnPropertyChanged(nameof(HasFaults));
+        };
 
         _localization.LanguageChanged += (_, __) =>
             MainThread.BeginInvokeOnMainThread(UpdateLanguageTexts);
 
-        Title = "Vehicle Diagnostics";
+        Title = "შეცდომების სკანი";
     }
     /// <summary>Big report title: "2 შეცდომა" / "DTC კოდები" before a scan.</summary>
     public string FaultSummaryTitle => ModuleFaults.Count switch
     {
-        0 => _localization.IsEnglish ? "Trouble codes" : "DTC კოდები",
+        0 => _localization.IsEnglish ? "Trouble code scan" : "შეცდომების სკანი",
         1 => _localization.IsEnglish ? "1 fault" : "1 შეცდომა",
         var count => _localization.IsEnglish ? $"{count} faults" : $"{count} შეცდომა"
     };
@@ -4119,6 +4243,8 @@ public partial class ModuleScanViewModel : BaseViewModel
     {
         OnPropertyChanged(nameof(FaultSummaryTitle));
         OnPropertyChanged(nameof(ModulesCaptionText));
+        OnPropertyChanged(nameof(FreezeFrameHintText));
+        OnPropertyChanged(nameof(RepairCostButtonText));
         if (_localization.IsEnglish)
         {
             ScanButtonText = "Start Scan";
@@ -4136,14 +4262,23 @@ public partial class ModuleScanViewModel : BaseViewModel
     [RelayCommand]
     public async Task Scan()
     {
+        try
+        {
         if (IsBusy) return;
 
         try
         {
             IsBusy = true;
+            if (!_keepClearResults)
+            {
+                ClearResults.Clear();
+                HasClearResults = false;
+            }
             Modules.Clear();
             ModuleFaults.Clear();
             ModuleRows.Clear();
+            FreezeFrameRows.Clear();
+            HasFreezeFrame = false;
             HasModuleRows = false;
             ModuleSummaryText = string.Empty;
             SelectedModule = null;
@@ -4204,6 +4339,7 @@ public partial class ModuleScanViewModel : BaseViewModel
             FreezeFrameText = Report.FreezeFrames.Count == 0
                 ? "Freeze Frame მონაცემი ამ სკანზე ECU-მ არ დააბრუნა."
                 : string.Join("\n", Report.FreezeFrames.SelectMany(frame => frame.Values.Select(value => $"{value.Key}: {value.Value}")));
+            ShowFreezeFrame(Report);
 
             if (Report.EcuResponded)
             {
@@ -4386,6 +4522,7 @@ public partial class ModuleScanViewModel : BaseViewModel
                         ? "სკანირება დასრულდა — აქტიური DTC არ არის."
                         : "სკანირება დასრულდა — DTC მონაცემი ნაწილობრივ წაკითხულია.";
             await _notifications.MarkScanCompletedAsync();
+            AddScanToReport();
         }
         catch (Exception ex)
         {
@@ -4406,142 +4543,234 @@ public partial class ModuleScanViewModel : BaseViewModel
         {
             IsBusy = false;
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ModuleScanViewModel.Scan");
+        }
+    }
+
+    public ObservableCollection<ClearResultRow> ClearResults { get; } = new();
+    [ObservableProperty] private bool hasClearResults;
+    [ObservableProperty] private string clearResultsTitle = string.Empty;
+    private bool _keepClearResults;
+
+    private string ClearL(string ka, string en) => _localization.IsEnglish ? en : ka;
+
+    private const string EngineKey = "ENGINE";
+
+    private static string FaultKey(ModuleFaultItem fault) =>
+        fault.DefinitionId.StartsWith("MODULE-", StringComparison.Ordinal) ? fault.DefinitionId : EngineKey;
+
+    private static string ModuleKey(ModuleDtcReport module) => $"MODULE-{module.TransmitCanId:X}";
+
+    private Dictionary<string, HashSet<string>> SnapshotFaults() =>
+        ModuleFaults
+            .GroupBy(FaultKey)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(fault => fault.Code).ToHashSet(StringComparer.OrdinalIgnoreCase));
+
+    private string NrcText(byte? nrc, string error) => nrc switch
+    {
+        0x22 => ClearL("პირობები არ სრულდება (ანთება ჩართეთ, მანქანა გააჩერეთ)", "conditions not correct (ignition on, car stopped)"),
+        0x33 => ClearL("მოდული დაცვის კოდს ითხოვს", "module requires security access"),
+        0x11 or 0x12 or 0x7F or 0x7E => ClearL("მოდული ამ გზით წაშლას არ უჭერს მხარს", "module does not support clearing this way"),
+        0x31 => ClearL("მოდულმა მოთხოვნა არ მიიღო", "module rejected the request"),
+        0x72 => ClearL("მოდულის მეხსიერების შეცდომა", "module memory failure"),
+        null when error == "no answer" => ClearL("მოდულმა არ უპასუხა", "module did not answer"),
+        null when error == "unsupported" => ClearL("ამ მოდულის წაშლა ჯერ მხარდაჭერილი არ არის", "clearing this module is not supported yet"),
+        null => error,
+        _ => $"NRC {nrc:X2}"
+    };
+
+    private async Task<double?> ReadSpeedForClearAsync()
+    {
+        try
+        {
+            var value = await _obd.ReadSensorAsync(0x0D);
+            return value is not null && double.TryParse(value.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     [RelayCommand]
     private async Task ClearDtc()
     {
-        if (IsBusy)
-            return;
-
-        var isEnglish = _localization.IsEnglish;
-
-        var confirmed = await Shell.Current.DisplayAlertAsync(
-            isEnglish ? "Clear DTC Codes" : "DTC კოდების წაშლა",
-            isEnglish
-                ? "Are you sure you want to clear the DTC codes? This will also reset readiness monitors."
-                : "ნამდვილად გსურთ DTC კოდების წაშლა? ამ მოქმედებამ შეიძლება Readiness მონიტორებიც გაანულოს.",
-            isEnglish ? "Clear" : "წაშლა",
-            isEnglish ? "Cancel" : "გაუქმება");
-
-        if (!confirmed)
-            return;
-
-        bool rescan = false;
-
         try
         {
-            IsBusy = true;
+            if (IsBusy)
+                return;
 
-            Status = isEnglish
-                ? "Clearing DTC codes..."
-                : "DTC კოდები იშლება...";
+            var isEnglish = _localization.IsEnglish;
+            string ModuleTitle(ModuleDtcReport module) => isEnglish ? module.NameEn : module.NameKa;
 
-            var clear = await _obd.ClearDtcWithResultAsync();
-
-            // ABS, airbag, body … codes found by the last scan.
             var modulesWithCodes = Report?.Modules
                 .Where(module => module.Responded && module.Codes.Count > 0 && module.ModuleId != "ECM")
                 .ToList() ?? new List<ModuleDtcReport>();
+
+            // 1. What to clear.
+            var clearEngine = true;
+            var targets = new List<ModuleDtcReport>(modulesWithCodes);
             if (modulesWithCodes.Count > 0)
             {
-                Status = isEnglish ? "Clearing module codes..." : "მოდულების კოდები იშლება...";
-                try
+                var allText = ClearL($"ყველა (ძრავი + {modulesWithCodes.Count} მოდული)", $"Everything (engine + {modulesWithCodes.Count} modules)");
+                var engineText = ClearL("მხოლოდ ძრავი", "Engine only");
+                var moduleTexts = modulesWithCodes
+                    .Select(module => ClearL($"{ModuleTitle(module)} · {module.Codes.Count} კოდი", $"{ModuleTitle(module)} · {module.Codes.Count} codes"))
+                    .ToList();
+                var options = new[] { allText, engineText }.Concat(moduleTexts).ToArray();
+                var picked = await Shell.Current.DisplayActionSheetAsync(
+                    ClearL("რა წავშალო?", "What should be cleared?"), ClearL("გაუქმება", "Cancel"), null, options);
+                if (string.IsNullOrEmpty(picked) || !options.Contains(picked))
+                    return;
+
+                if (picked == engineText)
                 {
-                    var cleared = await _moduleDtc.ClearAsync(modulesWithCodes, CancellationToken.None);
-                    rescan = cleared > 0;
+                    targets.Clear();
                 }
-                catch (Exception moduleEx)
+                else if (picked != allText)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Module clear failed: {moduleEx.Message}");
+                    clearEngine = false;
+                    targets = new List<ModuleDtcReport> { modulesWithCodes[moduleTexts.IndexOf(picked)] };
                 }
             }
 
-            if (!clear.IsSuccess)
+            // 2. Safety: never while driving (ABS/ESP can switch off for a moment).
+            var speed = await ReadSpeedForClearAsync();
+            if (speed is > 0.5)
             {
                 await Shell.Current.DisplayAlertAsync(
-                    isEnglish ? "Clear Failed" : "წაშლა ვერ მოხერხდა",
-                    isEnglish
-                        ? $"The ECU did not confirm DTC clearing.\n{clear.Message}"
-                        : $"ECU-მ DTC კოდების წაშლა ვერ დაადასტურა.\n{clear.Message}",
+                    ClearL("ჯერ გააჩერეთ მანქანა", "Stop the car first"),
+                    ClearL("მოძრაობისას შეცდომების წაშლა არ შეიძლება — ABS/ESP შეიძლება წამით გაითიშოს.",
+                        "Codes cannot be cleared while driving — ABS/ESP may switch off for a moment."),
                     "OK");
-
                 return;
             }
 
-            Status = isEnglish
-                ? "Verifying DTC clear..."
-                : "მოწმდება DTC კოდების წაშლა...";
+            // 3. Confirm with what will happen.
+            var notes = new List<string>();
+            if (clearEngine)
+                notes.Add(ClearL("ძრავის მზადყოფნის მონიტორები განულდება — ტექდათვალიერებამდე ცოტა უნდა იაროთ.",
+                    "Engine readiness monitors will reset — drive a while before an inspection."));
+            if (targets.Any(module => module.ModuleId.Contains("SRS", StringComparison.OrdinalIgnoreCase) || module.NameEn.Contains("airbag", StringComparison.OrdinalIgnoreCase)))
+                notes.Add(ClearL("Airbag: თუ ხარვეზი ჯერ კიდევ არსებობს, ნათურა ისევ აინთება — ეს უსაფრთხოების სისტემაა, შეამოწმეთ სერვისში.",
+                    "Airbag: if the fault is still there the light comes back — this is a safety system, have it checked."));
+            notes.Add(ClearL("წაშლის შემდეგ თავიდან დავასკანერებ და გაჩვენებთ, რა წაიშალა და რა დაბრუნდა.",
+                "After clearing I will rescan and show what was cleared and what came back."));
 
-            var verify = await _obd.VerifyDtcClearAsync();
+            var scopeText = clearEngine
+                ? (targets.Count > 0 ? ClearL($"ძრავი + {targets.Count} მოდული", $"engine + {targets.Count} modules") : ClearL("ძრავი", "engine"))
+                : ModuleTitle(targets[0]);
 
-            if (verify.Status == DiagnosticOperationStatus.ClearedSuccessfully)
+            var confirmed = await Shell.Current.DisplayAlertAsync(
+                ClearL("შეცდომების წაშლა", "Clear trouble codes"),
+                ClearL($"წაიშლება: {scopeText}\n\n", $"Will clear: {scopeText}\n\n") + string.Join("\n\n", notes),
+                ClearL("წაშლა", "Clear"),
+                ClearL("გაუქმება", "Cancel"));
+            if (!confirmed)
+                return;
+
+            var before = SnapshotFaults();
+            ClearResults.Clear();
+            HasClearResults = false;
+
+            var engineAccepted = true;
+            var engineMessage = string.Empty;
+            IReadOnlyList<ModuleDtcScanService.ModuleClearResult> moduleResults = Array.Empty<ModuleDtcScanService.ModuleClearResult>();
+
+            try
             {
-                Status = isEnglish
-                    ? "DTC codes cleared successfully."
-                    : "DTC კოდები წარმატებით წაიშალა.";
+                IsBusy = true;
 
-                await Shell.Current.DisplayAlertAsync(
-                    isEnglish ? "Success" : "წარმატება",
-                    isEnglish
-                        ? "The DTC codes were cleared successfully."
-                        : "DTC კოდები წარმატებით წაიშალა.",
-                    "OK");
+                if (clearEngine)
+                {
+                    Status = ClearL("ძრავის კოდები იშლება...", "Clearing engine codes...");
+                    var clear = await _obd.ClearDtcWithResultAsync();
+                    engineAccepted = clear.IsSuccess;
+                    engineMessage = clear.Message;
+                }
 
-                rescan = true;
+                if (targets.Count > 0)
+                {
+                    Status = ClearL("მოდულების კოდები იშლება...", "Clearing module codes...");
+                    moduleResults = await _moduleDtc.ClearDetailedAsync(targets, CancellationToken.None);
+                }
+
+                // Modules need a moment before they report again.
+                await Task.Delay(1200);
             }
-            else if (verify.Status == DiagnosticOperationStatus.ClearedButFaultReturned)
+            catch (Exception ex)
             {
-                Status = isEnglish
-                    ? "The codes were cleared, but a fault returned."
-                    : "კოდები წაიშალა, მაგრამ შეცდომა ისევ დაბრუნდა.";
-
-                await Shell.Current.DisplayAlertAsync(
-                    isEnglish ? "Fault Returned" : "შეცდომა დაბრუნდა",
-                    isEnglish
-                        ? "The clear command was accepted, but one or more faults are still present."
-                        : "წაშლის ბრძანება შესრულდა, მაგრამ ერთი ან რამდენიმე ხარვეზი ისევ არსებობს.",
-                    "OK");
-
-                rescan = true;
+                Status = ClearL($"წაშლა ვერ შესრულდა: {ex.Message}", $"Clearing failed: {ex.Message}");
+                await Shell.Current.DisplayAlertAsync(ClearL("შეცდომა", "Error"), Status, "OK");
+                return;
             }
-            else if (verify.Status == DiagnosticOperationStatus.Timeout)
+            finally
             {
-                Status = isEnglish
-                    ? "DTC clear verification timed out."
-                    : "DTC წაშლის გადამოწმების დრო ამოიწურა.";
+                IsBusy = false;
+            }
 
-                await Shell.Current.DisplayAlertAsync(
-                    isEnglish ? "Timeout" : "დრო ამოიწურა",
-                    Status,
-                    "OK");
-            }
-            else
+            // 4. Rescan and compare.
+            _keepClearResults = true;
+            try
             {
-                Status = isEnglish
-                    ? $"DTC clear result: {verify.Message}"
-                    : $"DTC წაშლის შედეგი: {verify.Message}";
+                await Scan();
             }
+            finally
+            {
+                _keepClearResults = false;
+            }
+
+            var after = SnapshotFaults();
+            var green = Color.FromArgb("#1E8A4C");
+            var orange = Color.FromArgb("#D0701F");
+            var red = Color.FromArgb("#C2372B");
+
+            void AddRow(string title, string key, bool accepted, string refusal)
+            {
+                before.TryGetValue(key, out var was);
+                after.TryGetValue(key, out var now);
+                var wasCount = was?.Count ?? 0;
+                var nowCount = now?.Count ?? 0;
+                if (!accepted && nowCount > 0)
+                {
+                    ClearResults.Add(new ClearResultRow(title, ClearL($"✗ არ წაიშალა — {refusal}", $"✗ Not cleared — {refusal}"), red));
+                }
+                else if (nowCount == 0)
+                {
+                    ClearResults.Add(new ClearResultRow(title, ClearL($"✓ წაიშალა ({wasCount} → 0)", $"✓ Cleared ({wasCount} → 0)"), green));
+                }
+                else
+                {
+                    var back = string.Join(", ", now!.Take(4));
+                    ClearResults.Add(new ClearResultRow(title,
+                        ClearL($"⚠ {nowCount} კოდი დაბრუნდა: {back} — ხარვეზი ჯერ კიდევ არსებობს, საჭიროა შეკეთება.",
+                            $"⚠ {nowCount} code(s) came back: {back} — the fault is still present and needs repair."),
+                        orange));
+                }
+            }
+
+            if (clearEngine)
+                AddRow(ClearL("ძრავი", "Engine"), EngineKey, engineAccepted, engineMessage);
+            foreach (var result in moduleResults)
+                AddRow(ModuleTitle(result.Module), ModuleKey(result.Module), result.Confirmed, NrcText(result.Nrc, result.Error));
+
+            ClearResultsTitle = ClearL("წაშლის შედეგი", "Clear result");
+            HasClearResults = ClearResults.Count > 0;
+            Status = ClearResults.All(row => row.DotColor == green)
+                ? ClearL("ყველაფერი წაიშალა.", "Everything was cleared.")
+                : ClearL("ნაწილი დაბრუნდა ან ვერ წაიშალა — იხილეთ შედეგი.", "Some codes came back or could not be cleared — see the result.");
         }
-        catch (Exception ex)
+        catch (Exception commandException)
         {
-            Status = isEnglish
-                ? $"DTC clearing failed: {ex.Message}"
-                : $"DTC კოდების წაშლა ვერ შესრულდა: {ex.Message}";
-
-            await Shell.Current.DisplayAlertAsync(
-                isEnglish ? "Error" : "შეცდომა",
-                Status,
-                "OK");
+            CarScanner.Services.CommandErrors.Report(commandException, "ModuleScanViewModel.ClearDtc");
         }
-        finally
-        {
-            IsBusy = false;
-        }
-
-        if (rescan)
-            await Scan();
     }
+
     [RelayCommand]
     private void SelectModule(ModuleScanItem? module)
     {
@@ -4701,6 +4930,8 @@ public partial class ModuleScanViewModel : BaseViewModel
     [RelayCommand]
     private async Task ExplainFault(ModuleFaultItem? fault)
     {
+        try
+        {
         if (fault is null || fault.IsAiBusy)
             return;
 
@@ -4749,6 +4980,11 @@ public partial class ModuleScanViewModel : BaseViewModel
         {
             fault.IsAiBusy = false;
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ModuleScanViewModel.ExplainFault");
+        }
     }
 
     private async Task AddFaultsAsync(
@@ -4761,6 +4997,10 @@ public partial class ModuleScanViewModel : BaseViewModel
         {
             var normalizedCode =
                 code.Code.Trim().ToUpperInvariant();
+            if (ModuleFaults.Any(existing => existing.DefinitionId == definitionId &&
+                                             existing.Code.Equals(normalizedCode, StringComparison.OrdinalIgnoreCase) &&
+                                             existing.Status == FaultStatusText(status)))
+                continue;
 
             DtcCatalogEntry? catalog = null;
 
@@ -4809,15 +5049,125 @@ public partial class ModuleScanViewModel : BaseViewModel
             ModuleFaults.Add(new ModuleFaultItem
             {
                 DefinitionId = definitionId,
-                EcuName = ecuName,
+                EcuName = definitionId == "OBD-ECU" ? EngineEcuText() : ecuName,
                 Code = normalizedCode,
                 Description = description,
-                Status = status,
+                Status = FaultStatusText(status),
                 Severity =
                     status == "Pending"
                         ? "დაკვირვება საჭიროა"
                         : "შესამოწმებელი"
             });
+        }
+    }
+
+    private string EngineEcuText() => _localization.IsEnglish ? "Engine (ECU)" : "ძრავი (ECU)";
+
+    /// <summary>The finished scan becomes the "full scan" part of the combined report.</summary>
+    private void AddScanToReport()
+    {
+        if (Report is null || !Report.EcuResponded)
+            return;
+
+        var english = _localization.IsEnglish;
+        var section = new CarScanner.Services.Reports.ReportSectionItem
+        {
+            Kind = "scan",
+            Icon = ModuleFaults.Count == 0 ? "✓" : "⚠",
+            Title = english ? "Full scan" : "სრული სკანი",
+            Status = ModuleFaults.Count == 0
+                ? CarScanner.Services.Reports.ReportStatus.Ok
+                : ModuleFaults.Count >= 4 ? CarScanner.Services.Reports.ReportStatus.Bad : CarScanner.Services.Reports.ReportStatus.Warning,
+            Summary = string.Join(" · ", new[]
+            {
+                ModuleFaults.Count == 0 ? (english ? "No fault codes" : "შეცდომა არ არის") : (english ? $"{ModuleFaults.Count} fault codes" : $"{ModuleFaults.Count} შეცდომა"),
+                ModuleRows.Count > 0 ? (english ? $"{ModuleRows.Count + 1} modules" : $"{ModuleRows.Count + 1} მოდული") : string.Empty,
+                Report.ReadinessRead && Report.Readiness is not null ? Report.Readiness.StatusText : string.Empty,
+                FreezeFrameRows.Count > 0 ? "Freeze Frame" : string.Empty
+            }.Where(part => !string.IsNullOrWhiteSpace(part)))
+        };
+
+        foreach (var fault in ModuleFaults)
+            section.Lines.Add(new() { Label = fault.Code, Value = $"{fault.Description} · {fault.MetaText}" });
+        if (Report.ReadinessRead && Report.Readiness is not null)
+            section.Lines.Add(new() { Label = english ? "Readiness" : "მზადყოფნა", Value = Report.Readiness.StatusText });
+        foreach (var row in FreezeFrameRows)
+            section.Lines.Add(new() { Label = $"Freeze Frame · {row.Label}", Value = row.Value });
+        foreach (var module in ModuleRows)
+            section.Lines.Add(new() { Label = module.Name, Value = module.StatusText });
+
+        CarScanner.Services.Reports.VehicleReportService.Instance?.AddOrReplace(section, Report);
+    }
+
+    /// <summary>Stored / Pending / Permanent in plain words.</summary>
+    private string FaultStatusText(string status) => (status, _localization.IsEnglish) switch
+    {
+        ("Stored", false) => "შენახული",
+        ("Pending", false) => "მოლოდინში (ჯერ არ დადასტურებულა)",
+        ("Permanent", false) => "მუდმივი (წაშლით არ იშლება)",
+        ("Pending", true) => "Pending (not confirmed yet)",
+        ("Permanent", true) => "Permanent (cannot be cleared)",
+        _ => status
+    };
+
+    /// <summary>Freeze Frame from the scan, shown as label / value rows.</summary>
+    private void ShowFreezeFrame(ObdScanReport report)
+    {
+        FreezeFrameRows.Clear();
+        var frame = report.FreezeFrames.FirstOrDefault(item => item.Values.Count > 0);
+        if (frame is null)
+        {
+            HasFreezeFrame = false;
+            return;
+        }
+
+        foreach (var value in frame.Values)
+            FreezeFrameRows.Add(new FreezeFrameValue { Label = value.Key, Value = value.Value });
+        FreezeFrameTitleText = string.IsNullOrWhiteSpace(frame.TriggerCode)
+            ? "Freeze Frame"
+            : $"Freeze Frame · {frame.TriggerCode}";
+        HasFreezeFrame = true;
+    }
+
+    [RelayCommand]
+    private async Task OpenCoding()
+    {
+        try
+        {
+            await Shell.Current.GoToAsync(nameof(Views.CodingPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ModuleScanViewModel.OpenCoding");
+        }
+    }
+
+    [RelayCommand]
+    private async Task OpenRepairCosts()
+    {
+        try
+        {
+        if (ModuleFaults.Count == 0)
+            return;
+
+        var codes = ModuleFaults
+            .GroupBy(fault => fault.Code, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .Select(fault => new ErrorCode
+            {
+                Code = fault.Code,
+                TitleKa = fault.Description,
+                DescriptionKa = fault.Description,
+                PossibleCausesKa = fault.CausesText,
+                ChecksKa = fault.ChecksText
+            })
+            .ToList();
+        _repairCosts.Set(Report?.Vehicle, codes);
+        await Shell.Current.GoToAsync(nameof(Views.RepairCostPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ModuleScanViewModel.OpenRepairCosts");
         }
     }
 
@@ -4935,10 +5285,38 @@ public partial class ModuleScanViewModel : BaseViewModel
             (record.Values.Count == 0
                 ? "Snapshot მნიშვნელობები არ დაბრუნებულა."
                 : string.Join(" · ", record.Values.Select(value => $"{value.Label}: {value.DisplayValue}"))))));
-    [RelayCommand] public async Task Export() { if (Report == null) return; try { var path = await _report.ExportAsync(Report, "txt"); await Share.Default.RequestAsync(new ShareFileRequest { Title = "OBD-II Report", File = new ShareFile(path) }); } catch (Exception ex) { Status = ex.Message; } }
-    [RelayCommand] public async Task ExportJson() { if (Report == null) return; try { var path = await _report.ExportAsync(Report, "json"); await Share.Default.RequestAsync(new ShareFileRequest { Title = "OBD-II JSON Report", File = new ShareFile(path) }); } catch (Exception ex) { Status = ex.Message; } }
-    [RelayCommand] public async Task ExportCsv() { if (Report == null) return; try { var path = await _report.ExportAsync(Report, "csv"); await Share.Default.RequestAsync(new ShareFileRequest { Title = "OBD-II CSV Report", File = new ShareFile(path) }); } catch (Exception ex) { Status = ex.Message; } }
-    [RelayCommand] public async Task ExportPdf() { if (Report == null) return; try { var path = await _report.ExportPdfAsync(Report); await Share.Default.RequestAsync(new ShareFileRequest { Title = "OBD-II PDF Report", File = new ShareFile(path) }); } catch (Exception ex) { Status = ex.Message; } }
+    [RelayCommand] public async Task Export() {
+        try
+        { if (Report == null) return; try { var path = await _report.ExportAsync(Report, "txt"); await Share.Default.RequestAsync(new ShareFileRequest { Title = "OBD-II Report", File = new ShareFile(path) }); } catch (Exception ex) { Status = ex.Message; }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ModuleScanViewModel.Export");
+        } }
+    [RelayCommand] public async Task ExportJson() {
+        try
+        { if (Report == null) return; try { var path = await _report.ExportAsync(Report, "json"); await Share.Default.RequestAsync(new ShareFileRequest { Title = "OBD-II JSON Report", File = new ShareFile(path) }); } catch (Exception ex) { Status = ex.Message; }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ModuleScanViewModel.ExportJson");
+        } }
+    [RelayCommand] public async Task ExportCsv() {
+        try
+        { if (Report == null) return; try { var path = await _report.ExportAsync(Report, "csv"); await Share.Default.RequestAsync(new ShareFileRequest { Title = "OBD-II CSV Report", File = new ShareFile(path) }); } catch (Exception ex) { Status = ex.Message; }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ModuleScanViewModel.ExportCsv");
+        } }
+    [RelayCommand] public async Task ExportPdf() {
+        try
+        { if (Report == null) return; try { var path = await _report.ExportPdfAsync(Report); await Share.Default.RequestAsync(new ShareFileRequest { Title = "OBD-II PDF Report", File = new ShareFile(path) }); } catch (Exception ex) { Status = ex.Message; }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ModuleScanViewModel.ExportPdf");
+        } }
 }
 
 /// <summary>One service reminder row on the Service page.</summary>

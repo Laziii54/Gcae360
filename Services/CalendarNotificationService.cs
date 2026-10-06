@@ -1,6 +1,7 @@
 using CarScanner.Models;
 using Plugin.LocalNotification;
 using Plugin.LocalNotification.Core.Models;
+using CarScanner.Services.Localization;
 
 namespace CarScanner.Services;
 
@@ -60,8 +61,8 @@ public sealed class CalendarNotificationService
         await LocalNotificationCenter.Current.Show(new NotificationRequest
         {
             NotificationId = NotificationId(reminder.Id, slot),
-            Title = "GCar360 · სერვისის კალენდარი",
-            Description = $"{when} შესასრულებელია: {reminder.Title}",
+            Title = LocalizationService.T("GCar360 · სერვისის კალენდარი"),
+            Description = LocalizationService.T($"{when} შესასრულებელია: {reminder.Title}"),
             ReturningData = $"calendar-reminder:{reminder.Id}",
             Schedule = new NotificationRequestSchedule
             {

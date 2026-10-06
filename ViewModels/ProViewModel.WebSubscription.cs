@@ -126,6 +126,8 @@ public partial class ProViewModel
     [RelayCommand]
     private async Task CancelWebSubscription()
     {
+        try
+        {
         var page = Application.Current?.Windows.FirstOrDefault()?.Page;
         if (page is null)
             return;
@@ -161,6 +163,11 @@ public partial class ProViewModel
         finally
         {
             IsBusy = false;
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ProViewModel.CancelWebSubscription");
         }
     }
 

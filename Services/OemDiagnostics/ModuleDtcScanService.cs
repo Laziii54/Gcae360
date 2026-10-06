@@ -369,11 +369,21 @@ public sealed class ModuleDtcScanService
     /// Clears the trouble codes of the given modules (UDS/KWP 0x14, GMLAN 0x04).
     /// Returns how many modules confirmed the clear.
     /// </summary>
-    public async Task<int> ClearAsync(IReadOnlyList<ModuleDtcReport> modules, CancellationToken token)
+    public async Task<int> ClearAsync(IReadOnlyList<ModuleDtcReport> modules, CancellationToken token) =>
+        (await ClearDetailedAsync(modules, token).ConfigureAwait(false)).Count(result => result.Confirmed);
+
+    /// <summary>Result of a clear request to one module.</summary>
+    public sealed record ModuleClearResult(ModuleDtcReport Module, bool Confirmed, byte? Nrc, string Error);
+
+    /// <summary>
+    /// Clears the trouble codes of the given modules and reports, per module,
+    /// whether it confirmed (positive reply) or refused (negative response code).
+    /// </summary>
+    public async Task<IReadOnlyList<ModuleClearResult>> ClearDetailedAsync(IReadOnlyList<ModuleDtcReport> modules, CancellationToken token)
     {
-        var confirmed = 0;
+        var results = new List<ModuleClearResult>();
         if (modules.Count == 0 || !_obd.IsInitialized)
-            return 0;
+            return results;
 
         await _obd.RunDtcModuleSessionAsync(async session =>
         {
@@ -388,15 +398,19 @@ public sealed class ModuleDtcScanService
                     _ => null
                 };
                 if (request is null)
+                {
+                    results.Add(new ModuleClearResult(module, false, null, "unsupported"));
                     continue;
+                }
 
                 try
                 {
                     var candidate = new Candidate(module.ModuleId, module.NameKa, module.NameEn,
                         module.TransmitCanId, module.ReceiveCanId, module.Extended29Bit, 0, module.ExtendedAddress);
                     var reply = await SendIsoTpAsync(session, candidate, request, token).ConfigureAwait(false);
-                    if (reply.Positive is not null)
-                        confirmed++;
+                    results.Add(reply.Positive is not null
+                        ? new ModuleClearResult(module, true, null, string.Empty)
+                        : new ModuleClearResult(module, false, reply.Nrc, reply.AnyReply ? "refused" : "no answer"));
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
@@ -405,11 +419,12 @@ public sealed class ModuleDtcScanService
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"Module {module.TransmitCanId:X} clear failed: {ex.Message}");
+                    results.Add(new ModuleClearResult(module, false, null, ex.Message));
                 }
             }
         }, token).ConfigureAwait(false);
 
-        return confirmed;
+        return results;
     }
 
     // ------------------------------------------------------------------
@@ -493,7 +508,7 @@ public sealed class ModuleDtcScanService
         return report;
     }
 
-    private sealed record IsoTpReply(byte[]? Positive, bool AnyReply);
+    private sealed record IsoTpReply(byte[]? Positive, bool AnyReply, byte? Nrc = null);
 
     private static async Task<IsoTpReply> SendIsoTpAsync(
         Elm327Protocol.IDtcModuleSession session,
@@ -514,7 +529,9 @@ public sealed class ModuleDtcScanService
         }
 
         var positive = messages.LastOrDefault(message => message.Length > 0 && message[0] == (byte)(service + 0x40));
-        return new IsoTpReply(positive, messages.Count > 0);
+        var negative = messages.LastOrDefault(message =>
+            message.Length >= 3 && message[0] == 0x7F && message[1] == service && message[2] != 0x78);
+        return new IsoTpReply(positive, messages.Count > 0, positive is null ? negative?[2] : null);
     }
 
     private static bool IsPending(byte[] message, byte service) =>

@@ -18,6 +18,8 @@ public partial class DiagnosticReportPage : ContentPage
     /// </summary>
     private async void OnOpenSessionClicked(object? sender, EventArgs e)
     {
+        try
+        {
         if (sender is not BindableObject { BindingContext: ScanSession session } ||
             BindingContext is not DiagnosticReportViewModel viewModel)
             return;
@@ -26,12 +28,24 @@ public partial class DiagnosticReportPage : ContentPage
 
         try { await Scroller.ScrollToAsync(DetailsCard, ScrollToPosition.Start, true); }
         catch { }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "DiagnosticReportPage.OnOpenSessionClicked");
+        }
     }
 
     protected override async void OnAppearing()
     {
+        try
+        {
         base.OnAppearing();
         if (BindingContext is DiagnosticReportViewModel viewModel)
             await viewModel.LoadCommand.ExecuteAsync(null);
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "DiagnosticReportPage.OnAppearing");
+        }
     }
 }

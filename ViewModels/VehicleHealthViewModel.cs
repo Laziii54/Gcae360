@@ -41,6 +41,8 @@ public partial class VehicleHealthViewModel : BaseViewModel
     [RelayCommand]
     private async Task Scan()
     {
+        try
+        {
         var generation = Interlocked.Increment(ref _scanGeneration);
         _scanCts?.Cancel();
         _scanCts?.Dispose();
@@ -105,6 +107,11 @@ public partial class VehicleHealthViewModel : BaseViewModel
                 IsBusy = false;
                 CanScan = true;
             }
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VehicleHealthViewModel.Scan");
         }
     }
 

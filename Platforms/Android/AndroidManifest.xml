@@ -5,6 +5,9 @@
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 	<uses-permission android:name="android.permission.VIBRATE" />
 	<uses-permission android:name="android.permission.WAKE_LOCK" />
+	<!-- Fuel/energy trip keeps recording in the background (TripForegroundService). -->
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
 	<uses-permission android:name="android.permission.INTERNET" />
 
 	<uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />

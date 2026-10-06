@@ -16,7 +16,6 @@ builder.Services.AddSingleton<EntitlementStore>();
 builder.Services.AddSingleton<AccountStore>();
 builder.Services.AddSingleton<WebhookEventStore>();
 builder.Services.AddSingleton<StoreVerificationService>();
-builder.Services.AddSingleton<PromoStore>();
 builder.Services.AddSingleton<CrashReportStore>();
 builder.Services.AddSingleton<VinDataService>();
 builder.Services.AddSingleton<WebImageSearchService>();
@@ -42,7 +41,6 @@ app.UseStaticFiles(new StaticFileOptions
     OnPrepareResponse = context =>
         context.Context.Response.Headers["Cache-Control"] = "public, max-age=604800"
 });
-await app.Services.GetRequiredService<PromoStore>().SeedFromEnvironmentAsync();
 
 // ============================================================
 // HEALTH
@@ -491,111 +489,6 @@ app.MapGet("/terms-of-use", () =>
 """;
     return Results.Content(html, "text/html; charset=utf-8");
 });
-
-// ============================================================
-// PROMO (switched off — see promoRedeemEnabled)
-// ============================================================
-
-// Off unless GCS_PROMO_ENABLED=true is set in Azure (it is not).
-var promoRedeemEnabled = string.Equals(
-    Environment.GetEnvironmentVariable("GCS_PROMO_ENABLED"), "true", StringComparison.OrdinalIgnoreCase);
-
-app.MapPost(
-    "/api/promo/redeem",
-    async (
-        PromoRequest request,
-        HttpContext http,
-        AccountStore accounts,
-        PromoStore promos,
-        EntitlementStore store,
-        CancellationToken ct) =>
-    {
-        // Promo codes are switched off: PRO is given only from the admin panel
-        // (Users → "PRO-ს მიცემა"). The app no longer has a promo code field.
-        if (!promoRedeemEnabled)
-            return Results.StatusCode(StatusCodes.Status410Gone);
-
-        if (string.IsNullOrWhiteSpace(request.Code) ||
-            request.Code.Length > 128)
-        {
-            return Results.BadRequest(
-                new
-                {
-                    success = false,
-                    message = "Invalid promo code"
-                });
-        }
-
-        var authorization =
-            http.Request.Headers.Authorization.ToString();
-
-        if (string.IsNullOrWhiteSpace(authorization))
-            return Results.Unauthorized();
-
-        var account =
-            await accounts.ResolveAsync(
-                authorization,
-                http.Request.Headers[
-                    "X-GCS-Device-Id"].ToString(),
-                ct);
-
-        if (account is null)
-            return Results.Unauthorized();
-
-        var effectiveUserId =
-            account.AccountId;
-
-        if (!RateWindow.TryConsume(
-                "promo:" + effectiveUserId.ToLowerInvariant(),
-                DateTimeOffset.UtcNow,
-                5,
-                TimeSpan.FromMinutes(15)))
-        {
-            return Results.StatusCode(
-                StatusCodes.Status429TooManyRequests);
-        }
-
-        var redemption =
-            await promos.RedeemAsync(
-                effectiveUserId,
-                request.Code,
-                ct);
-
-        if (!redemption.Success)
-        {
-            return Results.BadRequest(
-                new
-                {
-                    success = false,
-                    message = redemption.AlreadyRedeemed
-                        ? "This promo code has already been used by this account."
-                        : "Invalid, expired, or fully redeemed promo code."
-                });
-        }
-
-        var record =
-            new EntitlementRecord(
-                effectiveUserId,
-                true,
-                "promo",
-                "promo",
-                DateTimeOffset.UtcNow.AddDays(
-                    redemption.ProDays),
-                DateTimeOffset.UtcNow,
-                null);
-
-        // A promo code opens every PRO feature (OBD + VIN).
-        await store.UpsertSubscriptionAsync(
-            record,
-            ct);
-
-        return Results.Ok(
-            new
-            {
-                success = true,
-                expiresAt = record.ExpiresAt
-            });
-    });
 
 // ============================================================
 // ACCOUNT / RESTORE IDENTITY
@@ -2359,7 +2252,7 @@ static async Task<IResult> GenerateGeminiAsync(
     {
         return Results.Unauthorized();
     }
-    var access = await entitlements.GetAccessAsync(userId, http.RequestAborted);
+    var access = AdminAccess.Apply(account.Email, await entitlements.GetAccessAsync(userId, http.RequestAborted));
     if (!access.HasObd)
     {
         return Results.StatusCode(StatusCodes.Status403Forbidden);
@@ -2463,8 +2356,10 @@ static async Task<IResult> GenerateGeminiAsync(
                     generationConfig =
                         new
                         {
-                            maxOutputTokens = 1800,
-                            temperature = 0.2
+                            // Newer Gemini models spend part of this budget on internal
+                            // reasoning; 1800 cut chat answers off mid-sentence.
+                            maxOutputTokens = 8192,
+                            temperature = 0.3
                         }
                 });
 
@@ -2515,13 +2410,32 @@ static async Task<IResult> GenerateGeminiAsync(
         using var doc =
             JsonDocument.Parse(raw);
 
-        var text =
+        // Join every answer part (a reply can arrive in several parts);
+        // internal "thought" parts are never shown to the user.
+        var candidate =
             doc.RootElement
-                .GetProperty("candidates")[0]
-                .GetProperty("content")
-                .GetProperty("parts")[0]
-                .GetProperty("text")
-                .GetString();
+                .GetProperty("candidates")[0];
+
+        var builder = new StringBuilder();
+        if (candidate.TryGetProperty("content", out var content) &&
+            content.TryGetProperty("parts", out var parts))
+        {
+            foreach (var part in parts.EnumerateArray())
+            {
+                if (part.TryGetProperty("thought", out var thought) &&
+                    thought.ValueKind == JsonValueKind.True)
+                {
+                    continue;
+                }
+
+                if (part.TryGetProperty("text", out var piece))
+                    builder.Append(piece.GetString());
+            }
+        }
+
+        string? text = builder.ToString().Trim();
+        if (text.Length == 0)
+            text = null;
 
         return Results.Text(
             text ??
@@ -3014,10 +2928,6 @@ static async Task<JsonDocument?> ReadJsonDocumentAsync(
 // ============================================================
 // RECORDS
 // ============================================================
-
-record PromoRequest(
-    string? UserId,
-    string? Code);
 
 record StoreVerifyRequest(
     string? UserId,

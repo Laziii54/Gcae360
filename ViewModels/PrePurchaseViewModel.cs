@@ -137,6 +137,8 @@ public partial class PrePurchaseViewModel : BaseViewModel
     [RelayCommand]
     private async Task Start()
     {
+        try
+        {
         if (IsRunning)
             return;
 
@@ -173,6 +175,7 @@ public partial class PrePurchaseViewModel : BaseViewModel
             var result = await _check.RunAsync(progress, token);
             _result = result;
             ShowResult(result);
+            AddPrePurchaseToReport(result);
             HasResult = true;
         }
         catch (OperationCanceledException)
@@ -198,6 +201,11 @@ public partial class PrePurchaseViewModel : BaseViewModel
             IsBusy = false;
             await RefreshHeaderAsync();
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "PrePurchaseViewModel.Start");
+        }
     }
 
     [RelayCommand]
@@ -216,16 +224,25 @@ public partial class PrePurchaseViewModel : BaseViewModel
     [RelayCommand]
     private async Task OpenAi()
     {
+        try
+        {
         if (_check.LastResult is null)
             return;
         if (!await ProGate.EnsureAsync(_pro, "AI კონსულტაცია", "AI consultation"))
             return;
         await Shell.Current.GoToAsync(nameof(Views.PrePurchaseAiPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "PrePurchaseViewModel.OpenAi");
+        }
     }
 
     [RelayCommand]
     private async Task ExportPdf()
     {
+        try
+        {
         if (_result is null)
             return;
 
@@ -260,6 +277,11 @@ public partial class PrePurchaseViewModel : BaseViewModel
             System.Diagnostics.Debug.WriteLine($"Pre-purchase PDF failed: {ex}");
             ShowError(English ? "The PDF could not be created." : "PDF ვერ შეიქმნა.", keepResult: true);
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "PrePurchaseViewModel.ExportPdf");
+        }
     }
 
     [RelayCommand]
@@ -291,6 +313,30 @@ public partial class PrePurchaseViewModel : BaseViewModel
                 state = 3;
             step.Set(state, english);
         }
+    }
+
+    /// <summary>The pre-purchase check becomes its own part of the combined report (with its score).</summary>
+    private void AddPrePurchaseToReport(PrePurchaseResult result)
+    {
+        var english = English;
+        var section = new CarScanner.Services.Reports.ReportSectionItem
+        {
+            Kind = "prepurchase",
+            Icon = "🔍",
+            Title = english ? "Pre-purchase check" : "ყიდვისწინა შემოწმება",
+            Score = result.Score,
+            Status = result.Score >= 85 ? CarScanner.Services.Reports.ReportStatus.Ok
+                : result.Score >= 60 ? CarScanner.Services.Reports.ReportStatus.Warning
+                : CarScanner.Services.Reports.ReportStatus.Bad,
+            Summary = $"{result.Score}/100 · {(english ? result.VerdictEn : result.VerdictKa)}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(english ? result.SummaryEn : result.SummaryKa))
+            section.Lines.Add(new() { Label = string.Empty, Value = english ? result.SummaryEn : result.SummaryKa });
+        foreach (var finding in result.Faults.Concat(result.Mileage).Concat(result.Condition).Concat(result.History))
+            section.Lines.Add(new() { Label = english ? finding.LabelEn : finding.LabelKa, Value = english ? finding.ValueEn : finding.ValueKa });
+
+        CarScanner.Services.Reports.VehicleReportService.Instance?.AddOrReplace(section, result.Report);
     }
 
     private void ShowResult(PrePurchaseResult result)

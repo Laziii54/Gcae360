@@ -70,6 +70,8 @@ public partial class DiagnosticReportViewModel : BaseViewModel
     [RelayCommand]
     private async Task Load()
     {
+        try
+        {
         if (IsBusy) return;
         try
         {
@@ -98,6 +100,11 @@ public partial class DiagnosticReportViewModel : BaseViewModel
             System.Diagnostics.Debug.WriteLine($"Diagnostic report load failed: {ex.Message}");
         }
         finally { IsBusy = false; }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "DiagnosticReportViewModel.Load");
+        }
     }
 
     [RelayCommand]
@@ -182,6 +189,8 @@ public partial class DiagnosticReportViewModel : BaseViewModel
     [RelayCommand]
     private async Task ExportPdf()
     {
+        try
+        {
         if (_report is null || IsExporting) return;
         try
         {
@@ -202,11 +211,18 @@ public partial class DiagnosticReportViewModel : BaseViewModel
         {
             IsExporting = false;
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "DiagnosticReportViewModel.ExportPdf");
+        }
     }
 
     [RelayCommand]
     private async Task ShareText()
     {
+        try
+        {
         if (_report is null) return;
         try
         {
@@ -221,11 +237,18 @@ public partial class DiagnosticReportViewModel : BaseViewModel
             ReportStateDetail = L("გაზიარება ვერ მოხერხდა.", "Sharing failed.");
             System.Diagnostics.Debug.WriteLine($"Share failed: {ex}");
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "DiagnosticReportViewModel.ShareText");
+        }
     }
 
     [RelayCommand]
     private async Task CreateQrReport()
     {
+        try
+        {
         if (_report is null || SelectedSession is null)
             return;
 
@@ -245,6 +268,11 @@ public partial class DiagnosticReportViewModel : BaseViewModel
             ServiceHistory = BuildServiceHistoryText(vehicle)
         });
         await Shell.Current.GoToAsync(nameof(Views.QrReportPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "DiagnosticReportViewModel.CreateQrReport");
+        }
     }
 
     [RelayCommand]

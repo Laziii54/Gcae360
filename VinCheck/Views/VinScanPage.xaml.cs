@@ -27,6 +27,8 @@ public partial class VinScanPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        try
+        {
         base.OnAppearing();
         _visible = true;
         try { DeviceDisplay.Current.KeepScreenOn = true; } catch { }
@@ -44,6 +46,11 @@ public partial class VinScanPage : ContentPage
 
         await Task.Delay(150);
         await StartAsync();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VinScanPage.OnAppearing");
+        }
     }
 
     protected override void OnDisappearing()
@@ -131,11 +138,18 @@ public partial class VinScanPage : ContentPage
 
     private async void OnTorchClicked(object? sender, EventArgs e)
     {
+        try
+        {
         if (CameraView.Controller is not IVinCameraReader reader)
             return;
         _torch = !_torch;
         TorchButton.BackgroundColor = _torch ? Color.FromArgb("#F59E0B") : Color.FromArgb("#66000000");
         try { await reader.SetTorchAsync(_torch); } catch { }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VinScanPage.OnTorchClicked");
+        }
     }
 
     private async void OnCloseClicked(object? sender, EventArgs e)

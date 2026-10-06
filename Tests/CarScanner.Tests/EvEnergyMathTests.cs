@@ -86,6 +86,44 @@ public class EvEnergyMathTests
         Assert.Equal(0, energy.RegeneratedKWh, 6);
     }
 
+    [Fact]
+    public void Accumulator_DownhillNeverReducesUsedEnergy()
+    {
+        var energy = new EvEnergyAccumulator();
+        var speed = 10.0;
+        energy.Add(350, 60, 0, speed);
+        for (var i = 0; i < 4; i++)
+        {
+            speed += 6;
+            energy.Add(350, 60, 1, speed);   // accelerating: +21 kW is consumption
+        }
+
+        Assert.True(energy.IsSignConfirmed);
+        var usedBeforeHill = energy.ConsumedKWh;
+
+        for (var i = 0; i < 20; i++)
+        {
+            speed += 6;                      // rolling faster downhill …
+            energy.Add(350, -60, 1, speed);  // … while the battery charges
+        }
+
+        Assert.Equal(1, energy.Sign);
+        Assert.Equal(usedBeforeHill, energy.ConsumedKWh, 9);
+        Assert.True(energy.RegeneratedKWh > 0);
+        Assert.True(energy.NetKWh < usedBeforeHill);
+    }
+
+    [Fact]
+    public void Accumulator_UserCanFlipAndSignSurvivesTripReset()
+    {
+        var energy = new EvEnergyAccumulator();
+        energy.LockSign(1);
+        Assert.Equal(-1, energy.FlipSign());
+        energy.Reset();
+        Assert.True(energy.IsSignConfirmed);
+        Assert.Equal(-1, energy.Sign);
+    }
+
     [Theory]
     [InlineData(8, EnergyMode.Electric)]
     [InlineData(17, EnergyMode.Hybrid)]

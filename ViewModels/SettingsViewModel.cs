@@ -109,6 +109,17 @@ public partial class SettingsViewModel : BaseViewModel
         UpdateStatus();
         ApplyTheme();
 
+        // The language can also be changed on the home page or VIN pages;
+        // keep this (singleton) view model in sync so the picker never
+        // pushes an old language back.
+        _localization.LanguageChanged += (_, __) =>
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                if (!string.Equals(LanguageOption, _localization.CurrentLanguage, StringComparison.OrdinalIgnoreCase))
+                    LanguageOption = _localization.CurrentLanguage;
+                UpdateStatus();
+            });
+
         _bluetooth.ConnectionChanged +=
             (_, __) =>
                 MainThread.BeginInvokeOnMainThread(
@@ -140,6 +151,15 @@ public partial class SettingsViewModel : BaseViewModel
 
     partial void OnLanguageOptionChanged(string value)
     {
+        // Already the app language (e.g. synced after the home KA/EN button):
+        // nothing to switch, and never switch back to an old value.
+        if (string.IsNullOrWhiteSpace(value) ||
+            string.Equals(value, _localization.CurrentLanguage, StringComparison.OrdinalIgnoreCase))
+        {
+            UpdateStatus();
+            return;
+        }
+
         _localization.SetLanguage(value);
 
         UpdateStatus();
@@ -205,6 +225,8 @@ public partial class SettingsViewModel : BaseViewModel
     [RelayCommand]
     private async Task ClearHistory()
     {
+        try
+        {
         var yes =
             _localization.IsEnglish
                 ? "Yes"
@@ -239,6 +261,11 @@ public partial class SettingsViewModel : BaseViewModel
                 ? "History deleted."
                 : "ისტორია წაიშალა.",
             "OK");
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "SettingsViewModel.ClearHistory");
+        }
     }
 
     [RelayCommand]
@@ -291,6 +318,8 @@ public partial class SettingsViewModel : BaseViewModel
     [RelayCommand]
     private async Task DeleteVehicleData()
     {
+        try
+        {
         var yes =
             _localization.IsEnglish
                 ? "Delete"
@@ -331,6 +360,11 @@ public partial class SettingsViewModel : BaseViewModel
                 ? "Local vehicle history was deleted."
                 : "ადგილობრივი მანქანის მონაცემები წაიშალა.",
             "OK");
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "SettingsViewModel.DeleteVehicleData");
+        }
     }
 
     [RelayCommand]
@@ -352,7 +386,7 @@ public partial class SettingsViewModel : BaseViewModel
             await Share.Default.RequestAsync(
                 new ShareFileRequest
                 {
-                    Title = "Georgian Car Scanner data",
+                    Title = LocalizationService.T("Georgian Car Scanner data"),
                     File = new ShareFile(path)
                 });
         }
@@ -372,9 +406,16 @@ public partial class SettingsViewModel : BaseViewModel
     [RelayCommand]
     private async Task About()
     {
+        try
+        {
         await Shell.Current.DisplayAlertAsync(
             "Georgian Car Scanner",
-            "Safe & Reliable OBD-II Diagnostics",
+            LocalizationService.T("Safe & Reliable OBD-II Diagnostics"),
             "OK");
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "SettingsViewModel.About");
+        }
     }
 }

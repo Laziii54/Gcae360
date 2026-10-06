@@ -165,7 +165,7 @@ public sealed partial class HybridHealthService
             pack.Blocks.Length > 0 ? $"{pack.Blocks.Length} {unit} ({pack.Source})" : pack.Source,
             pack.SohPercent.HasValue ? "SOH" : "",
             pack.CapacityAh.HasValue ? "ტევადობა" : "",
-            pack.Temperatures.Length > 0 ? $"{pack.Temperatures.Length} ტემპერატურა" : "",
+            pack.Temperatures.Length > 0 ? $"{pack.Temperatures.Length} ტემპერატურის მონაცემი" : "",
             pack.Resistances.Length > 0 ? "შიდა წინაღობა" : "",
             pack.SocPercent.HasValue ? "SOC" : "",
             pack.CurrentA.HasValue ? "დენი" : ""

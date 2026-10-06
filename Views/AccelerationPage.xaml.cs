@@ -14,6 +14,8 @@ public partial class AccelerationPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        try
+        {
         base.OnAppearing();
         var localization = Application.Current?.Handler?.MauiContext?.Services.GetService<LocalizationService>();
         localization?.Apply(this);
@@ -21,6 +23,11 @@ public partial class AccelerationPage : ContentPage
         SemanticProperties.SetDescription(CameraButton, PerformanceVideoText.Get(PerformanceVideoText.OpenCamera));
         if (BindingContext is HomeViewModel viewModel)
             await viewModel.StartAccelerationPreviewAsync();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AccelerationPage.OnAppearing");
+        }
     }
 
     private async void OnCameraTapped(object? sender, TappedEventArgs e)
@@ -73,8 +80,15 @@ public partial class AccelerationPage : ContentPage
 
     protected override async void OnDisappearing()
     {
+        try
+        {
         base.OnDisappearing();
         if (BindingContext is HomeViewModel viewModel)
             await viewModel.StopAccelerationPreviewAsync();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AccelerationPage.OnDisappearing");
+        }
     }
 }

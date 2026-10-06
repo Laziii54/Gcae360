@@ -19,6 +19,8 @@ public partial class PerformanceVideoPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        try
+        {
         base.OnAppearing();
         _isVisible = true;
 
@@ -36,10 +38,17 @@ public partial class PerformanceVideoPage : ContentPage
         {
             _viewModel.ReportCameraError(ex);
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "PerformanceVideoPage.OnAppearing");
+        }
     }
 
     protected override async void OnDisappearing()
     {
+        try
+        {
         base.OnDisappearing();
         _isVisible = false;
 
@@ -56,16 +65,28 @@ public partial class PerformanceVideoPage : ContentPage
         {
             LockPortrait(false);
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "PerformanceVideoPage.OnDisappearing");
+        }
     }
 
     // The native camera view can be created before or after OnAppearing,
     // so the camera is started from whichever happens last.
     private async void OnCameraControllerChanged(object? sender, EventArgs e)
     {
+        try
+        {
         if (!_isVisible)
             return;
 
         await TryAttachCameraAsync();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "PerformanceVideoPage.OnCameraControllerChanged");
+        }
     }
 
     private async Task TryAttachCameraAsync()

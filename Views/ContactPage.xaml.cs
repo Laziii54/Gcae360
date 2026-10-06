@@ -16,6 +16,8 @@ public partial class ContactPage : ContentPage
 
     private async void OnSendClicked(object sender, EventArgs e)
     {
+        try
+        {
         var subject = string.IsNullOrWhiteSpace(SubjectEntry.Text) ? "Georgian Car Scanner" : SubjectEntry.Text.Trim();
         var message = MessageEditor.Text?.Trim();
         if (string.IsNullOrWhiteSpace(message))
@@ -32,6 +34,11 @@ public partial class ContactPage : ContentPage
         catch (Exception ex)
         {
             StatusLabel.Text = ex.Message;
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ContactPage.OnSendClicked");
         }
     }
 

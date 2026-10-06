@@ -5,10 +5,6 @@ GEMINI_API_KEY=SET_ON_SERVER_ONLY
 # HOME/data volume. Keep this directory outside deployable application files.
 GCS_DATA_DIRECTORY=SET_TO_A_PERSISTENT_SERVER_DIRECTORY
 
-# Promo codes: CODE|PRO_DAYS|MAX_REDEMPTIONS|YYYY-MM-DD, separated by commas.
-# Keep real values only in the server environment; never commit a real code.
-GCS_PROMO_CODES=GCS-AI-TEST-30|30|100|2027-12-31,GCS-AI-TEST-7|7|100|2027-12-31
-
 # Google Play subscription verification
 GCS_ANDROID_PACKAGE_NAME=com.gcar360.app
 GCS_GOOGLE_SERVICE_ACCOUNT_JSON=SET_ON_SERVER_ONLY

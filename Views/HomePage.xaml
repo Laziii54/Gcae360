@@ -119,7 +119,7 @@
                         <Path Data="M4,8 L4,4 L8,4 M16,4 L20,4 L20,8 M20,16 L20,20 L16,20 M8,20 L4,20 L4,16 M8,12 L16,12" Style="{StaticResource RowIconStyle}" Stroke="{DynamicResource Primary}" HorizontalOptions="Start" />
                         <Border Style="{StaticResource ProBadgeStyle}" HorizontalOptions="End" VerticalOptions="Start"><Label Text="PRO" Style="{StaticResource ProBadgeTextStyle}" /></Border>
                         <Label Grid.Row="1" Text="მოდულების დიაგნოსტიკა" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" Margin="0,4,0,0" />
-                        <Label Grid.Row="2" Text="ABS, აირბეგი, ძარა და სხვა" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                        <Label Grid.Row="2" Text="ABS, საჭე, ბატარეა — ცოცხალი მონაცემები" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                     </Grid>
                 </Border>
                 <Border Grid.Column="1" Grid.Row="0" Style="{StaticResource ListCardStyle}" Padding="12,11">
@@ -208,6 +208,30 @@
                     </Grid>
                     <BoxView Style="{StaticResource RowDividerStyle}" Margin="58,0,0,0" />
                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToGraphStudioCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M4,19 L20,19 M4,19 L4,5 M7,15 L11,10 L14,13 L19,7" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="გრაფიკები (Graph Studio)" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                            <Label Text="შედარება, ბადე, ჩაწერა" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="58,0,0,0" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToCodingCommand}" /></Grid.GestureRecognizers>
+                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
+                            <Path Data="M8,7 L3,12 L8,17 M16,7 L21,12 L16,17 M14,5 L10,19" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="კოდირება" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                            <Label Text="სარეზერვო ასლი, შედარება, პარამეტრები" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="58,0,0,0" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
                         <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToBatteryCommand}" /></Grid.GestureRecognizers>
                         <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
                             <Path Data="M3,8 L19,8 L19,17 L3,17 Z M21,11 L21,14 M7,12.5 L11,12.5 M9,10.5 L9,14.5 M14,12.5 L17,12.5" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
@@ -254,7 +278,7 @@
                         </Border>
                         <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
                             <Label Text="ანგარიში" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
-                                <Label Text="შენახული შემოწმებები, PDF" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                                <Label Text="ყველა შემოწმება ერთად · PDF, QR" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
                         </VerticalStackLayout>
                         <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
                     </Grid>
@@ -281,7 +305,8 @@
                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10" BackgroundColor="Transparent">
                         <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnTechnicalTapped" /></Grid.GestureRecognizers>
                         <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" VerticalOptions="Center">
-                            <Path Data="M5,12 L5.1,12 M12,12 L12.1,12 M19,12 L19.1,12" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                            <!-- Wrench: technical tools (was three dots) -->
+                            <Path Data="M14.5,6.5 A4,4 0 0 0 9,12 L4,17 L7,20 L12,15 A4,4 0 0 0 17.5,9.5 L15,12 L12,9 Z" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
                         </Border>
                         <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
                             <Label Text="ტექნიკური" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />

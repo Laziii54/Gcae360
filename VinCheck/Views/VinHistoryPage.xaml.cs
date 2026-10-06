@@ -14,8 +14,15 @@ public partial class VinHistoryPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        try
+        {
         base.OnAppearing();
         try { await _vm.LoadAsync(); } catch { }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VinHistoryPage.OnAppearing");
+        }
     }
 
     private async void BackClicked(object? sender, EventArgs e)

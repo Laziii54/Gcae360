@@ -66,6 +66,8 @@ public partial class ModuleLiveDataViewModel : BaseViewModel
     [RelayCommand]
     public async Task Start()
     {
+        try
+        {
         if (IsRunning)
             return;
 
@@ -134,6 +136,11 @@ public partial class ModuleLiveDataViewModel : BaseViewModel
                 SetNote(
                     $"{Groups.Sum(group => group.Signals.Count)} მნიშვნელობა · გაჩერებულია",
                     $"{Groups.Sum(group => group.Signals.Count)} values · stopped");
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ModuleLiveDataViewModel.Start");
         }
     }
 

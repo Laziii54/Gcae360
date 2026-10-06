@@ -39,7 +39,6 @@ public partial class AppShell : Shell
         if (Application.Current != null) Application.Current.RequestedThemeChanged += (_, __) => MainThread.BeginInvokeOnMainThread(() => { if (CurrentPage != null) ThemeService.Apply(); });
         Routing.RegisterRoute(nameof(BluetoothPage), typeof(BluetoothPage));
         Routing.RegisterRoute(nameof(LiveDataPage), typeof(LiveDataPage));
-        Routing.RegisterRoute(nameof(DiagnosticsPage), typeof(DiagnosticsPage));
         Routing.RegisterRoute(nameof(HistoryPage), typeof(HistoryPage));
         Routing.RegisterRoute(nameof(RecordingHistoryPage), typeof(RecordingHistoryPage));
         Routing.RegisterRoute(nameof(ResetRecorderPage), typeof(ResetRecorderPage));
@@ -61,6 +60,10 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(ProPage), typeof(ProPage));
         Routing.RegisterRoute(nameof(AiPage), typeof(AiPage));
         Routing.RegisterRoute(nameof(FuelPage), typeof(FuelPage));
+        Routing.RegisterRoute(nameof(GraphStudioPage), typeof(GraphStudioPage));
+        Routing.RegisterRoute(nameof(CodingPage), typeof(CodingPage));
+        Routing.RegisterRoute(nameof(VehicleReportPage), typeof(VehicleReportPage));
+        Routing.RegisterRoute(nameof(GraphChannelsPage), typeof(GraphChannelsPage));
         Routing.RegisterRoute(nameof(ServicePage), typeof(ServicePage));
         Routing.RegisterRoute(nameof(CalendarPage), typeof(CalendarPage));
         Routing.RegisterRoute(nameof(RepairCostPage), typeof(RepairCostPage));

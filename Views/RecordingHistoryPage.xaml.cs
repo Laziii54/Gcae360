@@ -12,8 +12,15 @@ public partial class RecordingHistoryPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        try
+        {
         base.OnAppearing();
         if (BindingContext is RecordingHistoryViewModel viewModel)
             await viewModel.Load();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "RecordingHistoryPage.OnAppearing");
+        }
     }
 }

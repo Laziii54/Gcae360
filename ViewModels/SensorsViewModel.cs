@@ -39,6 +39,8 @@ public partial class SensorsViewModel : BaseViewModel
     [RelayCommand]
     public async Task Refresh()
     {
+        try
+        {
         if (IsBusy)
             return;
 
@@ -87,6 +89,11 @@ public partial class SensorsViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "SensorsViewModel.Refresh");
         }
     }
 

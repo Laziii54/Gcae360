@@ -24,6 +24,8 @@ public partial class HistoryViewModel : BaseViewModel
     [RelayCommand]
     private async Task Load()
     {
+        try
+        {
         if (IsBusy)
             return;
 
@@ -46,6 +48,11 @@ public partial class HistoryViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HistoryViewModel.Load");
         }
     }
 
@@ -122,6 +129,8 @@ public partial class HistoryViewModel : BaseViewModel
     [RelayCommand]
     private async Task Clear()
     {
+        try
+        {
         var confirm = await Shell.Current.DisplayAlertAsync(
             CarScanner.Services.Localization.LocalizationService.T("დადასტურება"),
             CarScanner.Services.Localization.LocalizationService.T("წაიშლება ყველა შენახული სკანი, DTC, სენსორის მონაცემი, readiness, ECU ინფორმაცია და freeze frame. გსურთ გაგრძელება?"),
@@ -135,5 +144,10 @@ public partial class HistoryViewModel : BaseViewModel
 
         History.Clear();
         Sessions.Clear();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HistoryViewModel.Clear");
+        }
     }
 }

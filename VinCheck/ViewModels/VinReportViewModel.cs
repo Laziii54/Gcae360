@@ -88,6 +88,8 @@ public partial class VinReportViewModel(
     [RelayCommand]
     private async Task BuyFullAsync()
     {
+        try
+        {
         if (Report is null || IsBuyingFull)
             return;
 
@@ -141,6 +143,11 @@ public partial class VinReportViewModel(
         finally
         {
             IsBuyingFull = false;
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VinReportViewModel.BuyFullAsync");
         }
     }
 
@@ -253,9 +260,16 @@ public partial class VinReportViewModel(
     [RelayCommand]
     private async Task SearchGoogleAsync()
     {
+        try
+        {
         if (Report is null) return;
         var url = Report.WebSearchUrl ?? "https://www.google.com/search?tbm=isch&q=" + Uri.EscapeDataString(Report.Vin);
         try { await Launcher.Default.OpenAsync(new Uri(url)); } catch { }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VinReportViewModel.SearchGoogleAsync");
+        }
     }
 
     public string CustomsText => Microsoft.Maui.Storage.Preferences.Default.Get("language", "English") == "English"
@@ -266,6 +280,8 @@ public partial class VinReportViewModel(
     [RelayCommand]
     private async Task OpenCustomsAsync()
     {
+        try
+        {
         if (Report is null)
             return;
 
@@ -274,8 +290,10 @@ public partial class VinReportViewModel(
             ? litres.ToString("0.0#", CultureInfo.InvariantCulture)
             : "";
         var fuelText = $"{Report.FuelType} {Spec("ElectrificationLevel")} {Report.Engine}".ToLowerInvariant();
-        var fuel = fuelText.Contains("hybrid") || fuelText.Contains("hev") ? "hybrid"
+        var fuel = fuelText.Contains("plug-in") || fuelText.Contains("plug in") || fuelText.Contains("phev") ? "phev"
+            : fuelText.Contains("hybrid") || fuelText.Contains("hev") ? "hybrid"
             : fuelText.Contains("electric") && !fuelText.Contains("gasoline") && !fuelText.Contains("petrol") ? "electric"
+            : fuelText.Contains("diesel") ? "diesel"
             : "petrol";
         var year = Report.Year?.ToString(CultureInfo.InvariantCulture) ?? "";
 
@@ -286,6 +304,11 @@ public partial class VinReportViewModel(
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Customs navigation failed: {ex.Message}");
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VinReportViewModel.OpenCustomsAsync");
         }
     }
 
@@ -422,31 +445,54 @@ public partial class VinReportViewModel(
     [RelayCommand]
     private async Task CopyVinAsync()
     {
+        try
+        {
         if (Report is null) return;
         await Clipboard.Default.SetTextAsync(Report.Vin);
         await Shell.Current.DisplayAlertAsync(VinText.T("VinHistory"), VinText.T("VinCopied"), "OK");
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VinReportViewModel.CopyVinAsync");
+        }
     }
 
     [RelayCommand]
     private async Task ShareAsync()
     {
+        try
+        {
         if (Report is null) return;
         var text = $"{Report.Year} {Report.DisplayName}\nVIN: {Report.Vin}";
         if (!string.IsNullOrWhiteSpace(Report.ReportUrl))
             text += $"\n{Report.ReportUrl}";
         await Share.Default.RequestAsync(new ShareTextRequest { Title = Report.DisplayName, Text = text });
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VinReportViewModel.ShareAsync");
+        }
     }
 
     [RelayCommand]
     private async Task ToggleFavoriteAsync()
     {
+        try
+        {
         if (Report is not null)
             IsFavorite = await database.ToggleFavoriteAsync(Report);
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VinReportViewModel.ToggleFavoriteAsync");
+        }
     }
 
     [RelayCommand]
     private async Task RefreshAsync()
     {
+        try
+        {
         if (Report is null || IsRefreshing) return;
         IsRefreshing = true;
         try
@@ -462,6 +508,11 @@ public partial class VinReportViewModel(
         {
             IsRefreshing = false;
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VinReportViewModel.RefreshAsync");
+        }
     }
 
     // ============================================================
@@ -471,6 +522,8 @@ public partial class VinReportViewModel(
     [RelayCommand]
     private async Task UnlockAsync()
     {
+        try
+        {
         if (Report is null || IsUnlocking)
             return;
 
@@ -497,6 +550,11 @@ public partial class VinReportViewModel(
         }
 
         await OpenHistoryAsync();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VinReportViewModel.UnlockAsync");
+        }
     }
 
     private async Task OpenHistoryAsync()
@@ -566,8 +624,15 @@ public partial class VinReportViewModel(
     [RelayCommand]
     private async Task OpenAuctionPhotoAsync(PhotoSelection selection)
     {
+        try
+        {
         if (selection.Images.Count == 0) return;
         await Shell.Current.GoToAsync(nameof(VinPhotoGalleryPage), new ShellNavigationQueryParameters { { "Selection", selection } });
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VinReportViewModel.OpenAuctionPhotoAsync");
+        }
     }
 }
 

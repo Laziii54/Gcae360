@@ -16,8 +16,15 @@ using CarScanner.ViewModels; namespace CarScanner.Views; public partial class Fu
 
     protected override async void OnDisappearing()
     {
+        try
+        {
         base.OnDisappearing();
         if (BindingContext is FuelViewModel viewModel)
             await viewModel.OnPageDisappearingAsync();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "FuelPage.OnDisappearing");
+        }
     }
 }

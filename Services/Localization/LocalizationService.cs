@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace CarScanner.Services.Localization;
 
-public sealed class LocalizationService
+public sealed partial class LocalizationService
 {
     public const string LanguageKey = "language";
 
@@ -20,7 +20,10 @@ public sealed class LocalizationService
 
     private sealed class OriginalText
     {
-        public string Value { get; init; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+
+        /// <summary>Text this service last wrote; anything else came from code or a binding.</summary>
+        public string? Applied { get; set; }
     }
 
 
@@ -703,7 +706,6 @@ public sealed class LocalizationService
                 "ჩაწერე შენი შეტყობინება…",
 
             // Shared page titles and compact ECU-style section labels.
-            ["Activate promo"] = "პრომოკოდის გააქტიურება",
             ["Adapter status"] = "ადაპტერის სტატუსი",
             ["AI Diagnostic"] = "AI დიაგნოსტიკა",
             ["Battery / Charging"] = "ბატარეა / დამუხტვა",
@@ -727,7 +729,6 @@ public sealed class LocalizationService
             ["ECU EXPLORER"] = "ECU ინფორმაცია",
             ["Email"] = "ელფოსტა",
             ["Emissions / Readiness"] = "ემისია / მზადყოფნა",
-            ["Enter promo code"] = "შეიყვანე პრომოკოდი",
             ["Freeze Frame"] = "Freeze Frame",
             ["Fuel Rate"] = "საწვავის სიჩქარე",
             ["FULL HEALTH SCAN"] = "სრული მდგომარეობის სკანირება",
@@ -749,7 +750,6 @@ public sealed class LocalizationService
             ["Performance Lab"] = "აჩქარების გაზომვა",
             ["PERFORMANCE LAB"] = "აჩქარების გაზომვა",
             ["Privacy Policy"] = "კონფიდენციალურობის პოლიტიკა",
-            ["Promo code"] = "პრომოკოდი",
             ["Purchase PRO"] = "PRO-ს შეძენა",
             ["Recommended checks"] = "რეკომენდებული შემოწმებები",
             ["Reset"] = "განულება",
@@ -913,6 +913,10 @@ public sealed class LocalizationService
             ["მოდულების დიაგნოსტიკა"] = "Module diagnostics",
             ["აღწერე პრობლემა ან დაასკანერე — AI გეტყვის მიზეზს"] = "Describe the problem or scan — AI tells you the cause",
             ["ABS, აირბეგი, ძარა და სხვა"] = "ABS, airbag, body and more",
+            ["ABS, საჭე, ბატარეა — ცოცხალი მონაცემები"] = "ABS, steering, battery — live data",
+            ["ყველა მოდულის სკანი"] = "All-module scan",
+            ["ABS, აირბეგი, ძარა, გადაცემათა კოლოფი…"] = "ABS, airbag, body, transmission…",
+            ["რეკომენდებული შემოწმება"] = "Recommended checks",
             ["მანქანის შეფასება ყიდვამდე"] = "Check a car before buying",
             ["ოდომეტრის შედარება მოდულებთან"] = "Compare the odometer across modules",
             ["რეალური ხარჯი მგზავრობისას"] = "Real consumption while driving",
@@ -1522,16 +1526,12 @@ public sealed class LocalizationService
             ["თვეში"] = "per month",
             ["PRO-ის გააქტიურება"] = "Activate PRO",
             ["შეძენის აღდგენა"] = "Restore purchase",
-            ["პრომო კოდი"] = "Promo code",
-            ["შეიყვანე პრომო კოდი"] = "Enter a promo code",
             ["გამოწერა ყოველთვიურად განახლდება, სანამ არ გააუქმებ. საბოლოო ფასი გადახდამდე Google Play-ში გამოჩნდება."] = "The subscription renews monthly until you cancel. The final price is shown in Google Play before payment.",
             ["კონფიდენციალურობის პოლიტიკა"] = "Privacy policy",
             ["გამოყენების პირობები"] = "Terms of use",
             ["გამოწერის მართვა"] = "Manage subscription",
             ["ფასი გამოჩნდება Store-დან"] = "The price will be shown from the Store",
-            ["შეიყვანე პრომო კოდი."] = "Enter a promo code.",
             ["PRO წარმატებით გააქტიურდა."] = "PRO activated successfully.",
-            ["პრომო კოდი არასწორია ან ვადა გაუვიდა."] = "The promo code is wrong or expired.",
             ["PRO უკვე აქტიურია."] = "PRO is already active.",
             ["Google Play იტვირთება…"] = "Loading Google Play…",
             ["შეძენა მოწმდება…"] = "Checking purchase…",
@@ -2127,7 +2127,6 @@ public sealed class LocalizationService
         ("{0} წთ", "{0} min"),
         ("Vehicle: მიუწვდომელია · {0}", "Vehicle: unavailable · {0}"),
         ("{0} / თვე", "{0} / month"),
-        ("პრომო კოდის გააქტიურება ვერ შესრულდა: {0}", "Promo code activation failed: {0}"),
         ("გადახდა ვერ შესრულდა: {0}", "Payment failed: {0}"),
         ("შეძენის აღდგენა ვერ შესრულდა: {0}", "Restoring purchase failed: {0}"),
         ("ზეთის რესურსი ({0}) დაყენდება {1}%-ზე.", "Oil life ({0}) will be set to {1}%."),
@@ -2443,12 +2442,12 @@ public sealed class LocalizationService
             if (ExtendedKaToEn.TryGetValue(value, out var extended)) return extended;
             if (KaToEn.TryGetValue(value, out var en)) return en;
             if (UiKaToEn.TryGetValue(value, out var uiEn)) return uiEn;
-            return value;
+            return LookupExtraEnglish(value) ?? value;
         }
 
         if (EnToKa.TryGetValue(value, out var ka)) return ka;
         if (UiEnToKa.TryGetValue(value, out var uiKa)) return uiKa;
-        return value;
+        return LookupExtraGeorgian(value) ?? value;
     }
 
     private string TranslateExact(string text)
@@ -2483,9 +2482,13 @@ public sealed class LocalizationService
                 return uiEn;
 
             // Only Georgian text can need an English template.
-            return GeorgianLetters.IsMatch(text)
-                ? TranslateTemplate(text, UiKaToEnTemplates) ?? text
-                : text;
+            if (!GeorgianLetters.IsMatch(text))
+                return text;
+
+            return LookupExtraEnglish(text)
+                ?? TranslateTemplate(text, UiKaToEnTemplates)
+                ?? TranslateTemplate(text, ExtraToEnglishTemplates.Value)
+                ?? text;
         }
 
         if (EnToKa.TryGetValue(text, out var ka))
@@ -2494,9 +2497,13 @@ public sealed class LocalizationService
         if (UiEnToKa.TryGetValue(text, out var uiKa))
             return uiKa;
 
-        return GeorgianLetters.IsMatch(text)
-            ? text
-            : TranslateTemplate(text, UiEnToKaTemplates) ?? text;
+        if (GeorgianLetters.IsMatch(text))
+            return text;
+
+        return LookupExtraGeorgian(text)
+            ?? TranslateTemplate(text, UiEnToKaTemplates)
+            ?? TranslateTemplate(text, ExtraToGeorgianTemplates.Value)
+            ?? text;
     }
 
     // =========================================================
@@ -2620,6 +2627,19 @@ public sealed class LocalizationService
 
     private void ApplyNode(Element node)
     {
+        try
+        {
+            ApplyNodeCore(node);
+        }
+        catch (Exception ex)
+        {
+            // A single unusual control must never break (or close) a page.
+            System.Diagnostics.Debug.WriteLine($"Localization skipped {node.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    private void ApplyNodeCore(Element node)
+    {
         // VIN Check pages translate their own texts (VinText); their labels
         // are bound, so they must not be overwritten here.
         if (node is Page vinPage &&
@@ -2628,140 +2648,76 @@ public sealed class LocalizationService
             return;
         }
 
-        if (node is Page page &&
-            !string.IsNullOrWhiteSpace(page.Title))
-        {
-            page.Title = Translate(OriginalValue(page, page.Title));
-        }
-
         switch (node)
         {
+            case Page page when !string.IsNullOrWhiteSpace(page.Title):
+                page.Title = TranslateTracked(page, page.Title);
+                break;
+
+            // Labels and buttons are never rewritten. Their Text stays what XAML or the
+            // view model set (so bindings keep working and a later visit can never bring
+            // back an old language); only the text drawn on screen is translated by the
+            // handler mappers in RegisterDisplayTranslation. Here they are just redrawn.
             case Label label:
-
-                // This label is driven by a view-model binding.  Replacing its
-                // Text here would discard the binding and leave a stale status.
-                if (label.AutomationId == "ConnectionStatusLabel" ||
-                    label.AutomationId?.StartsWith("DynamicText", StringComparison.Ordinal) == true)
+                if (label.FormattedText is { } formatted)
                 {
-                    // Bound text: redraw it in the current language.
-                    label.Handler?.UpdateValue(nameof(Label.Text));
-                    break;
+                    foreach (var span in formatted.Spans)
+                        if (!string.IsNullOrWhiteSpace(span.Text))
+                            span.Text = TranslateTracked(span, span.Text);
                 }
-
-                if (!string.IsNullOrWhiteSpace(label.Text))
+                else
                 {
-                    var translated = Translate(OriginalValue(label, label.Text));
-                    if (!string.Equals(label.Text, translated, StringComparison.Ordinal))
-                        label.Text = translated;
+                    RedrawText(label, nameof(Label.Text));
                 }
-
                 break;
 
             case Button button:
-
-                if (button.AutomationId?.StartsWith("DynamicText", StringComparison.Ordinal) == true)
-                {
-                    button.Handler?.UpdateValue(nameof(Button.Text));
-                    break;
-                }
-
-                if (!string.IsNullOrWhiteSpace(button.Text))
-                {
-                    var translated = Translate(OriginalValue(button, button.Text));
-                    if (!string.Equals(button.Text, translated, StringComparison.Ordinal))
-                        button.Text = translated;
-                }
-
+                RedrawText(button, nameof(Button.Text));
                 break;
 
-            case Entry entry:
-
-                entry.Placeholder = Translate(OriginalValue(entry, entry.Placeholder));
-
+            case SearchBar searchBar when !string.IsNullOrWhiteSpace(searchBar.Placeholder):
+                searchBar.Placeholder = TranslateTracked(searchBar, searchBar.Placeholder);
                 break;
 
-            case Editor editor:
+            case Entry entry when !string.IsNullOrWhiteSpace(entry.Placeholder):
+                entry.Placeholder = TranslateTracked(entry, entry.Placeholder);
+                break;
 
-                editor.Placeholder = Translate(OriginalValue(editor, editor.Placeholder));
-
+            case Editor editor when !string.IsNullOrWhiteSpace(editor.Placeholder):
+                editor.Placeholder = TranslateTracked(editor, editor.Placeholder);
                 break;
         }
 
-
-        switch (node)
-        {
-            case ContentPage cp
-                when cp.Content != null:
-
-                ApplyNode(cp.Content);
-
-                break;
-
-            case ScrollView sv
-                when sv.Content != null:
-
-                ApplyNode(sv.Content);
-
-                break;
-
-            case Border border
-                when border.Content != null:
-
-                ApplyNode(border.Content);
-
-                break;
-
-            case ContentView cv
-                when cv.Content != null:
-
-                ApplyNode(cv.Content);
-
-                break;
-
-            case ItemsView itemsView:
-
-                // Item templates are bound: only redraw their texts.
-                RefreshBoundTexts(itemsView);
-
-                break;
-
-            case Layout layout:
-
-                foreach (
-                    var child
-                    in layout.Children
-                        .OfType<Element>())
-                {
-                    ApplyNode(child);
-                }
-
-                break;
-        }
-    }
-
-    private static void RefreshBoundTexts(Element node)
-    {
-        switch (node)
-        {
-            case Label label:
-                label.Handler?.UpdateValue(nameof(Label.Text));
-                break;
-            case Button button:
-                button.Handler?.UpdateValue(nameof(Button.Text));
-                break;
-        }
-
+        // Walk everything that is on screen: layouts, borders, scroll views,
+        // collection/bindable-layout items, refresh/swipe views, content views …
         if (node is not IVisualTreeElement tree)
             return;
 
-        foreach (var child in tree.GetVisualChildren().OfType<Element>())
-            RefreshBoundTexts(child);
+        foreach (var child in tree.GetVisualChildren().OfType<Element>().ToList())
+            ApplyNode(child);
     }
 
-    private string OriginalValue(Element element, string? current)
+    private static void RedrawText(View view, string property)
     {
-        return _originalTexts.GetValue(
-            element,
-            _ => new OriginalText { Value = current ?? string.Empty }).Value;
+        if (view.Handler is null)
+            return;
+
+        view.Handler.UpdateValue(property);
+        (view as IView).InvalidateMeasure();
+    }
+
+    /// <summary>
+    /// Translates a value this service owns (page title, placeholder). If code or a
+    /// binding changed it since the last pass, the new value becomes the source.
+    /// </summary>
+    private string TranslateTracked(Element element, string current)
+    {
+        var state = _originalTexts.GetValue(element, _ => new OriginalText { Value = current });
+        if (state.Applied is not null && !string.Equals(current, state.Applied, StringComparison.Ordinal))
+            state.Value = current;
+
+        var translated = Translate(state.Value);
+        state.Applied = translated;
+        return translated;
     }
 }

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    x:Class="CarScanner.Views.GraphChannelsPage"
+    x:DataType="vm:GraphStudioViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="რა ვაჩვენო">
+
+    <Grid RowDefinitions="*,Auto">
+        <ScrollView>
+            <VerticalStackLayout Padding="14,10,14,20" Spacing="8">
+                <Label Text="მზა ნაკრებები" Style="{StaticResource SectionCaptionStyle}" />
+                <Border Style="{StaticResource ListCardStyle}">
+                    <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding Presets}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:GraphPreset">
+                                <VerticalStackLayout Spacing="0">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="12,10">
+                                        <Grid.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding ApplyPresetCommand, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}}" CommandParameter="{Binding .}" />
+                                        </Grid.GestureRecognizers>
+                                        <Border WidthRequest="34" HeightRequest="34" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10">
+                                            <Label Text="{Binding Icon}" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center" />
+                                        </Border>
+                                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                                            <Label AutomationId="DynamicTextPresetTitle" Text="{Binding Title}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" />
+                                            <Label AutomationId="DynamicTextPresetSubtitle" Text="{Binding Subtitle}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                                        </VerticalStackLayout>
+                                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                                    </Grid>
+                                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="58,0,0,0" />
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Label Text="ან აირჩიე თავად (მაქსიმუმ 8)" Style="{StaticResource SectionCaptionStyle}" />
+                <Label Text="ზღვარი: მნიშვნელობა, რომელზე გადაცდენისას ფანჯარა წითლდება (არ არის აუცილებელი)." TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                <Border Style="{StaticResource ListCardStyle}">
+                    <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding Options}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:GraphChannelOption">
+                                <VerticalStackLayout Spacing="0">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" Padding="12,6">
+                                        <Border WidthRequest="22" HeightRequest="22" StrokeShape="RoundRectangle 6" Stroke="{DynamicResource BorderColor}" StrokeThickness="1.5" BackgroundColor="Transparent" VerticalOptions="Center">
+                                            <Border.Triggers><DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource Primary}" /><Setter Property="Stroke" Value="{DynamicResource Primary}" /></DataTrigger></Border.Triggers>
+                                            <Label Text="✓" TextColor="White" FontSize="13" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="{Binding IsSelected}" />
+                                        </Border>
+                                        <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center">
+                                            <Label AutomationId="DynamicTextOptionName" Text="{Binding Name}" TextColor="{DynamicResource TextColor}" FontSize="13.5" />
+                                            <Label AutomationId="DynamicTextOptionSource" Text="{Binding Source}" TextColor="{DynamicResource SubTextColor}" FontSize="10.5" />
+                                        </VerticalStackLayout>
+                                        <Grid.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding ToggleOptionCommand, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}}" CommandParameter="{Binding .}" />
+                                        </Grid.GestureRecognizers>
+                                        <HorizontalStackLayout Grid.Column="2" Spacing="3" VerticalOptions="Center" IsVisible="{Binding IsSelected}">
+                                            <Entry Text="{Binding ThresholdText}" Placeholder="ზღვარი" Keyboard="Numeric" WidthRequest="74" HorizontalTextAlignment="End" FontSize="13" TextColor="{DynamicResource TextColor}" />
+                                            <Label Text="{Binding Unit}" TextColor="{DynamicResource SubTextColor}" FontSize="11" VerticalOptions="Center" />
+                                        </HorizontalStackLayout>
+                                    </Grid>
+                                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="44,0,0,0" />
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Label Text="ჩანაწერები" Style="{StaticResource SectionCaptionStyle}" />
+                <Label Text="ჩაწერე ● ღილაკით Graph Studio-ში. ჩანაწერს გახსნი, გადაფურცლავ და CSV ფაილად გააზიარებ." TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasRecordings}">
+                    <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding Recordings}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:GraphRecording">
+                                <VerticalStackLayout Spacing="0">
+                                    <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="4" Padding="12,8">
+                                        <VerticalStackLayout Spacing="0" VerticalOptions="Center">
+                                            <Label AutomationId="DynamicTextRecordingTitle" Text="{Binding Title}" TextColor="{DynamicResource TextColor}" FontSize="13.5" FontAttributes="Bold" />
+                                            <Label AutomationId="DynamicTextRecordingDetail" Text="{Binding Detail}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                                        </VerticalStackLayout>
+                                        <Button Grid.Column="1" Text="გახსნა" Command="{Binding OpenRecordingCommand, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" Padding="6,0" HeightRequest="32" MinimumHeightRequest="32" />
+                                        <Button Grid.Column="2" Text="CSV" Command="{Binding ShareRecordingCommand, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" FontSize="12" Padding="6,0" HeightRequest="32" MinimumHeightRequest="32" />
+                                        <Button Grid.Column="3" Text="✕" Command="{Binding DeleteRecordingCommand, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" FontSize="13" Padding="6,0" HeightRequest="32" MinimumHeightRequest="32" />
+                                    </Grid>
+                                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="12,0,0,0" />
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <Grid Grid.Row="1" Padding="14,8,14,18" BackgroundColor="{DynamicResource PageBg}">
+            <Button AutomationId="DynamicTextApplyChannels" Text="{Binding SelectionCountText}" Command="{Binding ApplyOptionsCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="48" />
+        </Grid>
+    </Grid>
+</ContentPage>

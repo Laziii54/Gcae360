@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    x:Class="CarScanner.Views.VehicleReportPage"
+    x:DataType="vm:VehicleReportViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="ანგარიში">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="14,10,14,34" Spacing="8">
+            <Label Text="ანგარიში" Style="{StaticResource PageTitleStyle}" />
+            <Label AutomationId="DynamicTextReportVehicle" Text="{Binding VehicleText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
+
+            <!-- Score -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,12">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                    <Border WidthRequest="62" HeightRequest="62" StrokeThickness="0" StrokeShape="RoundRectangle 31" BackgroundColor="{Binding ScoreBackground}">
+                        <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="-2">
+                            <Label AutomationId="DynamicTextReportScore" Text="{Binding ScoreText}" TextColor="{Binding ScoreColor}" FontSize="20" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                            <Label Text="/100" TextColor="{Binding ScoreColor}" FontSize="9" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                        <Label AutomationId="DynamicTextReportVerdict" Text="{Binding VerdictText}" TextColor="{DynamicResource TextColor}" FontSize="15" FontAttributes="Bold" />
+                        <Label AutomationId="DynamicTextReportOverview" Text="{Binding OverviewText}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <!-- Done -->
+            <Label AutomationId="DynamicTextReportDoneCaption" Text="{Binding DoneCaption}" Style="{StaticResource SectionCaptionStyle}" IsVisible="{Binding HasSections}" />
+            <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasSections}">
+                <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding DoneSections}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ReportSectionRow">
+                            <VerticalStackLayout Spacing="0">
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" Padding="12,10">
+                                    <Grid.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding ToggleSectionCommand, x:DataType=vm:VehicleReportViewModel, Source={RelativeSource AncestorType={x:Type vm:VehicleReportViewModel}}}" CommandParameter="{Binding .}" />
+                                    </Grid.GestureRecognizers>
+                                    <Border WidthRequest="32" HeightRequest="32" StrokeThickness="0" StrokeShape="RoundRectangle 10" BackgroundColor="{Binding IconBackground}" VerticalOptions="Start">
+                                        <Label Text="{Binding Icon}" TextColor="{Binding IconColor}" FontSize="13" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                                    </Border>
+                                    <VerticalStackLayout Grid.Column="1" Spacing="1">
+                                        <Label AutomationId="DynamicTextReportSectionTitle" Text="{Binding Title}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" />
+                                        <Label AutomationId="DynamicTextReportSectionSummary" Text="{Binding Summary}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" />
+                                        <Label AutomationId="DynamicTextReportSectionDetail" Text="{Binding DetailText}" IsVisible="{Binding IsExpanded}" TextColor="{DynamicResource TextColor}" FontSize="12" Margin="0,6,0,0" />
+                                    </VerticalStackLayout>
+                                    <Label Grid.Column="2" Text="{Binding TimeText}" TextColor="{DynamicResource SubTextColor}" FontSize="10.5" VerticalOptions="Start" />
+                                </Grid>
+                                <BoxView Style="{StaticResource RowDividerStyle}" Margin="54,0,0,0" />
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+            <Label Text="შეეხე შემოწმებას დეტალების სანახავად." TextColor="{DynamicResource SubTextColor}" FontSize="11" IsVisible="{Binding HasSections}" />
+
+            <!-- Missing -->
+            <Label Text="ჯერ არ გაკეთებულა" Style="{StaticResource SectionCaptionStyle}" IsVisible="{Binding HasMissing}" />
+            <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasMissing}">
+                <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding MissingSections}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ReportSectionRow">
+                            <VerticalStackLayout Spacing="0">
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" Padding="12,9">
+                                    <Grid.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding OpenCheckCommand, x:DataType=vm:VehicleReportViewModel, Source={RelativeSource AncestorType={x:Type vm:VehicleReportViewModel}}}" CommandParameter="{Binding .}" />
+                                    </Grid.GestureRecognizers>
+                                    <Border WidthRequest="32" HeightRequest="32" StrokeThickness="0" StrokeShape="RoundRectangle 10" BackgroundColor="{Binding IconBackground}">
+                                        <Label Text="{Binding Icon}" TextColor="{Binding IconColor}" FontSize="13" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                                    </Border>
+                                    <Label Grid.Column="1" AutomationId="DynamicTextReportMissingTitle" Text="{Binding Title}" TextColor="{DynamicResource TextColor}" FontSize="13.5" VerticalOptions="Center" />
+                                    <Label Grid.Column="2" Text="+ დამატება" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" VerticalOptions="Center" />
+                                </Grid>
+                                <BoxView Style="{StaticResource RowDividerStyle}" Margin="54,0,0,0" />
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Export -->
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8" Margin="0,6,0,0" IsVisible="{Binding HasSections}">
+                <Button Text="PDF" Command="{Binding ExportPdfCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="46" />
+                <Button Grid.Column="1" Text="QR" Command="{Binding CreateQrCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="46" FontAttributes="Bold" />
+                <Button Grid.Column="2" Text="ტექსტი" Command="{Binding ShareTextCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="46" FontAttributes="Bold" />
+            </Grid>
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" />
+            <Button Text="ახალი ანგარიშის დაწყება" Command="{Binding StartNewCommand}" IsVisible="{Binding HasSections}" BackgroundColor="Transparent" TextColor="#C2372B" FontAttributes="Bold" FontSize="13" />
+
+            <!-- History -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="12,10" Margin="0,6,0,0">
+                <VerticalStackLayout Spacing="0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding ToggleHistoryCommand}" /></Grid.GestureRecognizers>
+                        <Label Text="წინა ანგარიშები" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" />
+                        <Label Grid.Column="1" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                    <VerticalStackLayout IsVisible="{Binding IsHistoryOpen}" Spacing="0" Margin="0,6,0,0" BindableLayout.ItemsSource="{Binding HistoryRows}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ReportHistoryRow">
+                                <Grid ColumnDefinitions="*,Auto" Padding="0,7">
+                                    <VerticalStackLayout Spacing="0">
+                                        <Label AutomationId="DynamicTextHistoryTitle" Text="{Binding Title}" TextColor="{DynamicResource TextColor}" FontSize="13" />
+                                        <Label AutomationId="DynamicTextHistoryDetail" Text="{Binding Detail}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                                    </VerticalStackLayout>
+                                    <Button Grid.Column="1" Text="გაზიარება" Command="{Binding ShareHistoryCommand, x:DataType=vm:VehicleReportViewModel, Source={RelativeSource AncestorType={x:Type vm:VehicleReportViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" Padding="4,0" HeightRequest="32" MinimumHeightRequest="32" />
+                                </Grid>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                    <Label Text="წინა ანგარიშები ჯერ არ არის." IsVisible="{Binding ShowNoHistory}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" Margin="0,4,0,0" />
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="0,8,0,0" />
+                    <Grid ColumnDefinitions="*,Auto" Padding="0,10,0,0">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding OpenScanHistoryCommand}" /></Grid.GestureRecognizers>
+                        <Label Text="სკანების ისტორია და შედარება" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" />
+                        <Label Grid.Column="1" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

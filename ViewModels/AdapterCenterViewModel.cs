@@ -32,6 +32,8 @@ public partial class AdapterCenterViewModel : BaseViewModel
     [RelayCommand]
     private async Task Test()
     {
+        try
+        {
         if (IsBusy) return;
 
         try
@@ -81,6 +83,11 @@ public partial class AdapterCenterViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AdapterCenterViewModel.Test");
         }
     }
 

@@ -39,10 +39,17 @@ public partial class VehicleBrandSelectionViewModel : BaseViewModel
     [RelayCommand]
     private async Task SelectBrand(VehicleBrandProfile? brand)
     {
+        try
+        {
         if (brand is null)
             return;
 
         _brands.Select(brand.Id);
         await Shell.Current.GoToAsync(nameof(Views.BluetoothPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VehicleBrandSelectionViewModel.SelectBrand");
+        }
     }
 }

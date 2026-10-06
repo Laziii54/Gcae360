@@ -121,7 +121,13 @@ public sealed class EvEnergyReader
 
         Trace("01 9A: no answer");
 
-        // 2) Brand identifiers from the catalog.
+        // 2) Known identifiers for cars whose catalog rows are incomplete
+        //    (Chevrolet Volt / Bolt BECM data on 7E4 / 7E7).
+        var known = await TryKnownSourcesAsync(vehicle, token).ConfigureAwait(false);
+        if (known is not null)
+            return known;
+
+        // 3) Brand identifiers from the catalog.
         if (vehicle is null || string.IsNullOrWhiteSpace(vehicle.Manufacturer) ||
             vehicle.Manufacturer.Equals("Unknown", StringComparison.OrdinalIgnoreCase))
         {
@@ -215,6 +221,129 @@ public sealed class EvEnergyReader
     }
 
     // ------------------------------------------------------------------
+    // Known cars (identifiers checked against GM Volt / Bolt BECM data)
+    // ------------------------------------------------------------------
+
+    private sealed record KnownProfile(
+        string Label,
+        IReadOnlyList<(EvRequest Request, EvSignal Signal)> Voltages,
+        IReadOnlyList<(EvRequest Request, EvSignal Signal)> Currents,
+        IReadOnlyList<(EvRequest Request, EvSignal Signal)> Socs,
+        double MinVolts,
+        double MaxVolts);
+
+    private static EvRequest Did(int tx, int rx, int did) => new(
+        $"22|{tx:X8}|--|{did:X4}",
+        new ServiceDiagnosticAddress(tx, rx, false, null, "11-bit CAN", $"TX 0x{tx:X3}"),
+        0x22,
+        did,
+        $"{tx:X3}");
+
+    private static IEnumerable<KnownProfile> KnownProfiles(VehicleInfo? vehicle)
+    {
+        if (vehicle is null)
+            yield break;
+
+        var bolt = GmVoltBoltBattery.IsBolt(vehicle.Manufacturer, vehicle.Model);
+        if (bolt is null)
+            yield break;
+
+        // Pack voltage / current / SoC as published by the GM community PID
+        // lists (Torque) and OBDb. Values are accepted only when they decode
+        // to a realistic pack voltage and current.
+        var voltVoltage = (Did(0x7E4, 0x7EC, 0x2429), new EvSignal("HV battery voltage", 0, 16, false, 1, 64, 0));
+        var voltCurrent = (Did(0x7E4, 0x7EC, 0x2414), new EvSignal("HV battery current", 0, 16, true, 1, 20, 0));
+        var becmCurrent = (Did(0x7E7, 0x7EF, 0x40D4), new EvSignal("HV battery current (BECM)", 0, 16, true, 1, 20, 0));
+        var voltSocRaw = (Did(0x7E4, 0x7EC, 0x43AF), new EvSignal("HV state of charge", 0, 16, false, 100, 65535, 0));
+        var voltSocShown = (Did(0x7E4, 0x7EC, 0x8334), new EvSignal("Displayed state of charge", 0, 8, false, 100, 255, 0));
+        var boltVoltage = (Did(0x7E4, 0x7EC, 0x432D), new EvSignal("HV battery voltage", 0, 16, false, 0.52, 1, 0));
+        var boltSoc = (Did(0x7E4, 0x7EC, 0x432F), new EvSignal("HV state of charge", 0, 8, false, 20, 51, 0));
+
+        if (bolt == true)
+        {
+            yield return new KnownProfile(
+                "Chevrolet Bolt · BECM",
+                new[] { boltVoltage, voltVoltage },
+                new[] { becmCurrent, voltCurrent },
+                new[] { boltSoc, voltSocShown },
+                250, 450);
+        }
+        else
+        {
+            yield return new KnownProfile(
+                "Chevrolet Volt · HV battery",
+                new[] { voltVoltage, boltVoltage },
+                new[] { voltCurrent, becmCurrent },
+                new[] { voltSocShown, voltSocRaw },
+                250, 450);
+        }
+    }
+
+    private async Task<EvBatterySource?> TryKnownSourcesAsync(VehicleInfo? vehicle, CancellationToken token)
+    {
+        foreach (var profile in KnownProfiles(vehicle))
+        {
+            Trace($"Known profile: {profile.Label}");
+            (EvRequest Request, EvSignal Signal)? voltage = null;
+            foreach (var candidate in profile.Voltages)
+            {
+                var data = await SafeReadAsync(candidate.Request, token).ConfigureAwait(false);
+                Trace($"{Describe(candidate.Request)}: {(data is null ? "no answer" : Convert.ToHexString(data))}");
+                if (data is not null && EvSignalDecoder.TryDecode(candidate.Signal, data, out var volts) &&
+                    volts >= profile.MinVolts && volts <= profile.MaxVolts)
+                {
+                    Trace($"voltage {volts:0.0} V");
+                    voltage = candidate;
+                    break;
+                }
+            }
+
+            if (voltage is null)
+                continue;
+
+            (EvRequest Request, EvSignal Signal)? current = null;
+            foreach (var candidate in profile.Currents)
+            {
+                var data = await SafeReadAsync(candidate.Request, token).ConfigureAwait(false);
+                Trace($"{Describe(candidate.Request)}: {(data is null ? "no answer" : Convert.ToHexString(data))}");
+                if (data is not null && EvSignalDecoder.TryDecodeCurrent(candidate.Signal, data, out var amps) && Math.Abs(amps) < 500)
+                {
+                    Trace($"current {amps:0.0} A");
+                    current = candidate;
+                    break;
+                }
+            }
+
+            if (current is null)
+                continue;
+
+            (EvRequest Request, EvSignal Signal)? soc = null;
+            foreach (var candidate in profile.Socs)
+            {
+                var data = await SafeReadAsync(candidate.Request, token).ConfigureAwait(false);
+                if (data is not null && EvSignalDecoder.TryDecode(candidate.Signal, data, out var percent) && percent is > 0 and <= 100)
+                {
+                    soc = candidate;
+                    break;
+                }
+            }
+
+            return new EvBatterySource(
+                $"{profile.Label} · {Describe(voltage.Value.Request)} + {CommandText(current.Value.Request)}",
+                false,
+                voltage.Value.Request,
+                voltage.Value.Signal,
+                current.Value.Request,
+                current.Value.Signal,
+                soc?.Request,
+                soc?.Signal,
+                false);
+        }
+
+        return null;
+    }
+
+    // ------------------------------------------------------------------
     // Reading while driving
     // ------------------------------------------------------------------
 
@@ -270,6 +399,16 @@ public sealed class EvEnergyReader
         var standard = EvSignalDecoder.DecodeStandardSoc(await TryReadMode01Async(0x5B, token).ConfigureAwait(false));
         if (standard is { } value)
             return value;
+
+        foreach (var known in KnownProfiles(vehicle))
+        {
+            foreach (var (request, signal) in known.Socs)
+            {
+                var data = await SafeReadAsync(request, token).ConfigureAwait(false);
+                if (data is not null && EvSignalDecoder.TryDecode(signal, data, out var percent) && percent is > 0 and <= 100)
+                    return percent;
+            }
+        }
 
         if (vehicle is null || string.IsNullOrWhiteSpace(vehicle.Manufacturer))
             return null;

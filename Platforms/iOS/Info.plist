@@ -42,7 +42,7 @@
 		<string>Bluetooth is used to communicate with a compatible BLE OBD-II adapter.</string>
 
 		<key>NSLocationWhenInUseUsageDescription</key>
-		<string>GPS speed is compared with the car's speed while you measure 0–100, 0–60 or ¼ mile, so ranking results can be trusted.</string>
+		<string>GPS speed is compared with the car's speed while you measure 0–100, 0–60 or ¼ mile, so ranking results can be trusted. While a fuel/energy trip is recording, location keeps the trip running when the app is in the background.</string>
 		<key>NSCameraUsageDescription</key>
 		<string>The camera is used to scan a VIN and record verified acceleration videos.</string>
 
@@ -58,6 +58,7 @@
 		<key>UIBackgroundModes</key>
 		<array>
 			<string>bluetooth-central</string>
+			<string>location</string>
 		</array>
 
 		<key>ITSAppUsesNonExemptEncryption</key>

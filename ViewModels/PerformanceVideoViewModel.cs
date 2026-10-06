@@ -159,6 +159,8 @@ public partial class PerformanceVideoViewModel : BaseViewModel
 
     private async void OnSpeedWatchdogTick(object? sender, EventArgs e)
     {
+        try
+        {
         var snapshot = _acceleration.GetSnapshot();
         if (snapshot.HasCurrentSpeed && snapshot.LastSpeedAt is { } at && DateTime.UtcNow - at < TimeSpan.FromSeconds(3))
         {
@@ -171,6 +173,11 @@ public partial class PerformanceVideoViewModel : BaseViewModel
             return;
 
         await EnsureSpeedPreviewAsync();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "PerformanceVideoViewModel.OnSpeedWatchdogTick");
+        }
     }
 
     private async Task EnsureSpeedPreviewAsync()
@@ -330,6 +337,8 @@ public partial class PerformanceVideoViewModel : BaseViewModel
     [RelayCommand]
     private async Task ToggleRecording()
     {
+        try
+        {
         if (_camera is null || IsProcessing || IsSavePanelVisible)
             return;
 
@@ -372,6 +381,11 @@ public partial class PerformanceVideoViewModel : BaseViewModel
         {
             IsRecording = false;
             StatusText = PerformanceVideoText.Format(PerformanceVideoText.RecordError, ex.Message);
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "PerformanceVideoViewModel.ToggleRecording");
         }
     }
 
@@ -559,6 +573,8 @@ public partial class PerformanceVideoViewModel : BaseViewModel
     [RelayCommand]
     private async Task Close()
     {
+        try
+        {
         if (IsProcessing)
             return;
 
@@ -578,6 +594,11 @@ public partial class PerformanceVideoViewModel : BaseViewModel
         catch
         {
             // Page already closed.
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "PerformanceVideoViewModel.Close");
         }
     }
 }

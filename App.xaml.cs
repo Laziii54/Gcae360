@@ -57,6 +57,8 @@ public partial class App : Application
 
     private async void OnWindowCreated(object? sender, EventArgs e)
     {
+        try
+        {
         StartEntitlementSynchronization();
 
         if (sender is Window window && window.Page is LoadingPage loading)
@@ -77,6 +79,11 @@ public partial class App : Application
         _ = _maintenanceCalendar.RescheduleAllAsync();
 
         _ = _usage.ReportAsync();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "App.OnWindowCreated");
+        }
     }
 
     private void OnWindowResumed(object? sender, EventArgs e)
@@ -91,7 +98,10 @@ public partial class App : Application
 
         // The launcher icon follows the app theme. It is switched only while
         // the app is in the background, so the running screen is not disturbed.
-        AppIconSwitcher.Apply();
+        // Not while a trip records: switching the launcher alias can close the
+        // app on some Android phones and would end the trip.
+        if (!CarScanner.Services.Background.TripKeepAlive.IsActive)
+            AppIconSwitcher.Apply();
     }
 
     private void OnWindowDestroying(object? sender, EventArgs e)

@@ -15,8 +15,26 @@ public partial class AccelerationLeaderboardPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        try
+        {
         base.OnAppearing();
         Application.Current?.Handler?.MauiContext?.Services.GetService<LocalizationService>()?.Apply(this);
         await _viewModel.LoadCommand.ExecuteAsync(null);
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AccelerationLeaderboardPage.OnAppearing");
+        }
+    }
+
+    // Android back button closes the filter sheet first.
+    protected override bool OnBackButtonPressed()
+    {
+        if (_viewModel.IsFilterOpen)
+        {
+            _viewModel.IsFilterOpen = false;
+            return true;
+        }
+        return base.OnBackButtonPressed();
     }
 }

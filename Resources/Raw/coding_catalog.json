@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": 1,
+  "rule": "Only coding options verified on a real car (exact brand, model, years, module address and part number, read-back confirmed) are listed in 'options'. Unknown variants are never written.",
+  "howToAdd": [
+    "1. Create a full backup in the app (Coding → Backup).",
+    "2. Change the setting with the car's own menu or a dealer tool.",
+    "3. Create a second backup and use 'Compare' to see exactly which bytes changed.",
+    "4. Share both backups; the changed DID/byte/bit becomes a verified option here after a write + read-back test on the same car."
+  ],
+  "brandReadDids": {
+    "VW": [ "0600" ],
+    "AUDI": [ "0600" ],
+    "SKODA": [ "0600" ],
+    "SEAT": [ "0600" ],
+    "FORD": [ "DE00", "DE01", "DE02", "DE03", "DE04", "DE05", "DE06", "DE07", "DE08", "DE09", "DE0A", "DE0B" ],
+    "LINCOLN": [ "DE00", "DE01", "DE02", "DE03", "DE04", "DE05", "DE06", "DE07" ]
+  },
+  "options": []
+}

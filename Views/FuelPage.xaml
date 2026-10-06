@@ -23,7 +23,7 @@
                         </DataTrigger>
                     </Button.Triggers>
                 </Button>
-                <Button Grid.Column="1" Text="ჰიბრიდი" Command="{Binding SetModeCommand}" CommandParameter="Hybrid" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="18" HeightRequest="38" MinimumHeightRequest="38" FontSize="12" FontAttributes="Bold" Padding="5,0">
+                <Button Grid.Column="1" Text="ჰიბრიდი / Plug-in" Command="{Binding SetModeCommand}" CommandParameter="Hybrid" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="18" HeightRequest="38" MinimumHeightRequest="38" FontSize="12" FontAttributes="Bold" Padding="5,0">
                     <Button.Triggers>
                         <DataTrigger TargetType="Button" Binding="{Binding IsHybridMode}" Value="True">
                             <Setter Property="BackgroundColor" Value="{DynamicResource Primary}" />
@@ -43,123 +43,262 @@
                 </Button>
             </Grid>
 
-            <!-- Headline numbers -->
-            <Border Style="{StaticResource ListCardStyle}" Padding="16,14">
-                <VerticalStackLayout Spacing="10">
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+            <!-- Trip summary after Stop -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,12" IsVisible="{Binding IsTripSummaryVisible}">
+                <VerticalStackLayout Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
                         <VerticalStackLayout Spacing="0">
-                            <Label Text="{Binding HeadLeftCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
-                            <Label AutomationId="DynamicTextFuelInstant" Text="{Binding HeadLeftValue}" TextColor="{DynamicResource TextColor}" FontSize="26" FontAttributes="Bold" />
-                            <Label Text="{Binding HeadLeftUnit}" IsVisible="{Binding HasHeadUnits}" TextColor="{DynamicResource SubTextColor}" FontSize="11" FontAttributes="Bold" />
+                            <Label Text="მოგზაურობა შენახულია" TextColor="{DynamicResource TextColor}" FontSize="16" FontAttributes="Bold" />
+                            <Label AutomationId="DynamicTextTripSummaryTitle" Text="{Binding TripSummaryTitle}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" />
                         </VerticalStackLayout>
-                        <VerticalStackLayout Grid.Column="1" Spacing="0">
-                            <Label Text="{Binding HeadRightCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
-                            <Label AutomationId="DynamicTextFuelAverage" Text="{Binding HeadRightValue}" TextColor="{DynamicResource TextColor}" FontSize="26" FontAttributes="Bold" />
-                            <Label Text="{Binding HeadRightUnit}" IsVisible="{Binding HasHeadUnits}" TextColor="{DynamicResource SubTextColor}" FontSize="11" FontAttributes="Bold" />
-                        </VerticalStackLayout>
+                        <Button Grid.Column="1" Text="✕" Command="{Binding CloseTripSummaryCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" FontSize="16" Padding="0" WidthRequest="36" HeightRequest="36" />
                     </Grid>
-
-                    <!-- Battery power: regeneration left | consumption right -->
-                    <VerticalStackLayout IsVisible="{Binding ShowPower}" Spacing="5">
-                        <BoxView Style="{StaticResource RowDividerStyle}" />
-                        <Grid ColumnDefinitions="*,*">
-                            <Label Text="◀ რეკუპერაცია" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
-                            <Label Grid.Column="1" Text="ხარჯი ▶" TextColor="{DynamicResource SubTextColor}" FontSize="11" HorizontalTextAlignment="End" />
-                        </Grid>
-                        <controls:PowerBarView PowerKw="{Binding PowerKw}" HeightRequest="10" TrackColor="{DynamicResource BorderColor}" MarkColor="{DynamicResource SubTextColor}" />
-                        <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
-                            <Label Text="{Binding PowerText}" TextColor="{Binding PowerColor}" FontSize="13" FontAttributes="Bold" VerticalOptions="Center" />
-                            <Label Text="{Binding PowerCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="11" VerticalOptions="Center" />
-                        </HorizontalStackLayout>
+                    <VerticalStackLayout Spacing="0" HorizontalOptions="Center">
+                        <Label Text="ამ მოგზაურობამ დაჯდა" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" HorizontalTextAlignment="Center" />
+                        <Label AutomationId="DynamicTextTripSummaryCost" Text="{Binding TripSummaryCostText}" TextColor="{DynamicResource TextColor}" FontSize="30" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                        <Label AutomationId="DynamicTextTripSummaryCostDetail" Text="{Binding TripSummaryCostDetail}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
+                    <VerticalStackLayout Spacing="6" IsVisible="{Binding ShowTripSummaryComparison}">
+                        <Label Text="იგივე გზა ჩვეულებრივ ბენზინიან მანქანაზე" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" FontAttributes="Bold" />
+                        <Grid ColumnDefinitions="70,*,Auto" ColumnSpacing="8">
+                            <Label Text="შენ" TextColor="{DynamicResource SubTextColor}" FontSize="12" VerticalOptions="Center" />
+                            <Grid Grid.Column="1" VerticalOptions="Center">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="{Binding SummaryYouStar}" /><ColumnDefinition Width="{Binding SummaryYouRest}" /></Grid.ColumnDefinitions>
+                                <BoxView Color="#1E8A4C" HeightRequest="12" CornerRadius="6" />
+                            </Grid>
+                            <Label Grid.Column="2" AutomationId="DynamicTextSummaryYou" Text="{Binding SummaryYouText}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" />
+                        </Grid>
+                        <Grid ColumnDefinitions="70,*,Auto" ColumnSpacing="8">
+                            <Label Text="ბენზინზე" TextColor="{DynamicResource SubTextColor}" FontSize="12" VerticalOptions="Center" />
+                            <Grid Grid.Column="1" VerticalOptions="Center">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="{Binding SummaryPetrolStar}" /><ColumnDefinition Width="{Binding SummaryPetrolRest}" /></Grid.ColumnDefinitions>
+                                <BoxView Color="#D0701F" HeightRequest="12" CornerRadius="6" />
+                            </Grid>
+                            <Label Grid.Column="2" AutomationId="DynamicTextSummaryPetrol" Text="{Binding SummaryPetrolText}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" />
+                        </Grid>
+                        <Label AutomationId="DynamicTextSummarySaving" Text="{Binding SummarySavingText}" TextColor="#1E8A4C" FontSize="12" FontAttributes="Bold" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding TripSummaryRows}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:TripSummaryRow">
+                                <VerticalStackLayout Spacing="0">
+                                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,7">
+                                        <Label AutomationId="DynamicTextSummaryRowTitle" Text="{Binding Title}" TextColor="{DynamicResource SubTextColor}" FontSize="12.5" VerticalOptions="Center" />
+                                        <Label Grid.Column="1" AutomationId="DynamicTextSummaryRowValue" Text="{Binding Value}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" VerticalOptions="Center" />
+                                    </Grid>
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                    <Button Text="ახალი მოგზაურობა" Command="{Binding StartNewTripCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="44" />
                 </VerticalStackLayout>
             </Border>
+
+            <!-- Fuel headline (petrol / diesel) -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="16,14" IsVisible="{Binding IsFuelMode}">
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <VerticalStackLayout Spacing="0">
+                        <Label Text="{Binding HeadLeftCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
+                        <Label AutomationId="DynamicTextFuelInstant" Text="{Binding HeadLeftValue}" TextColor="{DynamicResource TextColor}" FontSize="26" FontAttributes="Bold" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="1" Spacing="0">
+                        <Label Text="{Binding HeadRightCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
+                        <Label AutomationId="DynamicTextFuelAverage" Text="{Binding HeadRightValue}" TextColor="{DynamicResource TextColor}" FontSize="26" FontAttributes="Bold" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <!-- Electric / plug-in hero: battery ring + live state -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,12" IsVisible="{Binding ShowEnergy}">
+                <Grid ColumnDefinitions="92,*" ColumnSpacing="14">
+                    <Grid WidthRequest="92" HeightRequest="92" VerticalOptions="Center">
+                        <controls:RingGaugeView Progress="{Binding SocProgress}" RingColor="{Binding SocRingColor}" TrackColor="{DynamicResource BorderColor}" Thickness="9" />
+                        <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="0">
+                            <Label AutomationId="DynamicTextSocBig" Text="{Binding SocBigText}" TextColor="{DynamicResource TextColor}" FontSize="21" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                            <Label AutomationId="DynamicTextRange" Text="{Binding RangeText}" TextColor="{DynamicResource SubTextColor}" FontSize="9.5" HorizontalTextAlignment="Center" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                        <Border IsVisible="{Binding ShowDriveBadge}" BackgroundColor="{Binding DriveBadgeBackground}" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="10,4" HorizontalOptions="Start">
+                            <Label AutomationId="DynamicTextDriveBadge" Text="{Binding DriveBadgeText}" TextColor="{Binding DriveBadgeColor}" FontSize="11.5" FontAttributes="Bold" />
+                        </Border>
+                        <HorizontalStackLayout Spacing="5">
+                            <Label AutomationId="DynamicTextHeroValue" Text="{Binding HeroValueText}" TextColor="{Binding HeroValueColor}" FontSize="26" FontAttributes="Bold" VerticalOptions="End" />
+                            <Label AutomationId="DynamicTextHeroUnit" Text="{Binding HeroUnitText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" FontAttributes="Bold" VerticalOptions="End" Margin="0,0,0,4" />
+                        </HorizontalStackLayout>
+                        <VerticalStackLayout Spacing="2" IsVisible="{Binding ShowHeroPowerBar}">
+                            <controls:PowerBarView PowerKw="{Binding PowerKw}" HeightRequest="10" TrackColor="{DynamicResource BorderColor}" MarkColor="{DynamicResource SubTextColor}" />
+                            <Grid ColumnDefinitions="*,*">
+                                <Label Text="◀ დამუხტვა" TextColor="{DynamicResource SubTextColor}" FontSize="10" />
+                                <Label Grid.Column="1" Text="ხარჯი ▶" TextColor="{DynamicResource SubTextColor}" FontSize="10" HorizontalTextAlignment="End" />
+                            </Grid>
+                        </VerticalStackLayout>
+                        <Label AutomationId="DynamicTextHeroHint" Text="{Binding HeroHintText}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <!-- Power of the last minutes -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,10" IsVisible="{Binding ShowPower}">
+                <VerticalStackLayout Spacing="4">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label AutomationId="DynamicTextPowerHistoryCaption" Text="{Binding PowerHistoryCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" FontAttributes="Bold" />
+                        <Label Grid.Column="1" Text="kW" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" />
+                    </Grid>
+                    <controls:PowerHistoryView Samples="{Binding PowerHistory}" HeightRequest="72" LineColor="{DynamicResource BorderColor}" />
+                    <Grid ColumnDefinitions="*,*">
+                        <Label Text="▲ ხარჯი" TextColor="#D0701F" FontSize="10" />
+                        <Label Grid.Column="1" Text="▼ დამუხტვა" TextColor="#1E8A4C" FontSize="10" HorizontalTextAlignment="End" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Distance / time / cost (every mode) -->
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                <Border Style="{StaticResource ListCardStyle}" Padding="8,9">
+                    <VerticalStackLayout Spacing="1">
+                        <Label AutomationId="DynamicTextTripDistance" Text="{Binding TripDistanceText}" TextColor="{DynamicResource TextColor}" FontSize="16" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                        <Label Text="{Binding DistanceCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="10.5" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                </Border>
+                <Border Grid.Column="1" Style="{StaticResource ListCardStyle}" Padding="8,9">
+                    <VerticalStackLayout Spacing="1">
+                        <Label AutomationId="DynamicTextTripDuration" Text="{Binding TripDurationText}" TextColor="{DynamicResource TextColor}" FontSize="16" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                        <Label Text="{Binding DurationCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="10.5" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                </Border>
+                <Border Grid.Column="2" Style="{StaticResource ListCardStyle}" Padding="8,9">
+                    <VerticalStackLayout Spacing="1">
+                        <Label AutomationId="DynamicTextTripCost" Text="{Binding TripCostTotalText}" TextColor="{DynamicResource TextColor}" FontSize="16" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                        <Label Text="{Binding CostCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="10.5" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                </Border>
+            </Grid>
 
             <Label AutomationId="DynamicTextFuelStatus" Text="{Binding Status}" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalTextAlignment="Center" />
 
             <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
                 <Button Text="დაწყება" Command="{Binding StartCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="48" />
                 <Button Grid.Column="1" Text="პაუზა" Command="{Binding PauseCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="48" FontAttributes="Bold" />
-                <Button Grid.Column="2" Text="გაჩერება" Command="{Binding StopCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="48" FontAttributes="Bold" />
+                <Button Grid.Column="2" Text="გაჩერება" Command="{Binding StopCommand}" BackgroundColor="#C2372B" TextColor="White" CornerRadius="12" HeightRequest="48" FontAttributes="Bold" />
             </Grid>
 
-            <!-- Battery energy (hybrid / electric) -->
-            <Label Text="ბატარეის ენერგია" Style="{StaticResource SectionCaptionStyle}" IsVisible="{Binding ShowEnergy}" />
-            <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding ShowEnergy}">
+            <!-- Energy of this trip: used / recovered / net -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,12" IsVisible="{Binding ShowEnergy}">
                 <VerticalStackLayout Spacing="0">
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
-                        <Path Data="M3,8 L19,8 L19,17 L3,17 Z M21,11 L21,14 M7,12.5 L11,12.5 M9,10.5 L9,14.5 M14,12.5 L17,12.5" Style="{StaticResource RowIconStyle}" />
-                        <Label Grid.Column="1" Text="{Binding EnergyUsedCaption}" Style="{StaticResource RowTitleStyle}" />
+                    <Label AutomationId="DynamicTextEnergyCardCaption" Text="{Binding EnergyCardCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" FontAttributes="Bold" Margin="0,0,0,6" />
+                    <Grid IsVisible="{Binding ShowEnergyBar}" HeightRequest="8" Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="{Binding ConsumedStar}" /><ColumnDefinition Width="{Binding RegenStar}" /></Grid.ColumnDefinitions>
+                        <BoxView Color="#D0701F" CornerRadius="4,0,0,4" />
+                        <BoxView Grid.Column="1" Color="#1E8A4C" CornerRadius="0,4,4,0" />
+                    </Grid>
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Padding="0,8">
+                        <BoxView Color="#D0701F" WidthRequest="8" HeightRequest="8" CornerRadius="4" VerticalOptions="Center" />
+                        <Label Grid.Column="1" AutomationId="DynamicTextEnergyUsedCaption" Text="{Binding EnergyUsedCaption}" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
                         <Label Grid.Column="2" AutomationId="DynamicTextEnergyUsed" Text="{Binding EnergyUsedText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
                     </Grid>
-                    <BoxView Style="{StaticResource RowDividerStyle}" />
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
-                        <Path Data="M4,12 A8,8 0 1 0 8,5 M4,4 L4,9 L9,9" Style="{StaticResource RowIconStyle}" />
-                        <Label Grid.Column="1" Text="{Binding EnergyRegenCaption}" Style="{StaticResource RowTitleStyle}" />
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Padding="0,8">
+                        <BoxView Color="#1E8A4C" WidthRequest="8" HeightRequest="8" CornerRadius="4" VerticalOptions="Center" />
+                        <Label Grid.Column="1" AutomationId="DynamicTextEnergyRegenCaption" Text="{Binding EnergyRegenCaption}" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
                         <Label Grid.Column="2" AutomationId="DynamicTextEnergyRegen" Text="{Binding EnergyRegenText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
                     </Grid>
-                    <BoxView Style="{StaticResource RowDividerStyle}" />
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
-                        <Path Data="M3,12 L7,12 L10,5 L14,19 L17,12 L21,12" Style="{StaticResource RowIconStyle}" />
-                        <Label Grid.Column="1" Text="ბატარეის ძაბვა" Style="{StaticResource RowTitleStyle}" />
-                        <Label Grid.Column="2" Text="{Binding BatteryVoltageText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Padding="0,8">
+                        <Label AutomationId="DynamicTextNetEnergyCaption" Text="{Binding NetEnergyCaption}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" VerticalOptions="Center" />
+                        <Label Grid.Column="1" AutomationId="DynamicTextNetEnergy" Text="{Binding NetEnergyText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
                     </Grid>
-                    <BoxView Style="{StaticResource RowDividerStyle}" />
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
-                        <Path Data="M13,3 L6,13 L11,13 L10,21 L18,10 L13,10 Z" Style="{StaticResource RowIconStyle}" />
-                        <Label Grid.Column="1" Text="დენი" Style="{StaticResource RowTitleStyle}" />
-                        <Label Grid.Column="2" Text="{Binding BatteryCurrentText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Padding="0,8">
+                        <Label AutomationId="DynamicTextEnergyPerKmCaption" Text="{Binding EnergyPerKmCaption}" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
+                        <Label Grid.Column="1" AutomationId="DynamicTextEnergyPerKm" Text="{Binding EnergyPerKmText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
                     </Grid>
-                    <BoxView Style="{StaticResource RowDividerStyle}" />
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
-                        <Path Data="M8,4 L16,4 L16,21 L8,21 Z M10,2 L14,2 M8,14 L16,14" Style="{StaticResource RowIconStyle}" />
-                        <Label Grid.Column="1" Text="დამუხტვა (SoC)" Style="{StaticResource RowTitleStyle}" />
-                        <Label Grid.Column="2" Text="{Binding SocText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
-                    </Grid>
-                    <BoxView Style="{StaticResource RowDividerStyle}" />
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,6">
-                        <Path Data="M12,3 L12,21 M16,7 C16,5 14,4.5 12,4.5 C9.5,4.5 8,6 8,7.5 C8,11 16,10 16,14.5 C16,16.5 14.5,18 12,18 C9.5,18 8,17 8,15" Style="{StaticResource RowIconStyle}" />
-                        <Label Grid.Column="1" Text="ფასი 1 kWh (₾)" Style="{StaticResource RowTitleStyle}" />
-                        <Entry Grid.Column="2" Text="{Binding ElectricityPriceText}" Keyboard="Numeric" Placeholder="0.30" WidthRequest="90" HorizontalTextAlignment="End" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
-                    </Grid>
-                    <BoxView Style="{StaticResource RowDividerStyle}" />
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
-                        <Path Data="M4,7 L20,7 L20,18 L4,18 Z M4,11 L20,11 M7,15 L10,15" Style="{StaticResource RowIconStyle}" />
-                        <Label Grid.Column="1" Text="ღირებულება" Style="{StaticResource RowTitleStyle}" />
-                        <Label Grid.Column="2" Text="{Binding EnergyCostText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
-                    </Grid>
+                    <Label AutomationId="DynamicTextEnergyNote" Text="{Binding EnergyNoteText}" TextColor="{DynamicResource SubTextColor}" FontSize="11" Margin="0,4,0,0" />
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Where the battery data comes from -->
-            <Border Style="{StaticResource ListCardStyle}" Padding="14,12" IsVisible="{Binding ShowEnergy}">
-                <VerticalStackLayout Spacing="4">
-                    <Label Text="{Binding EnergySourceTitle}" TextColor="{Binding EnergySourceColor}" FontSize="13" FontAttributes="Bold" />
-                    <Label Text="{Binding EnergySourceText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
-                    <Button Text="ლოგის კოპირება" Command="{Binding CopyEnergyLogCommand}" IsVisible="{Binding HasEnergyLog}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="10" HeightRequest="36" FontSize="12" HorizontalOptions="Start" Padding="12,0" Margin="0,4,0,0" />
-                </VerticalStackLayout>
-            </Border>
-
-            <!-- Estimate from state of charge when current cannot be read -->
-            <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding ShowSocFallback}">
+            <!-- Plug-in: electric / engine split -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,12" IsVisible="{Binding ShowDriveSplit}">
                 <VerticalStackLayout Spacing="0">
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,6">
-                        <Path Data="M3,8 L19,8 L19,17 L3,17 Z M21,11 L21,14 M7,12.5 L11,12.5 M9,10.5 L9,14.5 M14,12.5 L17,12.5" Style="{StaticResource RowIconStyle}" />
-                        <Label Grid.Column="1" Text="ბატარეის ტევადობა (kWh)" Style="{StaticResource RowTitleStyle}" />
-                        <Entry Grid.Column="2" Text="{Binding BatteryCapacityText}" Keyboard="Numeric" Placeholder="64" WidthRequest="90" HorizontalTextAlignment="End" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                    <Label AutomationId="DynamicTextSplitCaption" Text="{Binding SplitCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" FontAttributes="Bold" Margin="0,0,0,6" />
+                    <Grid HeightRequest="22" Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="{Binding ElectricShareStar}" /><ColumnDefinition Width="{Binding EngineShareStar}" /></Grid.ColumnDefinitions>
+                        <Border BackgroundColor="#1E8A4C" StrokeThickness="0" StrokeShape="RoundRectangle 6,0,6,0">
+                            <Label AutomationId="DynamicTextElectricShare" Text="{Binding ElectricShareText}" TextColor="White" FontSize="11" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <Border Grid.Column="1" BackgroundColor="#D0701F" StrokeThickness="0" StrokeShape="RoundRectangle 0,6,0,6">
+                            <Label AutomationId="DynamicTextEngineShare" Text="{Binding EngineShareText}" TextColor="White" FontSize="11" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
                     </Grid>
-                    <BoxView Style="{StaticResource RowDividerStyle}" />
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
-                        <Path Data="M8,4 L16,4 L16,21 L8,21 Z M10,2 L14,2 M8,14 L16,14" Style="{StaticResource RowIconStyle}" />
-                        <Label Grid.Column="1" Text="დამუხტვა" Style="{StaticResource RowTitleStyle}" />
-                        <Label Grid.Column="2" Text="{Binding SocFallbackText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,8">
+                        <Label Text="⚡ ელექტრო" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
+                        <Label Grid.Column="1" AutomationId="DynamicTextElectricSplit" Text="{Binding ElectricSplitText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" HorizontalTextAlignment="End" />
                     </Grid>
-                    <BoxView Style="{StaticResource RowDividerStyle}" />
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
-                        <Path Data="M4,12 A8,8 0 1 0 8,5 M4,4 L4,9 L9,9" Style="{StaticResource RowIconStyle}" />
-                        <Label Grid.Column="1" Text="მიახლოებითი ხარჯი" Style="{StaticResource RowTitleStyle}" />
-                        <Label Grid.Column="2" Text="{Binding ApproxConsumptionText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,8">
+                        <Label Text="⛽ ბენზინი" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
+                        <Label Grid.Column="1" AutomationId="DynamicTextEngineSplit" Text="{Binding EngineSplitText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" HorizontalTextAlignment="End" />
                     </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,8">
+                        <Label Text="საშუალო ბენზინი, მთელ გზაზე" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
+                        <Label Grid.Column="1" AutomationId="DynamicTextSplitFuelAverage" Text="{Binding SplitFuelAverageText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" HorizontalTextAlignment="End" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Battery: SoC, V/A, capacity, price -->
+            <Label Text="ბატარეა" Style="{StaticResource SectionCaptionStyle}" IsVisible="{Binding ShowEnergy}" />
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,4" IsVisible="{Binding ShowEnergy}">
+                <VerticalStackLayout Spacing="0">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,8">
+                        <Label Text="დაწყებისას → ახლა" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
+                        <Label Grid.Column="1" AutomationId="DynamicTextSocStartNow" Text="{Binding SocStartNowText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" HorizontalTextAlignment="End" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,8">
+                        <Label Text="ძაბვა · დენი" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
+                        <Label Grid.Column="1" AutomationId="DynamicTextVoltageCurrent" Text="{Binding VoltageCurrentText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" HorizontalTextAlignment="End" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,2">
+                        <Label Text="ბატარეის ტევადობა (kWh)" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
+                        <Entry Grid.Column="1" Text="{Binding BatteryCapacityText}" Keyboard="Numeric" Placeholder="12" WidthRequest="90" HorizontalTextAlignment="End" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,2">
+                        <Label Text="ფასი 1 kWh (₾)" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
+                        <Entry Grid.Column="1" Text="{Binding ElectricityPriceText}" Keyboard="Numeric" Placeholder="0.30" WidthRequest="90" HorizontalTextAlignment="End" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,2" IsVisible="{Binding ShowFuel}">
+                        <Label Text="ფასი 1 ლ ბენზინი (₾)" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
+                        <Entry Grid.Column="1" Text="{Binding FuelPriceText}" Keyboard="Numeric" Placeholder="3.00" WidthRequest="90" HorizontalTextAlignment="End" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                    </Grid>
+                    <Button Text="{Binding FlipSignText}" Command="{Binding FlipEnergySignCommand}" IsVisible="{Binding CanFlipSign}" AutomationId="DynamicTextFlipSign" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" Padding="0" HeightRequest="36" HorizontalOptions="Start" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- What this car reports + where the data comes from -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,10" IsVisible="{Binding ShowEnergy}">
+                <VerticalStackLayout Spacing="0">
+                    <Label Text="რას კითხულობს ეს მანქანა" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" FontAttributes="Bold" Margin="0,0,0,4" />
+                    <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding EnergyCapabilities}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:EnergyCapabilityRow">
+                                <Grid ColumnDefinitions="18,*,Auto" ColumnSpacing="8" Padding="0,6">
+                                    <Label Text="{Binding Mark}" TextColor="{Binding MarkColor}" FontSize="13" FontAttributes="Bold" VerticalOptions="Center" />
+                                    <Label Grid.Column="1" AutomationId="DynamicTextCapabilityTitle" Text="{Binding Title}" TextColor="{DynamicResource TextColor}" FontSize="12.5" VerticalOptions="Center" />
+                                    <Label Grid.Column="2" AutomationId="DynamicTextCapabilityDetail" Text="{Binding Detail}" TextColor="{DynamicResource SubTextColor}" FontSize="10.5" VerticalOptions="Center" />
+                                </Grid>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
+                    <Label AutomationId="DynamicTextEnergySourceTitle" Text="{Binding EnergySourceTitle}" TextColor="{Binding EnergySourceColor}" FontSize="12.5" FontAttributes="Bold" Margin="0,8,0,2" />
+                    <Label AutomationId="DynamicTextEnergySource" Text="{Binding EnergySourceText}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" />
+                    <Button Text="ლოგის კოპირება" Command="{Binding CopyEnergyLogCommand}" IsVisible="{Binding HasEnergyLog}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="10" HeightRequest="36" FontSize="12" HorizontalOptions="Start" Padding="12,0" Margin="0,6,0,0" />
                 </VerticalStackLayout>
             </Border>
 

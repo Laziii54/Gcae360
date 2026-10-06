@@ -99,6 +99,8 @@ public partial class AccountPage : ContentPage
 
     private async void OnLogoutClicked(object? sender, EventArgs e)
     {
+        try
+        {
         if (_busy)
             return;
         SetBusy(true);
@@ -112,6 +114,11 @@ public partial class AccountPage : ContentPage
         finally
         {
             SetBusy(false);
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AccountPage.OnLogoutClicked");
         }
     }
 

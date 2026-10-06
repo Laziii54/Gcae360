@@ -37,7 +37,19 @@ public sealed class CustomsRulesService(IHttpClientFactory clients, ILogger<Cust
             electricRightExcise = 3000m,
             usdRate = usd,
             eurRate = eur,
-            ratesDate = date
+            ratesDate = date,
+            // Plug-in hybrids (HS 8703 60 / 70) are hybrids for the 60 % relief.
+            plugInCountsAsHybrid = true,
+            // Customs service fee by car value (GEL). Approximate — adjust here
+            // when the Revenue Service changes it; the app needs no update.
+            customsFeeTiers = new object[]
+            {
+                new { upToGel = (decimal?)3000m, feeGel = 150m },
+                new { upToGel = (decimal?)15000m, feeGel = 200m },
+                new { upToGel = (decimal?)null, feeGel = 300m }
+            },
+            // 0 = not added. Set e.g. 0.18 if VAT must be shown on import.
+            vatRate = 0m
         };
     }
 

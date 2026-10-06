@@ -178,6 +178,8 @@ public partial class HybridHealthViewModel : BaseViewModel
     [RelayCommand]
     private async Task CopyLog()
     {
+        try
+        {
         if (string.IsNullOrWhiteSpace(RawLog)) return;
         try
         {
@@ -188,11 +190,18 @@ public partial class HybridHealthViewModel : BaseViewModel
         {
             CopyLogText = L("კოპირება ვერ მოხერხდა", "Could not copy");
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HybridHealthViewModel.CopyLog");
+        }
     }
 
     [RelayCommand]
     private async Task Scan()
     {
+        try
+        {
         if (IsBusy || IsLoadTesting) return;
         _scanCancellation?.Cancel();
         _scanCancellation?.Dispose();
@@ -219,7 +228,9 @@ public partial class HybridHealthViewModel : BaseViewModel
             }
 
             var progress = new Progress<string>(message => ScanStage = message);
-            Apply(await _health.ScanAsync(vehicle, progress, _scanCancellation.Token));
+            var healthResult = await _health.ScanAsync(vehicle, progress, _scanCancellation.Token);
+            Apply(healthResult);
+            AddBatteryToReport(healthResult);
         }
         catch (OperationCanceledException)
         {
@@ -234,11 +245,18 @@ public partial class HybridHealthViewModel : BaseViewModel
             IsBusy = false;
             OnPropertyChanged(nameof(CanLoadTest));
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HybridHealthViewModel.Scan");
+        }
     }
 
     [RelayCommand]
     private async Task StartLoadTest()
     {
+        try
+        {
         if (!CanLoadTest || _result?.PackKind is not { } kind) return;
         var lithium = HvPackProtocol.IsCellLevel(kind);
         _loadStop?.Dispose();
@@ -283,6 +301,11 @@ public partial class HybridHealthViewModel : BaseViewModel
             IsLoadTesting = false;
             LoadLiveText = "";
         }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HybridHealthViewModel.StartLoadTest");
+        }
     }
 
     [RelayCommand]
@@ -313,6 +336,48 @@ public partial class HybridHealthViewModel : BaseViewModel
         >= 60 => L("საჭიროებს ყურადღებას", "Needs attention"),
         _ => L("სუსტია — შესამოწმებელია", "Weak — have it checked")
     };
+
+    /// <summary>The battery check becomes the "battery" part of the combined report.</summary>
+    private void AddBatteryToReport(HybridHealthResult result)
+    {
+        if (result.Score is null && result.SohPercent is null && result.CellVoltageDelta is null)
+            return;
+
+        var section = new CarScanner.Services.Reports.ReportSectionItem
+        {
+            Kind = "battery",
+            Icon = "⚡",
+            Title = L("ჰიბრიდის / EV ბატარეა", "Hybrid / EV battery"),
+            Status = result.Score is { } score
+                ? score >= 80 ? CarScanner.Services.Reports.ReportStatus.Ok
+                  : score >= 60 ? CarScanner.Services.Reports.ReportStatus.Warning
+                  : CarScanner.Services.Reports.ReportStatus.Bad
+                : CarScanner.Services.Reports.ReportStatus.Info,
+            Summary = string.Join(" · ", new[]
+            {
+                result.Score is { } s ? $"{s}/100 · {RatingText}" : string.Empty,
+                result.SohPercent is { } soh ? $"SOH {soh:0.#}%" : string.Empty,
+                result.CellVoltageDelta is not null ? $"{SpreadTitle} {SpreadText}" : string.Empty
+            }.Where(part => part.Length > 0))
+        };
+
+        void Add(string label, string value)
+        {
+            if (!string.IsNullOrWhiteSpace(value) && value != "—")
+                section.Lines.Add(new() { Label = label, Value = value });
+        }
+
+        Add(L("შეფასება", "Score"), ScoreText);
+        Add("SOH", SohText);
+        Add(SpreadTitle, SpreadText);
+        Add(L("ტემპერატურა", "Temperature"), TemperatureText);
+        Add(L("დამუხტვა", "Charge"), SocText);
+        Add(L("ტევადობა", "Capacity"), CapacityText);
+        Add(L("შინაგანი წინაღობა", "Internal resistance"), ResistanceText);
+        Add(L("დასკვნა", "Conclusion"), SummaryText);
+
+        CarScanner.Services.Reports.VehicleReportService.Instance?.AddOrReplace(section);
+    }
 
     private void Apply(HybridHealthResult result)
     {

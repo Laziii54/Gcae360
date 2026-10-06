@@ -50,7 +50,7 @@ Production secrets belong only in the backend environment:
 Never put these values in the mobile app, repository, screenshots or store
 listing.
 
-Server-side entitlement, purchase-claim, promo and webhook state is stored in
+Server-side entitlement, purchase-claim and webhook state is stored in
 one SQLite database. On Azure App Service the API automatically places it under
 the persistent `HOME/data/georgian-car-scanner` volume. On another host set
 `GCS_DATA_DIRECTORY` to a persistent directory outside the deployed application

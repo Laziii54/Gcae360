@@ -254,6 +254,8 @@ public partial class HomeViewModel : BaseViewModel
                 _lastAccelerationSeconds = run.DurationSeconds;
                 AccelerationResult =
                     $"{run.Source.Replace("OBD · ", string.Empty)}: {run.DurationSeconds:F2} წმ";
+                // The car that made THIS run, not the car connected now.
+                AccelerationResultVehicle = RunVehicleName(run);
 
                 AddAccelerationMiniHistory(
                     run.Source,
@@ -317,7 +319,22 @@ public partial class HomeViewModel : BaseViewModel
     {
         var latest = await database.GetLatestAccelerationRunAsync();
         if (latest is not null)
+        {
             AccelerationResult = $"{latest.Source.Replace("OBD · ", string.Empty)}: {latest.DurationSeconds:F2} წმ";
+            AccelerationResultVehicle = RunVehicleName(latest);
+        }
+    }
+
+    /// <summary>Car shown next to a saved run: stored with the run, never the currently connected car.</summary>
+    [ObservableProperty] private string accelerationResultVehicle = string.Empty;
+
+    private string RunVehicleName(AccelerationRun run)
+    {
+        if (!string.IsNullOrWhiteSpace(run.VehicleDisplayName))
+            return run.VehicleDisplayName;
+        if (!string.IsNullOrWhiteSpace(run.VIN))
+            return "VIN " + run.VIN;
+        return _localization.IsEnglish ? "Car not identified" : "მანქანა არ იყო ამოცნობილი";
     }
 
     private void UpdateAccelerationState()
@@ -526,6 +543,8 @@ public partial class HomeViewModel : BaseViewModel
     [RelayCommand]
     private async Task StartAcceleration()
     {
+        try
+        {
         if (IsBusy || IsAccelerationMeasuring)
             return;
 
@@ -576,6 +595,11 @@ public partial class HomeViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+        }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.StartAcceleration");
         }
     }
 
@@ -663,10 +687,17 @@ public partial class HomeViewModel : BaseViewModel
     [RelayCommand]
     private async Task GoToAcceleration()
     {
+        try
+        {
         if (!await RequireObdConnectionAsync())
             return;
 
         await Shell.Current.GoToAsync(nameof(Views.AccelerationPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToAcceleration");
+        }
     }
 
     [RelayCommand]
@@ -1120,16 +1151,30 @@ public partial class HomeViewModel : BaseViewModel
     [RelayCommand]
     private async Task Connect()
     {
+        try
+        {
         await Shell.Current.GoToAsync(
             nameof(Views.VehicleBrandSelectionPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.Connect");
+        }
     }
 
 
     [RelayCommand]
     private async Task GoToBluetooth()
     {
+        try
+        {
         await Shell.Current.GoToAsync(
             nameof(Views.VehicleBrandSelectionPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToBluetooth");
+        }
     }
 
     [RelayCommand]
@@ -1146,130 +1191,258 @@ public partial class HomeViewModel : BaseViewModel
     [RelayCommand]
     private async Task StartScan()
     {
+        try
+        {
         if (!await RequireObdConnectionAsync())
             return;
 
         await Shell.Current.GoToAsync(
-            nameof(Views.DiagnosticsPage));
+            nameof(Views.ModuleScanPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.StartScan");
+        }
     }
 
 
     [RelayCommand]
     private async Task GoToTroubleCodes()
     {
+        try
+        {
         if (!await RequireObdConnectionAsync())
             return;
 
         await Shell.Current.GoToAsync(
-            nameof(Views.DiagnosticsPage));
+            nameof(Views.ModuleScanPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToTroubleCodes");
+        }
     }
 
+
+    /// <summary>Coding opens without an adapter too (saved backups, history).</summary>
+    [RelayCommand]
+    private async Task GoToCoding()
+    {
+        try
+        {
+            await Shell.Current.GoToAsync(nameof(Views.CodingPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToCoding");
+        }
+    }
+
+    /// <summary>Graph Studio opens without an adapter too (saved recordings).</summary>
+    [RelayCommand]
+    private async Task GoToGraphStudio()
+    {
+        try
+        {
+            await Shell.Current.GoToAsync(nameof(Views.GraphStudioPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToGraphStudio");
+        }
+    }
 
     [RelayCommand]
     private async Task GoToLiveData()
     {
+        try
+        {
         if (!await RequireObdConnectionAsync())
             return;
 
         await Shell.Current.GoToAsync(
             nameof(Views.LiveDataPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToLiveData");
+        }
     }
 
 
     [RelayCommand]
     private async Task GoToSensors()
     {
+        try
+        {
         if (!await RequireObdConnectionAsync())
             return;
 
         await Shell.Current.GoToAsync(
             nameof(Views.SensorsPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToSensors");
+        }
     }
 
 
     [RelayCommand]
     private async Task GoToHistory()
     {
+        try
+        {
         await Shell.Current.GoToAsync(
             nameof(Views.HistoryPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToHistory");
+        }
     }
 
 
     [RelayCommand]
     private async Task GoToSettings()
     {
+        try
+        {
         await Shell.Current.GoToAsync(
             nameof(Views.SettingsPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToSettings");
+        }
     }
 
 
     [RelayCommand]
     private async Task GoToEmissions()
     {
+        try
+        {
         if (!await RequireObdConnectionAsync())
             return;
 
         await Shell.Current.GoToAsync(
             nameof(Views.EmissionsPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToEmissions");
+        }
     }
 
     [RelayCommand]
     private async Task GoToTechnicalInspection()
     {
+        try
+        {
         if (!await RequireObdConnectionAsync())
             return;
 
         await Shell.Current.GoToAsync(
             nameof(Views.TechnicalInspectionPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToTechnicalInspection");
+        }
     }
 
     [RelayCommand]
     private async Task GoToVehicleHealth()
     {
+        try
+        {
         if (!await RequireObdConnectionAsync()) return;
         await Shell.Current.GoToAsync(nameof(Views.VehicleHealthPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToVehicleHealth");
+        }
     }
 
     [RelayCommand]
     private async Task GoToBattery()
     {
+        try
+        {
         if (!await RequireObdConnectionAsync()) return;
         await Shell.Current.GoToAsync(nameof(Views.BatteryPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToBattery");
+        }
     }
 
     [RelayCommand]
     private async Task GoToHybridHealth()
     {
+        try
+        {
         if (!await RequireObdConnectionAsync())
             return;
         await Shell.Current.GoToAsync(nameof(Views.HybridHealthPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToHybridHealth");
+        }
     }
-    [RelayCommand] private async Task GoToAdapterCenter() { if (!await RequireObdConnectionAsync()) return; await Shell.Current.GoToAsync(nameof(Views.AdapterCenterPage)); }
+    [RelayCommand] private async Task GoToAdapterCenter() {
+        try
+        { if (!await RequireObdConnectionAsync()) return; await Shell.Current.GoToAsync(nameof(Views.AdapterCenterPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToAdapterCenter");
+        } }
 
 
     [RelayCommand]
     private async Task GoToEcu()
     {
+        try
+        {
         if (!await RequireObdConnectionAsync())
             return;
 
         await Shell.Current.GoToAsync(
             nameof(Views.EcuIdentifiersPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToEcu");
+        }
     }
 
     [RelayCommand]
     private async Task GoToCapabilities()
     {
+        try
+        {
         if (!await RequireObdConnectionAsync())
             return;
 
         await Shell.Current.GoToAsync(nameof(Views.CapabilityCenterPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToCapabilities");
+        }
     }
 
 
     [RelayCommand]
     private async Task GoToMileage()
     {
+        try
+        {
         if (!await RequireObdConnectionAsync())
             return;
 
@@ -1278,31 +1451,53 @@ public partial class HomeViewModel : BaseViewModel
 
         await Shell.Current.GoToAsync(
             nameof(Views.MileagePage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToMileage");
+        }
     }
 
     // Freeze Frame is free (not PRO); it only needs an OBD connection.
     [RelayCommand]
     private async Task GoToFreezeFrame()
     {
+        try
+        {
         if (!await RequireObdConnectionAsync())
             return;
 
         await Shell.Current.GoToAsync(nameof(Views.FreezeFramePage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToFreezeFrame");
+        }
     }
 
     [RelayCommand]
     private async Task GoToDiagnosticReport()
     {
+        try
+        {
         if (!await RequireProAsync("დიაგნოსტიკური ანგარიში"))
             return;
 
-        await Shell.Current.GoToAsync(nameof(Views.DiagnosticReportPage));
+        // One combined report: every check of this car, exported together.
+        await Shell.Current.GoToAsync(nameof(Views.VehicleReportPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToDiagnosticReport");
+        }
     }
 
 
     [RelayCommand]
     private async Task GoToAi()
     {
+        try
+        {
         if (!await RequireObdConnectionAsync())
             return;
 
@@ -1311,12 +1506,19 @@ public partial class HomeViewModel : BaseViewModel
 
         await Shell.Current.GoToAsync(
             nameof(Views.AiPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToAi");
+        }
     }
 
 
     [RelayCommand]
     private async Task GoToFuel()
     {
+        try
+        {
         if (!await RequireObdConnectionAsync())
             return;
 
@@ -1325,6 +1527,11 @@ public partial class HomeViewModel : BaseViewModel
 
         await Shell.Current.GoToAsync(
             nameof(Views.FuelPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToFuel");
+        }
     }
 
 
@@ -1350,36 +1557,66 @@ public partial class HomeViewModel : BaseViewModel
     [RelayCommand]
     private async Task GoToService()
     {
+        try
+        {
         if (!await RequireObdConnectionAsync())
             return;
 
         await Shell.Current.GoToAsync(
             nameof(Views.ServicePage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToService");
+        }
     }
 
     [RelayCommand]
     private async Task GoToCalendar()
     {
+        try
+        {
         await Shell.Current.GoToAsync(nameof(Views.CalendarPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToCalendar");
+        }
     }
 
 
     [RelayCommand]
     private async Task GoToModules()
     {
+        try
+        {
         if (!await RequireObdConnectionAsync())
             return;
 
+        // "Module diagnostics" tile = live values of the modules (ABS, steering,
+        // battery …). The all-module trouble-code scan stays on the DTC page.
         await Shell.Current.GoToAsync(
-            nameof(Views.ModuleScanPage));
+            nameof(Views.ModuleLiveDataPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToModules");
+        }
     }
 
 
     [RelayCommand]
     private async Task GoToPro()
     {
+        try
+        {
         await Shell.Current.GoToAsync(
             nameof(Views.ProPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToPro");
+        }
     }
 
     private async Task<bool> RequireObdConnectionAsync()
@@ -1503,6 +1740,8 @@ public partial class HomeViewModel : BaseViewModel
     [RelayCommand]
     private async Task RefreshVehicleIdentity()
     {
+        try
+        {
         if (!_bluetooth.IsConnected)
         {
             await RequireObdConnectionAsync();
@@ -1513,6 +1752,11 @@ public partial class HomeViewModel : BaseViewModel
         ShowIdentityLoading();
         var identityRead = _vehicle.StartConnectedIdentityReadAsync(forceVinRefresh: true);
         await ObserveIdentityReadAsync(identityRead);
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.RefreshVehicleIdentity");
+        }
     }
 
     private void ShowIdentityLoading()

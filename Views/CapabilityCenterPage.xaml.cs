@@ -14,9 +14,16 @@ public partial class CapabilityCenterPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        try
+        {
         base.OnAppearing();
         _viewModel.ApplyCurrentIfAny();
         if (!_viewModel.IsBusy)
             await _viewModel.RefreshCommand.ExecuteAsync(null);
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "CapabilityCenterPage.OnAppearing");
+        }
     }
 }
