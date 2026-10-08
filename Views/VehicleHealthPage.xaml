@@ -89,6 +89,7 @@
                             TextColor="{DynamicResource TextColor}"
                             LineBreakMode="WordWrap" />
                         <Label
+                            IsVisible="False"
                             AutomationId="DynamicTextHealthCoverage"
                             Text="{Binding CoverageText}"
                             FontSize="12"
@@ -148,7 +149,7 @@
                                         LineBreakMode="WordWrap" />
                                     <HorizontalStackLayout Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Spacing="8">
                                         <Label Text="{Binding SeverityText}" FontSize="11" FontAttributes="Bold" TextColor="{Binding Color}" />
-                                        <Label Text="{Binding Source}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                        <Label Text="{Binding Source}" IsVisible="False" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
                                     </HorizontalStackLayout>
                                 </Grid>
                             </VerticalStackLayout>
@@ -159,7 +160,7 @@
 
             <!-- Summary -->
             <Label
-                IsVisible="{Binding HasResult}"
+                IsVisible="False"
                 AutomationId="DynamicTextHealthSummary"
                 Text="{Binding ScanSummary}"
                 FontSize="11"

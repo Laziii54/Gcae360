@@ -154,8 +154,7 @@ public sealed class TripForegroundService : Service
         if (manager?.GetNotificationChannel(ChannelId) is not null)
             return;
 
-        var georgian = !Microsoft.Maui.Storage.Preferences.Default.Get("language", "English")
-            .Equals("English", StringComparison.OrdinalIgnoreCase);
+        var georgian = !CarScanner.Services.Localization.LanguageCatalog.UsesEnglishBase;
         var channel = new NotificationChannel(
             ChannelId,
             georgian ? "მოგზაურობის ჩაწერა" : "Trip recording",

@@ -42,12 +42,15 @@
 		<string>Bluetooth is used to communicate with a compatible BLE OBD-II adapter.</string>
 
 		<key>NSLocationWhenInUseUsageDescription</key>
-		<string>GPS speed is compared with the car's speed while you measure 0–100, 0–60 or ¼ mile, so ranking results can be trusted. While a fuel/energy trip is recording, location keeps the trip running when the app is in the background.</string>
+		<string>GPS speed is compared with the car's speed while you measure 0–100, 0–60 or ¼ mile, so ranking results can be trusted. While a fuel/energy trip is recording, location keeps the trip recording in the background while you drive.</string>
+
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>Location keeps a fuel/energy trip you started recording in the background while you drive, and checks GPS speed during 0–100, 0–60 or ¼ mile ranking runs. Location is used only while a trip or run is active.</string>
 		<key>NSCameraUsageDescription</key>
 		<string>The camera is used to scan a VIN and record verified acceleration videos.</string>
 
 		<key>NSMicrophoneUsageDescription</key>
-		<string>The microphone can record sound when the user records an acceleration video.</string>
+		<string>The microphone records sound when you record an acceleration (0–100) video for a ranking run review.</string>
 
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>Finished acceleration videos are saved to the photo library when the user requests it.</string>

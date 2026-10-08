@@ -227,6 +227,11 @@ public partial class HybridHealthViewModel : BaseViewModel
                 return;
             }
 
+            var known = string.Join(" ", new[] { vehicle.Manufacturer, vehicle.Model, vehicle.Year }
+                .Where(part => !string.IsNullOrWhiteSpace(part) && !part.Equals("Unknown", StringComparison.OrdinalIgnoreCase)));
+            if (known.Length > 0)
+                VehicleName = known;
+
             var progress = new Progress<string>(message => ScanStage = message);
             var healthResult = await _health.ScanAsync(vehicle, progress, _scanCancellation.Token);
             Apply(healthResult);

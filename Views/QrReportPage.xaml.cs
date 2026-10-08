@@ -14,9 +14,10 @@ public partial class QrReportPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        base.OnAppearing();
         try
         {
-        base.OnAppearing();
+        _viewModel.Attach();
         Application.Current?.Handler?.MauiContext?.Services.GetService<LocalizationService>()?.Apply(this);
         if (!_viewModel.HasQr)
             await _viewModel.CreateCommand.ExecuteAsync(null);
@@ -30,6 +31,7 @@ public partial class QrReportPage : ContentPage
     protected override void OnDisappearing()
     {
         _viewModel.Cancel();
+        _viewModel.Detach();
         base.OnDisappearing();
     }
 }

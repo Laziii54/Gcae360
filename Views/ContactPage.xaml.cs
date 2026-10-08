@@ -33,7 +33,8 @@ public partial class ContactPage : ContentPage
         }
         catch (Exception ex)
         {
-            StatusLabel.Text = ex.Message;
+            System.Diagnostics.Debug.WriteLine($"Contact send failed: {ex}");
+            StatusLabel.Text = CarScanner.Services.UserError.Describe(ex);
         }
         }
         catch (Exception commandException)

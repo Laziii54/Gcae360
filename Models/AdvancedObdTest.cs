@@ -55,6 +55,13 @@ public sealed record Mode06MonitorResult(
         : ObdLang.L($"დამხმარე: {Auxiliary}", $"Aux: {Auxiliary}");
     public string ResultText => Passed ? ObdLang.L("ნორმაშია", "PASSED") : ObdLang.L("ნორმაში არ არის", "FAILED");
     public string ResultColor => Passed ? "#1F8A4C" : "#B3361F";
+
+    /// <summary>What this test checks and, if failed, what it usually means.</summary>
+    public string ExplanationText => IsCan
+        ? CarScanner.Services.OBD.Mode06Definitions.Explain(MonitorId!.Value, TestId, Passed)
+        : string.Empty;
+    public bool HasExplanation => !string.IsNullOrWhiteSpace(ExplanationText);
+
     public string DefinitionNote => IsCan
         ? (TestId >= 0x80 ? ObdLang.L("მწარმოებლის ტესტი: ზღვრები ECU-მ თავად დააბრუნა.", "Manufacturer test: the ECU returned its own limits.") : string.Empty)
         : ObdLang.L(

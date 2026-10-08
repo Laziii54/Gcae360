@@ -24,7 +24,7 @@
             </Border>
 
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
-            <Label Text="{Binding SourceMessage}" IsVisible="{Binding HasEstimates}" Style="{StaticResource CaptionStyle}" Margin="2,0" />
+            <Label Text="{Binding SourceMessage}" IsVisible="False" Style="{StaticResource CaptionStyle}" Margin="2,0" />
 
             <VerticalStackLayout BindableLayout.ItemsSource="{Binding Estimates}" Spacing="12">
                 <BindableLayout.ItemTemplate>
@@ -62,7 +62,7 @@
                                 </Grid>
                                 <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" />
                                 <Label Text="{Binding Reason}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                                <Label Text="{Binding Source}" FontSize="10" TextColor="{DynamicResource SubTextColor}" />
+                                <Label Text="{Binding Source}" IsVisible="False" FontSize="10" TextColor="{DynamicResource SubTextColor}" />
                             </VerticalStackLayout>
                         </Border>
                     </DataTemplate>

@@ -258,6 +258,65 @@ try{render(await call('/api/web/subscription/cancel'));m.className='msg ok';m.te
 </body></html>
 """;
 
+    /// <summary>
+    /// Public "delete my account" page (Google Play data-deletion URL):
+    /// how to delete in the app, or here with e-mail + password.
+    /// <paramref name="formToken"/> is a short-lived anti-forgery token
+    /// the endpoint checks.
+    /// </summary>
+    public static string DeleteAccountPage(LegalInfo legal, string formToken) => $$"""
+<!doctype html><html lang="ka"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow">
+<title>GCar360 · ანგარიშის წაშლა · Delete account</title>{{Style}}</head><body><main>
+<h1>ანგარიშის წაშლა</h1>
+<div class="muted">Delete your GCar360 account</div>
+
+<h2>აპში · In the app</h2>
+<div class="sum">
+<div><span>გახსენი GCar360 → <b>ანგარიში</b> → <b>ანგარიშის წაშლა</b> და დაადასტურე.</span></div>
+<div><span>Open GCar360 → <b>Account</b> → <b>Delete account</b> and confirm.</span></div>
+</div>
+
+<h2>აქ, ვებ-გვერდზე · Here on the website</h2>
+<p class="muted">შეიყვანე ანგარიშის ელ-ფოსტა და პაროლი. წაშლა სამუდამოა და ვერ აღდგება. · Enter the account's e-mail and password. Deletion is permanent and cannot be undone.</p>
+<form id="del">
+<input type="hidden" name="token" value="{{WebUtility.HtmlEncode(formToken)}}">
+<label class="f">ელ-ფოსტა · E-mail</label><input type="email" name="email" autocomplete="email" required maxlength="254">
+<label class="f">პაროლი · Password</label><input type="password" name="password" autocomplete="current-password" required maxlength="128">
+<label class="consent"><input type="checkbox" name="confirm" required><span>ვადასტურებ, რომ მინდა ანგარიშის და მისი მონაცემების სამუდამოდ წაშლა. · I confirm that I want to permanently delete the account and its data.</span></label>
+<button type="submit" class="danger" id="go">ანგარიშის წაშლა · Delete account</button>
+</form>
+<div id="m" class="msg"></div>
+
+<h2>რა იშლება · What is deleted</h2>
+<div class="sum">
+<div><span>ანგარიში (ელ-ფოსტა, პაროლის ჰეში), სესიები, PRO უფლებები, VIN კრედიტები და გახსნილი VIN ისტორიები, ნაყიდი სრული ისტორიები, შენ მიერ შექმნილი QR ანგარიშები. რეიტინგის შედეგებში სახელი იცვლება „Deleted“-ით, VIN-ის ჰეში, GPS კოორდინატები და ვიდეოები იშლება. მოწყობილობის, გარბენის და სერვისის ტექნიკური ჩანაწერები ანგარიშს აღარ უკავშირდება.</span></div>
+<div><span>Account (e-mail, password hash), sessions, PRO entitlements, VIN credits and opened VIN histories, purchased full histories and the QR reports you created. Leaderboard results are renamed “Deleted”; the VIN hash, GPS coordinates and videos are removed. Device, odometer and service technical records are unlinked from the account.</span></div>
+<div><span>ბარათით გადახდების ჩანაწერები (თანხა, თარიღი, შეკვეთის ნომერი) ბუღალტრული მიზნით ინახება ანონიმურად; ავტომატური გადახდა უქმდება და შენახული ბარათი იშლება. Google Play / App Store გამოწერა ცალკე გააუქმე მაღაზიაში.</span></div>
+<div><span>Card payment records (amount, date, order number) are kept anonymised for accounting; automatic payment is cancelled and the saved card is deleted. Cancel a Google Play / App Store subscription separately in the store.</span></div>
+</div>
+<p class="muted">კითხვები · Questions: <a href="mailto:gcar360support@gmail.com">gcar360support@gmail.com</a></p>
+{{Footer}}{{legal.FooterHtml()}}</footer>
+</main>
+<script>
+const f=document.getElementById('del'),m=document.getElementById('m'),go=document.getElementById('go');
+f.addEventListener('submit',async e=>{e.preventDefault();
+if(!confirm('წავშალო ანგარიში სამუდამოდ? · Delete the account permanently?'))return;
+const d=Object.fromEntries(new FormData(f));go.disabled=true;m.className='msg';m.textContent='მიმდინარეობს… · Please wait…';
+try{const r=await fetch('/api/web/account/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:d.email,password:d.password,token:d.token})});
+const j=await r.json().catch(()=>({}));
+if(r.ok&&j.success){f.style.display='none';m.className='msg ok';m.textContent='ანგარიში წაიშალა. · The account was deleted.';return;}
+m.className='msg err';
+m.textContent=j.code==='INVALID_LOGIN'?'ელ-ფოსტა ან პაროლი არასწორია. · Wrong e-mail or password.'
+:j.code==='TOO_MANY'?'ძალიან ბევრი ცდა. სცადე ერთ საათში. · Too many attempts. Try again in an hour.'
+:j.code==='EXPIRED_FORM'?'გვერდს ვადა გაუვიდა — განაახლე და სცადე თავიდან. · The page expired — reload and try again.'
+:'ვერ მოხერხდა. სცადე მოგვიანებით ან მოგვწერე. · Failed. Try later or email us.';
+}catch{m.className='msg err';m.textContent='კავშირის შეცდომა. · Connection error.';}
+go.disabled=false;});
+</script>
+</body></html>
+""";
+
     public static string ResultPage(WebOrder? order, DateTimeOffset? activeUntil)
     {
         string icon, title, text, cls;

@@ -236,6 +236,10 @@ public static class MauiProgram
         // ============================================================
 
         builder.Services.AddSingleton<ActualMileageService>();
+        builder.Services.AddSingleton<CarScanner.Services.Mileage.OdometerFinderService>();
+        builder.Services.AddSingleton<
+            CarScanner.Services.Mileage.IActualMileageProvider,
+            CarScanner.Services.Mileage.LearnedOdometerProvider>();
 
         // Generic PID A6 is the only mileage source that can be queried
         // universally. OEM/CAN sources stay unregistered until their verified
@@ -275,6 +279,7 @@ public static class MauiProgram
             LiveDataRecorder>();
 
         builder.Services.AddSingleton<RecordingSessionService>();
+        builder.Services.AddSingleton<VehicleJournalService>();
 
         builder.Services.AddSingleton<RunGpsRecorder>();
         builder.Services.AddSingleton<
@@ -314,7 +319,6 @@ public static class MauiProgram
 
 
         builder.Services.AddSingleton<LiveDataViewModel>();
-        builder.Services.AddTransient<RecordingHistoryViewModel>();
 
         builder.Services.AddTransient<HistoryViewModel>();
 
@@ -410,7 +414,6 @@ public static class MauiProgram
         builder.Services.AddTransient<BluetoothPage>();
 
         builder.Services.AddTransient<LiveDataPage>();
-        builder.Services.AddTransient<RecordingHistoryPage>();
 
 
         builder.Services.AddTransient<HistoryPage>();
@@ -445,6 +448,8 @@ public static class MauiProgram
         builder.Services.AddTransient<GraphStudioPage>();
         builder.Services.AddTransient<CodingPage>();
         builder.Services.AddTransient<VehicleReportPage>();
+        builder.Services.AddTransient<VehicleJournalPage>();
+        builder.Services.AddTransient<AllToolsPage>();
         builder.Services.AddTransient<GraphChannelsPage>();
 
         builder.Services.AddTransient<ServicePage>();
@@ -463,10 +468,7 @@ public static class MauiProgram
         // PRO / PURCHASE
         // ============================================================
 
-#if ANDROID
-        builder.Services.AddSingleton<
-            CarScanner.Platforms.Android.Billing.AndroidBillingService>();
-#endif
+// Android: no in-app purchases (PRO bought on the website unlocks by signing in).
 
 #if IOS
 builder.Services.AddSingleton<

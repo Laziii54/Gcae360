@@ -35,6 +35,15 @@ internal sealed class AndroidPerformanceCameraController : Java.Lang.Object, IPe
     private bool _released;
     private bool _restartWhenSurfaceReturns;
     private bool _torchOn;
+
+    // 6 Mbps at 1080p (4 Mbps below) keeps a one-minute clip around 45 MB,
+    // under the 80 MB ranking upload limit. The view model stops recording at
+    // 60 s; MediaRecorder's own limit is a backstop a little later.
+    private const int BitRate1080p = 6_000_000;
+    private const int BitRateLower = 4_000_000;
+    private const int MaxRecordingMs = 62_000;
+    private const int MediaRecorderInfoMaxDurationReached = 800;
+    private volatile bool _recorderAutoStopped;
     private Xamarin.Google.MLKit.Vision.Text.ITextRecognizer? _textRecognizer;
 
     public AndroidPerformanceCameraController(Context context, TextureView view)
@@ -280,7 +289,8 @@ internal sealed class AndroidPerformanceCameraController : Java.Lang.Object, IPe
                 recorder.SetVideoSource(VideoSource.Surface);
                 recorder.SetOutputFormat(OutputFormat.Mpeg4);
                 recorder.SetOutputFile(outputPath);
-                recorder.SetVideoEncodingBitRate(_videoSize.Width >= 1920 ? 16_000_000 : 8_000_000);
+                recorder.SetVideoEncodingBitRate(_videoSize.Width >= 1920 ? BitRate1080p : BitRateLower);
+                recorder.SetMaxDuration(MaxRecordingMs);
                 recorder.SetVideoFrameRate(30);
                 recorder.SetVideoSize(_videoSize.Width, _videoSize.Height);
                 recorder.SetVideoEncoder(VideoEncoder.H264);
@@ -291,6 +301,14 @@ internal sealed class AndroidPerformanceCameraController : Java.Lang.Object, IPe
                     recorder.SetAudioSamplingRate(44_100);
                 }
                 recorder.SetOrientationHint(_sensorOrientation);
+                _recorderAutoStopped = false;
+                recorder.Info += (_, args) =>
+                {
+                    // The recorder finalizes the file itself at the limit;
+                    // calling Stop() afterwards would throw and lose it.
+                    if ((int)args.What == MediaRecorderInfoMaxDurationReached)
+                        _recorderAutoStopped = true;
+                };
                 recorder.Prepare();
 
                 var recorderSurface = recorder.Surface!;
@@ -343,7 +361,8 @@ internal sealed class AndroidPerformanceCameraController : Java.Lang.Object, IPe
 
             try
             {
-                _recorder.Stop();
+                if (!_recorderAutoStopped)
+                    _recorder.Stop();
             }
             catch (Java.Lang.RuntimeException)
             {

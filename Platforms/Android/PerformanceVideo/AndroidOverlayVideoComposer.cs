@@ -131,7 +131,8 @@ internal static class AndroidOverlayVideoComposer
             var height = videoFormat.GetInteger(MediaFormat.KeyHeight);
             var durationUs = videoFormat.ContainsKey(MediaFormat.KeyDuration) ? videoFormat.GetLong(MediaFormat.KeyDuration) : 0L;
             var frameRate = TryGetInt(videoFormat, MediaFormat.KeyFrameRate) ?? 30;
-            var bitRate = Math.Max(TryGetInt(videoFormat, MediaFormat.KeyBitRate) ?? 0, Math.Max(4_000_000, width * height * 6));
+            // Keep a 60 s clip under the 80 MB upload limit (~6 Mbps at 1080p, 4 Mbps below).
+            var bitRate = Math.Min(Math.Max(TryGetInt(videoFormat, MediaFormat.KeyBitRate) ?? 0, 4_000_000), width * height >= 1920 * 1080 ? 6_000_000 : 4_000_000);
 
             // Decode in the recorder's native orientation (no automatic rotation).
             if (videoFormat.ContainsKey("rotation-degrees"))

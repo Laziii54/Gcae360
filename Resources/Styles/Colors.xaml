@@ -28,6 +28,18 @@
     <Color x:Key="AccelerationText">#FFFFFF</Color>
     <Color x:Key="AccelerationBorder">#38BDF8</Color>
 
+    <!-- Soft status cards (ThemeService switches these for dark mode) -->
+    <Color x:Key="WarnBg">#FFF6EC</Color>
+    <Color x:Key="WarnStroke">#F0C79A</Color>
+    <Color x:Key="WarnTitle">#9A4E0E</Color>
+    <Color x:Key="WarnText">#5A3A1A</Color>
+    <Color x:Key="ErrBg">#FDECEA</Color>
+    <Color x:Key="ErrStroke">#E9A99D</Color>
+    <Color x:Key="ErrText">#7A2416</Color>
+    <Color x:Key="InfoBg">#EEF4FF</Color>
+    <Color x:Key="InfoStroke">#C9DAFB</Color>
+    <Color x:Key="OkText">#1E8A4C</Color>
+
     <Color x:Key="Primary">#1D5BD6</Color>
     <Color x:Key="PrimaryDark">#60A5FA</Color>
     <Color x:Key="PrimaryDarkText">#FFFFFF</Color>

@@ -525,7 +525,8 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
                     "BLE write characteristic ვერ მოიძებნა.");
             }
 
-            _responseBuffer.Clear();
+            await DrainStaleInputAsync()
+                .ConfigureAwait(false);
 
             _pendingResponse =
                 new TaskCompletionSource<string>(
@@ -610,6 +611,22 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
             // The ECU (not necessarily the adapter) did not answer in time.
             await CheckAdapterAfterFailureAsync()
                 .ConfigureAwait(false);
+            throw;
+        }
+        catch (System.OperationCanceledException) when (IsConnected)
+        {
+            // The caller gave up while the adapter may still be answering:
+            // stop it and discard the late reply so the next command is not
+            // paired with this one's answer. The link itself is fine.
+            try
+            {
+                await ResyncAfterFailureAsync()
+                    .ConfigureAwait(false);
+            }
+            catch (Exception resyncError)
+            {
+                _logger.LogDebug(resyncError, "Resync after a cancelled command failed.");
+            }
             throw;
         }
         catch (Exception ex) when (
@@ -1116,7 +1133,8 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
                 "Classic Bluetooth output stream მიუწვდომელია.");
         }
 
-        _responseBuffer.Clear();
+        await DrainStaleInputAsync()
+            .ConfigureAwait(false);
 
         _pendingResponse =
             new TaskCompletionSource<string>(
@@ -1226,7 +1244,15 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
                         .ConfigureAwait(false);
 
                 if (count <= 0)
+                {
+                    // End of stream: the adapter closed the link.
+                    _logger.LogInformation("Classic Bluetooth stream ended.");
+                    _pendingResponse?
+                        .TrySetException(
+                            new IOException(
+                                "OBD2 Bluetooth კავშირი გაითიშა."));
                     break;
+                }
 
                 var chunk =
                     Encoding.ASCII.GetString(
@@ -1580,10 +1606,13 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
     // =========================================================
 
     /// <summary>
-    /// After a command failed: ask the adapter itself ("ATI"). If it answers,
-    /// the link is fine and only the car was slow. Only after the adapter
-    /// stayed silent twice in a row (plus one more check) is the link closed,
-    /// which then starts the automatic reconnect.
+    /// After a command failed (timeout or write error): resynchronise with the
+    /// adapter by sending a bare carriage return, waiting briefly for the '>'
+    /// prompt and discarding whatever arrived. A prompt means the adapter is
+    /// alive (only the car was slow), so the link stays up. Only after three
+    /// failures in a row without any adapter answer (plus a final "ATI" check)
+    /// is the link closed, which then starts the automatic reconnect. A real
+    /// GATT / socket loss is handled separately by the disconnect events.
     /// Runs inside the command lock.
     /// </summary>
     private async Task CheckAdapterAfterFailureAsync()
@@ -1593,15 +1622,14 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
 
         try
         {
-            if (await RawExchangeAsync("ATI", TimeSpan.FromSeconds(2)).ConfigureAwait(false) is not null)
+            if (await ResyncAfterFailureAsync().ConfigureAwait(false))
             {
                 _failedAdapterChecks = 0;
-                await SettleAsync().ConfigureAwait(false);
                 return;
             }
 
             _failedAdapterChecks++;
-            if (_failedAdapterChecks < 2)
+            if (_failedAdapterChecks < MaxConsecutiveAdapterFailures)
                 return;
 
             if (await RawExchangeAsync("ATI", TimeSpan.FromSeconds(3)).ConfigureAwait(false) is not null)
@@ -1614,7 +1642,13 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "Adapter check failed.");
+            _failedAdapterChecks++;
+            if (_failedAdapterChecks < MaxConsecutiveAdapterFailures)
+                return;
         }
+
+        if (!IsConnected)
+            return;
 
         _logger.LogInformation("OBD adapter stopped answering; reconnecting.");
         _failedAdapterChecks = 0;
@@ -1626,6 +1660,42 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         }
 #endif
         await DisconnectUnresponsiveBleDeviceAsync().ConfigureAwait(false);
+    }
+
+    private const int MaxConsecutiveAdapterFailures = 3;
+
+    /// <summary>
+    /// Sends "\r" (stops a command the ELM327 is still busy with), waits up to
+    /// ~500 ms for the prompt and clears the buffers so a late answer cannot be
+    /// taken as the reply to the next command. True when the adapter answered.
+    /// </summary>
+    private async Task<bool> ResyncAfterFailureAsync()
+    {
+        var answered = await RawExchangeAsync(string.Empty, TimeSpan.FromMilliseconds(500)).ConfigureAwait(false) is not null;
+        await SettleAsync().ConfigureAwait(false);
+        return answered;
+    }
+
+    /// <summary>
+    /// Discards adapter output that is still in the buffer (a late or partial
+    /// answer of an earlier command) before a new command is written.
+    /// </summary>
+    private async Task DrainStaleInputAsync()
+    {
+        bool hadStale;
+        lock (_responseBuffer)
+        {
+            hadStale = _responseBuffer.Length > 0;
+            _responseBuffer.Clear();
+        }
+
+        if (!hadStale)
+            return;
+
+        _logger.LogDebug("Discarding stale adapter output before the next command.");
+        await Task.Delay(80).ConfigureAwait(false);
+        lock (_responseBuffer)
+            _responseBuffer.Clear();
     }
 
     /// <summary>A late answer of the aborted command must not reach the next one.</summary>

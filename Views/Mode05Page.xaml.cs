@@ -14,9 +14,9 @@ public partial class Mode05Page : ContentPage
 
     protected override async void OnAppearing()
     {
+        base.OnAppearing();
         try
         {
-        base.OnAppearing();
         if (!_viewModel.IsBusy)
             await _viewModel.RefreshCommand.ExecuteAsync(null);
         }

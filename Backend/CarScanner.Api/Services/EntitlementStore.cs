@@ -419,6 +419,31 @@ WHERE UserId=$oldOwner AND Source=$s AND TransactionId=$t;";
         }
     }
 
+    /// <summary>
+    /// The account that claimed a store purchase (purchase token / Apple
+    /// original transaction id), else the account whose subscription row
+    /// carries that transaction id. Null when nobody has it.
+    /// </summary>
+    public async Task<string?> FindClaimOwnerAsync(string source, string transactionId, CancellationToken token = default)
+    {
+        if (string.IsNullOrWhiteSpace(source) || string.IsNullOrWhiteSpace(transactionId))
+            return null;
+        await _gate.WaitAsync(token);
+        try
+        {
+            using var c = new SqliteConnection(_connectionString);
+            c.Open();
+            using var cmd = c.CreateCommand();
+            cmd.CommandText = @"SELECT UserId FROM PurchaseClaims WHERE Source=$s AND TransactionId=$t
+UNION ALL SELECT UserId FROM Subscriptions WHERE Source=$s AND TransactionId=$t
+LIMIT 1;";
+            cmd.Parameters.AddWithValue("$s", source.Trim().ToLowerInvariant());
+            cmd.Parameters.AddWithValue("$t", transactionId.Trim());
+            return cmd.ExecuteScalar() as string;
+        }
+        finally { _gate.Release(); }
+    }
+
     public Task RevokeAsync(string userId, CancellationToken token = default)
         => UpsertAsync(new EntitlementRecord(userId, false, "revoked", null, null, DateTimeOffset.UtcNow, null), token);
 

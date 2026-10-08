@@ -123,8 +123,9 @@ public sealed class EmissionService
         var monitors = compressionIgnition
             ? new (string Name, int Bit)[]
             {
+                // SAE J1979 compression ignition: bits 2 and 4 are reserved.
                 ("NMHC Catalyst", 0), ("NOx / SCR", 1), ("Boost Pressure", 3),
-                ("Exhaust Gas Sensor", 4), ("PM / DPF Filter", 5), ("EGR / VVT", 6)
+                ("Exhaust Gas Sensor", 5), ("PM / DPF Filter", 6), ("EGR / VVT", 7)
             }
             : new (string Name, int Bit)[]
             {

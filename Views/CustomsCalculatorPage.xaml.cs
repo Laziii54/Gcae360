@@ -15,9 +15,9 @@ public partial class CustomsCalculatorPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        base.OnAppearing();
         try
         {
-        base.OnAppearing();
         try { await _viewModel.LoadAsync(); }
         catch { }
         }

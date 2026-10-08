@@ -51,7 +51,7 @@
                                         </Border>
                                         <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center">
                                             <Label AutomationId="DynamicTextOptionName" Text="{Binding Name}" TextColor="{DynamicResource TextColor}" FontSize="13.5" />
-                                            <Label AutomationId="DynamicTextOptionSource" Text="{Binding Source}" TextColor="{DynamicResource SubTextColor}" FontSize="10.5" />
+                                            <Label IsVisible="False" AutomationId="DynamicTextOptionSource" Text="{Binding Source}" TextColor="{DynamicResource SubTextColor}" FontSize="10.5" />
                                         </VerticalStackLayout>
                                         <Grid.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding ToggleOptionCommand, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}}" CommandParameter="{Binding .}" />

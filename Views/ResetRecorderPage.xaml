@@ -51,7 +51,7 @@
             <!-- Step 2 · listening -->
             <VerticalStackLayout IsVisible="{Binding IsRecording}" Spacing="12">
                 <Grid HeightRequest="150" Margin="0,16,0,0">
-                    <Ellipse WidthRequest="130" HeightRequest="130" Fill="#FDECEC" HorizontalOptions="Center" VerticalOptions="Center" />
+                    <Ellipse WidthRequest="130" HeightRequest="130" Fill="{DynamicResource ErrBg}" HorizontalOptions="Center" VerticalOptions="Center" />
                     <Ellipse WidthRequest="84" HeightRequest="84" Fill="#D32F2F" HorizontalOptions="Center" VerticalOptions="Center" />
                 </Grid>
                 <Label Text="{Binding ListeningTitle}" FontSize="18" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" />
@@ -83,8 +83,8 @@
                 <Button IsVisible="{Binding CanTryTool}" Text="{Binding TryToolText}" Command="{Binding StartToolCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="48" />
                 <Button Text="{Binding CloseText}" Command="{Binding CloseCommand}" HeightRequest="48" CornerRadius="12" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.2" />
 
-                <Button IsVisible="{Binding HasCandidates}" Text="{Binding TechnicalToggleText}" Command="{Binding ToggleTechnicalCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" FontSize="12" HeightRequest="34" Padding="0" HorizontalOptions="Center" />
-                <VerticalStackLayout IsVisible="{Binding ShowTechnical}" BindableLayout.ItemsSource="{Binding Candidates}" Spacing="3">
+                <Button IsVisible="False" Text="{Binding TechnicalToggleText}" Command="{Binding ToggleTechnicalCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" FontSize="12" HeightRequest="34" Padding="0" HorizontalOptions="Center" />
+                <VerticalStackLayout IsVisible="False" BindableLayout.ItemsSource="{Binding Candidates}" Spacing="3">
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="x:String">
                             <Label Text="{Binding .}" FontFamily="monospace" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="CharacterWrap" />

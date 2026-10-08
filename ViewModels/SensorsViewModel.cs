@@ -11,7 +11,7 @@ public partial class SensorsViewModel : BaseViewModel
     private static readonly string[] CategoryOrder =
     [
         "Engine", "Fuel", "Air / Intake", "Temperature", "Oxygen Sensors",
-        "Emissions", "Throttle", "Vehicle Speed", "Electrical"
+        "Emissions", "Throttle", "Vehicle Speed", "Electrical", "Status", "Other (raw data)"
     ];
 
     private readonly OBDService _obd;
@@ -32,9 +32,38 @@ public partial class SensorsViewModel : BaseViewModel
     {
         _obd = obd;
         _units = units;
-        _units.UnitSystemChanged += (_, __) => MainThread.BeginInvokeOnMainThread(RefreshUnitPresentation);
         Title = "ყველა სენსორი";
+        Attach();
     }
+
+    // Detached by the page when it goes away (no leak through singleton services).
+    private bool _attached;
+    private bool _refreshOnAttach;
+
+    public void Attach()
+    {
+        if (_attached) return;
+        _attached = true;
+        _units.UnitSystemChanged += HandleUnitSystemChanged;
+
+        // Texts may have changed while the page was hidden (e.g. Settings on top).
+        if (_refreshOnAttach)
+        {
+            _refreshOnAttach = false;
+            HandleUnitSystemChanged(this, EventArgs.Empty);
+        }
+    }
+
+    public void Detach()
+    {
+        if (!_attached) return;
+        _attached = false;
+        _units.UnitSystemChanged -= HandleUnitSystemChanged;
+        _refreshOnAttach = true;
+    }
+
+    private void HandleUnitSystemChanged(object? sender, EventArgs e) =>
+        MainThread.BeginInvokeOnMainThread(RefreshUnitPresentation);
 
     [RelayCommand]
     public async Task Refresh()

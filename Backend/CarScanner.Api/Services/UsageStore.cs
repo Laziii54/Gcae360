@@ -38,8 +38,80 @@ NotificationsAllowed INTEGER NOT NULL DEFAULT 0,
 RemindersOn INTEGER NOT NULL DEFAULT 0,
 AccountId TEXT NULL);
 CREATE INDEX IF NOT EXISTS IX_Devices_LastSeen ON Devices(LastSeen);
-CREATE INDEX IF NOT EXISTS IX_Devices_Account ON Devices(AccountId);";
+CREATE INDEX IF NOT EXISTS IX_Devices_Account ON Devices(AccountId);
+CREATE TABLE IF NOT EXISTS DailyCounters (
+CounterKey TEXT NOT NULL,
+Day TEXT NOT NULL,
+Count INTEGER NOT NULL,
+PRIMARY KEY(CounterKey, Day));";
         cmd.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// Persistent per-day counter (UTC day), e.g. AI requests per account.
+    /// Counts one use and returns false when the limit is already reached.
+    /// Old days are removed on the way.
+    /// </summary>
+    public async Task<(bool Allowed, int Used)> TryConsumeDailyAsync(string key, int limit, CancellationToken ct)
+    {
+        var day = DateTime.UtcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        await _gate.WaitAsync(ct);
+        try
+        {
+            await using var c = new SqliteConnection(_connectionString);
+            await c.OpenAsync(ct);
+            await using var tx = (SqliteTransaction)await c.BeginTransactionAsync(ct);
+
+            await using (var read = c.CreateCommand())
+            {
+                read.Transaction = tx;
+                read.CommandText = "SELECT Count FROM DailyCounters WHERE CounterKey=$k AND Day=$d";
+                read.Parameters.AddWithValue("$k", key);
+                read.Parameters.AddWithValue("$d", day);
+                var current = await read.ExecuteScalarAsync(ct);
+                var used = current is null or DBNull ? 0 : Convert.ToInt32(current, CultureInfo.InvariantCulture);
+                if (used >= limit)
+                {
+                    await tx.CommitAsync(ct);
+                    return (false, used);
+                }
+            }
+
+            int now;
+            await using (var write = c.CreateCommand())
+            {
+                write.Transaction = tx;
+                write.CommandText = @"DELETE FROM DailyCounters WHERE Day < $old;
+INSERT INTO DailyCounters(CounterKey,Day,Count) VALUES($k,$d,1)
+ON CONFLICT(CounterKey,Day) DO UPDATE SET Count=Count+1;
+SELECT Count FROM DailyCounters WHERE CounterKey=$k AND Day=$d;";
+                write.Parameters.AddWithValue("$old", DateTime.UtcNow.AddDays(-7).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+                write.Parameters.AddWithValue("$k", key);
+                write.Parameters.AddWithValue("$d", day);
+                now = Convert.ToInt32(await write.ExecuteScalarAsync(ct), CultureInfo.InvariantCulture);
+            }
+
+            await tx.CommitAsync(ct);
+            return (true, now);
+        }
+        finally { _gate.Release(); }
+    }
+
+    /// <summary>Account deletion: installations lose the account link; its counters go.</summary>
+    public async Task ForgetAccountAsync(string accountId, CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            await using var c = new SqliteConnection(_connectionString);
+            await c.OpenAsync(ct);
+            await using var cmd = c.CreateCommand();
+            cmd.CommandText = @"UPDATE Devices SET AccountId=NULL WHERE AccountId=$a;
+DELETE FROM DailyCounters WHERE CounterKey LIKE '%:' || $a;";
+            cmd.Parameters.AddWithValue("$a", accountId);
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+        finally { _gate.Release(); }
     }
 
     public static string HashDevice(string deviceId) =>

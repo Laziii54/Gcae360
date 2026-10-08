@@ -57,13 +57,8 @@ public partial class ErrorCode : ObservableObject
     {
         get
         {
-            return Preferences.Default
-                .Get(
-                    "language",
-                    "English")
-                .Equals(
-                    "English",
-                    StringComparison.OrdinalIgnoreCase);
+            // Every language except Georgian uses the English texts.
+            return CarScanner.Services.Localization.LanguageCatalog.UsesEnglishBase;
         }
     }
 

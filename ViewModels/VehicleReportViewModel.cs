@@ -32,14 +32,14 @@ public sealed record ReportHistoryRow(string Title, string Detail, VehicleReport
 /// </summary>
 public partial class VehicleReportViewModel : BaseViewModel
 {
-    private static readonly Color Green = Color.FromArgb("#1E8A4C");
-    private static readonly Color GreenBg = Color.FromArgb("#E2F3E9");
-    private static readonly Color Orange = Color.FromArgb("#D0701F");
-    private static readonly Color OrangeBg = Color.FromArgb("#FCEBDC");
-    private static readonly Color Red = Color.FromArgb("#C2372B");
-    private static readonly Color RedBg = Color.FromArgb("#FBE6E3");
-    private static readonly Color Grey = Color.FromArgb("#8A9099");
-    private static readonly Color GreyBg = Color.FromArgb("#ECEFF3");
+    private static Color Green => CarScanner.Services.Localization.ThemeService.Soft("#1E8A4C");
+    private static Color GreenBg => CarScanner.Services.Localization.ThemeService.Soft("#E2F3E9");
+    private static Color Orange => CarScanner.Services.Localization.ThemeService.Soft("#D0701F");
+    private static Color OrangeBg => CarScanner.Services.Localization.ThemeService.Soft("#FCEBDC");
+    private static Color Red => CarScanner.Services.Localization.ThemeService.Soft("#C2372B");
+    private static Color RedBg => CarScanner.Services.Localization.ThemeService.Soft("#FBE6E3");
+    private static Color Grey => CarScanner.Services.Localization.ThemeService.Soft("#8A9099");
+    private static Color GreyBg => CarScanner.Services.Localization.ThemeService.Soft("#ECEFF3");
 
     private readonly VehicleReportService _reports;
     private readonly PdfReportService _pdf = new();
@@ -89,6 +89,7 @@ public partial class VehicleReportViewModel : BaseViewModel
 
     public void Refresh()
     {
+        RefreshExportTexts();
         var report = _reports.Current;
         VehicleText = $"{report.Vehicle}{(report.Vin.Length == 17 ? " · VIN …" + report.Vin[^6..] : string.Empty)} · {report.StartedAt:dd.MM.yyyy HH:mm}";
 
@@ -150,7 +151,7 @@ public partial class VehicleReportViewModel : BaseViewModel
         ReportStatus.Ok => (Green, GreenBg),
         ReportStatus.Warning => (Orange, OrangeBg),
         ReportStatus.Bad => (Red, RedBg),
-        _ => (Color.FromArgb("#1D5BD6"), Color.FromArgb("#E4ECFB"))
+        _ => (CarScanner.Services.Localization.ThemeService.Soft("#1D5BD6"), CarScanner.Services.Localization.ThemeService.Soft("#E4ECFB"))
     };
 
     private static readonly (string Kind, string Icon, string Ka, string En)[] AllChecks =
@@ -195,6 +196,7 @@ public partial class VehicleReportViewModel : BaseViewModel
     {
         var report = _reports.Current;
         if (report.Sections.Count == 0) return;
+        if (!await ProGate.EnsureOrOpenAsync()) return;
         try
         {
             IsBusy = true;
@@ -208,12 +210,31 @@ public partial class VehicleReportViewModel : BaseViewModel
     }
 
     [RelayCommand]
-    private Task ShareText()
+    private async Task ShareText()
     {
-        var report = _reports.Current;
-        return report.Sections.Count == 0
-            ? Task.CompletedTask
-            : Share.Default.RequestAsync(new ShareTextRequest { Title = L("GCar360 ანგარიში", "GCar360 report"), Text = _reports.BuildText(report) });
+        try
+        {
+            var report = _reports.Current;
+            if (report.Sections.Count == 0) return;
+            if (!await ProGate.EnsureOrOpenAsync()) return;
+            await Share.Default.RequestAsync(new ShareTextRequest { Title = L("GCar360 ანგარიში", "GCar360 report"), Text = _reports.BuildText(report) });
+        }
+        catch (Exception exception)
+        {
+            CommandErrors.Report(exception, "VehicleReport.ShareText");
+        }
+    }
+
+    // Export buttons: the report is open to everyone, exporting is PRO.
+    public string PdfButtonText => "PDF" + ProGate.Suffix;
+    public string QrButtonText => "QR" + ProGate.Suffix;
+    public string TextButtonText => L("ტექსტი", "Text") + ProGate.Suffix;
+
+    private void RefreshExportTexts()
+    {
+        OnPropertyChanged(nameof(PdfButtonText));
+        OnPropertyChanged(nameof(QrButtonText));
+        OnPropertyChanged(nameof(TextButtonText));
     }
 
     [RelayCommand]
@@ -221,6 +242,7 @@ public partial class VehicleReportViewModel : BaseViewModel
     {
         var report = _reports.Current;
         if (report.Sections.Count == 0) return;
+        if (!await ProGate.EnsureOrOpenAsync()) return;
 
         static string Clip(string text, int max) => text.Length <= max ? text : text[..(max - 1)] + "…";
         static string Lines(IEnumerable<ReportSectionItem> sections) => string.Join("\n\n", sections.Select(section =>

@@ -14,11 +14,69 @@ public sealed class MaintenanceNotificationService
     private const string EnabledKey = "notifications";
     private const string ShownKeyPrefix = "maintenance_notified_v1_";
     private const int BaseNotificationId = 241000;
+    private const int LegacyIdCount = 32;
+    private const int CarSlots = 4000;
+    private const int IdsPerCar = 16;
     private const int DaysBefore = 14;
+    private const string KnownKeysKey = "maintenance_notified_keys_v1";
 
     private readonly SemaphoreSlim _gate = new(1, 1);
 
-    private static int IdOf(PartId part) => BaseNotificationId + (int)part;
+    /// <summary>
+    /// Notification id per car and part. The vehicle key is hashed with a
+    /// stable FNV-1a hash (string.GetHashCode differs between app runs), so
+    /// two cars no longer overwrite each other's reminders.
+    /// </summary>
+    private static int IdOf(string vehicleKey, PartId part) =>
+        BaseNotificationId + LegacyIdCount + (int)(StableHash(vehicleKey) % CarSlots) * IdsPerCar + (int)part;
+
+    /// <summary>The ids used before they were made per car (one set for all cars).</summary>
+    private static int LegacyIdOf(PartId part) => BaseNotificationId + (int)part;
+
+    private static uint StableHash(string? text)
+    {
+        unchecked
+        {
+            var hash = 2166136261u;
+            foreach (var ch in (text ?? string.Empty).Trim().ToUpperInvariant())
+            {
+                hash ^= ch;
+                hash *= 16777619u;
+            }
+
+            return hash;
+        }
+    }
+
+    private static List<string> LoadKnownKeys()
+    {
+        try
+        {
+            return Preferences.Default.Get(KnownKeysKey, string.Empty)
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .ToList();
+        }
+        catch
+        {
+            return new List<string>();
+        }
+    }
+
+    private static void RememberKey(string key)
+    {
+        try
+        {
+            var keys = LoadKnownKeys();
+            if (keys.Contains(key))
+                return;
+            keys.Add(key);
+            Preferences.Default.Set(KnownKeysKey, string.Join("\n", keys.TakeLast(20)));
+        }
+        catch
+        {
+            // Bookkeeping only.
+        }
+    }
 
     public async Task UpdateAsync(MaintenanceTrackerService tracker, bool english)
     {
@@ -33,10 +91,13 @@ public sealed class MaintenanceNotificationService
                 return;
             }
 
-            if (!await LocalNotificationCenter.Current.AreNotificationsEnabled().ConfigureAwait(false))
+            // The user switched notifications on: ask the system once before scheduling.
+            if (!await LocalNotificationCenter.Current.AreNotificationsEnabled().ConfigureAwait(false) &&
+                !await LocalNotificationCenter.Current.RequestNotificationPermission().ConfigureAwait(false))
                 return;
 
             var key = tracker.CurrentKey;
+            RememberKey(key);
             var data = tracker.Load(key);
             var vehicle = tracker.CurrentVehicle;
             var car = string.Join(" ", new[] { vehicle?.Manufacturer, vehicle?.Model }
@@ -45,7 +106,8 @@ public sealed class MaintenanceNotificationService
 
             foreach (var part in MaintenanceSchedule.PartsFor(tracker.Powertrain))
             {
-                var id = IdOf(part.Id);
+                var id = IdOf(key, part.Id);
+                Cancel(LegacyIdOf(part.Id));
                 var status = tracker.StatusOf(data, part.Id);
                 var name = english ? part.NameEn : part.NameKa;
 
@@ -64,11 +126,20 @@ public sealed class MaintenanceNotificationService
                     if (Preferences.Default.Get(shownKey, string.Empty) == stamp)
                         continue;
 
-                    Preferences.Default.Set(shownKey, stamp);
                     var text = status.State == PartState.Overdue
                         ? (english ? $"{name}: overdue. Time to replace it." : $"{name}: ვადა გავიდა, დროა შეცვალო.")
                         : (english ? $"{name}: due soon ({ValueText(status, true)} left)." : $"{name}: მალე შესაცვლელია (დარჩა {ValueText(status, false)}).");
-                    await ShowAsync(id, title, text, DateTimeOffset.Now.AddSeconds(5)).ConfigureAwait(false);
+                    try
+                    {
+                        await ShowAsync(id, title, text, DateTimeOffset.Now.AddSeconds(5)).ConfigureAwait(false);
+                        // Marked as shown only after the notification was accepted,
+                        // so a failure is retried on the next visit.
+                        Preferences.Default.Set(shownKey, stamp);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Maintenance notification failed: {ex}");
+                    }
                     continue;
                 }
 
@@ -137,8 +208,12 @@ public sealed class MaintenanceNotificationService
     {
         try
         {
-            LocalNotificationCenter.Current.Cancel(
-                Enum.GetValues<PartId>().Select(IdOf).ToArray());
+            var parts = Enum.GetValues<PartId>();
+            var ids = parts.Select(LegacyIdOf)
+                .Concat(LoadKnownKeys().SelectMany(key => parts.Select(part => IdOf(key, part))))
+                .Distinct()
+                .ToArray();
+            LocalNotificationCenter.Current.Cancel(ids);
         }
         catch (Exception ex)
         {

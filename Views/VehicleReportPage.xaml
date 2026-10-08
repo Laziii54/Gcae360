@@ -84,9 +84,9 @@
 
             <!-- Export -->
             <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8" Margin="0,6,0,0" IsVisible="{Binding HasSections}">
-                <Button Text="PDF" Command="{Binding ExportPdfCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="46" />
-                <Button Grid.Column="1" Text="QR" Command="{Binding CreateQrCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="46" FontAttributes="Bold" />
-                <Button Grid.Column="2" Text="ტექსტი" Command="{Binding ShareTextCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="46" FontAttributes="Bold" />
+                <Button Text="{Binding PdfButtonText}" Command="{Binding ExportPdfCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="46" />
+                <Button Grid.Column="1" Text="{Binding QrButtonText}" Command="{Binding CreateQrCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="46" FontAttributes="Bold" />
+                <Button Grid.Column="2" Text="{Binding TextButtonText}" Command="{Binding ShareTextCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="46" FontAttributes="Bold" />
             </Grid>
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" />
             <Button Text="ახალი ანგარიშის დაწყება" Command="{Binding StartNewCommand}" IsVisible="{Binding HasSections}" BackgroundColor="Transparent" TextColor="#C2372B" FontAttributes="Bold" FontSize="13" />

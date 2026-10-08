@@ -108,7 +108,9 @@ public static class VinText
         ["WebPhotosHint"] = ("From other websites that mention this VIN. Tap a photo to open it.", "სხვა საიტებიდან, სადაც ეს VIN არის ნახსენები. ფოტოზე დააჭირე გასახსნელად."),
         ["SearchGoogle"] = ("Search photos on Google", "ფოტოების ძებნა Google-ში"),
         ["SourcesTitle"] = ("Data sources (only you see this)", "მონაცემთა წყაროები (მხოლოდ შენ ხედავ)"),
-        // Paid full history (official US title data)
+        // Paid full history (official US title data). The bank-checkout offer texts
+        // (FullBuy / FullOpening / FullWaiting / FullFailed) are never shown on
+        // Android / iOS — see VinReportViewModel.ExternalCheckoutAllowed.
         ["FullTitle"] = ("Full history (official US data)", "სრული ისტორია (აშშ-ის ოფიციალური ბაზა)"),
         ["FullOfferHint"] = ("Free sources did not find everything. The official US title database (NMVTIS) has records for this VIN:", "უფასო წყაროებმა ყველაფერი ვერ იპოვა. აშშ-ის ოფიციალურ ტიტულის ბაზაში (NMVTIS) ამ VIN-ზე ჩანაწერები არის:"),
         ["FullIncludes"] = ("• Title records and odometer readings\n• Salvage, flood, rebuilt, junk brands\n• Insurance total-loss records\n• Title history by state and date", "• ტიტულის ჩანაწერები და გარბენი\n• Salvage, flood, rebuilt, junk ბრენდები\n• სადაზღვევო სრული ზარალის ჩანაწერები\n• ტიტულის ისტორია შტატებისა და თარიღების მიხედვით"),
@@ -186,11 +188,9 @@ public static class VinText
     public static string Format(string key, params object[] values) =>
         string.Format(System.Globalization.CultureInfo.CurrentCulture, T(key), values);
 
-    public static bool IsGeorgian =>
-        !string.Equals(
-            Preferences.Default.Get(LocalizationService.LanguageKey, "English"),
-            "English",
-            StringComparison.OrdinalIgnoreCase);
+    // Every language except Georgian uses the English VIN texts (the app layers its
+    // translation packs on top of them where a translation exists).
+    public static bool IsGeorgian => !LanguageCatalog.UsesEnglishBase;
 
     public static string T(string key) =>
         Text.TryGetValue(key, out var value) ? (IsGeorgian ? value.Ka : value.En) : key;
@@ -242,14 +242,18 @@ public static class VinText
         return component;
     }
 
-    /// <summary>Switches the language of the whole app.</summary>
-    public static void Toggle()
+    /// <summary>Opens the language window (all languages) and switches the whole app.</summary>
+    public static async Task PickLanguageAsync()
     {
-        var target = IsGeorgian ? "English" : "ქართული";
         var localization = IPlatformApplication.Current?.Services.GetService<LocalizationService>();
+        var title = localization?.Translate("ენა") ?? "Language";
+        var picked = await CarScanner.Views.LanguagePickerPage.ShowAsync(title);
+        if (picked is null || picked.Code == LanguageCatalog.Current.Code)
+            return;
+
         if (localization is not null)
-            localization.SetLanguage(target);
+            localization.SetLanguage(picked.DisplayName);
         else
-            Preferences.Default.Set(LocalizationService.LanguageKey, target);
+            Preferences.Default.Set(LocalizationService.LanguageKey, picked.DisplayName);
     }
 }

@@ -66,7 +66,10 @@ public partial class BatteryViewModel : BaseViewModel
                 return;
             }
 
-            ApplySuccessfulMeasurement(value, DateTime.Now);
+            // Engine state decides which range is normal: resting 12.4–12.7 V
+            // means nothing when the alternator should be charging.
+            var rpm = await TryReadRpmAsync();
+            ApplySuccessfulMeasurement(value, rpm, DateTime.Now);
         }
         catch (Exception ex)
         {
@@ -83,7 +86,23 @@ public partial class BatteryViewModel : BaseViewModel
         }
     }
 
-    private void ApplySuccessfulMeasurement(double value, DateTime timestamp)
+    private async Task<double?> TryReadRpmAsync()
+    {
+        try
+        {
+            var rpm = (await _obd.ReadLiveValuesAsync(new[] { 0x0C })).FirstOrDefault();
+            return rpm is not null && double.TryParse(rpm.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+                ? value
+                : null;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Battery RPM read failed: {ex.Message}");
+            return null;
+        }
+    }
+
+    private void ApplySuccessfulMeasurement(double value, double? rpm, DateTime timestamp)
     {
         _samples.Add(value);
         if (_samples.Count > HistoryLimit)
@@ -92,10 +111,11 @@ public partial class BatteryViewModel : BaseViewModel
         Voltage = $"{value:F2} V";
         Minimum = $"{_samples.Min():F2} V";
         Maximum = $"{_samples.Max():F2} V";
-        ChargingStatus = DescribeVoltage(value);
+        var (status, color) = DescribeVoltage(value, rpm);
+        ChargingStatus = status;
         LastUpdated = $"ბოლო განახლება: {timestamp:HH:mm:ss}";
         MeasurementState = "AVAILABLE";
-        MeasurementStateColor = "#4ADE80";
+        MeasurementStateColor = color;
 
         VoltageHistory.Insert(0, $"{timestamp:HH:mm:ss}  ·  {value:F2} V");
         if (VoltageHistory.Count > HistoryLimit)
@@ -156,12 +176,49 @@ public partial class BatteryViewModel : BaseViewModel
         }
     }
 
-    private static string DescribeVoltage(double value) => value switch
+    private static string L(string ka, string en) => CarScanner.Services.OBD.ObdLang.IsEnglish ? en : ka;
+
+    private const string Green = "#4ADE80";
+    private const string Amber = "#F59E0B";
+    private const string Red = "#F87171";
+    private const string Neutral = "#94A3B8";
+
+    /// <summary>
+    /// Engine running (RPM &gt; 400): the alternator should hold 13.6–14.8 V.
+    /// Engine off: 12.4–12.7 V is a healthy resting battery. Without RPM the
+    /// engine state is unknown and the value is not judged as resting/charging.
+    /// </summary>
+    private static (string Text, string Color) DescribeVoltage(double value, double? rpm)
     {
-        >= 13.3 and <= 15.1 => "Charging: ნორმალური დამუხტვის ძაბვა",
-        >= 12.4 and < 13.3 => "12V: ნორმალური მოსვენების ძაბვა",
-        < 12.0 => "12V: დაბალი ძაბვა — შეამოწმე აკუმულატორი და დამუხტვა",
-        > 15.1 => "Charging: მაღალი ძაბვა — შეამოწმე დამუხტვის სისტემა",
-        _ => "12V: შუალედური ძაბვა — გაზომვა მიღებულია"
-    };
+        if (rpm is > 400)
+        {
+            return value switch
+            {
+                > 15.0 => (L("ძრავა მუშაობს: გადამუხტვა — შეამოწმე დამუხტვის სისტემა (რეგულატორი)", "Engine running: overcharging — check the charging system (regulator)"), Red),
+                < 13.2 => (L("ძრავა მუშაობს: გენერატორი არ მუხტავს — შეამოწმე გენერატორი და ღვედი", "Engine running: alternator not charging — check the alternator and belt"), Red),
+                < 13.6 => (L("ძრავა მუშაობს: სუსტი დამუხტვა — შეამოწმე გენერატორი", "Engine running: weak charging — check the alternator"), Amber),
+                <= 14.8 => (L("ძრავა მუშაობს: ნორმალური დამუხტვის ძაბვა", "Engine running: normal charging voltage"), Green),
+                _ => (L("ძრავა მუშაობს: დამუხტვა ზედა ზღვართანაა (14.8–15.0 V)", "Engine running: charging near the upper limit (14.8–15.0 V)"), Amber)
+            };
+        }
+
+        if (rpm is null)
+        {
+            return value switch
+            {
+                < 12.0 => (L("ძრავის მდგომარეობა უცნობია: დაბალი ძაბვა — შეამოწმე აკუმულატორი და დამუხტვა", "Engine state unknown: low voltage — check the battery and charging"), Red),
+                > 15.0 => (L("ძრავის მდგომარეობა უცნობია: მაღალი ძაბვა — შეამოწმე დამუხტვის სისტემა", "Engine state unknown: high voltage — check the charging system"), Red),
+                _ => (L("ძრავის მდგომარეობა უცნობია (RPM ვერ წავიკითხე) — ძაბვა შეფასების გარეშე", "Engine state unknown (RPM not readable) — voltage shown without a verdict"), Neutral)
+            };
+        }
+
+        // Engine off.
+        return value switch
+        {
+            < 12.0 => (L("ძრავა გამორთულია: დაბალი ძაბვა — შეამოწმე აკუმულატორი", "Engine off: low voltage — check the battery"), Red),
+            < 12.4 => (L("ძრავა გამორთულია: აკუმულატორი ნაწილობრივ დაცლილია", "Engine off: battery partly discharged"), Amber),
+            <= 13.0 => (L("ძრავა გამორთულია: ნორმალური მოსვენების ძაბვა", "Engine off: normal resting voltage"), Green),
+            _ => (L("ძრავა გამორთულია: ზედაპირული მუხტი (ახლახან იმუხტებოდა)", "Engine off: surface charge (recently charged)"), Green)
+        };
+    }
 }

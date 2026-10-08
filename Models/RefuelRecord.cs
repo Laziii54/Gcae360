@@ -17,8 +17,16 @@ public sealed class RefuelRecord
     public string Station { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Unit-aware summary (odometer in km or mi) built by FuelViewModel with
+    /// UnitSystemService; the model itself cannot see the user's unit choice.
+    /// </summary>
+    [Ignore]
+    public string? FormattedSummary { get; set; }
+
     [Ignore]
     public string DisplaySummary =>
+        FormattedSummary ??
         $"{RefueledAt:dd.MM.yyyy} · {OdometerKm:0} km · {Liters:0.00} L · ₾{Liters * PricePerLiter:0.00}";
 
     [Ignore]

@@ -69,10 +69,14 @@ public partial class CodingViewModel : BaseViewModel
 
     private string L(string ka, string en) => _localization.IsEnglish ? en : ka;
 
+    /// <summary>"Change" — marked PRO until PRO is active (backups stay free).</summary>
+    public string ChangeButtonText => L("შეცვლა", "Change") + ProGate.Suffix;
+
     public async Task OnAppearingAsync()
     {
         try
         {
+            OnPropertyChanged(nameof(ChangeButtonText));
             await RefreshAsync();
         }
         catch (Exception ex)
@@ -278,9 +282,7 @@ public partial class CodingViewModel : BaseViewModel
         if (row is null || IsBusy) return;
         try
         {
-            var unlocked = false;
-            try { unlocked = await _pro.EnsureProAsync(); } catch { }
-            if (!unlocked) return;
+            if (!await ProGate.EnsureOrOpenAsync(_pro)) return;
 
             var choices = row.Option.Values.Select(v => L(v.Ka, v.En)).ToArray();
             var picked = await Shell.Current.DisplayActionSheetAsync(row.Title, L("გაუქმება", "Cancel"), null, choices);

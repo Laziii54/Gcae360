@@ -35,24 +35,36 @@
                         <DataTemplate x:DataType="models:SensorValue">
                             <VerticalStackLayout Spacing="0">
                                 <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="1" Padding="14,11">
-                                    <Path Grid.RowSpan="3" Data="M4,12 A8,8 0 1 0 20,12 A8,8 0 1 0 4,12 M12,8 L12,12 L15,14" Style="{StaticResource RowIconStyle}" />
+                                    <Path Grid.RowSpan="3" Data="M4,12 A8,8 0 1 0 20,12 A8,8 0 1 0 4,12 M12,8 L12,12 L15,14" Style="{StaticResource RowIconStyle}">
+                                        <Path.Triggers>
+                                            <DataTrigger TargetType="Path" Binding="{Binding LevelKey}" Value="ok">
+                                                <Setter Property="Stroke" Value="#1F8A4C" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Path" Binding="{Binding LevelKey}" Value="warn">
+                                                <Setter Property="Stroke" Value="#D0701F" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Path" Binding="{Binding LevelKey}" Value="crit">
+                                                <Setter Property="Stroke" Value="#B3361F" />
+                                            </DataTrigger>
+                                        </Path.Triggers>
+                                    </Path>
                                     <Label AutomationId="DynamicTextSensorName" Grid.Column="1" Text="{Binding Name}" TextColor="{DynamicResource TextColor}" FontSize="14" VerticalOptions="Center" LineBreakMode="WordWrap" />
                                     <Label AutomationId="DynamicTextSensorValue" Grid.Column="2" Text="{Binding Value}" TextColor="{DynamicResource TextColor}" FontSize="15" FontAttributes="Bold" HorizontalTextAlignment="End" VerticalOptions="Center">
                                         <Label.Triggers>
-                                            <DataTrigger TargetType="Label" Binding="{Binding IsProblem}" Value="True">
+                                            <DataTrigger TargetType="Label" Binding="{Binding LevelKey}" Value="ok">
+                                                <Setter Property="TextColor" Value="#1F8A4C" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Label" Binding="{Binding LevelKey}" Value="warn">
+                                                <Setter Property="TextColor" Value="#D0701F" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Label" Binding="{Binding LevelKey}" Value="crit">
                                                 <Setter Property="TextColor" Value="#B3361F" />
                                             </DataTrigger>
                                         </Label.Triggers>
                                     </Label>
-                                    <Label AutomationId="DynamicTextSensorPid" Grid.Row="1" Grid.Column="1" Text="{Binding Pid, StringFormat='PID 01{0:X2}'}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
-                                    <Label AutomationId="DynamicTextSensorUnit" Grid.Row="1" Grid.Column="2" Text="{Binding Unit}" TextColor="{DynamicResource SubTextColor}" FontSize="11" HorizontalTextAlignment="End">
-                                        <Label.Triggers>
-                                            <DataTrigger TargetType="Label" Binding="{Binding IsProblem}" Value="True">
-                                                <Setter Property="TextColor" Value="#B3361F" />
-                                            </DataTrigger>
-                                        </Label.Triggers>
-                                    </Label>
-                                    <Label AutomationId="DynamicTextSensorStatus" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding StatusText}" IsVisible="{Binding IsProblem}" TextColor="#B3361F" FontSize="11" FontAttributes="Bold" />
+                                    <Label AutomationId="DynamicTextSensorPid" IsVisible="False" Grid.Row="1" Grid.Column="1" Text="{Binding Pid, StringFormat='PID 01{0:X2}'}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                                    <Label AutomationId="DynamicTextSensorUnit" Grid.Row="1" Grid.Column="2" Text="{Binding Unit}" TextColor="{DynamicResource SubTextColor}" FontSize="11" HorizontalTextAlignment="End" />
+                                    <Label AutomationId="DynamicTextSensorStatus" Grid.Row="1" Grid.Column="1" Text="{Binding StatusText}" IsVisible="{Binding HasStatus}" TextColor="{Binding StatusColor}" FontSize="11" FontAttributes="Bold" />
                                 </Grid>
                                 <BoxView Style="{StaticResource RowDividerStyle}" />
                             </VerticalStackLayout>

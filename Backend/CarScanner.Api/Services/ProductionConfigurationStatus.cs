@@ -149,6 +149,19 @@ public sealed record ProductionConfigurationStatus(
                 "A persistent server data directory is not configured.");
         }
 
+        // Recommended, not required for "ready".
+        if (!IsRealSecret(Environment.GetEnvironmentVariable("GCS_ADMIN_TOTP_SECRET")))
+        {
+            issues.Add(
+                "Admin 2-step secret (GCS_ADMIN_TOTP_SECRET) is not set: /admin sign-in is disabled.");
+        }
+
+        if (!IsRealSecret(Environment.GetEnvironmentVariable("GCS_RTDN_TOKEN")))
+        {
+            issues.Add(
+                "Google Play RTDN token (GCS_RTDN_TOKEN) is not set: /api/store/google/rtdn is disabled.");
+        }
+
         var ready =
             aiConfigured &&
             googleConfigured &&

@@ -13,13 +13,16 @@ public partial class FreezeFramePage : ContentPage
 
     protected override async void OnAppearing()
     {
+        base.OnAppearing();
         try
         {
-        base.OnAppearing();
         ApplyUiLocalization();
 
         if (BindingContext is FreezeFrameViewModel vm)
+        {
+            vm.Attach();
             await vm.OnAppearingAsync();
+        }
         }
         catch (Exception commandException)
         {
@@ -32,7 +35,10 @@ public partial class FreezeFramePage : ContentPage
         base.OnDisappearing();
 
         if (BindingContext is FreezeFrameViewModel vm)
+        {
             vm.OnDisappearing();
+            vm.Detach();
+        }
     }
 
     private void ApplyUiLocalization()

@@ -19,9 +19,9 @@ public partial class PerformanceVideoPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        base.OnAppearing();
         try
         {
-        base.OnAppearing();
         _isVisible = true;
 
         try
@@ -47,9 +47,9 @@ public partial class PerformanceVideoPage : ContentPage
 
     protected override async void OnDisappearing()
     {
+        base.OnDisappearing();
         try
         {
-        base.OnDisappearing();
         _isVisible = false;
 
         try

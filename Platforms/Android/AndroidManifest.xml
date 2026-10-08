@@ -1,14 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
 
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 	<uses-permission android:name="android.permission.VIBRATE" />
 	<uses-permission android:name="android.permission.WAKE_LOCK" />
+	<!-- Plugin.LocalNotification: scheduled maintenance reminders are re-created
+	     after a reboot and fire at the planned time. SCHEDULE_EXACT_ALARM (not
+	     USE_EXACT_ALARM, which is reserved for alarm/clock apps). -->
+	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+	<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 	<!-- Fuel/energy trip keeps recording in the background (TripForegroundService). -->
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
 	<uses-permission android:name="android.permission.INTERNET" />
+	<!-- No in-app purchases on Android (PRO bought on the website is unlocked by
+	     signing in). Make sure no library merges the Play Billing permission. -->
+	<uses-permission android:name="com.android.vending.BILLING" tools:node="remove" />
 
 	<uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
 	<uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />

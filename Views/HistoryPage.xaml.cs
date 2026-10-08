@@ -7,8 +7,9 @@ public partial class HistoryPage : ContentPage
 {
     public HistoryPage(HistoryViewModel vm){InitializeComponent();BindingContext=vm;}
     protected override async void OnAppearing(){
+        base.OnAppearing();
         try
-        {base.OnAppearing();
+        {
         ApplyUiLocalization();if(BindingContext is HistoryViewModel vm)await vm.LoadCommand.ExecuteAsync(null);
         }
         catch (Exception commandException)

@@ -326,6 +326,12 @@ public sealed partial class LocalizationService
     private static readonly Dictionary<string, string> ExtendedKaToEn =
         new(StringComparer.OrdinalIgnoreCase)
         {
+            ["მანქანის ანგარიში"] = "Vehicle report",
+            ["ყველა ხელსაწყო"] = "All tools",
+            ["15 ხელსაწყო · პარამეტრებიც აქ"] = "15 tools · settings too",
+            ["დიაგნოსტიკა და მონაცემები"] = "Diagnostics and data",
+            ["ყველა შემოწმება და ხელსაწყო ერთ ადგილას"] = "Every check and tool in one place",
+            ["გარბენი, მგზავრობები, ECU · ტექსტური ფაილი"] = "Mileage, trips, ECU · text file",
             ["მოტოციკლი"] = "Motorcycle",
             ["ავტომობილი"] = "Car",
             ["სხვა მსუბუქი ტრანსპორტი"] = "Other light vehicle",
@@ -2330,17 +2336,23 @@ public sealed partial class LocalizationService
     // CURRENT LANGUAGE
     // =========================================================
 
-    public bool IsEnglish =>
-        Preferences.Default
-            .Get(LanguageKey, "English")
-            .Equals(
-                "English",
-                StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// "Not Georgian". True for English AND for every added language (Türkçe, Deutsch, Polski, Español,
+    /// Português, Français, Italiano): all existing "IsEnglish ? english : georgian" code picks the English
+    /// text, and <see cref="Translate"/> layers the selected language's pack on top of that English text.
+    /// </summary>
+    public bool IsEnglish => LanguageCatalog.UsesEnglishBase;
 
-    public string CurrentLanguage =>
-        IsEnglish
-            ? "English"
-            : "ქართული";
+    public bool IsGeorgian => !IsEnglish;
+
+    public AppLanguage Language => LanguageCatalog.Current;
+
+    /// <summary>Native name of the selected language, exactly as stored in Preferences.</summary>
+    public string CurrentLanguage => Language.DisplayName;
+
+    public string CurrentLanguageCode => Language.Code;
+
+    public string CurrentFlag => Language.Flag;
 
 
     // =========================================================
@@ -2351,11 +2363,82 @@ public sealed partial class LocalizationService
     public static string T(string? text) =>
         text is null ? string.Empty : _current?.Translate(text) ?? text;
 
+    // Translate() runs for every Label/Button text that is drawn, including
+    // live data refreshed several times per second. Results are cached per
+    // language (bounded; cleared on language change).
+    private const int TranslateCacheLimit = 4000;
+    private const int TranslateCacheMaxTextLength = 600;
+    private readonly object _translateCacheLock = new();
+    private readonly Dictionary<string, string> _translateCache = new(StringComparer.Ordinal);
+    private string? _translateCacheLanguage;
+
+    /// <summary>True when the text has at least one letter (\p{L}); numbers/units/punctuation only → false.</summary>
+    private static bool HasLetter(string text)
+    {
+        foreach (var c in text)
+            if (char.IsLetter(c))
+                return true;
+        return false;
+    }
+
+    private void ClearTranslateCache()
+    {
+        lock (_translateCacheLock)
+        {
+            _translateCache.Clear();
+            _translateCacheLanguage = null;
+        }
+    }
+
     public string Translate(string text)
     {
         if (string.IsNullOrWhiteSpace(text))
             return text;
 
+        // Numbers, units-only symbols, dashes, percentages: nothing to translate.
+        if (!HasLetter(text))
+            return text;
+
+        var language = Language;
+        var languageCode = language.Code;
+        lock (_translateCacheLock)
+        {
+            if (!string.Equals(_translateCacheLanguage, languageCode, StringComparison.Ordinal))
+            {
+                // Language changed (also when changed outside SetLanguage).
+                _translateCache.Clear();
+                _translateCacheLanguage = languageCode;
+            }
+
+            if (_translateCache.TryGetValue(text, out var cached))
+                return cached;
+        }
+
+        var result = TranslateUncached(text);
+
+        // Added languages: the text is English at this point (Georgian source was translated above,
+        // English source stays as is); the language pack keyed by English is applied on top.
+        if (languageCode is not ("ka" or "en"))
+            result = LocalizeFromEnglish(result, language);
+
+        if (text.Length <= TranslateCacheMaxTextLength)
+        {
+            lock (_translateCacheLock)
+            {
+                if (string.Equals(_translateCacheLanguage, languageCode, StringComparison.Ordinal))
+                {
+                    if (_translateCache.Count >= TranslateCacheLimit)
+                        _translateCache.Clear();
+                    _translateCache[text] = result;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private string TranslateUncached(string text)
+    {
         var whole = TranslateExact(text);
         if (!string.Equals(whole, text, StringComparison.Ordinal))
             return whole;
@@ -2383,6 +2466,65 @@ public sealed partial class LocalizationService
         }
 
         return TranslateLine(text);
+    }
+
+    /// <summary>English → selected added language: whole text, then per line, then like TranslateLine.</summary>
+    private static string LocalizeFromEnglish(string english, AppLanguage language)
+    {
+        if (string.IsNullOrWhiteSpace(english))
+            return english;
+
+        if (LanguagePacks.TryTranslate(language, english, out var whole))
+            return whole;
+
+        if (english.IndexOf('\n') < 0)
+            return LocalizePackLine(english, language);
+
+        var lines = english.Split('\n');
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i];
+            var hadCr = line.EndsWith('\r');
+            var translated = LocalizePackLine(line.TrimEnd('\r'), language);
+            lines[i] = hadCr ? translated + "\r" : translated;
+        }
+
+        return string.Join('\n', lines);
+    }
+
+    private static string LocalizePackLine(string line, AppLanguage language)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+            return line;
+
+        if (LanguagePacks.TryTranslate(language, line, out var exact))
+            return exact;
+
+        // "⚠ Text", "• Text", "1. Text" …
+        var prefix = LeadingSymbols.Match(line);
+        if (prefix.Success && prefix.Length < line.Length &&
+            LanguagePacks.TryTranslate(language, line.Substring(prefix.Length), out var rest))
+        {
+            return prefix.Value + rest;
+        }
+
+        // "Mileage:" / "Mileage: 123 km"
+        var colon = line.IndexOf(':');
+        if (colon > 0 &&
+            LanguagePacks.TryTranslate(language, line.Substring(0, colon), out var label))
+        {
+            return label + line.Substring(colon);
+        }
+
+        if (line.Contains(" · ", StringComparison.Ordinal))
+        {
+            var parts = line.Split(" · ");
+            for (var i = 0; i < parts.Length; i++)
+                parts[i] = LocalizePackLine(parts[i], language);
+            return string.Join(" · ", parts);
+        }
+
+        return line;
     }
 
     private static readonly Regex LatinWord = new("[A-Za-z]{2,}", RegexOptions.Compiled);
@@ -2520,8 +2662,8 @@ public sealed partial class LocalizationService
     public static void RegisterDisplayTranslation()
     {
         // OBD definitions/records (platform-independent) ask the language through this hook.
-        CarScanner.Services.OBD.ObdLang.IsEnglishProvider = static () =>
-            Preferences.Default.Get(LanguageKey, "English").Equals("English", StringComparison.OrdinalIgnoreCase);
+        // Every language except Georgian uses the English texts as its base.
+        CarScanner.Services.OBD.ObdLang.IsEnglishProvider = static () => LanguageCatalog.UsesEnglishBase;
 
 #if ANDROID
         Microsoft.Maui.Handlers.LabelHandler.Mapper.AppendToMapping(nameof(Label.Text), (handler, view) =>
@@ -2583,11 +2725,13 @@ public sealed partial class LocalizationService
 
     public void SetLanguage(string language)
     {
+        // Accepts a display name ("Deutsch"), code ("de") or English name ("German");
+        // the native display name is stored, so "English" and "ქართული" stay exactly as before.
         Preferences.Default.Set(
             LanguageKey,
-            language == "English"
-                ? "English"
-                : "ქართული");
+            LanguageCatalog.Find(language).DisplayName);
+
+        ClearTranslateCache();
 
         LanguageChanged?.Invoke(
             this,
@@ -2614,14 +2758,24 @@ public sealed partial class LocalizationService
         {
             Apply(page);
         }
+
+        // The header (GCar360 + car type / OBD status) lives in the Shell title view,
+        // outside the page tree, so it is redrawn separately.
+        if (Shell.Current is { } shell)
+        {
+            if (Shell.GetTitleView(shell) is View shellTitle)
+                ApplyNode(shellTitle);
+            if (page is not null && Shell.GetTitleView(page) is View pageTitle)
+                ApplyNode(pageTitle);
+        }
     }
 
 
     public void Apply(Element root)
     {
+        // Text only. The theme is applied separately (AppShell navigation,
+        // Settings, OS theme change); ThemeService.Apply is cheap but not needed here.
         ApplyNode(root);
-
-        ThemeService.Apply();
     }
 
 

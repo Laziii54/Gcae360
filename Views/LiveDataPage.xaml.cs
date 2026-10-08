@@ -13,9 +13,9 @@ public partial class LiveDataPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        base.OnAppearing();
         try
         {
-        base.OnAppearing();
         ApplyUiLocalization();
         if (BindingContext is LiveDataViewModel vm) await vm.StartLiveDataCommand.ExecuteAsync(null);
         }

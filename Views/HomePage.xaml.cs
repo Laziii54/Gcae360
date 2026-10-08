@@ -18,18 +18,36 @@ public partial class HomePage : ContentPage
 
     protected override async void OnAppearing()
     {
+        base.OnAppearing();
         try
         {
-        base.OnAppearing();
         ApplyUiLocalization();
         UpdateLanguageToggle();
 
         if (BindingContext is HomeViewModel viewModel)
+        {
+            viewModel.StartServicePreview();
             await viewModel.RefreshConnectionSummaryAsync(forceVinRefresh: true);
+        }
         }
         catch (Exception commandException)
         {
             CarScanner.Services.CommandErrors.Report(commandException, "HomePage.OnAppearing");
+        }
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        try
+        {
+            // Free the adapter: the service preview only polls while Home is visible.
+            if (BindingContext is HomeViewModel viewModel)
+                viewModel.StopServicePreview();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomePage.OnDisappearing");
         }
     }
 
@@ -110,11 +128,6 @@ public partial class HomePage : ContentPage
     }
 
     /// <summary>Shows / hides the rarely used technical tools.</summary>
-    private void OnTechnicalTapped(object? sender, TappedEventArgs e)
-    {
-        TechnicalRows.IsVisible = !TechnicalRows.IsVisible;
-        TechnicalChevron.Rotation = TechnicalRows.IsVisible ? 90 : 0;
-    }
 
     private async void OnAccountTapped(object? sender, TappedEventArgs e)
     {
@@ -123,7 +136,7 @@ public partial class HomePage : ContentPage
     }
 
     private void UpdateLanguageToggle() =>
-        LanguageToggleButton.Text = _localization.IsEnglish ? "KA" : "EN";
+        LanguageToggleButton.Text = _localization.CurrentFlag;
 
     private void ApplyUiLocalization()
     {

@@ -40,6 +40,8 @@ public partial class App : Application
         _crashReporting = crashReporting;
         _crashReporting.Initialize();
         LocalNotificationCenter.Current.NotificationActionTapped += OnNotificationActionTapped;
+        // Theme first (LocalizationService.Apply only translates texts now).
+        ThemeService.Apply();
         _localization.Apply(_shell);
         RequestedThemeChanged += (_, __) => MainThread.BeginInvokeOnMainThread(() => { try { if (_shell.CurrentPage != null) ThemeService.Apply(); } catch { } });
     }
@@ -96,12 +98,14 @@ public partial class App : Application
     {
         CancelEntitlementSynchronization();
 
-        // The launcher icon follows the app theme. It is switched only while
+        // The launcher icon is switched only after the user explicitly changed
+        // the theme in Settings (switching the alias removes pinned home-screen
+        // icons, so OS theme changes must not trigger it). It is applied while
         // the app is in the background, so the running screen is not disturbed.
         // Not while a trip records: switching the launcher alias can close the
         // app on some Android phones and would end the trip.
         if (!CarScanner.Services.Background.TripKeepAlive.IsActive)
-            AppIconSwitcher.Apply();
+            AppIconSwitcher.ApplyIfRequested();
     }
 
     private void OnWindowDestroying(object? sender, EventArgs e)

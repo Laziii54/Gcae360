@@ -162,6 +162,10 @@ public sealed class WifiObdTransport : IObdTransport, IDisposable
 
         try
         {
+            // A late answer of an earlier (timed out / cancelled) command must
+            // not be read as the reply to this one.
+            await DrainPendingInputAsync(stream, token).ConfigureAwait(false);
+
             await stream.WriteAsync(payload, token).ConfigureAwait(false);
             await stream.FlushAsync(token).ConfigureAwait(false);
 
@@ -182,12 +186,74 @@ public sealed class WifiObdTransport : IObdTransport, IDisposable
                     return response.ToString();
             }
         }
-        catch (OperationCanceledException) when (
-            timeoutCts.IsCancellationRequested &&
-            !cancellationToken.IsCancellationRequested &&
-            !lifetimeToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (!lifetimeToken.IsCancellationRequested)
         {
-            throw new TimeoutException("The Wi-Fi OBD adapter is not responding.");
+            // Timed out or cancelled while the adapter may still be busy:
+            // stop it and throw away the rest of its answer.
+            await ResyncAsync(stream, lifetimeToken).ConfigureAwait(false);
+
+            if (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                throw new TimeoutException("The Wi-Fi OBD adapter is not responding.");
+            throw;
+        }
+    }
+
+    /// <summary>Discards input that is already waiting on the socket (bounded to ~300 ms).</summary>
+    private static async Task DrainPendingInputAsync(NetworkStream stream, CancellationToken token)
+    {
+        if (!stream.DataAvailable)
+            return;
+
+        var buffer = new byte[512];
+        var deadline = DateTime.UtcNow.AddMilliseconds(300);
+        while (stream.DataAvailable && DateTime.UtcNow < deadline)
+        {
+            var read = await stream.ReadAsync(buffer, token).ConfigureAwait(false);
+            if (read == 0)
+                throw new ObdConnectionLostException("The Wi-Fi OBD adapter closed the TCP connection.");
+
+            // Let the rest of a stale reply arrive before checking again.
+            await Task.Delay(20, token).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// After a timeout: sends a bare carriage return (stops a command the ELM327
+    /// is still processing), reads until the '>' prompt for at most ~500 ms and
+    /// discards everything. Never throws; a lost link is detected by the next command.
+    /// </summary>
+    private static async Task ResyncAsync(NetworkStream stream, CancellationToken lifetimeToken)
+    {
+        using var resyncCts = CancellationTokenSource.CreateLinkedTokenSource(lifetimeToken);
+        resyncCts.CancelAfter(TimeSpan.FromMilliseconds(500));
+        try
+        {
+            await stream.WriteAsync(Encoding.ASCII.GetBytes("\r"), resyncCts.Token).ConfigureAwait(false);
+            await stream.FlushAsync(resyncCts.Token).ConfigureAwait(false);
+
+            var buffer = new byte[512];
+            var seen = new StringBuilder();
+            while (true)
+            {
+                var read = await stream.ReadAsync(buffer, resyncCts.Token).ConfigureAwait(false);
+                if (read == 0)
+                    return;
+                seen.Append(Encoding.ASCII.GetString(buffer, 0, read));
+                if (seen.ToString().Contains('>'))
+                    return;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (IOException)
+        {
+        }
+        catch (SocketException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
         }
     }
 

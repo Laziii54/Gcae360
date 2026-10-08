@@ -12,7 +12,7 @@
             <!-- Header -->
             <VerticalStackLayout Spacing="3">
                 <Label Text="BATTERY / CHARGING" Style="{StaticResource PageTitleStyle}" />
-                <Label Text="რეალური ECU-reported 12V Control Module Voltage (PID 0142)" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                <Label IsVisible="False" Text="რეალური ECU-reported 12V Control Module Voltage (PID 0142)" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
             </VerticalStackLayout>
 
             <!-- Voltage now -->
@@ -48,7 +48,7 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Label Text="PID 0142 აჩვენებს ECU-ის Control Module Voltage-ს — ეს არის დამუხტვის სისტემის ინდიკატორი და არა აკუმულატორის capacity/health ტესტი." FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0" />
+            <Label IsVisible="False" Text="PID 0142 აჩვენებს ECU-ის Control Module Voltage-ს — ეს არის დამუხტვის სისტემის ინდიკატორი და არა აკუმულატორის capacity/health ტესტი." FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0" />
 
             <!-- High voltage battery -->
             <Label Text="High Voltage Battery" Style="{StaticResource SectionCaptionStyle}" />
@@ -62,7 +62,7 @@
 
             <!-- History -->
             <Label Text="Voltage History" Style="{StaticResource SectionCaptionStyle}" />
-            <Label Text="მხოლოდ ამ სესიაში ECU-დან წარმატებით მიღებული გაზომვები." FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0" />
+            <Label IsVisible="False" Text="მხოლოდ ამ სესიაში ECU-დან წარმატებით მიღებული გაზომვები." FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0" />
             <Border Style="{StaticResource ListCardStyle}">
                 <VerticalStackLayout BindableLayout.ItemsSource="{Binding VoltageHistory}" Spacing="0" Margin="0,-1,0,0">
                     <BindableLayout.ItemTemplate>

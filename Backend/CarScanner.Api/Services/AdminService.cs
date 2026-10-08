@@ -10,7 +10,10 @@ namespace CarScanner.Api.Services;
 /// <summary>
 /// Owner page (/admin). Security:
 ///  • only e-mails in GCS_ADMIN_EMAILS, with their app password;
-///  • 2-step code from an authenticator app when GCS_ADMIN_TOTP_SECRET is set;
+///  • 2-step code from an authenticator app — MANDATORY: without
+///    GCS_ADMIN_TOTP_SECRET nobody can sign in;
+///  • admin perks (free PRO / VIN) only for accounts that completed at
+///    least one successful 2-step sign-in (AdminTotpLogins);
 ///  • optional IP allow-list GCS_ADMIN_IPS;
 ///  • encrypted cookie (Data Protection) bound to the browser, 4 hours;
 ///  • CSRF token on every form, strict security headers;
@@ -40,8 +43,55 @@ At TEXT NOT NULL,
 Email TEXT NULL,
 Action TEXT NOT NULL,
 Target TEXT NULL,
-Ip TEXT NULL);";
+Ip TEXT NULL);
+CREATE TABLE IF NOT EXISTS AdminTotpLogins (
+AccountId TEXT PRIMARY KEY,
+Email TEXT NOT NULL,
+FirstAt TEXT NOT NULL,
+LastAt TEXT NOT NULL);";
         cmd.ExecuteNonQuery();
+
+        cmd.CommandText = "SELECT AccountId FROM AdminTotpLogins";
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+            VerifiedAccounts[reader.GetString(0)] = true;
+    }
+
+    // Accounts that signed in to /admin with password + authenticator code.
+    private static readonly ConcurrentDictionary<string, bool> VerifiedAccounts = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// True when this account has completed at least one successful
+    /// 2-step admin sign-in. Admin perks (AdminAccess) require it, so an
+    /// account registered with an admin e-mail by someone else gets nothing.
+    /// </summary>
+    public static bool IsTotpVerified(string? accountId) =>
+        !string.IsNullOrWhiteSpace(accountId) && VerifiedAccounts.ContainsKey(accountId);
+
+    public async Task MarkTotpLoginAsync(string accountId, string email, CancellationToken ct)
+    {
+        await using var c = new SqliteConnection(_connectionString);
+        await c.OpenAsync(ct);
+        await using var cmd = c.CreateCommand();
+        cmd.CommandText = @"INSERT INTO AdminTotpLogins(AccountId,Email,FirstAt,LastAt) VALUES($id,$e,$at,$at)
+ON CONFLICT(AccountId) DO UPDATE SET Email=excluded.Email, LastAt=excluded.LastAt";
+        cmd.Parameters.AddWithValue("$id", accountId);
+        cmd.Parameters.AddWithValue("$e", email);
+        cmd.Parameters.AddWithValue("$at", DateTimeOffset.UtcNow.ToString("O"));
+        await cmd.ExecuteNonQueryAsync(ct);
+        VerifiedAccounts[accountId] = true;
+    }
+
+    /// <summary>Account deletion: the perk flag goes with the account.</summary>
+    public async Task ForgetAccountAsync(string accountId, CancellationToken ct)
+    {
+        await using var c = new SqliteConnection(_connectionString);
+        await c.OpenAsync(ct);
+        await using var cmd = c.CreateCommand();
+        cmd.CommandText = "DELETE FROM AdminTotpLogins WHERE AccountId=$id";
+        cmd.Parameters.AddWithValue("$id", accountId);
+        await cmd.ExecuteNonQueryAsync(ct);
+        VerifiedAccounts.TryRemove(accountId, out _);
     }
 
     // ============================================================
@@ -72,16 +122,32 @@ Ip TEXT NULL);";
             .Any(allowed => allowed == ip);
     }
 
+    /// <summary>
+    /// The one client-IP helper for every rate limit, IP hash and audit line.
+    /// X-Forwarded-For is used only when the request came through the Azure
+    /// front end (ARR sets X-ARR-LOG-ID / X-ARR-SSL). ARR APPENDS the real
+    /// client address, so its LAST entry is taken — earlier entries are sent
+    /// by the client and can be forged. Otherwise the connection address
+    /// (after UseForwardedHeaders) is used. Ports are stripped.
+    /// </summary>
     public static string ClientIp(HttpContext http)
     {
-        // Azure's front end APPENDS the real client address to X-Forwarded-For;
-        // anything before it was sent by the client and can be forged.
-        var forwarded = http.Request.Headers["X-Forwarded-For"].ToString();
-        var first = forwarded.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).LastOrDefault();
-        if (!string.IsNullOrWhiteSpace(first))
-            return first.Contains(':') && first.Count(ch => ch == ':') == 1 ? first.Split(':')[0] : first;
-        return http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var headers = http.Request.Headers;
+        if (headers.ContainsKey("X-ARR-LOG-ID") || headers.ContainsKey("X-ARR-SSL"))
+        {
+            var last = headers["X-Forwarded-For"].ToString()
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .LastOrDefault();
+            if (!string.IsNullOrWhiteSpace(last) && System.Net.IPEndPoint.TryParse(last, out var endpoint))
+                return Normalize(endpoint.Address);
+        }
+
+        var remote = http.Connection.RemoteIpAddress;
+        return remote is null ? "unknown" : Normalize(remote);
     }
+
+    private static string Normalize(System.Net.IPAddress address) =>
+        (address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address).ToString();
 
     private static string AgentHash(HttpRequest request) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(request.Headers.UserAgent.ToString())))[..16];
@@ -132,16 +198,24 @@ Ip TEXT NULL);";
         response.Headers["X-Content-Type-Options"] = "nosniff";
         response.Headers["Referrer-Policy"] = "no-referrer";
         response.Headers["X-Robots-Tag"] = "noindex, nofollow";
+        // The only script on admin pages is AdminPages.ConfirmScript (static,
+        // no user data); it is allowed by its hash, inline handlers are not.
         response.Headers["Content-Security-Policy"] =
-            "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; media-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
+            "default-src 'none'; style-src 'unsafe-inline'; script-src '" + ConfirmScriptHash + "'; img-src data:; media-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
     }
 
-    /// <summary>Checks a 6-digit authenticator code (±30 s), each code once.</summary>
+    private static readonly string ConfirmScriptHash =
+        "sha256-" + Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(AdminPages.ConfirmScript)));
+
+    /// <summary>
+    /// Checks a 6-digit authenticator code (±30 s), each code once.
+    /// Without GCS_ADMIN_TOTP_SECRET every sign-in is refused.
+    /// </summary>
     public bool VerifyTotp(string email, string? code)
     {
         var secret = TotpSecret;
         if (secret is null)
-            return true;
+            return false;
         code = (code ?? "").Replace(" ", "");
         if (code.Length != 6 || !code.All(char.IsDigit))
             return false;
@@ -531,6 +605,9 @@ ORDER BY o.CreatedAt DESC LIMIT $n";
         "refund" => "თანხის დაბრუნება",
         "refund_failed" => "დაბრუნება ვერ მოხერხდა",
         "retry" => "რეპორტის ხელახლა ცდა",
+        "login_no_totp" => "შესვლა უარყოფილია — GCS_ADMIN_TOTP_SECRET არ არის",
+        "temp_password" => "დროებითი პაროლი",
+        "unbind" => "მოწყობილობის მოხსნა",
         _ => action
     };
 }

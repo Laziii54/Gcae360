@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using CarScanner.Api.Services;
 using System.Collections.Concurrent;
 using System.Net.Http.Json;
@@ -25,6 +26,7 @@ builder.Services.AddSingleton<AdminService>();
 builder.Services.AddSingleton<UsageStore>();
 builder.Services.AddSingleton<ServiceSearchStore>();
 builder.Services.AddSingleton<ResetRecordingStore>();
+builder.Services.AddSingleton<OdometerStore>();
 builder.Services.AddSingleton<CustomsRulesService>();
 builder.Services.AddSingleton<PlayStatsService>();
 builder.Services.AddSingleton<VinQuotaStore>();
@@ -33,7 +35,83 @@ builder.Services.AddHostedService<WebRenewalWorker>();
 builder.Services.AddSingleton<AccelerationLeaderboardStore>();
 builder.Services.AddSingleton<QrReportStore>();
 
+// Azure App Service terminates TLS at its front end and forwards the
+// original scheme in X-Forwarded-Proto. Only the scheme is taken over
+// (client IPs keep their current handling). The Azure front-end addresses
+// are not fixed, so the known proxy lists are cleared.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedProto;
+#pragma warning disable CS0618, ASPDEPR005
+    options.KnownNetworks.Clear();
+#pragma warning restore CS0618, ASPDEPR005
+    options.KnownProxies.Clear();
+});
+builder.Services.AddHsts(options =>
+{
+    options.MaxAge = TimeSpan.FromDays(365);
+    options.IncludeSubDomains = false;
+});
+
 var app = builder.Build();
+
+// Loads the admin 2-step flags (AdminAccess perks) before the first request.
+app.Services.GetRequiredService<AdminService>();
+
+app.UseForwardedHeaders();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+
+    // http → https (308 keeps the method and body). Health probes stay on
+    // plain http so Azure health checks / Always On keep working.
+    app.Use(async (context, next) =>
+    {
+        // X-ARR-SSL: Azure's front end (ARR) received the request over TLS.
+        if (!context.Request.IsHttps &&
+            !context.Request.Headers.ContainsKey("X-ARR-SSL") &&
+            !context.Request.Path.StartsWithSegments("/health"))
+        {
+            var target = "https://" + context.Request.Host.Value +
+                         context.Request.PathBase.Value + context.Request.Path.Value +
+                         context.Request.QueryString.Value;
+            context.Response.StatusCode = StatusCodes.Status308PermanentRedirect;
+            context.Response.Headers.Location = target;
+            return;
+        }
+
+        await next(context);
+    });
+}
+
+// Security headers for every non-admin response (admin pages set their own,
+// stricter set in AdminService.SecureHeaders). The CSP is added only to HTML
+// and allows what the public pages use: inline <script>/<style>, Google Fonts,
+// same-origin fetch and images.
+const string PublicCsp =
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; " +
+    "form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
+app.Use(async (context, next) =>
+{
+    if (!context.Request.Path.StartsWithSegments("/admin"))
+    {
+        var publicResponse = context.Response;
+        publicResponse.OnStarting(() =>
+        {
+            var publicHeaders = publicResponse.Headers;
+            if (!publicHeaders.ContainsKey("X-Frame-Options")) publicHeaders["X-Frame-Options"] = "DENY";
+            if (!publicHeaders.ContainsKey("X-Content-Type-Options")) publicHeaders["X-Content-Type-Options"] = "nosniff";
+            if (!publicHeaders.ContainsKey("Referrer-Policy")) publicHeaders["Referrer-Policy"] = "strict-origin-when-cross-origin";
+            if (!publicHeaders.ContainsKey("Content-Security-Policy") &&
+                (publicResponse.ContentType ?? string.Empty).StartsWith("text/html", StringComparison.OrdinalIgnoreCase))
+                publicHeaders["Content-Security-Policy"] = PublicCsp;
+            return Task.CompletedTask;
+        });
+    }
+
+    await next(context);
+});
 
 // Website images (logo, loader, icons) from wwwroot/assets.
 app.UseStaticFiles(new StaticFileOptions
@@ -46,37 +124,65 @@ app.UseStaticFiles(new StaticFileOptions
 // HEALTH
 // ============================================================
 
+// Public: only {"status":"ok"}. Version / build details only with
+// GCS_DIAG_TOKEN in the X-GCS-Diag-Token header.
 app.MapGet(
     "/health",
-    () => Results.Ok(
-        new
-        {
-            ok = true,
-            service = "Georgian Car Scanner API",
-            // Informational version carries "+<git commit>" when built from the repository.
-            version = System.Reflection.Assembly.GetExecutingAssembly()
-                .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
-                .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
-                .FirstOrDefault()?.InformationalVersion ?? "unknown",
-            build = Environment.GetEnvironmentVariable("GCS_BUILD_ID")
-                ?? Environment.GetEnvironmentVariable("WEBSITE_DEPLOYMENT_ID")
-                ?? "local",
-            startedUtc = HealthInfo.StartedUtc
-        }));
+    (HttpContext http) =>
+    {
+        if (!HealthInfo.DiagTokenOk(http))
+            return Results.Ok(new { status = "ok" });
 
+        http.Response.Headers["Cache-Control"] = "no-store";
+        return Results.Ok(
+            new
+            {
+                status = "ok",
+                ok = true,
+                service = "Georgian Car Scanner API",
+                // Informational version carries "+<git commit>" when built from the repository.
+                version = System.Reflection.Assembly.GetExecutingAssembly()
+                    .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+                    .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+                    .FirstOrDefault()?.InformationalVersion ?? "unknown",
+                build = Environment.GetEnvironmentVariable("GCS_BUILD_ID")
+                    ?? Environment.GetEnvironmentVariable("WEBSITE_DEPLOYMENT_ID")
+                    ?? "local",
+                startedUtc = HealthInfo.StartedUtc
+            });
+    });
+
+// Lists which secrets are missing: owner only. GCS_DIAG_TOKEN in the
+// X-GCS-Diag-Token header (never in the URL) here; the admin session
+// cookie (Path=/admin) at /admin/health/configuration.
 app.MapGet(
     "/health/configuration",
-    (IConfiguration configuration) =>
-        Results.Ok(
-            ProductionConfigurationStatus.Read(
-                configuration)));
+    (HttpContext http, IConfiguration configuration) =>
+    {
+        if (!HealthInfo.DiagTokenOk(http))
+            return Results.NotFound();
+
+        http.Response.Headers["Cache-Control"] = "no-store";
+        return Results.Ok(ProductionConfigurationStatus.Read(configuration));
+    });
+
+app.MapGet(
+    "/admin/health/configuration",
+    (HttpContext http, IConfiguration configuration, AdminService admin) =>
+    {
+        AdminService.SecureHeaders(http.Response);
+        if (!AdminService.IpAllowed(http) || admin.ReadSession(http.Request, AdminAccess.IsAdmin) is null)
+            return Results.NotFound();
+
+        return Results.Ok(ProductionConfigurationStatus.Read(configuration));
+    });
 
 app.MapPost(
     "/api/telemetry/crash",
     async (CrashReportRequest request, HttpContext http, CrashReportStore reports) =>
     {
         var rateKey = "crash:" +
-            (http.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+            AdminService.ClientIp(http);
         if (!RateWindow.TryConsume(rateKey, DateTimeOffset.UtcNow, 20, TimeSpan.FromHours(1)))
             return Results.StatusCode(StatusCodes.Status429TooManyRequests);
 
@@ -107,307 +213,99 @@ app.MapGet("/privacy-policy", () =>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <title>GCar360 — Privacy Policy</title>
-
+    <title>GCar360 — Privacy Policy / კონფიდენციალურობის პოლიტიკა</title>
     <style>
-        body {
-            font-family:
-                -apple-system,
-                BlinkMacSystemFont,
-                "Segoe UI",
-                Roboto,
-                Arial,
-                sans-serif;
-
-            line-height: 1.7;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 30px 20px;
-
-            color: #222;
-            background: #ffffff;
-        }
-
-        h1 {
-            font-size: 32px;
-            margin-bottom: 8px;
-        }
-
-        h2 {
-            margin-top: 32px;
-            font-size: 22px;
-        }
-
-        p {
-            margin: 12px 0;
-        }
-
-        .updated {
-            color: #666;
-            margin-bottom: 32px;
-        }
-
-        a {
-            color: #2563eb;
-        }
-
-        .container {
-            width: 100%;
-        }
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.7;max-width:900px;margin:0 auto;padding:30px 20px;color:#222;background:#fff}
+        h1{font-size:30px;margin-bottom:8px}
+        h2{margin-top:32px;font-size:21px}
+        p,li{margin:10px 0}
+        .updated{color:#666;margin-bottom:28px}
+        .ka{color:#333;border-left:3px solid #e5e7eb;padding-left:12px}
+        a{color:#2563eb}
+        table{border-collapse:collapse;width:100%;font-size:14px}
+        th,td{border:1px solid #e5e7eb;padding:8px;text-align:left;vertical-align:top}
     </style>
 </head>
-
 <body>
 
-<div class="container">
+<h1>Privacy Policy — GCar360</h1>
+<p class="updated">Last updated: October 8, 2026 · ბოლო განახლება: 2026 წლის 8 ოქტომბერი</p>
 
-    <h1>Privacy Policy — GCar360</h1>
+<p>GCar360 ("we", "the App") is a vehicle diagnostic application that connects to OBD adapters and offers diagnostics, AI explanations, VIN history, QR reports, a public acceleration leaderboard and a website for card payments. This policy describes what the App and our server process, who else receives it and how long it is kept. Each section is given in English and in Georgian.</p>
+<p class="ka">GCar360 („ჩვენ“, „აპი“) არის ავტომობილის დიაგნოსტიკის აპი, რომელიც უკავშირდება OBD ადაპტერს და გთავაზობთ დიაგნოსტიკას, AI ახსნებს, VIN ისტორიას, QR ანგარიშებს, აჩქარების საჯარო რეიტინგს და ვებგვერდს ბარათით გადახდისთვის. ეს პოლიტიკა აღწერს, რას ამუშავებს აპი და ჩვენი სერვერი, ვის გადაეცემა მონაცემები და რამდენ ხანს ინახება. ყოველი ნაწილი მოცემულია ინგლისურად და ქართულად.</p>
 
-    <p class="updated">
-        Last updated: October 1, 2026
-    </p>
+<h2>1. Data on your device · მონაცემები შენს ტელეფონზე</h2>
+<p>Vehicle data read over Bluetooth (VIN, trouble codes, live sensor values), your display name, language, settings, service records, fuel and electric trips and reminders are stored on your phone. They leave the phone only when you use one of the features below.</p>
+<p class="ka">Bluetooth-ით წაკითხული მონაცემები (VIN, შეცდომის კოდები, სენსორების მნიშვნელობები), შენი სახელი, ენა, პარამეტრები, სერვისის ჩანაწერები, მგზავრობები და შეხსენებები ინახება ტელეფონზე. ტელეფონს ისინი ტოვებს მხოლოდ მაშინ, როცა ქვემოთ ჩამოთვლილ ფუნქციებს იყენებ.</p>
 
-    <p>
-        GCar360 ("we", "our", or "the App") is a vehicle
-        diagnostic application that connects to compatible OBD devices
-        and provides vehicle diagnostic information, live sensor data,
-        AI-assisted explanations, and related services.
-    </p>
+<h2>2. Account · ანგარიში</h2>
+<p>For a PRO account we store your e-mail address, a one-way password hash (never the password), a hash of the installation identifier the account is bound to, sign-in sessions (valid for up to 90 days) and your subscriptions, VIN credits and purchased reports. Kept until you delete the account.</p>
+<p class="ka">PRO ანგარიშისთვის ვინახავთ ელ-ფოსტას, პაროლის ცალმხრივ ჰეშს (თავად პაროლს — არასდროს), იმ ინსტალაციის იდენტიფიკატორის ჰეშს, რომელზეც ანგარიშია მიბმული, შესვლის სესიებს (მოქმედებს მაქსიმუმ 90 დღე), გამოწერებს, VIN კრედიტებს და ნაყიდ ანგარიშებს. ინახება ანგარიშის წაშლამდე.</p>
 
-    <h2>1. Information We Process</h2>
+<h2>3. AI features · AI ფუნქციები</h2>
+<p>When you ask the AI, the vehicle information, VIN, trouble codes, sensor values, your question, part of the recent conversation, language and display name are sent through our server to Google Gemini (Google LLC). Our server does not store the conversation; it keeps only a per-account daily request counter (deleted after 7 days). AI answers are informational, not a definitive diagnosis.</p>
+<p class="ka">AI-სთან კითხვისას ავტომობილის მონაცემები, VIN, შეცდომის კოდები, სენსორების მნიშვნელობები, შენი კითხვა, ბოლო საუბრის ნაწილი, ენა და სახელი ჩვენი სერვერის გავლით იგზავნება Google Gemini-ში (Google LLC). სერვერი საუბარს არ ინახავს; ინახება მხოლოდ დღიური მოთხოვნების მთვლელი ანგარიშზე (7 დღეში იშლება). AI-ის პასუხი საინფორმაციოა და არ არის საბოლოო დიაგნოზი.</p>
 
-    <p>
-        Depending on the features you use, the App may process vehicle
-        and diagnostic information including vehicle manufacturer,
-        model, year, VIN, OBD protocol, diagnostic trouble codes (DTCs),
-        DTC descriptions, status, severity, possible causes, and live
-        sensor data.
-    </p>
+<h2>4. VIN history · VIN ისტორია</h2>
+<p>When you check a VIN, the VIN is sent to these providers: NHTSA vPIC and NHTSA recalls (US government, specifications and recalls; recalls receive make, model and year), Apibara, API-Auctions and VehicleDatabases (auction history and photos), VinAudit (paid full history, NMVTIS) and, for photos of that exact VIN, Brave Search and Serper (Google search results). Provider answers are cached on our server by VIN; reports you opened or bought are linked to your account until you delete it.</p>
+<p class="ka">VIN-ის შემოწმებისას VIN იგზავნება შემდეგ მომწოდებლებთან: NHTSA vPIC და NHTSA recalls (აშშ-ის სახელმწიფო სერვისი; გამოწვევებისთვის — მარკა, მოდელი და წელი), Apibara, API-Auctions და VehicleDatabases (აუქციონების ისტორია და ფოტოები), VinAudit (ფასიანი სრული ისტორია, NMVTIS) და ამავე VIN-ის ფოტოებისთვის — Brave Search და Serper (Google-ის ძებნის შედეგები). მომწოდებლების პასუხები სერვერზე ინახება VIN-ის მიხედვით; შენ მიერ გახსნილი ან ნაყიდი ანგარიშები ანგარიშზეა მიბმული მის წაშლამდე.</p>
 
-    <h2>2. AI Diagnostic Features</h2>
+<h2>5. QR reports · QR ანგარიშები</h2>
+<p>A QR report stores a summary of the scan you selected: vehicle name, the last six VIN characters, scan summary, trouble codes, readiness and, if present, the service history you entered. Anyone with the link or QR code can open it. The page states that it was created by the vehicle owner with GCar360 and is not independently verified. The link stops working after 30 days and expired reports are deleted from the server.</p>
+<p class="ka">QR ანგარიში ინახავს არჩეული სკანის შეჯამებას: ავტომობილის სახელს, VIN-ის ბოლო ექვს სიმბოლოს, სკანის შეჯამებას, შეცდომის კოდებს, მზადყოფნას და, თუ არის, შენ მიერ შეყვანილ სერვისის ისტორიას. ბმულის ან QR კოდის მქონე ნებისმიერ ადამიანს შეუძლია მისი ნახვა. გვერდზე მითითებულია, რომ ანგარიში შექმნა ავტომობილის მფლობელმა GCar360-ით და დამოუკიდებლად გადამოწმებული არ არის. ბმული 30 დღის შემდეგ აღარ მუშაობს და ვადაგასული ანგარიშები სერვერიდან იშლება.</p>
 
-    <p>
-        When you use AI diagnostic or AI chat features, relevant
-        information may be sent to our backend server, including
-        vehicle information, VIN, diagnostic codes, live sensor data,
-        your questions, portions of recent conversation history,
-        language preference, and your locally stored display name.
-    </p>
+<h2>6. Acceleration leaderboard · აჩქარების რეიტინგი</h2>
+<p>If you publish a 0–100 km/h, 0–60 mph or ¼ mile result, your display name, vehicle model and time are shown publicly. The VIN is used to confirm the model and only a one-way hash of it is stored. While measuring, the App uses the phone's GPS (foreground only); when you publish, ECU and GPS speed traces are sent. GPS coordinates are kept only for results that need a review (top places or unusually fast results), and for those we may ask for the video you recorded in the App. Coordinates and videos are seen only by the administrator and are deleted 30 days after the review. If you delete your account, results waiting for review are deleted and public results stay anonymised ("Deleted").</p>
+<p class="ka">0–100 კმ/სთ, 0–60 mph ან ¼ მილის შედეგის გამოქვეყნებისას საჯაროდ ჩანს შენი სახელი, ავტომობილის მოდელი და დრო. VIN გამოიყენება მოდელის დასადასტურებლად და ინახება მხოლოდ მისი ცალმხრივი ჰეში. გაზომვისას აპი იყენებს ტელეფონის GPS-ს (მხოლოდ გახსნილ აპში); გამოქვეყნებისას იგზავნება ECU-ს და GPS-ის სიჩქარის ჩანაწერები. GPS კოორდინატები ინახება მხოლოდ შესამოწმებელი შედეგებისთვის (ტოპ ადგილები ან უჩვეულოდ სწრაფი შედეგები); ასეთ შემთხვევაში შეიძლება ვითხოვოთ აპში ჩაწერილი ვიდეოც. კოორდინატებს და ვიდეოს ხედავს მხოლოდ ადმინისტრატორი და ისინი იშლება შემოწმებიდან 30 დღეში. ანგარიშის წაშლისას შესამოწმებელი შედეგები იშლება, საჯარო შედეგები კი რჩება ანონიმურად („Deleted“).</p>
 
-    <p>
-        AI-generated responses are informational and should not be
-        considered a definitive mechanical diagnosis. Safety-critical
-        issues should be verified by a qualified automotive professional.
-    </p>
+<h2>7. Crowd-sourced service data · ერთობლივად შეგროვებული სერვისის მონაცემები</h2>
+<p>To help other owners of the same model, the App may send: results of the oil-service search (make, model, year, the first characters of the VIN, which data sources answered), odometer locations found by the mileage finder (module, request and byte position — never the mileage itself) and service-reset (CAN) recordings (the messages the adapter heard during a reset, make, model, year and the first characters of the VIN). They are stored with a hash of the installation identifier, your account ID if you are signed in and, for odometer locations, a hash of your IP address. They are kept to improve support for the model; when you delete your account the account ID is removed from them.</p>
+<p class="ka">იმავე მოდელის სხვა მფლობელების დასახმარებლად აპმა შეიძლება გამოაგზავნოს: ზეთის სერვისის ძებნის შედეგი (მარკა, მოდელი, წელი, VIN-ის პირველი სიმბოლოები, რომელმა წყარომ უპასუხა), გარბენის ძებნით ნაპოვნი ადგილი (მოდული, მოთხოვნა, ბაიტები — არასდროს თავად გარბენი) და სერვისის რესეტის (CAN) ჩანაწერი (რესეტისას ადაპტერის მიერ მოსმენილი შეტყობინებები, მარკა, მოდელი, წელი, VIN-ის პირველი სიმბოლოები). ისინი ინახება ინსტალაციის იდენტიფიკატორის ჰეშთან, შესული ანგარიშის ID-სთან და, გარბენის ადგილისთვის, IP მისამართის ჰეშთან ერთად. ინახება მოდელის მხარდაჭერის გასაუმჯობესებლად; ანგარიშის წაშლისას მათგან ანგარიშის ID იშლება.</p>
 
-    <h2>3. Display Name</h2>
+<h2>8. Crash reports and usage statistics · შეცდომების ანგარიშები და სტატისტიკა</h2>
+<p>After a crash the App may send a report with the app and system versions, platform, exception type and a sanitized stack trace (no VIN, readings, e-mail, account ID, location or tokens). Crash reports are deleted after 90 days. Every few hours the App sends a usage signal: a hash of a random installation identifier, app and system version, device model, language, whether notifications and reminders are on and, if signed in, your account ID. It is used for aggregate statistics and abuse protection; on account deletion the account link is removed.</p>
+<p class="ka">ავარიული დახურვის შემდეგ აპმა შეიძლება გამოაგზავნოს ანგარიში: აპის და სისტემის ვერსია, პლატფორმა, შეცდომის ტიპი და გასუფთავებული stack trace (VIN-ის, მონაცემების, ელ-ფოსტის, ანგარიშის ID-ის, მდებარეობის და ტოკენების გარეშე). ეს ანგარიშები 90 დღეში იშლება. რამდენიმე საათში ერთხელ აპი აგზავნის გამოყენების სიგნალს: შემთხვევითი ინსტალაციის იდენტიფიკატორის ჰეში, აპის და სისტემის ვერსია, ტელეფონის მოდელი, ენა, ჩართულია თუ არა ნოტიფიკაციები და შეხსენებები და, შესვლის შემთხვევაში, ანგარიშის ID. გამოიყენება ზოგადი სტატისტიკისა და ბოროტად გამოყენებისგან დაცვისთვის; ანგარიშის წაშლისას ანგარიშთან კავშირი იშლება.</p>
 
-    <p>
-        The App may store a display name locally on your device.
-        When AI features are used, the display name may be included
-        in an AI request so the assistant can address you appropriately.
-    </p>
+<h2>9. Purchases and payments · შესყიდვები და გადახდები</h2>
+<p>In the App, subscriptions and VIN packs are sold through Google Play and the Apple App Store; we receive purchase identifiers and tokens to verify them. On the website you can pay by card through Bank of Georgia or TBC Bank. The card is entered on the bank's page; we receive the order number, product, amount, payment status and the bank's payment identifier. For the monthly automatic payment the card is saved by Bank of Georgia; we store only the card type and last four digits. Payment records are kept for accounting; when you delete your account they are anonymised.</p>
+<p class="ka">აპში გამოწერები და VIN პაკეტები იყიდება Google Play-სა და Apple App Store-ით; შესამოწმებლად ვიღებთ შესყიდვის იდენტიფიკატორებს და ტოკენებს. ვებგვერდზე შეგიძლია გადაიხადო ბარათით საქართველოს ბანკის ან თიბისი ბანკის მეშვეობით. ბარათი შეგყავს ბანკის გვერდზე; ჩვენ ვიღებთ შეკვეთის ნომერს, პროდუქტს, თანხას, სტატუსს და ბანკის გადახდის იდენტიფიკატორს. ყოველთვიური ავტომატური გადახდისას ბარათს ინახავს საქართველოს ბანკი; ჩვენ ვინახავთ მხოლოდ ბარათის ტიპს და ბოლო ოთხ ციფრს. გადახდის ჩანაწერები ინახება ბუღალტრული აღრიცხვისთვის; ანგარიშის წაშლისას ისინი ანონიმური ხდება.</p>
 
-    <h2>4. Bluetooth and OBD Data</h2>
+<h2>10. Third parties · მესამე მხარეები</h2>
+<table>
+<tr><th>Provider · მომწოდებელი</th><th>Purpose · დანიშნულება</th></tr>
+<tr><td>Microsoft Azure</td><td>Server hosting and database · სერვერი და მონაცემთა ბაზა</td></tr>
+<tr><td>Google Gemini (Google LLC)</td><td>AI answers · AI პასუხები</td></tr>
+<tr><td>Google Play, Apple App Store</td><td>App purchases and subscriptions · შესყიდვები და გამოწერები</td></tr>
+<tr><td>Bank of Georgia, TBC Bank</td><td>Website card payments · ბარათით გადახდა ვებგვერდზე</td></tr>
+<tr><td>NHTSA vPIC / Recalls</td><td>VIN specifications and recalls · სპეციფიკაციები და გამოწვევები</td></tr>
+<tr><td>Apibara, API-Auctions, VehicleDatabases</td><td>Auction history and photos · აუქციონის ისტორია და ფოტოები</td></tr>
+<tr><td>VinAudit</td><td>Paid full VIN history · ფასიანი სრული ისტორია</td></tr>
+<tr><td>Brave Search, Serper</td><td>Web photos of the VIN · VIN-ის ფოტოები ინტერნეტიდან</td></tr>
+</table>
+<p>We do not sell personal data. · პერსონალურ მონაცემებს არ ვყიდით.</p>
 
-    <p>
-        The App may use Bluetooth to communicate with compatible OBD
-        diagnostic devices and retrieve vehicle diagnostic information
-        requested by the user. Bluetooth permissions may be required
-        depending on the operating system.
-    </p>
+<h2>11. Retention summary · შენახვის ვადები</h2>
+<ul>
+<li>QR reports: 30 days. · QR ანგარიში: 30 დღე.</li>
+<li>Leaderboard GPS coordinates and review videos: 30 days after the review. · რეიტინგის GPS და ვიდეო: შემოწმებიდან 30 დღე.</li>
+<li>Crash reports: 90 days. · შეცდომის ანგარიშები: 90 დღე.</li>
+<li>Daily usage counters (AI, VIN previews): 7 days. · დღიური მთვლელები: 7 დღე.</li>
+<li>Sign-in sessions: up to 90 days. · სესიები: მაქსიმუმ 90 დღე.</li>
+<li>Account, subscriptions, credits, purchased reports: until you delete the account. · ანგარიში, გამოწერები, კრედიტები, ნაყიდი ანგარიშები: ანგარიშის წაშლამდე.</li>
+<li>Public leaderboard results, crowd-sourced service data, usage statistics, payment records: kept without your account link after deletion. · საჯარო შედეგები, ერთობლივი სერვისის მონაცემები, სტატისტიკა, გადახდის ჩანაწერები: წაშლის შემდეგ ინახება ანგარიშთან კავშირის გარეშე.</li>
+</ul>
 
-    <h2>5. Contact</h2>
+<h2>12. Deleting your account · ანგარიშის წაშლა</h2>
+<p>You can permanently delete your account in the App (account / PRO screen → delete account) or on the website at <a href="/account/delete">/account/delete</a> with your e-mail and password. Deletion stops website automatic payments, deletes the account, sessions, subscriptions, credits, purchased reports, QR reports and leaderboard results waiting for review, and anonymises the records listed above. Store subscriptions must be cancelled separately in Google Play or the App Store.</p>
+<p class="ka">ანგარიშის სამუდამოდ წაშლა შეგიძლია აპში (ანგარიშის / PRO ეკრანი → ანგარიშის წაშლა) ან ვებგვერდზე <a href="/account/delete">/account/delete</a> ელ-ფოსტით და პაროლით. წაშლა აჩერებს ვებგვერდის ავტომატურ გადახდას, შლის ანგარიშს, სესიებს, გამოწერებს, კრედიტებს, ნაყიდ ანგარიშებს, QR ანგარიშებს და შესამოწმებელ შედეგებს, ზემოთ ჩამოთვლილ ჩანაწერებს კი ანონიმურს ხდის. მაღაზიის გამოწერა ცალკე უნდა გააუქმო Google Play-ში ან App Store-ში.</p>
 
-    <p>
-        The App may open the user's email application when the user
-        chooses to contact us. Messages are sent to:
-    </p>
+<h2>13. Security, children, rights · უსაფრთხოება, ბავშვები, უფლებები</h2>
+<p>All traffic uses HTTPS and we use reasonable technical measures, but no system is completely secure. GCar360 is not directed to children. Depending on your law you may request access, correction or deletion of your data.</p>
+<p class="ka">ყველა კავშირი HTTPS-ით ხდება და ვიყენებთ გონივრულ ტექნიკურ ზომებს, თუმცა არცერთი სისტემა არ არის სრულად დაცული. GCar360 ბავშვებისთვის არ არის განკუთვნილი. კანონის შესაბამისად შეგიძლია მოითხოვო მონაცემებზე წვდომა, შესწორება ან წაშლა.</p>
 
-    <p>
-        <strong>
-            gcar360support@gmail.com
-        </strong>
-    </p>
-
-    <h2>6. Purchases and Subscriptions</h2>
-
-    <p>
-        The App may offer paid PRO features through subscriptions
-        provided by Google Play or the Apple App Store.
-    </p>
-
-    <p>
-        We do not receive or store your complete payment-card number
-        through the App. For subscription verification, purchase or
-        transaction identifiers or tokens may be processed by our
-        backend.
-    </p>
-
-    <p>
-        On our website, PRO can also be bought by card through Bank of
-        Georgia or TBC Bank. The card is entered on the bank's payment page;
-        we receive only the order number, product, amount, payment status
-        and the bank's payment identifier. If you choose the monthly
-        automatic payment, the card is saved by Bank of Georgia; we store
-        only the card type and its last four digits (for example
-        "Mastercard •••• 4417") to show on your subscription page.
-    </p>
-
-    <h2>7. Local Storage</h2>
-
-    <p>
-        The App may store certain settings and information locally
-        on your device, including display name, language preference,
-        internal identifiers, subscription entitlement information,
-        application settings, and diagnostic history where applicable.
-    </p>
-
-    <p>
-        Service records you enter (for example oil, filter or brake-fluid
-        changes, dates and odometer values), saved fuel and electric trips
-        and service reminders are stored only on your device. Service
-        reminders are local notifications scheduled by the App; no
-        notification content is sent to our servers.
-    </p>
-
-    <h2>7a. QR Reports and Acceleration Leaderboard</h2>
-
-    <p>
-        If you create a QR report, a summary of the selected scan is stored
-        on our server for 30 days and can be opened by anyone who has the
-        link or QR code: vehicle make, model and year, the last six
-        characters of the VIN, scan summary, trouble codes, readiness and,
-        if present, the service history you entered. After 30 days the link
-        stops working.
-    </p>
-
-    <p>
-        If you publish a 0–100 km/h, 0–60 mph or ¼ mile result, the
-        leaderboard shows your display name, vehicle model and time
-        publicly. The VIN is used to confirm the model; only a one-way hash
-        of it is stored, never the VIN itself. Results can be removed by the
-        administrator.
-    </p>
-
-    <p>
-        While a run is being measured, the App uses your phone's location
-        (GPS, only in the foreground and only during the measurement) to
-        compare the GPS speed with the car's speed. The GPS data stays on
-        your phone unless you publish the result. When you publish, the
-        speed traces are sent to our server; GPS coordinates are sent and
-        kept only for results that need a review (top places or unusually
-        fast results). For those results we may also ask for the video you
-        recorded in the App. Coordinates and videos are deleted 30 days
-        after the review and are seen only by the administrator.
-    </p>
-
-    <h2>8. Accounts and Crash Diagnostics</h2>
-
-    <p>
-        If you create a PRO restore account, we store the email address,
-        a one-way password hash, account sessions and subscription entitlement
-        data. The password itself is not stored. You can permanently delete
-        the account from the PRO screen; cancelling a store subscription is a
-        separate action managed in Google Play or the Apple App Store.
-    </p>
-
-    <p>
-        After an unexpected managed-code crash, the App may send an anonymous
-        diagnostic report on the next launch. It contains the app and operating
-        system versions, platform, exception type and a sanitized stack trace.
-        The report does not include VIN, diagnostic readings, email, account ID,
-        precise location, API keys or authentication tokens.
-    </p>
-
-    <p>
-        To understand how the App is used, it sends an anonymous usage signal
-        at most every few hours: a one-way hash of a random installation
-        identifier, app and operating system version, device model, selected
-        language, whether notifications are allowed and, if you are signed in,
-        your account ID. It does not include your name, phone number, location,
-        VIN or diagnostic readings. It is used only for aggregate statistics
-        (for example, how many installations are active) and to protect accounts
-        from abuse.
-    </p>
-
-    <h2>9. Backend Processing</h2>
-
-    <p>
-        The App communicates with our backend services using HTTPS.
-        Our backend may process information required to provide AI
-        features, subscription verification, entitlement management,
-        website payments, QR reports and the 0–100 leaderboard.
-    </p>
-
-    <h2>10. Third-Party Services</h2>
-
-    <p>
-        Depending on the features used, information may be processed
-        by service providers necessary to operate the App, including
-        cloud hosting, AI services, Google Play, the Apple App Store,
-        Bank of Georgia and TBC Bank (website card payments).
-    </p>
-
-    <h2>11. Data Security</h2>
-
-    <p>
-        We use reasonable technical measures to protect information
-        processed by the App and backend services. However, no method
-        of electronic transmission or storage is completely secure.
-    </p>
-
-    <h2>12. Data Retention</h2>
-
-    <p>
-        Information is retained only for as long as reasonably necessary
-        to provide the relevant functionality, maintain subscriptions
-        and entitlements, maintain security, prevent abuse, and satisfy
-        applicable requirements.
-    </p>
-
-    <h2>13. Children's Privacy</h2>
-
-    <p>
-        GCar360 is not specifically directed to children.
-        We do not knowingly collect personal information from children
-        in violation of applicable law.
-    </p>
-
-    <h2>14. Your Rights</h2>
-
-    <p>
-        Depending on your location and applicable law, you may have
-        rights regarding your personal information, including requests
-        for access, correction, deletion, or other forms of data control.
-    </p>
-
-    <p>
-        For privacy-related requests, contact:
-        <strong>
-            gcar360support@gmail.com
-        </strong>
-    </p>
-
-    <h2>15. Changes to This Privacy Policy</h2>
-
-    <p>
-        We may update this Privacy Policy when the App's features,
-        services, or legal requirements change. The updated version
-        will be posted with a new "Last updated" date.
-    </p>
-
-    <h2>16. Contact</h2>
-
-    <p>
-        Email:
-        <a href="mailto:gcar360support@gmail.com">
-            gcar360support@gmail.com
-        </a>
-    </p>
-
-</div>
+<h2>14. Changes and contact · ცვლილებები და კონტაქტი</h2>
+<p>We will publish changes on this page with a new date. Questions and privacy requests: <a href="mailto:gcar360support@gmail.com">gcar360support@gmail.com</a></p>
+<p class="ka">ცვლილებებს ამ გვერდზე გამოვაქვეყნებთ ახალი თარიღით. კითხვები და მოთხოვნები: <a href="mailto:gcar360support@gmail.com">gcar360support@gmail.com</a></p>
 
 </body>
 </html>
@@ -503,7 +401,7 @@ app.MapPost(
     {
         var rateKey =
             "account-register:" +
-            (http.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+            AdminService.ClientIp(http);
 
         if (!RateWindow.TryConsume(
                 rateKey,
@@ -528,13 +426,15 @@ app.MapPost(
                     deviceId,
                     http.RequestAborted);
 
+            // Same 409 the app already handles, but the text does not
+            // confirm that the e-mail is registered.
             return result is null
                 ? Results.Conflict(
                     new
                     {
                         success = false,
                         message =
-                            "Account already exists."
+                            "Could not create the account. If you already have one, sign in."
                     })
                 : Results.Ok(result);
         }
@@ -558,7 +458,7 @@ app.MapPost(
     {
         var rateKey =
             "account-login:" +
-            (http.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+            AdminService.ClientIp(http);
 
         if (!RateWindow.TryConsume(
                 rateKey,
@@ -570,22 +470,50 @@ app.MapPost(
                 StatusCodes.Status429TooManyRequests);
         }
 
+        // Per e-mail as well: 10 failed sign-ins / 15 minutes from any IP.
+        if (EmailThrottle.IsBlocked(request.Email))
+        {
+            return Results.StatusCode(
+                StatusCodes.Status429TooManyRequests);
+        }
+
         try
         {
             var deviceId =
                 http.Request.Headers[
                     "X-GCS-Device-Id"].ToString();
 
+            // "moveDevice": true moves the account to this phone (password
+            // required, once per 7 days; other sessions end).
             var result =
                 await accounts.LoginAsync(
                     request.Email ?? string.Empty,
                     request.Password ?? string.Empty,
                     deviceId,
+                    request.MoveDevice == true,
                     http.RequestAborted);
 
+            if (result is null)
+                EmailThrottle.Failed(request.Email);
+
+            // The response carries "mustChangePassword": true after an
+            // admin temporary password (AccountSessionResult).
             return result is null
                 ? Results.Unauthorized()
                 : Results.Ok(result);
+        }
+        catch (AccountRebindCooldownException cooldown)
+        {
+            return Results.Json(
+                new
+                {
+                    success = false,
+                    code = "REBIND_COOLDOWN",
+                    nextAllowedAt = cooldown.NextAllowedAt,
+                    message =
+                        "This account was moved to another device less than 7 days ago."
+                },
+                statusCode: StatusCodes.Status429TooManyRequests);
         }
         catch (AccountDeviceMismatchException)
         {
@@ -594,6 +522,7 @@ app.MapPost(
                 {
                     success = false,
                     code = "DEVICE_ALREADY_BOUND",
+                    canMoveDevice = true,
                     message =
                         "This account is already linked to another device."
                 });
@@ -652,41 +581,113 @@ app.MapPost(
             });
     });
 
-app.MapDelete(
-    "/api/accounts/me",
+// Change password (signed in; same headers as the other account calls).
+// Body {"currentPassword","newPassword"}. Other sessions end, this one
+// stays; clears "mustChangePassword".
+app.MapPost(
+    "/api/accounts/password",
     async (
+        ChangePasswordRequest? request,
         HttpContext http,
-        AccountStore accounts,
-        EntitlementStore entitlements,
-        VinQuotaStore vinQuota,
-        WebPaymentService webPayments) =>
+        AccountStore accounts) =>
     {
-        var identity =
+        var authorization =
+            http.Request.Headers.Authorization.ToString();
+
+        var account =
             await accounts.ResolveAsync(
-                http.Request.Headers.Authorization.ToString(),
+                authorization,
                 http.Request.Headers[
                     "X-GCS-Device-Id"].ToString(),
                 http.RequestAborted);
 
+        if (account is null)
+            return SessionExpired();
+
+        if (!RateWindow.TryConsume("account-password:" + account.AccountId, DateTimeOffset.UtcNow, 10, TimeSpan.FromMinutes(15)) ||
+            !RateWindow.TryConsume("account-password-ip:" + AdminService.ClientIp(http), DateTimeOffset.UtcNow, 20, TimeSpan.FromMinutes(15)))
+        {
+            return Results.Json(
+                new { success = false, code = "TOO_MANY" },
+                statusCode: StatusCodes.Status429TooManyRequests);
+        }
+
+        var currentPassword = request?.CurrentPassword ?? string.Empty;
+        var newPassword = request?.NewPassword ?? string.Empty;
+        if (newPassword == currentPassword)
+        {
+            return Results.BadRequest(
+                new
+                {
+                    success = false,
+                    code = "SAME_PASSWORD",
+                    message = "The new password must be different from the current one."
+                });
+        }
+
+        bool changed;
+        try
+        {
+            changed = await accounts.ChangePasswordAsync(
+                account.AccountId,
+                authorization,
+                currentPassword,
+                newPassword,
+                http.RequestAborted);
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(
+                new
+                {
+                    success = false,
+                    code = "WEAK_PASSWORD",
+                    message = ex.Message
+                });
+        }
+
+        if (!changed)
+        {
+            return Results.Json(
+                new
+                {
+                    success = false,
+                    code = "INVALID_PASSWORD",
+                    message = "The current password is wrong."
+                },
+                statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        return Results.Ok(
+            new
+            {
+                success = true
+            });
+    });
+
+app.MapDelete(
+    "/api/accounts/me",
+    async (
+        HttpContext http,
+        AccountStore accounts) =>
+    {
+        var deviceId =
+            http.Request.Headers[
+                "X-GCS-Device-Id"].ToString();
+
+        var identity =
+            await accounts.ResolveAsync(
+                http.Request.Headers.Authorization.ToString(),
+                deviceId,
+                http.RequestAborted);
+
         if (identity is null)
-            return Results.Unauthorized();
+            return SessionExpired();
 
-        // Stop the bank auto-renewal and delete the saved card first,
-        // otherwise the renewal worker would keep charging a deleted account.
-        await webPayments.CancelSubscriptionAsync(
+        await DeleteAccountDataAsync(
             identity.AccountId,
-            http.RequestAborted);
-
-        await entitlements.DeleteUserDataAsync(
-            identity.AccountId,
-            http.RequestAborted);
-
-        await vinQuota.DeleteUserDataAsync(
-            identity.AccountId,
-            http.RequestAborted);
-
-        await accounts.DeleteAsync(
-            identity.AccountId,
+            deviceId,
+            http.RequestServices,
             http.RequestAborted);
 
         return Results.Ok(
@@ -694,6 +695,64 @@ app.MapDelete(
             {
                 success = true
             });
+    });
+
+// ============================================================
+// ACCOUNT DELETION ON THE WEB (Google Play "delete account" URL)
+//   GET  /account/delete             – how to delete + form
+//   POST /api/web/account/delete     – e-mail + password + form token
+// ============================================================
+
+app.MapGet(
+    "/account/delete",
+    (HttpContext http, IConfiguration config, IDataProtectionProvider protection) =>
+    {
+        http.Response.Headers["Cache-Control"] = "no-store";
+        http.Response.Headers["X-Frame-Options"] = "DENY";
+        var token = protection.CreateProtector("GCar360.AccountDelete.v1")
+            .ToTimeLimitedDataProtector()
+            .Protect(Convert.ToHexString(RandomNumberGenerator.GetBytes(16)), TimeSpan.FromMinutes(30));
+        return Results.Content(WebPages.DeleteAccountPage(WebPages.LegalInfo.From(config), token), "text/html; charset=utf-8");
+    });
+
+app.MapPost(
+    "/api/web/account/delete",
+    async (WebAccountDeleteRequest? request, HttpContext http, AccountStore accounts,
+        IDataProtectionProvider protection, CancellationToken ct) =>
+    {
+        var ip = AdminService.ClientIp(http);
+        if (!RateWindow.TryConsume("web-delete-ip:" + ip, DateTimeOffset.UtcNow, 5, TimeSpan.FromHours(1)))
+            return Results.Json(new { success = false, code = "TOO_MANY" }, statusCode: StatusCodes.Status429TooManyRequests);
+
+        // Anti-forgery: the token is issued by GET /account/delete (30 minutes).
+        try
+        {
+            protection.CreateProtector("GCar360.AccountDelete.v1")
+                .ToTimeLimitedDataProtector()
+                .Unprotect(request?.Token ?? string.Empty);
+        }
+        catch (CryptographicException)
+        {
+            return Results.Json(new { success = false, code = "EXPIRED_FORM" }, statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var email = (request?.Email ?? string.Empty).Trim();
+        if (email.Length is 0 or > 254 ||
+            EmailThrottle.IsBlocked(email) ||
+            !RateWindow.TryConsume("web-delete-email:" + email.ToLowerInvariant(), DateTimeOffset.UtcNow, 5, TimeSpan.FromHours(1)))
+            return Results.Json(new { success = false, code = email.Length == 0 ? "INVALID_LOGIN" : "TOO_MANY" },
+                statusCode: email.Length == 0 ? StatusCodes.Status401Unauthorized : StatusCodes.Status429TooManyRequests);
+
+        var account = await accounts.VerifyCredentialsAsync(email, request?.Password ?? string.Empty, ct);
+        if (account is null)
+        {
+            EmailThrottle.Failed(email);
+            await Task.Delay(Random.Shared.Next(300, 700), ct);
+            return Results.Json(new { success = false, code = "INVALID_LOGIN" }, statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        await DeleteAccountDataAsync(account.AccountId, null, http.RequestServices, ct);
+        return Results.Ok(new { success = true });
     });
 
 // ============================================================
@@ -748,6 +807,7 @@ app.MapGet(
                 ct);
 
         var access = AdminAccess.Apply(
+            account.AccountId,
             account.Email,
             await store.GetAccessAsync(
                 account.AccountId,
@@ -1080,11 +1140,16 @@ app.MapPost(
                 StatusCodes.Status429TooManyRequests);
         }
 
+        // Apple: product and expiry come from Apple's answer (the latest
+        // renewal of originalTransactionId); the client's productId is a hint.
         var verified =
             await verifier.VerifyAsync(
                 provider,
-                request.ProductId ?? ProProductId,
+                provider == "apple" ? request.ProductId : request.ProductId ?? ProProductId,
                 transactionId,
+                string.IsNullOrWhiteSpace(request.OriginalTransactionId) || request.OriginalTransactionId.Length > 64
+                    ? null
+                    : request.OriginalTransactionId.Trim(),
                 ct);
 
         if (verified is null)
@@ -1165,6 +1230,157 @@ app.MapPost(
     });
 
 // ============================================================
+// STORE SERVER NOTIFICATIONS
+//   POST /api/store/apple/notifications   – App Store Server Notifications V2
+//   POST /api/store/google/rtdn?token=…    – Google Play RTDN (Pub/Sub push)
+// The payload only says WHICH purchase changed; the state is always
+// read back from Apple / Google before an entitlement is changed.
+// ============================================================
+
+app.MapPost(
+    "/api/store/apple/notifications",
+    async (HttpRequest http, StoreVerificationService verifier, EntitlementStore store,
+        VinQuotaStore quotas, ILogger<StoreVerificationService> log, CancellationToken ct) =>
+    {
+        using var doc = await ReadJsonDocumentAsync(http.Body, ct);
+        if (doc is null || doc.RootElement.ValueKind != JsonValueKind.Object ||
+            !doc.RootElement.TryGetProperty("signedPayload", out var signed) || signed.ValueKind != JsonValueKind.String)
+            return Results.BadRequest();
+
+        var payload = StoreVerificationService.VerifyAppleJws(signed.GetString() ?? string.Empty, out var error);
+        if (payload is not JsonElement notification)
+        {
+            log.LogWarning("Apple notification refused: {Error}", error);
+            return Results.BadRequest();
+        }
+
+        var type = notification.TryGetProperty("notificationType", out var t) ? t.GetString() : null;
+        if (type == "TEST")
+            return Results.Ok();
+
+        var hinted = StoreVerificationService.NotificationTransaction(notification);
+        if (hinted is null)
+            return Results.Ok();
+
+        // Re-query Apple for the transaction.
+        var appleTx = string.IsNullOrWhiteSpace(hinted.TransactionId)
+            ? null
+            : await verifier.GetAppleTransactionAsync(hinted.TransactionId, ct);
+
+        if (appleTx is not null && ProductCatalog.IsConsumable(appleTx.ProductId))
+        {
+            if (appleTx.RevokedAt is not null && !string.IsNullOrWhiteSpace(appleTx.TransactionId))
+                await quotas.RevokeCreditsAsync("apple", appleTx.TransactionId, ct);
+            return Results.Ok();
+        }
+
+        var original = appleTx?.OriginalTransactionId ?? hinted.OriginalTransactionId;
+        if (string.IsNullOrWhiteSpace(original))
+            return Results.Ok();
+
+        var state = await verifier.GetAppleSubscriptionStateAsync(original, ct);
+        if (state is null)
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable); // Apple retries
+
+        var owner = await store.FindClaimOwnerAsync("apple", original, ct);
+        string? legacyKey = null;
+        if (owner is null && !string.IsNullOrWhiteSpace(hinted.TransactionId))
+        {
+            owner = await store.FindClaimOwnerAsync("apple", hinted.TransactionId, ct);
+            legacyKey = owner is null ? null : hinted.TransactionId;
+        }
+        if (owner is null)
+            return Results.Ok(); // not linked to an account yet; /api/store/verify will do it
+
+        await ApplyStoreStateAsync(store, owner, "apple", state, legacyKey, ct);
+        log.LogInformation("Apple {Type}: {State} for {Owner}", type, state.State, owner);
+        return Results.Ok();
+    });
+
+app.MapPost(
+    "/api/store/google/rtdn",
+    async (HttpRequest http, StoreVerificationService verifier, EntitlementStore store,
+        VinQuotaStore quotas, ILogger<StoreVerificationService> log, CancellationToken ct) =>
+    {
+        var expected = Environment.GetEnvironmentVariable("GCS_RTDN_TOKEN");
+        if (string.IsNullOrWhiteSpace(expected) || expected.Length < 16)
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+        // Header X-GCS-RTDN-Token, or ?token= (Pub/Sub push cannot set headers).
+        // The token / query string is never logged.
+        var supplied = http.Headers["X-GCS-RTDN-Token"].ToString();
+        if (string.IsNullOrEmpty(supplied))
+            supplied = http.Query["token"].ToString();
+        if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(supplied), Encoding.UTF8.GetBytes(expected)))
+            return Results.Unauthorized();
+
+        using var envelope = await ReadJsonDocumentAsync(http.Body, ct);
+        if (envelope is null ||
+            !envelope.RootElement.TryGetProperty("message", out var message) ||
+            !message.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.String)
+            return Results.NoContent(); // malformed: acknowledge so Pub/Sub stops retrying
+
+        JsonDocument notificationDoc;
+        try
+        {
+            notificationDoc = JsonDocument.Parse(Convert.FromBase64String(data.GetString() ?? string.Empty));
+        }
+        catch (Exception ex) when (ex is FormatException or JsonException)
+        {
+            return Results.NoContent();
+        }
+
+        using (notificationDoc)
+        {
+            var root = notificationDoc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object || root.TryGetProperty("testNotification", out _))
+                return Results.NoContent();
+
+            string? purchaseToken = null;
+            var oneTime = false;
+            var voided = false;
+            if (root.TryGetProperty("subscriptionNotification", out var sub) &&
+                sub.TryGetProperty("purchaseToken", out var subToken))
+            {
+                purchaseToken = subToken.GetString();
+            }
+            else if (root.TryGetProperty("voidedPurchaseNotification", out var voidNote) &&
+                     voidNote.TryGetProperty("purchaseToken", out var voidToken))
+            {
+                purchaseToken = voidToken.GetString();
+                voided = true;
+                oneTime = voidNote.TryGetProperty("productType", out var productType) &&
+                          productType.TryGetInt32(out var kind) && kind == 2;
+            }
+
+            if (string.IsNullOrWhiteSpace(purchaseToken) || purchaseToken.Length > 8192)
+                return Results.NoContent();
+
+            if (voided && oneTime)
+            {
+                var isVoided = await verifier.IsGoogleVoidedAsync(purchaseToken, ct);
+                if (isVoided is null)
+                    return Results.StatusCode(StatusCodes.Status503ServiceUnavailable); // Pub/Sub retries
+                if (isVoided == true)
+                    await quotas.RevokeCreditsAsync("google", purchaseToken, ct);
+                return Results.NoContent();
+            }
+
+            // Re-query Google for the purchase token.
+            var state = await verifier.GetGoogleSubscriptionStateAsync(purchaseToken, ct);
+            if (state is null)
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+            var owner = await store.FindClaimOwnerAsync("google", purchaseToken, ct);
+            if (owner is null)
+                return Results.NoContent();
+
+            await ApplyStoreStateAsync(store, owner, "google", state, null, ct);
+            log.LogInformation("Google RTDN: {State} for {Owner}", state.State, owner);
+            return Results.NoContent();
+        }
+    });
+
+// ============================================================
 // AI
 // ============================================================
 
@@ -1176,14 +1392,16 @@ app.MapPost(
         IHttpClientFactory clients,
         IConfiguration config,
         EntitlementStore entitlements,
-        AccountStore accounts) =>
+        AccountStore accounts,
+        UsageStore usage) =>
         GenerateGeminiAsync(
             request,
             http,
             clients,
             config,
             entitlements,
-            accounts));
+            accounts,
+            usage));
 
 app.MapPost(
     "/api/ai/chat",
@@ -1193,14 +1411,16 @@ app.MapPost(
         IHttpClientFactory clients,
         IConfiguration config,
         EntitlementStore entitlements,
-        AccountStore accounts) =>
+        AccountStore accounts,
+        UsageStore usage) =>
         GenerateGeminiAsync(
             request,
             http,
             clients,
             config,
             entitlements,
-            accounts));
+            accounts,
+            usage));
 
 // ============================================================
 // VIN HISTORY
@@ -1223,7 +1443,7 @@ app.MapGet(
             http.Request.Headers.Authorization.ToString();
 
         if (string.IsNullOrWhiteSpace(authorization))
-            return Results.Unauthorized();
+            return SessionExpired();
 
         var account =
             await accounts.ResolveAsync(
@@ -1232,14 +1452,15 @@ app.MapGet(
                 ct);
 
         if (account is null)
-            return Results.Unauthorized();
+            return SessionExpired();
 
         var access = AdminAccess.Apply(
+            account.AccountId,
             account.Email,
             await store.GetAccessAsync(account.AccountId, ct));
 
         var quota = await quotas.GetQuotaAsync(account.AccountId, access, null, ct);
-        return Results.Ok(AdminAccess.IsAdmin(account.Email) ? AdminAccess.Quota(quota) : quota);
+        return Results.Ok(AdminAccess.HasPerks(account.AccountId, account.Email) ? AdminAccess.Quota(quota) : quota);
     });
 
 app.MapGet(
@@ -1312,7 +1533,7 @@ app.MapPost(
         WebPaymentService payments,
         CancellationToken ct) =>
     {
-        var ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var ip = AdminService.ClientIp(http);
         if (!RateWindow.TryConsume("web-checkout:" + ip, DateTimeOffset.UtcNow, 10, TimeSpan.FromMinutes(15)))
             return Results.Json(new { success = false, code = "TOO_MANY" }, statusCode: StatusCodes.Status429TooManyRequests);
 
@@ -1320,13 +1541,19 @@ app.MapPost(
         if (WebPaymentService.PriceFor(request.ProductId, currency) is null)
             return Results.BadRequest(new { success = false, code = "UNKNOWN_PRODUCT" });
 
+        if (EmailThrottle.IsBlocked(request.Email))
+            return Results.Json(new { success = false, code = "TOO_MANY" }, statusCode: StatusCodes.Status429TooManyRequests);
+
         var account = await accounts.VerifyCredentialsAsync(
             request.Email ?? string.Empty,
             request.Password ?? string.Empty,
             ct);
 
         if (account is null)
+        {
+            EmailThrottle.Failed(request.Email);
             return Results.Json(new { success = false, code = "INVALID_LOGIN" }, statusCode: StatusCodes.Status401Unauthorized);
+        }
 
         if (ProductCatalog.RequiresVinSubscription(request.ProductId))
         {
@@ -1508,7 +1735,7 @@ app.MapPost(
         if (userId is null)
             return Results.Json(new { success = false, code = "INVALID_LOGIN" }, statusCode: StatusCodes.Status401Unauthorized);
 
-        var ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var ip = AdminService.ClientIp(http);
         if (!RateWindow.TryConsume("web-retry:" + userId, DateTimeOffset.UtcNow, 3, TimeSpan.FromHours(1)) ||
             !RateWindow.TryConsume("web-retry-ip:" + ip, DateTimeOffset.UtcNow, 10, TimeSpan.FromHours(1)))
             return Results.Json(new { success = false, code = "TOO_MANY" }, statusCode: StatusCodes.Status429TooManyRequests);
@@ -1550,6 +1777,8 @@ app.MapPost(
             return Results.BadRequest(new { success = false, reason = gpsError ?? "gps check failed" });
 
         var status = await leaderboard.SaveAsync(identity.AccountId, request, gps, ct);
+        if (status == AccelerationLeaderboardStore.SubmissionIdTaken)
+            return Results.Conflict(new { success = false, code = AccelerationLeaderboardStore.SubmissionIdTaken, reason = "submission id already used" });
         return Results.Ok(new { success = status != "Rejected", status, videoRequired = status == "Pending" });
     });
 
@@ -1580,6 +1809,20 @@ app.MapPost(
         if (!await leaderboard.CanUploadVideoAsync(identity.AccountId, submissionId, ct))
             return Results.NotFound(new { success = false, reason = "no result waiting for a video" });
 
+        // Disk-fill protection: per account (3 / day, 300 MB kept) and
+        // globally (GCS_VIDEO_DISK_LIMIT_MB, 2 GB free) — checked before the
+        // body is read and again with the real size.
+        IResult? VideoRefused(string? reason) => reason switch
+        {
+            null => null,
+            _ when reason.Contains("account") || reason.StartsWith("daily") =>
+                Results.Json(new { success = false, reason }, statusCode: StatusCodes.Status429TooManyRequests),
+            _ => Results.Json(new { success = false, reason }, statusCode: StatusCodes.Status503ServiceUnavailable)
+        };
+
+        if (VideoRefused(await leaderboard.CheckVideoQuotaAsync(identity.AccountId, submissionId, 0, ct)) is { } early)
+            return early;
+
         if (!http.Request.HasFormContentType)
             return Results.BadRequest(new { success = false, reason = "multipart form required" });
 
@@ -1590,7 +1833,10 @@ app.MapPost(
         if (file.Length > MaxRankingVideoBytes)
             return Results.BadRequest(new { success = false, reason = "video too large" });
 
-        var target = leaderboard.VideoPath(submissionId);
+        if (VideoRefused(await leaderboard.CheckVideoQuotaAsync(identity.AccountId, submissionId, file.Length, ct)) is { } refused)
+            return refused;
+
+        var target = leaderboard.VideoPath(identity.AccountId, submissionId);
         var temp = target + ".upload";
         await using (var input = file.OpenReadStream())
         {
@@ -1606,22 +1852,23 @@ app.MapPost(
         }
 
         File.Move(temp, target, overwrite: true);
-        await leaderboard.MarkVideoAsync(submissionId, ct);
+        await leaderboard.MarkVideoAsync(identity.AccountId, submissionId, ct);
         return Results.Ok(new { success = true });
     });
 
 app.MapGet(
-    "/admin/acceleration/video/{submissionId}",
-    (string submissionId, HttpContext http, AdminService admin, AccelerationLeaderboardStore leaderboard) =>
+    "/admin/acceleration/video/{accountId}/{submissionId}",
+    (string accountId, string submissionId, HttpContext http, AdminService admin, AccelerationLeaderboardStore leaderboard) =>
     {
         AdminService.SecureHeaders(http.Response);
         if (!AdminService.IpAllowed(http) || admin.ReadSession(http.Request, AdminAccess.IsAdmin) is null)
             return Results.NotFound();
-        if (submissionId.Length > 64 || submissionId.Any(c => !char.IsLetterOrDigit(c) && c != '-'))
+        if (submissionId.Length > 64 || submissionId.Any(c => !char.IsLetterOrDigit(c) && c != '-') ||
+            accountId.Length > 64 || accountId.Any(c => !char.IsLetterOrDigit(c) && c != '-'))
             return Results.NotFound();
 
-        var path = leaderboard.VideoPath(submissionId);
-        return File.Exists(path)
+        var path = leaderboard.ExistingVideoPath(accountId, submissionId);
+        return path is not null
             ? Results.File(path, "video/mp4", enableRangeProcessing: true)
             : Results.NotFound();
     });
@@ -1630,17 +1877,28 @@ app.MapGet(
 app.MapPost(
     "/api/reports/qr",
     async (QrReportCreateRequest request, HttpContext http, AccountStore accounts, QrReportStore reports,
-        IConfiguration config, CancellationToken ct) =>
+        UsageStore usage, IConfiguration config, CancellationToken ct) =>
     {
         var deviceId = http.Request.Headers["X-GCS-Device-Id"].ToString();
         if (deviceId.Length is < 16 or > 64)
             return Results.BadRequest(new { success = false, reason = "invalid device" });
-        if (!RateWindow.TryConsume("qr-report:" + deviceId, DateTimeOffset.UtcNow, 20, TimeSpan.FromHours(1)))
+        // Per device and per IP (20 / hour each).
+        if (!RateWindow.TryConsume("qr-report:" + deviceId, DateTimeOffset.UtcNow, 20, TimeSpan.FromHours(1)) ||
+            !RateWindow.TryConsume("qr-report-ip:" + AdminService.ClientIp(http), DateTimeOffset.UtcNow, 20, TimeSpan.FromHours(1)))
             return Results.StatusCode(StatusCodes.Status429TooManyRequests);
 
         var invalid = QrReportStore.Validate(request);
         if (invalid is not null)
             return Results.BadRequest(new { success = false, reason = invalid });
+
+        // Global daily cap (persistent): GCS_QR_DAILY_LIMIT, default 2000.
+        var qrDailyLimit =
+            int.TryParse(Environment.GetEnvironmentVariable("GCS_QR_DAILY_LIMIT"), out var configuredQrLimit) && configuredQrLimit > 0
+                ? configuredQrLimit
+                : 2000;
+        var (qrAllowed, _) = await usage.TryConsumeDailyAsync("qr-reports:global", qrDailyLimit, ct);
+        if (!qrAllowed)
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
 
         var identity = await accounts.ResolveAsync(http.Request.Headers.Authorization.ToString(), deviceId, ct);
         var owner = identity?.AccountId ?? "device:" + deviceId;
@@ -1714,14 +1972,14 @@ app.MapPost(
             string.IsNullOrWhiteSpace(report.Make) || string.IsNullOrWhiteSpace(report.Model) || string.IsNullOrWhiteSpace(report.Year))
             return Results.BadRequest();
 
-        var ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var ip = AdminService.ClientIp(http);
         if (!RateWindow.TryConsume("svc-search:" + deviceId, DateTimeOffset.UtcNow, 20, TimeSpan.FromHours(1)) ||
             !RateWindow.TryConsume("svc-search-ip:" + ip, DateTimeOffset.UtcNow, 60, TimeSpan.FromHours(1)))
             return Results.StatusCode(StatusCodes.Status429TooManyRequests);
 
         var authorization = http.Request.Headers.Authorization.ToString();
         var identity = string.IsNullOrWhiteSpace(authorization) ? null : await accounts.ResolveAsync(authorization, deviceId, ct);
-        await searches.AddAsync(report, UsageStore.HashDevice(deviceId), identity?.AccountId, AdminAccess.IsAdmin(identity?.Email), ct);
+        await searches.AddAsync(report, UsageStore.HashDevice(deviceId), identity?.AccountId, AdminAccess.HasPerks(identity?.AccountId, identity?.Email), ct);
         return Results.NoContent();
     });
 
@@ -1731,10 +1989,51 @@ app.MapGet(
     {
         if (string.IsNullOrWhiteSpace(make) || string.IsNullOrWhiteSpace(model) || string.IsNullOrWhiteSpace(year))
             return Results.BadRequest();
-        var ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var ip = AdminService.ClientIp(http);
         if (!RateWindow.TryConsume("svc-known-ip:" + ip, DateTimeOffset.UtcNow, 120, TimeSpan.FromHours(1)))
             return Results.StatusCode(StatusCodes.Status429TooManyRequests);
         return Results.Ok(new { sources = await searches.KnownSourcesAsync(make, model, year, ct) });
+    });
+
+// ============================================================
+// ODOMETER FINDER (app Mileage page, read-only search)
+//   POST /api/odometer/report – places found for a model (no distance)
+//   GET  /api/odometer/known  – places usable for a model
+// ============================================================
+
+app.MapPost(
+    "/api/odometer/report",
+    async (OdometerReport? report, HttpContext http, AccountStore accounts, OdometerStore store, CancellationToken ct) =>
+    {
+        var deviceId = http.Request.Headers["X-GCS-Device-Id"].ToString();
+        if (report is null || deviceId.Length is < 16 or > 64 ||
+            string.IsNullOrWhiteSpace(report.Make) || string.IsNullOrWhiteSpace(report.Model) || string.IsNullOrWhiteSpace(report.Year) ||
+            report.Locations is not { Count: > 0 })
+            return Results.BadRequest();
+
+        var ip = AdminService.ClientIp(http);
+        if (!RateWindow.TryConsume("odo:" + deviceId, DateTimeOffset.UtcNow, 10, TimeSpan.FromHours(1)) ||
+            !RateWindow.TryConsume("odo-ip:" + ip, DateTimeOffset.UtcNow, 30, TimeSpan.FromHours(1)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        var authorization = http.Request.Headers.Authorization.ToString();
+        var identity = string.IsNullOrWhiteSpace(authorization) ? null : await accounts.ResolveAsync(authorization, deviceId, ct);
+        // Only signed-in reports from different phones AND networks can enable a place (OdometerStore).
+        await store.AddAsync(report, UsageStore.HashDevice(deviceId), identity?.AccountId,
+            AdminAccess.HasPerks(identity?.AccountId, identity?.Email), ct, OdometerStore.HashIp(AdminService.ClientIp(http)));
+        return Results.NoContent();
+    });
+
+app.MapGet(
+    "/api/odometer/known",
+    async (string? make, string? model, string? year, HttpContext http, OdometerStore store, CancellationToken ct) =>
+    {
+        if (string.IsNullOrWhiteSpace(make) || string.IsNullOrWhiteSpace(model))
+            return Results.BadRequest();
+        var ip = AdminService.ClientIp(http);
+        if (!RateWindow.TryConsume("odo-known-ip:" + ip, DateTimeOffset.UtcNow, 120, TimeSpan.FromHours(1)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        return Results.Ok(new { locations = await store.KnownAsync(make, model, year ?? string.Empty, ct) });
     });
 
 app.MapPost(
@@ -1746,7 +2045,7 @@ app.MapPost(
             string.IsNullOrWhiteSpace(recording.Make) || string.IsNullOrWhiteSpace(recording.Model))
             return Results.BadRequest();
 
-        var ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var ip = AdminService.ClientIp(http);
         if (!RateWindow.TryConsume("reset-rec:" + deviceId, DateTimeOffset.UtcNow, 10, TimeSpan.FromHours(1)) ||
             !RateWindow.TryConsume("reset-rec-ip:" + ip, DateTimeOffset.UtcNow, 30, TimeSpan.FromHours(1)))
             return Results.StatusCode(StatusCodes.Status429TooManyRequests);
@@ -1773,7 +2072,7 @@ app.MapGet(
     "/api/customs/rules",
     async (HttpContext http, CustomsRulesService customs, CancellationToken ct) =>
     {
-        var ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var ip = AdminService.ClientIp(http);
         if (!RateWindow.TryConsume("customs-ip:" + ip, DateTimeOffset.UtcNow, 120, TimeSpan.FromHours(1)))
             return Results.StatusCode(StatusCodes.Status429TooManyRequests);
         return Results.Ok(await customs.GetAsync(ct));
@@ -1845,10 +2144,11 @@ app.MapGet(
                 await http.RequestServices.GetRequiredService<ServiceSearchStore>().LatestAsync(200, ct),
                 await http.RequestServices.GetRequiredService<ResetRecordingStore>().LatestAsync(100, ct),
                 note, ok),
+            "odometer" => AdminPages.Odometer(session, await http.RequestServices.GetRequiredService<OdometerStore>().GroupsAsync(null, null, ct), note, ok),
             "crashes" => AdminPages.Crashes(session, await http.RequestServices.GetRequiredService<CrashReportStore>().GetGroupsAsync(30, ct), note, ok),
             "log" => AdminPages.Log(session, await admin.AuditLogAsync(ct), note, ok),
             "security" => AdminPages.Security(session, AdminService.NewTotpSecret(), note, ok),
-            _ => AdminPages.Overview(session, await admin.OverviewAsync(ct), await play.GetAsync(ct), note, ok)
+            _ => await OverviewAdminAsync()
         };
         return Results.Content(html, "text/html; charset=utf-8");
 
@@ -1858,6 +2158,23 @@ app.MapGet(
             // Videos and GPS coordinates are removed 30 days after the review.
             await ranking.CleanupEvidenceAsync(ct);
             return AdminPages.Acceleration(session, await ranking.GetAdminAsync(ct), note, ok);
+        }
+
+        async Task<string> OverviewAdminAsync()
+        {
+            // Warning when more than 80% of this month's paid VIN-provider budget is used.
+            var vinData = http.RequestServices.GetRequiredService<VinDataService>();
+            var budget = vinData.MonthlyBudget;
+            var used = await vinData.GetUsedRequestsAsync(ct);
+            var overviewNote = note;
+            var overviewOk = ok;
+            if (budget > 0 && used * 100 > budget * 80)
+            {
+                overviewNote = $"⚠ VIN პროვაიდერის თვიური ბიუჯეტი: გამოყენებულია {used} / {budget} ({used * 100 / budget}%). / VIN provider monthly budget {used}/{budget} used." +
+                               (note is null ? "" : " · " + note);
+                overviewOk = false;
+            }
+            return AdminPages.Overview(session, await admin.OverviewAsync(ct), await play.GetAsync(ct), overviewNote, overviewOk);
         }
     });
 
@@ -1878,22 +2195,35 @@ app.MapPost(
 
         if (!http.Request.HasFormContentType)
             return Results.Redirect("/admin");
+
+        // 2-step sign-in is mandatory: without the secret nobody gets in.
+        if (!AdminService.TwoStepEnabled)
+        {
+            await admin.AuditAsync(null, "login_no_totp", null, ip, ct);
+            return Results.Content(AdminPages.Login("Set GCS_ADMIN_TOTP_SECRET"), "text/html; charset=utf-8");
+        }
+
         var form = await http.Request.ReadFormAsync(ct);
         var email = form["email"].ToString().Trim();
         var password = form["password"].ToString();
 
-        var account = await accounts.VerifyCredentialsAsync(email, password, ct);
+        var blocked = EmailThrottle.IsBlocked(email);
+        var account = blocked ? null : await accounts.VerifyCredentialsAsync(email, password, ct);
         var valid = account is not null && AdminAccess.IsAdmin(account.Email) &&
                     admin.VerifyTotp(account.Email, form["code"].ToString());
         if (!valid)
         {
+            if (!blocked)
+                EmailThrottle.Failed(email);
             // Slow down guessing a little.
             await Task.Delay(Random.Shared.Next(400, 900), ct);
             await admin.AuditAsync(email.Length > 120 ? email[..120] : email, "login_failed", null, ip, ct);
-            return Results.Content(AdminPages.Login("შესვლა ვერ მოხერხდა. შეამოწმე მეილი, პაროლი" + (AdminService.TwoStepEnabled ? " და კოდი." : ".")), "text/html; charset=utf-8");
+            return Results.Content(AdminPages.Login("შესვლა ვერ მოხერხდა. შეამოწმე მეილი, პაროლი და კოდი."), "text/html; charset=utf-8");
         }
 
         await admin.AuditAsync(account!.Email, "login", null, ip, ct);
+        // From now on this account (not just the e-mail) gets the admin perks.
+        await admin.MarkTotpLoginAsync(account.AccountId, account.Email, ct);
         http.Response.Cookies.Append(AdminService.CookieName, admin.CreateCookie(account.Email, http.Request), AdminService.CookieOptions());
         return Results.Redirect("/admin");
     });
@@ -1980,10 +2310,24 @@ app.MapPost(
             }
         }
 
+        if (kind == "odometer")
+        {
+            if (!long.TryParse(id, out var groupId))
+                return Results.Redirect(Back("odometer", "ჩანაწერი ვერ მოიძებნა", false));
+            var status = action switch { "approve" => "approved", "reject" => "rejected", "reset" => "pending", _ => "" };
+            var changed = status.Length > 0 &&
+                          await http.RequestServices.GetRequiredService<OdometerStore>().DecideAsync(groupId, status, session.Email, ct);
+            await admin.AuditAsync(session.Email, "odometer_" + action, id, ip, ct);
+            var label = status switch { "approved" => "დადასტურდა — ამ მოდელზე ყველასთვის ჩაირთო", "rejected" => "უარყოფილია", _ => "დაბრუნდა მოლოდინში" };
+            return Results.Redirect(Back("odometer", changed ? label : "ვერ შეიცვალა", changed));
+        }
+
         if (kind == "acceleration")
         {
-            var changed = await acceleration.ReviewAsync(id, action, session.Email, ct);
-            await admin.AuditAsync(session.Email, "acceleration_" + action, id, ip, ct);
+            // One row: SubmissionId (route) + AccountId (hidden form field).
+            var owner = form["account"].ToString();
+            var changed = await acceleration.ReviewAsync(id, owner, action, session.Email, ct);
+            await admin.AuditAsync(session.Email, "acceleration_" + action, id + " · " + (owner.Length > 64 ? owner[..64] : owner), ip, ct);
             var label = action switch { "approve" => "დამოწმდა", "reject" => "უარყოფილია", "delete" => "წაიშალა", _ => "ვერ დამუშავდა" };
             return Results.Redirect(Back("acceleration", changed ? $"შედეგი {label}" : "შედეგი ვერ მოიძებნა", changed));
         }
@@ -2003,6 +2347,24 @@ app.MapPost(
                     await accounts.BanAsync(id, reason.Length > 200 ? reason[..200] : reason, session.Email, ct);
                     await admin.AuditAsync(session.Email, "ban", email + (reason.Length > 0 ? " · " + reason : ""), ip, ct);
                     return Results.Redirect(Back("users", email + " დაიბლოკა", true));
+
+                case "temppass":
+                {
+                    // No e-mail sender exists: the owner sees the password once
+                    // (in this response, never in a URL) and passes it on.
+                    var temporary = AccountStore.NewTemporaryPassword();
+                    var set = await accounts.SetPasswordAsync(id, temporary, ct);
+                    await admin.AuditAsync(session.Email, "temp_password", email, ip, ct);
+                    var page = AdminPages.Users(
+                        session,
+                        await admin.UsersAsync(email, ct),
+                        email,
+                        set
+                            ? $"{email}: დროებითი პაროლი — {temporary} · გადაეცი მომხმარებელს; შესვლის შემდეგ შეცვალოს. ყველა სესია დასრულდა, მოწყობილობა მოიხსნა."
+                            : "პაროლი ვერ შეიცვალა",
+                        set);
+                    return Results.Content(page, "text/html; charset=utf-8");
+                }
 
                 case "unbind":
                     await accounts.ResetDeviceAsync(id, ct);
@@ -2058,7 +2420,11 @@ app.MapGet(
 
         var account = await ResolveVinAccountAsync(http, accounts, ct);
         if (account is null)
-            return Results.Unauthorized();
+            return SessionExpired();
+
+        // Each new VIN can cost a VinAudit availability query: 30 / hour per account.
+        if (!RateWindow.TryConsume("vin-full:" + account.AccountId, DateTimeOffset.UtcNow, 30, TimeSpan.FromHours(1)))
+            return Results.Json(new { success = false, code = "TOO_MANY" }, statusCode: StatusCodes.Status429TooManyRequests);
 
         var saved = await full.GetSavedAsync(account.AccountId, vin, ct);
         if (saved is not null)
@@ -2120,7 +2486,7 @@ app.MapPost(
 
         var account = await ResolveVinAccountAsync(http, accounts, ct);
         if (account is null)
-            return Results.Unauthorized();
+            return SessionExpired();
 
         if (!RateWindow.TryConsume("full-checkout:" + account.AccountId, DateTimeOffset.UtcNow, 10, TimeSpan.FromMinutes(15)))
             return Results.Json(new { success = false, code = "TOO_MANY" }, statusCode: StatusCodes.Status429TooManyRequests);
@@ -2133,7 +2499,7 @@ app.MapPost(
             return Results.Json(new { success = false, code = "NO_RECORDS", reason = check.Reason }, statusCode: StatusCodes.Status409Conflict);
 
         // The owner opens it without the bank (only VinAudit charges).
-        if (AdminAccess.IsAdmin(account.Email))
+        if (AdminAccess.HasPerks(account.AccountId, account.Email))
         {
             var bought = await full.PurchaseAsync(account.AccountId, vin, "admin:" + Guid.NewGuid().ToString("N"), ct);
             return bought.Success
@@ -2202,7 +2568,8 @@ static async Task<IResult> GenerateGeminiAsync(
     IHttpClientFactory clients,
     IConfiguration config,
     EntitlementStore entitlements,
-    AccountStore accounts)
+    AccountStore accounts,
+    UsageStore usage)
 {
     if (
         request is null ||
@@ -2216,7 +2583,8 @@ static async Task<IResult> GenerateGeminiAsync(
             });
     }
 
-    if (request.Prompt.Length > 30000)
+    // The app keeps prompts under 25,000 characters.
+    if (request.Prompt.Length > 28000)
     {
         return Results.BadRequest(
             new
@@ -2228,7 +2596,7 @@ static async Task<IResult> GenerateGeminiAsync(
     if (!http.Request.Headers.TryGetValue("X-GCS-User-Id", out var userIdHeader) ||
         !Guid.TryParse(userIdHeader.ToString(), out _))
     {
-        return Results.Unauthorized();
+        return SessionExpired();
     }
 
     var userId = userIdHeader.ToString();
@@ -2236,7 +2604,7 @@ static async Task<IResult> GenerateGeminiAsync(
         http.Request.Headers.Authorization.ToString();
 
     if (string.IsNullOrWhiteSpace(authorization))
-        return Results.Unauthorized();
+        return SessionExpired();
 
     var account =
         await accounts.ResolveAsync(
@@ -2250,9 +2618,9 @@ static async Task<IResult> GenerateGeminiAsync(
             userId,
             StringComparison.OrdinalIgnoreCase))
     {
-        return Results.Unauthorized();
+        return SessionExpired();
     }
-    var access = AdminAccess.Apply(account.Email, await entitlements.GetAccessAsync(userId, http.RequestAborted));
+    var access = AdminAccess.Apply(account.AccountId, account.Email, await entitlements.GetAccessAsync(userId, http.RequestAborted));
     if (!access.HasObd)
     {
         return Results.StatusCode(StatusCodes.Status403Forbidden);
@@ -2269,6 +2637,30 @@ static async Task<IResult> GenerateGeminiAsync(
             TimeSpan.FromMinutes(1)))
     {
         return Results.StatusCode(429);
+    }
+
+    // Cost control: requests per account and UTC day (GCS_AI_DAILY_LIMIT,
+    // default 60), stored in SQLite so restarts do not reset it.
+    if (!AdminAccess.HasPerks(account.AccountId, account.Email))
+    {
+        var dailyLimit =
+            int.TryParse(Environment.GetEnvironmentVariable("GCS_AI_DAILY_LIMIT"), out var configuredLimit) && configuredLimit > 0
+                ? configuredLimit
+                : 60;
+        var (allowed, used) = await usage.TryConsumeDailyAsync("ai:" + account.AccountId, dailyLimit, http.RequestAborted);
+        if (!allowed)
+        {
+            return Results.Json(
+                new
+                {
+                    success = false,
+                    code = "AI_DAILY_LIMIT",
+                    limit = dailyLimit,
+                    used,
+                    error = "AI-ის დღიური ლიმიტი ამოიწურა. სცადე ხვალ. / Daily AI limit reached. Try again tomorrow."
+                },
+                statusCode: StatusCodes.Status429TooManyRequests);
+        }
     }
 
     var apiKey =
@@ -2301,8 +2693,9 @@ static async Task<IResult> GenerateGeminiAsync(
     int providerStatus =
         StatusCodes.Status503ServiceUnavailable;
 
+    // At most two models per request (the chosen one + one fallback).
     foreach (var candidateModel in
-             AppConfig.GetModelFallbackOrder(model))
+             AppConfig.GetModelFallbackOrder(model).Take(2))
     {
         var uri =
             $"https://generativelanguage.googleapis.com/v1beta/models/" +
@@ -2356,9 +2749,9 @@ static async Task<IResult> GenerateGeminiAsync(
                     generationConfig =
                         new
                         {
-                            // Newer Gemini models spend part of this budget on internal
-                            // reasoning; 1800 cut chat answers off mid-sentence.
-                            maxOutputTokens = 8192,
+                            // Cost cap. Newer Gemini models spend part of this budget on
+                            // internal reasoning (1800 cut chat answers off mid-sentence).
+                            maxOutputTokens = 2048,
                             temperature = 0.3
                         }
                 });
@@ -2466,7 +2859,7 @@ static async Task<IResult> BuildVinReportAsync(
     CancellationToken ct)
 {
     vin = (vin ?? string.Empty).Trim().ToUpperInvariant();
-    if (!System.Text.RegularExpressions.Regex.IsMatch(vin, "^[A-HJ-NPR-Z0-9]{17}$"))
+    if (!VinRules.IsPlausible(vin))
         return Results.BadRequest(new { success = false, code = "INVALID_VIN" });
 
     // Which provider answered what (shown to the owner in the app).
@@ -2481,11 +2874,14 @@ static async Task<IResult> BuildVinReportAsync(
         : await accounts.ResolveAsync(authorization, deviceId, ct);
 
     if (account is null && unlock)
-        return Results.Unauthorized();
+        return SessionExpired();
+
+    // A token was sent but is no longer valid: the app should sign in again.
+    var sessionExpired = account is null && !string.IsNullOrWhiteSpace(authorization);
 
     var userId = account?.AccountId;
     var now = DateTimeOffset.UtcNow;
-    var ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    var ip = AdminService.ClientIp(http);
     var callerKey = userId?.ToLowerInvariant() ??
         "device:" + (deviceId.Length is > 0 and <= 128 ? deviceId : ip);
 
@@ -2498,20 +2894,56 @@ static async Task<IResult> BuildVinReportAsync(
         ? new VinQuota(false, 0, 0, 0, 0, null, false)
         : await quotas.GetQuotaAsync(userId, access, vin, ct);
 
-    // Owner / test accounts (GCS_ADMIN_EMAILS): full history, nothing is counted.
-    if (AdminAccess.IsAdmin(account?.Email))
+    // Owner / test accounts (GCS_ADMIN_EMAILS + a completed 2-step admin
+    // sign-in): full history, nothing is counted.
+    var perks = AdminAccess.HasPerks(account?.AccountId, account?.Email);
+    if (perks)
     {
-        access = AdminAccess.Apply(account?.Email, access);
+        access = AdminAccess.Apply(account?.AccountId, account?.Email, access);
         quota = AdminAccess.Quota(quota) with { Unlocked = true };
     }
 
-    // Free previews cost the provider budget, so each free caller may
-    // preview a limited number of VINs per day.
+    // Free previews cost the provider budget. Anonymous callers get only
+    // the free decoded VIN data (no provider call); signed-in free callers
+    // may preview a limited number of VINs per day (persistent counter).
     var paying = access.HasVin || quota.Credits > 0 || quota.Unlocked;
-    if (!paying && !unlock &&
-        (!RateWindow.TryConsume("vin-preview:" + callerKey, now, 8, TimeSpan.FromDays(1)) ||
-         !RateWindow.TryConsume("vin-preview-ip:" + ip, now, 20, TimeSpan.FromDays(1))))
-        return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+    var signInRequired = account is null;
+    if (!paying && !unlock)
+    {
+        if (!RateWindow.TryConsume("vin-preview-ip:" + ip, now, 20, TimeSpan.FromDays(1)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        if (signInRequired)
+        {
+            if (!RateWindow.TryConsume("vin-preview:" + callerKey, now, 30, TimeSpan.FromDays(1)))
+                return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        }
+        else
+        {
+            var previewLimit =
+                int.TryParse(Environment.GetEnvironmentVariable("GCS_VIN_PREVIEW_DAILY_LIMIT"), out var configuredPreview) && configuredPreview > 0
+                    ? configuredPreview
+                    : 8;
+            var usage = http.RequestServices.GetRequiredService<UsageStore>();
+            var (allowed, _) = await usage.TryConsumeDailyAsync("vin-preview:" + userId, previewLimit, ct);
+            if (!allowed)
+                return Results.Json(
+                    new { success = false, code = "PREVIEW_DAILY_LIMIT", limit = previewLimit },
+                    statusCode: StatusCodes.Status429TooManyRequests);
+
+            // Per network as well (many free accounts from one IP), persistent,
+            // IP stored only as a hash: GCS_VIN_PREVIEW_IP_DAILY_LIMIT, default 10.
+            var previewIpLimit =
+                int.TryParse(Environment.GetEnvironmentVariable("GCS_VIN_PREVIEW_IP_DAILY_LIMIT"), out var configuredIpPreview) && configuredIpPreview > 0
+                    ? configuredIpPreview
+                    : 10;
+            var (ipAllowed, _) = await usage.TryConsumeDailyAsync("vin-preview-ip:" + OdometerStore.HashIp(ip), previewIpLimit, ct);
+            if (!ipAllowed)
+                return Results.Json(
+                    new { success = false, code = "PREVIEW_DAILY_LIMIT", limit = previewIpLimit },
+                    statusCode: StatusCodes.Status429TooManyRequests);
+        }
+    }
 
     var decoded = await data.GetSpecsAsync(vin, ct);
     // European, Japanese, Chinese and Indian VINs: make and country from
@@ -2525,13 +2957,17 @@ static async Task<IResult> BuildVinReportAsync(
     int? year = int.TryParse(Spec("ModelYear"), out var y) ? y : null;
 
     var preview = !(unlock || quota.Unlocked || access.HasVin);
-    var auctions = await data.GetAuctionHistoryAsync(vin, preview, ct);
+    // Anonymous: no provider request at all; the app shows the locked
+    // history card and asks to sign in when it is opened.
+    var auctions = signInRequired
+        ? new AuctionLookup(AuctionLookupState.Deferred, new List<AuctionLotDto>())
+        : await data.GetAuctionHistoryAsync(vin, preview, ct);
 
     // Apibara has nothing: the second provider (older archive) is asked,
     // but only when the history is being opened (its credits are limited).
     // A free preview says "checked when you open it" instead of "not found".
     var extrasFetched = false;
-    if (auctions is { State: AuctionLookupState.Ready, Lots.Count: 0 } && data.HasExtraProviders)
+    if (!signInRequired && auctions is { State: AuctionLookupState.Ready, Lots.Count: 0 } && data.HasExtraProviders)
     {
         if (preview)
         {
@@ -2676,7 +3112,9 @@ static async Task<IResult> BuildVinReportAsync(
         recallRecords = recalls,
         webPhotos,
         webSearchUrl = "https://www.google.com/search?tbm=isch&q=" + Uri.EscapeDataString(vin),
-        sources = AdminAccess.IsAdmin(account?.Email)
+        signInRequired,
+        sessionExpired,
+        sources = perks
             ? trace.Select(t => new { provider = t.Provider, status = t.Status, items = t.Items, note = t.Note }).ToList()
             : null,
         access = new
@@ -2723,11 +3161,14 @@ static async Task<string?> ResolveSubscriptionUserAsync(
     if (string.IsNullOrWhiteSpace(request?.Email) || string.IsNullOrWhiteSpace(request.Password))
         return null;
 
-    var ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-    if (!RateWindow.TryConsume("web-sub-login:" + ip, DateTimeOffset.UtcNow, 20, TimeSpan.FromMinutes(15)))
+    var ip = AdminService.ClientIp(http);
+    if (!RateWindow.TryConsume("web-sub-login:" + ip, DateTimeOffset.UtcNow, 20, TimeSpan.FromMinutes(15)) ||
+        EmailThrottle.IsBlocked(request.Email))
         return null;
 
     var account = await accounts.VerifyCredentialsAsync(request.Email, request.Password, ct);
+    if (account is null)
+        EmailThrottle.Failed(request.Email);
     return account?.AccountId;
 }
 
@@ -2899,6 +3340,83 @@ static async Task<AccountRecordLike?> ResolveVinAccountAsync(HttpContext http, A
     return account is null ? null : new AccountRecordLike(account.AccountId, account.Email);
 }
 
+/// <summary>401 with a clear code: the app's sign-in has expired or is no longer valid.</summary>
+static IResult SessionExpired() =>
+    Results.Json(
+        new
+        {
+            success = false,
+            code = "SESSION_EXPIRED",
+            message = "Session expired. Sign in again."
+        },
+        statusCode: StatusCodes.Status401Unauthorized);
+
+/// <summary>
+/// Deletes an account and everything tied to it (app DELETE /api/accounts/me
+/// and the public /account/delete page). Financial records are kept
+/// anonymised; public leaderboard results are anonymised.
+/// </summary>
+static async Task DeleteAccountDataAsync(
+    string accountId,
+    string? deviceId,
+    IServiceProvider services,
+    CancellationToken ct)
+{
+    // Stop the bank auto-renewal and delete the saved card first,
+    // otherwise the renewal worker would keep charging a deleted account.
+    var payments = services.GetRequiredService<WebPaymentService>();
+    await payments.CancelSubscriptionAsync(accountId, ct);
+    await payments.AnonymizeUserAsync(accountId, ct);
+
+    await services.GetRequiredService<EntitlementStore>().DeleteUserDataAsync(accountId, ct);
+    await services.GetRequiredService<VinQuotaStore>().DeleteUserDataAsync(accountId, ct);
+    await services.GetRequiredService<FullHistoryService>().DeleteUserDataAsync(accountId, ct);
+    await services.GetRequiredService<AccelerationLeaderboardStore>().ForgetAccountAsync(accountId, ct);
+
+    var qr = services.GetRequiredService<QrReportStore>();
+    await qr.DeleteOwnerAsync(accountId, ct);
+    if (!string.IsNullOrWhiteSpace(deviceId) && deviceId.Length is >= 16 and <= 64)
+        await qr.DeleteOwnerAsync("device:" + deviceId, ct);
+
+    await services.GetRequiredService<OdometerStore>().ForgetAccountAsync(accountId, ct);
+    await services.GetRequiredService<ServiceSearchStore>().ForgetAccountAsync(accountId, ct);
+    await services.GetRequiredService<ResetRecordingStore>().ForgetAccountAsync(accountId, ct);
+    await services.GetRequiredService<UsageStore>().ForgetAccountAsync(accountId, ct);
+    await services.GetRequiredService<AdminService>().ForgetAccountAsync(accountId, ct);
+
+    await services.GetRequiredService<AccountStore>().DeleteAsync(accountId, ct);
+}
+
+/// <summary>
+/// Applies a subscription state re-read from Apple / Google to the account
+/// that claimed it: active → extend (new expiry / product), otherwise
+/// (expired, refunded, revoked) → switch that store subscription off.
+/// </summary>
+static async Task ApplyStoreStateAsync(
+    EntitlementStore store,
+    string owner,
+    string source,
+    StoreSubscriptionState state,
+    string? legacyKey,
+    CancellationToken ct)
+{
+    if (state is { Active: true, ProductId: not null, ExpiresAt: not null } &&
+        ProductCatalog.IsSubscription(state.ProductId))
+    {
+        if (!await store.TryClaimTransactionAsync(source, state.Key, owner, ct))
+            return; // the purchase belongs to another account
+
+        await store.UpsertSubscriptionAsync(
+            new EntitlementRecord(owner, true, source, state.ProductId, state.ExpiresAt, DateTimeOffset.UtcNow, state.Key),
+            ct);
+        return;
+    }
+
+    await store.RevokeSubscriptionAsync(owner, source, state.Key, ct);
+    if (!string.IsNullOrWhiteSpace(legacyKey) && legacyKey != state.Key)
+        await store.RevokeSubscriptionAsync(owner, source, legacyKey, ct);
+}
+
 static async Task<JsonDocument?> ReadJsonDocumentAsync(
     Stream body,
     CancellationToken cancellationToken)
@@ -2933,9 +3451,14 @@ record StoreVerifyRequest(
     string? UserId,
     string? Store,
     string? ProductId,
-    string? TransactionId);
+    string? TransactionId,
+    string? OriginalTransactionId = null);
 
-record AccountRequest(string? Email, string? Password);
+record AccountRequest(string? Email, string? Password, bool? MoveDevice = null);
+
+record WebAccountDeleteRequest(string? Email, string? Password, string? Token);
+
+record ChangePasswordRequest(string? CurrentPassword, string? NewPassword);
 
 record FullCheckoutRequest(string? Provider);
 
@@ -3016,11 +3539,22 @@ static class RateWindow
         public DateTimeOffset Start;
 
         public int Count;
+
+        public TimeSpan Window;
     }
 
     private static readonly
         ConcurrentDictionary<string, Entry>
         Entries = new();
+
+    // Longest window in use (1 day); an entry untouched this long is expired.
+    private static readonly TimeSpan MaxWindow = TimeSpan.FromDays(1);
+
+    /// <summary>Above this many keys the oldest windows are dropped.</summary>
+    private const int MaxEntries = 100_000;
+
+    private static long _calls;
+    private static int _sweeping;
 
     public static bool TryConsume(
         string key,
@@ -3028,16 +3562,21 @@ static class RateWindow
         int limit,
         TimeSpan window)
     {
+        if (Interlocked.Increment(ref _calls) % 1000 == 0 || Entries.Count > MaxEntries)
+            Sweep(now);
+
         var e =
             Entries.GetOrAdd(
                 key,
                 _ => new Entry
                 {
-                    Start = now
+                    Start = now,
+                    Window = window
                 });
 
         lock (e)
         {
+            e.Window = window > e.Window ? window : e.Window;
             if (now - e.Start >= window)
             {
                 e.Start = now;
@@ -3052,11 +3591,68 @@ static class RateWindow
             return true;
         }
     }
+
+    /// <summary>True when the key already used up <paramref name="limit"/> in its current window (nothing is counted).</summary>
+    public static bool IsExhausted(
+        string key,
+        DateTimeOffset now,
+        int limit,
+        TimeSpan window)
+    {
+        if (!Entries.TryGetValue(key, out var e))
+            return false;
+
+        lock (e)
+        {
+            return now - e.Start < window && e.Count >= limit;
+        }
+    }
+
+    /// <summary>
+    /// Removes windows that have ended (they would start from zero anyway).
+    /// If still too many keys remain, the oldest are removed.
+    /// </summary>
+    private static void Sweep(DateTimeOffset now)
+    {
+        if (Interlocked.Exchange(ref _sweeping, 1) != 0)
+            return;
+        try
+        {
+            foreach (var pair in Entries)
+            {
+                DateTimeOffset start;
+                TimeSpan window;
+                lock (pair.Value)
+                {
+                    start = pair.Value.Start;
+                    window = pair.Value.Window;
+                }
+
+                if (now - start >= (window > TimeSpan.Zero ? window : MaxWindow))
+                    Entries.TryRemove(pair);
+            }
+
+            if (Entries.Count > MaxEntries)
+            {
+                foreach (var pair in Entries
+                             .OrderBy(p => p.Value.Start)
+                             .Take(Entries.Count - MaxEntries * 9 / 10)
+                             .ToList())
+                    Entries.TryRemove(pair);
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _sweeping, 0);
+        }
+    }
 }
 
 /// <summary>
 /// Owner / tester accounts listed in GCS_ADMIN_EMAILS (comma separated)
-/// get Full PRO and unlimited VIN history without paying.
+/// get Full PRO and unlimited VIN history without paying — but only after
+/// that account has completed at least one 2-step (TOTP) admin sign-in,
+/// so an account registered with an admin e-mail by someone else gets nothing.
 /// </summary>
 static class AdminAccess
 {
@@ -3071,9 +3667,13 @@ static class AdminAccess
             .Any(item => item.Equals(email.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 
-    public static AccessInfo Apply(string? email, AccessInfo access)
+    /// <summary>Admin perks: listed e-mail AND a completed 2-step admin sign-in of this account.</summary>
+    public static bool HasPerks(string? accountId, string? email) =>
+        IsAdmin(email) && AdminService.IsTotpVerified(accountId);
+
+    public static AccessInfo Apply(string? accountId, string? email, AccessInfo access)
     {
-        if (!IsAdmin(email))
+        if (!HasPerks(accountId, email))
             return access;
         var until = DateTimeOffset.UtcNow.AddYears(5);
         return new AccessInfo(true, true, "full", until, until);
@@ -3083,7 +3683,96 @@ static class AdminAccess
         quota with { HasVinPlan = true, MonthlyLimit = 999, Remaining = 999 };
 }
 
+/// <summary>VIN plausibility (cheap checks before any provider request).</summary>
+static class VinRules
+{
+    private static readonly System.Text.RegularExpressions.Regex Pattern =
+        new("^[A-HJ-NPR-Z0-9]{17}$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static readonly int[] Weights = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
+
+    /// <summary>
+    /// 17 valid characters; not an obviously random / filler VIN; North
+    /// American VINs (WMI starting 1–5) must have a correct check digit
+    /// (position 9) and a valid model-year character (position 10).
+    /// </summary>
+    public static bool IsPlausible(string vin)
+    {
+        if (!Pattern.IsMatch(vin))
+            return false;
+
+        // "11111111111111111", "AAAAAAAA…": one character 10+ times.
+        if (vin.GroupBy(c => c).Any(g => g.Count() >= 10))
+            return false;
+
+        if (vin[0] is >= '1' and <= '5')
+        {
+            if (vin[9] is 'U' or 'Z' or '0')
+                return false;
+            return CheckDigit(vin) == vin[8];
+        }
+
+        return true;
+    }
+
+    public static char CheckDigit(string vin)
+    {
+        var sum = 0;
+        for (var i = 0; i < 17; i++)
+            sum += Value(vin[i]) * Weights[i];
+        var rest = sum % 11;
+        return rest == 10 ? 'X' : (char)('0' + rest);
+    }
+
+    private static int Value(char c) => c switch
+    {
+        >= '0' and <= '9' => c - '0',
+        'A' or 'J' => 1,
+        'B' or 'K' or 'S' => 2,
+        'C' or 'L' or 'T' => 3,
+        'D' or 'M' or 'U' => 4,
+        'E' or 'N' or 'V' => 5,
+        'F' or 'W' => 6,
+        'G' or 'P' or 'X' => 7,
+        'H' or 'Y' => 8,
+        'R' or 'Z' => 9,
+        _ => 0
+    };
+}
+
 static class HealthInfo
 {
     public static readonly DateTime StartedUtc = DateTime.UtcNow;
+
+    /// <summary>GCS_DIAG_TOKEN (16+ chars) in the X-GCS-Diag-Token header.</summary>
+    public static bool DiagTokenOk(HttpContext http)
+    {
+        var expected = Environment.GetEnvironmentVariable("GCS_DIAG_TOKEN");
+        var supplied = http.Request.Headers["X-GCS-Diag-Token"].ToString();
+        return !string.IsNullOrWhiteSpace(expected) && expected.Length >= 16 &&
+               CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(supplied), Encoding.UTF8.GetBytes(expected));
+    }
+}
+
+/// <summary>
+/// Failed sign-ins per e-mail (in memory, swept with RateWindow): checked by
+/// the app login, web account deletion, web subscription and checkout, and
+/// admin login, in addition to the per-IP limits. 10 failures / 15 minutes.
+/// </summary>
+static class EmailThrottle
+{
+    private const int MaxFailures = 10;
+    private static readonly TimeSpan Window = TimeSpan.FromMinutes(15);
+
+    private static string Key(string? email)
+    {
+        var value = (email ?? string.Empty).Trim().ToLowerInvariant();
+        return "auth-fail-email:" + (value.Length > 254 ? value[..254] : value);
+    }
+
+    public static bool IsBlocked(string? email) =>
+        RateWindow.IsExhausted(Key(email), DateTimeOffset.UtcNow, MaxFailures, Window);
+
+    public static void Failed(string? email) =>
+        RateWindow.TryConsume(Key(email), DateTimeOffset.UtcNow, MaxFailures, Window);
 }

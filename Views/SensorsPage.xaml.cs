@@ -10,6 +10,13 @@ public partial class SensorsPage : ContentPage
     {
         base.OnAppearing();
         ApplyUiLocalization();
+        (BindingContext as SensorsViewModel)?.Attach();
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        (BindingContext as SensorsViewModel)?.Detach();
     }
 
     private void ApplyUiLocalization()

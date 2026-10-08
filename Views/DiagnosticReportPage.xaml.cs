@@ -37,9 +37,9 @@ public partial class DiagnosticReportPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        base.OnAppearing();
         try
         {
-        base.OnAppearing();
         if (BindingContext is DiagnosticReportViewModel viewModel)
             await viewModel.LoadCommand.ExecuteAsync(null);
         }

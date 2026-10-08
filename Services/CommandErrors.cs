@@ -45,10 +45,17 @@ public static class CommandErrors
                 if (page is null)
                     return;
 
+                // Never show raw exception text (framework / socket / SQL
+                // messages); UserError turns it into a short sentence and keeps
+                // only messages the app itself wrote for the user.
+                var detail = UserError.Describe(exception);
+                var generic = UserError.Describe(null);
                 await page.DisplayAlertAsync(
                     LocalizationService.T("რაღაც ვერ შესრულდა"),
                     LocalizationService.T("მოქმედება ვერ დასრულდა. შეამოწმე კავშირი და სცადე თავიდან.") +
-                    (string.IsNullOrWhiteSpace(exception.Message) ? string.Empty : "\n\n" + exception.Message),
+                    (string.IsNullOrWhiteSpace(detail) || string.Equals(detail, generic, StringComparison.Ordinal)
+                        ? string.Empty
+                        : "\n\n" + detail),
                     "OK");
             }
             catch

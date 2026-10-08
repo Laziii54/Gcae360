@@ -26,13 +26,13 @@ public partial class FuelViewModel
     private const double TypicalKWhPer100Km = 17;
     private const double ReferenceLitersPer100Km = 7.5;
 
-    private static readonly Color GreenColor = Color.FromArgb("#1E8A4C");
-    private static readonly Color GreenBackground = Color.FromArgb("#E2F3E9");
-    private static readonly Color OrangeColor = Color.FromArgb("#D0701F");
-    private static readonly Color OrangeBackground = Color.FromArgb("#FCEBDC");
-    private static readonly Color AmberColor = Color.FromArgb("#B7791F");
-    private static readonly Color AmberBackground = Color.FromArgb("#FDF3DF");
-    private static readonly Color GreyColor = Color.FromArgb("#A2A8AF");
+    private static Color GreenColor => CarScanner.Services.Localization.ThemeService.Soft("#1E8A4C");
+    private static Color GreenBackground => CarScanner.Services.Localization.ThemeService.Soft("#E2F3E9");
+    private static Color OrangeColor => CarScanner.Services.Localization.ThemeService.Soft("#D0701F");
+    private static Color OrangeBackground => CarScanner.Services.Localization.ThemeService.Soft("#FCEBDC");
+    private static Color AmberColor => CarScanner.Services.Localization.ThemeService.Soft("#B7791F");
+    private static Color AmberBackground => CarScanner.Services.Localization.ThemeService.Soft("#FDF3DF");
+    private static Color GreyColor => CarScanner.Services.Localization.ThemeService.Soft("#A2A8AF");
 
     private readonly List<double> _powerHistory = new();
     private double _latestRpm;
@@ -207,6 +207,19 @@ public partial class FuelViewModel
     }
 
     /// <summary>Usable battery capacity (kWh) entered for this car, if any.</summary>
+    /// <summary>
+    /// Distance driven on electricity: a plug-in hybrid's battery energy is
+    /// divided by the electric kilometres only, not by the kilometres the
+    /// engine drove (that made the Volt show ≈2 kWh/100 km).
+    /// </summary>
+    private double EnergyKm(double km)
+    {
+        if (_mode != EnergyMode.Hybrid)
+            return km;
+        var electricKm = _electricMeters / 1000d;
+        return electricKm >= 0.5 ? electricKm : 0;
+    }
+
     private double? CapacityKWh() =>
         TryParsePositive(BatteryCapacityText, out var capacity) ? capacity : null;
 
@@ -221,9 +234,13 @@ public partial class FuelViewModel
         SocProgress = _socNow is { } soc ? Math.Clamp(soc / 100d, 0, 1) : 0;
         SocBigText = _socNow is { } socValue ? $"{socValue.ToString("0", invariant)}%" : "—";
         SocRingColor = _socNow is < 20 ? OrangeColor : GreenColor;
-        var perKm = (exact ? EvEnergyAccumulator.KWhPer100Km(_ev.NetKWh, km) : approxKWh is { } a ? EvEnergyAccumulator.KWhPer100Km(a, km) : null);
+        var perKm = (exact ? EvEnergyAccumulator.KWhPer100Km(_ev.NetKWh, EnergyKm(km)) : approxKWh is { } a ? EvEnergyAccumulator.KWhPer100Km(a, EnergyKm(km)) : null);
         var usePer100 = perKm is > 5 and < 60 && km >= 2 ? perKm.Value : TypicalKWhPer100Km;
-        RangeText = _socNow is { } left && CapacityKWh() is { } capacity
+        // The car's own electric range (Volt / Bolt) is exactly what the dashboard shows;
+        // a % × capacity estimate ignores the reserve the car never uses.
+        RangeText = _carRangeKm is { } carKm
+            ? $"{carKm.ToString("0", invariant)} {L("კმ", "km")}"
+            : _socNow is { } left && CapacityKWh() is { } capacity
             ? $"≈ {(left / 100d * capacity / usePer100 * 100d).ToString("0", invariant)} {L("კმ", "km")}"
             : _socNow is null ? L("% არ მოდის", "no %") : L("ტევადობა ქვემოთ", "set capacity");
 
@@ -270,7 +287,7 @@ public partial class FuelViewModel
         }
         else
         {
-            var estimate = approxKWh is { } e ? EvEnergyAccumulator.KWhPer100Km(e, km) : null;
+            var estimate = approxKWh is { } e ? EvEnergyAccumulator.KWhPer100Km(e, EnergyKm(km)) : null;
             HeroValueText = estimate is { } est ? $"≈ {est.ToString("0", invariant)}" : "—";
             HeroUnitText = "kWh/100km";
             HeroValueColor = AmberColor;
@@ -433,7 +450,7 @@ public partial class FuelViewModel
 
             if (energy is { } e)
             {
-                var per100 = EvEnergyAccumulator.KWhPer100Km(e, km);
+                var per100 = EvEnergyAccumulator.KWhPer100Km(e, EnergyKm(km));
                 TripSummaryRows.Add(new(L("⚡ წმინდა ხარჯი", "⚡ Net use"),
                     $"{(exact ? string.Empty : "≈ ")}{e.ToString("0.00", invariant)} kWh" + (per100 is { } p ? $" · {p.ToString("0.0", invariant)} /100{L("კმ", "km")}" : string.Empty)));
             }

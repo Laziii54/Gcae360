@@ -46,6 +46,79 @@ public static class Mode06Definitions
         };
     }
 
+    /// <summary>
+    /// Plain-language meaning of a monitor test: what it checks and, when it
+    /// is out of limits, what that usually means.
+    /// </summary>
+    public static string Explain(byte mid, byte tid, bool passed)
+    {
+        string what;
+        string bad;
+        switch (mid)
+        {
+            case >= 0x01 and <= 0x10:
+                what = tid switch
+                {
+                    0x05 or 0x06 => L("რამდენად სწრაფად რეაგირებს სენსორი ნარევის ცვლილებაზე.", "How fast the sensor reacts when the mixture changes."),
+                    0x07 => L("სენსორის ყველაზე დაბალი ძაბვა ტესტის დროს (ღარიბი ნარევი).", "Lowest sensor voltage during the test (lean)."),
+                    0x08 => L("სენსორის ყველაზე მაღალი ძაბვა ტესტის დროს (მდიდარი ნარევი).", "Highest sensor voltage during the test (rich)."),
+                    0x09 or 0x0A => L("რამდენად ხშირად ცვლის სენსორი მდგომარეობას.", "How often the sensor switches."),
+                    >= 0x01 and <= 0x04 => L("ECU-ის მიერ დაყენებული ზღვრული ძაბვა (მუდმივია, ინფორმაციისთვის).", "Threshold set by the ECU (constant, for information)."),
+                    _ => L("ჟანგბადის სენსორის მწარმოებლის ტესტი.", "Manufacturer oxygen sensor test.")
+                };
+                bad = L("ხშირად ნიშნავს დაბერებულ ან დაბინძურებულ ჟანგბადის სენსორს, ან ჰაერის შეწოვას გამონაბოლქვში სენსორამდე.",
+                    "Often means an aged or contaminated O2 sensor, or an exhaust leak before the sensor.");
+                break;
+            case >= 0x21 and <= 0x24:
+                what = L("კატალიზატორის ეფექტურობა: რამდენ ჟანგბადს ინახავს და ასუფთავებს გამონაბოლქვს.", "Catalyst efficiency: how well it stores oxygen and cleans the exhaust.");
+                bad = L("კატალიზატორი სუსტდება (P0420/P0430-ის მიზეზი). ჯერ გამორიცხეთ გამონაბოლქვის გაჟონვა და უკანა O2 სენსორი.",
+                    "The catalyst is weakening (cause of P0420/P0430). Rule out exhaust leaks and the rear O2 sensor first.");
+                break;
+            case >= 0x31 and <= 0x34:
+                what = L("გამონაბოლქვის რეცირკულაციის (EGR) ნაკადი.", "Exhaust gas recirculation (EGR) flow.");
+                bad = L("EGR სარქველი ან არხები ჭვარტლით არის ჩახერგილი, ან სარქველი არ იღება.", "EGR valve or passages are clogged with carbon, or the valve does not open.");
+                break;
+            case >= 0x35 and <= 0x38:
+                what = L("ფაზების ცვლის სისტემა (VVT): მიჰყვება თუ არა ECU-ის ბრძანებას.", "Variable valve timing: does it follow the ECU command."); 
+                bad = L("ზეთის დონე/ხარისხი, VVT სოლენოიდი ან ჯაჭვის დაჭიმულობა.", "Oil level/quality, VVT solenoid or timing chain stretch.");
+                break;
+            case >= 0x39 and <= 0x3D:
+                what = L("საწვავის ავზის ორთქლის სისტემის (EVAP) ჰერმეტულობა.", "Fuel vapour (EVAP) system tightness.");
+                bad = L("ყველაზე ხშირად — ცუდად დახურული ან დაზიანებული ავზის ხუფი, შემდეგ შლანგები და სარქველები.", "Most often a loose or worn fuel cap, then hoses and valves.");
+                break;
+            case >= 0x41 and <= 0x50:
+                what = L("ჟანგბადის სენსორის გამახურებელი: რამდენად სწრაფად თბება სენსორი.", "Oxygen sensor heater: how fast the sensor warms up.");
+                bad = L("გამახურებლის წრედი ან თავად სენსორი (გამახურებელი სენსორშია ჩაშენებული), ასევე დაუკრავი/გაყვანილობა.", "Heater circuit or the sensor itself (the heater is built in), or the fuse/wiring.");
+                break;
+            case >= 0x71 and <= 0x74:
+                what = L("მეორადი ჰაერის სისტემა (ცივი ძრავისას ჰაერს აწვდის გამონაბოლქვს).", "Secondary air system (adds air to the exhaust on a cold engine).");
+                bad = L("ტუმბო, სარქველი ან შლანგი.", "Pump, valve or hose.");
+                break;
+            case >= 0x81 and <= 0x84:
+                what = L("საწვავის სისტემის კორექცია: რამდენს ასწორებს ECU ნარევს.", "Fuel system correction: how much the ECU corrects the mixture.");
+                bad = L("ჰაერის შეწოვა, ჭუჭყიანი MAF სენსორი, სუსტი საწვავის ტუმბო ან ფორსუნკები.", "Vacuum leak, dirty MAF sensor, weak fuel pump or injectors.");
+                break;
+            case >= 0xA1 and <= 0xAD:
+                what = mid == 0xA1
+                    ? L("ანთების გამოტოვებების საერთო მონაცემები.", "Overall misfire data.")
+                    : L($"ანთების გამოტოვებები ცილინდრში {mid - 0xA1} (0 იდეალურია).", $"Misfires in cylinder {mid - 0xA1} (0 is ideal).");
+                bad = L("სანთელი, კოჭა, ფორსუნკა ან კომპრესია ამ ცილინდრში.", "Spark plug, coil, injector or compression on that cylinder.");
+                break;
+            case 0xB2 or 0xB3:
+                what = L("ნაწილაკების ფილტრის (DPF) მდგომარეობა.", "Diesel particulate filter condition.");
+                bad = L("ფილტრი ივსება — საჭიროა რეგენერაცია (გრძელი სვლა) ან შემოწმება.", "The filter is filling — needs a regeneration (long drive) or a check.");
+                break;
+            default:
+                what = string.Empty;
+                bad = L("მნიშვნელობა ECU-ის ზღვრებს გარეთაა — შეამოწმეთ ეს სისტემა.", "The value is outside the ECU's limits — check this system.");
+                break;
+        }
+
+        if (passed)
+            return what;
+        return string.IsNullOrEmpty(what) ? bad : $"{what} {L("ნორმაში არ არის:", "Out of limits:")} {bad}";
+    }
+
     public static string TestName(byte tid) => tid switch
     {
         0x01 => L("ზღვრული ძაბვა: მდიდარი → ღარიბი (მუდმივი)", "Rich to lean sensor threshold voltage (constant)"),

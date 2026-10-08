@@ -104,6 +104,31 @@ PRIMARY KEY (AccountId, Vin));";
     // AVAILABILITY (free)
     // ============================================================
 
+    /// <summary>Upper bound of the in-memory availability cache.</summary>
+    private const int MaxCachedChecks = 2_000;
+
+    /// <summary>Keeps the cache bounded: expired entries go first, then the oldest.</summary>
+    private void TrimChecks()
+    {
+        if (_checks.Count < MaxCachedChecks)
+            return;
+
+        var now = DateTimeOffset.UtcNow;
+        foreach (var pair in _checks)
+            if (now - pair.Value.At >= CheckCacheAge)
+                _checks.TryRemove(pair.Key, out _);
+
+        if (_checks.Count < MaxCachedChecks)
+            return;
+
+        foreach (var key in _checks
+                     .OrderBy(pair => pair.Value.At)
+                     .Take(_checks.Count - MaxCachedChecks * 9 / 10)
+                     .Select(pair => pair.Key)
+                     .ToList())
+            _checks.TryRemove(key, out _);
+    }
+
     /// <summary>Whether VinAudit has records for this VIN (no charge).</summary>
     public async Task<FullAvailability> CheckAsync(string vin, CancellationToken ct)
     {
@@ -135,7 +160,10 @@ PRIMARY KEY (AccountId, Vin));";
             : new FullAvailability(false, error ?? "no_records", null);
 
         if (result.Available || error is "no_records" or "invalid_vin")
+        {
+            TrimChecks();
             _checks[vin] = (DateTimeOffset.UtcNow, result);
+        }
         return result;
     }
 
@@ -245,6 +273,22 @@ PRIMARY KEY (AccountId, Vin));";
         {
             gate.Release();
         }
+    }
+
+    /// <summary>Account deletion: the bought reports of the account are deleted.</summary>
+    public async Task DeleteUserDataAsync(string accountId, CancellationToken ct)
+    {
+        await _dbGate.WaitAsync(ct);
+        try
+        {
+            await using var c = new SqliteConnection(_connectionString);
+            await c.OpenAsync(ct);
+            await using var cmd = c.CreateCommand();
+            cmd.CommandText = "DELETE FROM FullReports WHERE AccountId=$a";
+            cmd.Parameters.AddWithValue("$a", accountId);
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+        finally { _dbGate.Release(); }
     }
 
     /// <summary>A report this account already has, or null.</summary>

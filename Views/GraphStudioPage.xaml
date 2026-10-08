@@ -62,10 +62,10 @@
                 </HorizontalStackLayout>
             </Grid>
 
-            <Border IsVisible="{Binding IsRecordingOpen}" BackgroundColor="#FDF3DF" StrokeThickness="0" StrokeShape="RoundRectangle 10" Padding="12,6">
+            <Border IsVisible="{Binding IsRecordingOpen}" BackgroundColor="{DynamicResource WarnBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" Padding="12,6">
                 <Grid ColumnDefinitions="*,Auto">
-                    <Label AutomationId="DynamicTextOpenedRecording" Text="{Binding OpenedRecordingText}" TextColor="#8A5A00" FontSize="12" FontAttributes="Bold" VerticalOptions="Center" />
-                    <Button Grid.Column="1" Text="ცოცხალზე დაბრუნება" Command="{Binding BackToLiveCommand}" BackgroundColor="Transparent" TextColor="#8A5A00" FontSize="12" FontAttributes="Bold" Padding="4,0" HeightRequest="30" MinimumHeightRequest="30" />
+                    <Label AutomationId="DynamicTextOpenedRecording" Text="{Binding OpenedRecordingText}" TextColor="{DynamicResource ProBadgeText}" FontSize="12" FontAttributes="Bold" VerticalOptions="Center" />
+                    <Button Grid.Column="1" Text="ცოცხალზე დაბრუნება" Command="{Binding BackToLiveCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource ProBadgeText}" FontSize="12" FontAttributes="Bold" Padding="4,0" HeightRequest="44" MinimumHeightRequest="44" />
                 </Grid>
             </Border>
 
@@ -103,7 +103,7 @@
                 </HorizontalStackLayout>
                 <HorizontalStackLayout Grid.Column="1" HorizontalOptions="End" Spacing="8" VerticalOptions="Center">
                     <Label AutomationId="DynamicTextRecordingTime" Text="{Binding RecordingText}" TextColor="#C2372B" FontSize="11.5" FontAttributes="Bold" />
-                    <Label AutomationId="DynamicTextRate" Text="{Binding RateText}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                    <Label IsVisible="False" AutomationId="DynamicTextRate" Text="{Binding RateText}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
                 </HorizontalStackLayout>
             </Grid>
 
@@ -149,7 +149,7 @@
                                         <Label Text="{Binding MinText, StringFormat='მინ {0}'}" TextColor="{DynamicResource SubTextColor}" FontSize="10.5" />
                                         <Label Text="{Binding AvgText, StringFormat='საშ {0}'}" TextColor="{DynamicResource SubTextColor}" FontSize="10.5" />
                                         <Label Text="{Binding MaxText, StringFormat='მაქს {0}'}" TextColor="{DynamicResource SubTextColor}" FontSize="10.5" />
-                                        <Label Text="{Binding RateText}" TextColor="{DynamicResource SubTextColor}" FontSize="10.5" />
+                                        <Label IsVisible="False" Text="{Binding RateText}" TextColor="{DynamicResource SubTextColor}" FontSize="10.5" />
                                     </HorizontalStackLayout>
                                 </VerticalStackLayout>
                             </Border>
@@ -213,7 +213,7 @@
                             <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
                                 <Label AutomationId="DynamicTextExpandedName" Text="{Binding ExpandedChannel.Name}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" />
                                 <Label Grid.Column="1" AutomationId="DynamicTextExpandedValue" Text="{Binding ExpandedChannel.ValueText}" TextColor="{DynamicResource TextColor}" FontSize="18" FontAttributes="Bold" />
-                                <Button Grid.Column="2" Text="✕" Command="{Binding ToggleExpandCommand}" CommandParameter="{Binding ExpandedChannel}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" Padding="0" WidthRequest="30" HeightRequest="30" MinimumHeightRequest="30" />
+                                <Button Grid.Column="2" Text="✕" Command="{Binding ToggleExpandCommand}" CommandParameter="{Binding ExpandedChannel}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" Padding="0" WidthRequest="44" HeightRequest="44" MinimumHeightRequest="44" />
                             </Grid>
                             <controls:MultiChartView Series="{Binding ExpandedChannel.Series}"
                                                      HeightRequest="220"
@@ -282,7 +282,7 @@
                     <Label Text="მაგალითად: X = ბრუნები, Y = MAF. წერტილები, რომლებიც ხაზს შორდება, ჰაერის გაჟონვაზე ან ბინძურ სენსორზე მიუთითებს." TextColor="{DynamicResource SubTextColor}" FontSize="11" />
                 </VerticalStackLayout>
 
-                <Button Text="CSV ექსპორტი (ხილული მონაკვეთი)" Command="{Binding ExportCsvCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="12" HeightRequest="42" FontSize="12.5" Margin="0,6,0,0" />
+                <Button Text="CSV ექსპორტი (ხილული მონაკვეთი)" Command="{Binding ExportCsvCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="12" HeightRequest="44" MinimumHeightRequest="44" FontSize="12.5" Margin="0,6,0,0" />
             </VerticalStackLayout>
         </ScrollView>
     </Grid>

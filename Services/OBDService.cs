@@ -19,6 +19,9 @@ public sealed class OBDService
     private readonly DTCDecoder _dtc;
     private readonly ILogger<OBDService> _logger;
     private readonly Dictionary<int, SupportedPid> _supported = new();
+
+    /// <summary>PIDs the ECU advertises that have no numeric decoder (status texts, raw data).</summary>
+    private readonly Dictionary<int, SupportedPid> _advertisedOther = new();
     private readonly SemaphoreSlim _pidGate = new(1, 1);
     // Initialization is a multi-command ELM sequence.  It must be atomic: a
     // background VIN lookup and a page opened immediately after connection
@@ -39,7 +42,20 @@ public sealed class OBDService
     public OBDService(Elm327Protocol protocol, PIDDecoder decoder, DTCDecoder dtc, IBluetoothService bluetooth, ILogger<OBDService> logger)
     { _protocol = protocol; _decoder = decoder; _dtc = dtc; _bluetooth = bluetooth; _logger = logger; _bluetooth.ConnectionChanged += OnConnectionChanged; }
 
-    private void OnConnectionChanged(object? sender, bool connected) { if (!connected) { _supported.Clear(); _lastAdapterCapabilitySnapshot = null; lock (_logGate) _commandLog.Clear(); } }
+    private void OnConnectionChanged(object? sender, bool connected) { if (!connected) { _supported.Clear(); _advertisedOther.Clear(); _lastAdapterCapabilitySnapshot = null; TrimCommandLog(DisconnectedLogLimit); } }
+
+    // Keep the tail of the command log across a disconnect so the reason can
+    // still be inspected (or exported) afterwards, with memory capped.
+    private const int DisconnectedLogLimit = 200;
+
+    private void TrimCommandLog(int limit)
+    {
+        lock (_logGate)
+        {
+            var excess = _commandLog.Count - limit;
+            if (excess > 0) _commandLog.RemoveRange(0, excess);
+        }
+    }
 
     public async Task InitializeAsync(CancellationToken token = default)
     {
@@ -68,7 +84,7 @@ public sealed class OBDService
             // 0x5F.  Probing every theoretical OBD-II bitmap can add many
             // seconds on low-cost ELM327 clones, so stop after the useful
             // generic range.
-            foreach (var basePid in new[] { 0x00, 0x20, 0x40, 0x60, 0x80, 0xA0 })
+            foreach (var basePid in new[] { 0x00, 0x20, 0x40, 0x60, 0x80, 0xA0, 0xC0 })
             {
                 var raw = await SendTrackedAsync($"01{basePid:X2}", token, TimeSpan.FromMilliseconds(900), 1, false).ConfigureAwait(false);
                 var bytes = PIDDecoder.ParseHexBytes(raw);
@@ -90,7 +106,11 @@ public sealed class OBDService
                 for (var bit = 0; bit < 32; bit++)
                 {
                     if ((bitmap[bit / 8] & (1 << (7 - (bit % 8)))) == 0) continue;
-                    var pid = basePid + bit + 1; var def = PidRegistry.Get(pid); if (def != null && PIDDecoder.CanDecode(pid)) _supported[pid] = def;
+                    var pid = basePid + bit + 1;
+                    if (pid % 0x20 == 0) continue; // next support bitmap, not a sensor
+                    var def = PidRegistry.Get(pid);
+                    if (def != null && PIDDecoder.CanDecode(pid)) _supported[pid] = def;
+                    else _advertisedOther[pid] = def ?? new SupportedPid { Pid = pid, Name = $"PID {pid:X2}", Category = "სხვა" };
                 }
                 if ((bitmap[3] & 0x01) == 0) break;
             }
@@ -110,6 +130,7 @@ public sealed class OBDService
         try
         {
             _supported.Clear();
+            _advertisedOther.Clear();
             await _protocol.RestoreAutomaticObdSessionAsync(token).ConfigureAwait(false);
             await DiscoverSupportedPidsAsync(token).ConfigureAwait(false);
         }
@@ -205,11 +226,45 @@ public sealed class OBDService
             }
         }
 
+        // Status-type PIDs as text and PIDs without a decoder as raw data, so
+        // the list shows everything the ECU advertises.
+        var others = _advertisedOther.Values.OrderBy(definition => definition.Pid).ToArray();
+        for (var index = 0; index < others.Length; index++)
+        {
+            token.ThrowIfCancellationRequested();
+            var definition = others[index];
+            try
+            {
+                var raw = await SendTrackedAsync(definition.Command, token, TimeSpan.FromMilliseconds(700), 1, true).ConfigureAwait(false);
+                if (_decoder.TryDescribe(definition.Pid, raw, out var text))
+                {
+                    values.Add(new SensorValue { Pid = definition.Pid, Name = definition.Name, Unit = string.Empty, Category = "Status", Value = text });
+                }
+                else
+                {
+                    var data = PIDDecoder.RawData(definition.Pid, raw);
+                    if (data.Length > 0)
+                        values.Add(new SensorValue { Pid = definition.Pid, Name = definition.Name, Unit = string.Empty, Category = "Other (raw data)", Value = data });
+                    else
+                        failed++;
+                }
+            }
+            catch (Exception ex) when (ex is Elm327CommandException or Elm327TimeoutException or FormatException)
+            {
+                failed++;
+                _logger.LogDebug(ex, "Other PID {Pid:X2} unavailable", definition.Pid);
+            }
+            finally
+            {
+                progress?.Report(new SensorScanProgress(definitions.Length + index + 1, definitions.Length + others.Length, definition.Name));
+            }
+        }
+
         return (
             values,
             new PidScanStats
             {
-                Advertised = definitions.Length,
+                Advertised = definitions.Length + others.Length,
                 Decoded = values.Count,
                 Failed = failed,
                 UnsupportedDecoder = 0
@@ -440,9 +495,25 @@ public sealed class OBDService
         }
     }
 
-    public Task<List<DiagnosticCode>> ReadStoredDtcAsync(CancellationToken token = default) => ReadDtcAsync("03", _dtc.DecodeStored, token);
-    public Task<List<DiagnosticCode>> ReadPendingDtcAsync(CancellationToken token = default) => ReadDtcAsync("07", _dtc.DecodePending, token);
-    public Task<List<DiagnosticCode>> ReadPermanentDtcAsync(CancellationToken token = default) => ReadDtcAsync("0A", _dtc.DecodePermanent, token);
+    public Task<List<DiagnosticCode>> ReadStoredDtcAsync(CancellationToken token = default) => ReadDtcAsync("03", raw => _dtc.DecodeStored(raw, DtcCanLayoutHint()), token);
+    public Task<List<DiagnosticCode>> ReadPendingDtcAsync(CancellationToken token = default) => ReadDtcAsync("07", raw => _dtc.DecodePending(raw, DtcCanLayoutHint()), token);
+    public Task<List<DiagnosticCode>> ReadPermanentDtcAsync(CancellationToken token = default) => ReadDtcAsync("0A", raw => _dtc.DecodePermanent(raw, DtcCanLayoutHint()), token);
+
+    /// <summary>
+    /// true = ISO 15765 (Mode 03/07/0A reply carries a DTC count byte),
+    /// false = J1850 / ISO 9141 / KWP (no count byte), null = unknown, let the
+    /// decoder auto-detect from the reply layout.
+    /// </summary>
+    private bool? DtcCanLayoutHint()
+    {
+        if (IsCanProtocol) return true;
+        return CurrentProtocol switch
+        {
+            ObdProtocol.SAE_J1850_PWM or ObdProtocol.SAE_J1850_VPW or ObdProtocol.ISO_9141_2
+                or ObdProtocol.ISO_14230_4_KWP_5BAUD or ObdProtocol.ISO_14230_4_KWP_FAST => false,
+            _ => null
+        };
+    }
     private async Task<List<DiagnosticCode>> ReadDtcAsync(string cmd, Func<string, List<DiagnosticCode>> decode, CancellationToken token)
     {
         EnsureInitialized();
@@ -497,10 +568,54 @@ public sealed class OBDService
         return await TryClearDtcOnceAsync(token).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Mode 04 must only be sent with the vehicle stopped and the engine off
+    /// (ignition on). Values that cannot be read do not block: the ECU decides.
+    /// </summary>
+    private async Task<DiagnosticOperationResult<bool>?> CheckClearPreconditionsAsync(CancellationToken token)
+    {
+        double? speed = null;
+        double? rpm = null;
+        try
+        {
+            var raw = await SendTrackedAsync("010D", token, TimeSpan.FromMilliseconds(900), 1, false).ConfigureAwait(false);
+            if (!ObdResponseParser.IsNegative(raw) && _decoder.TryDecode(0x0D, raw, out var value)) speed = value;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex) { _logger.LogDebug(ex, "Speed read before DTC clear failed"); }
+
+        if (speed is > 0)
+        {
+            return new(DiagnosticOperationStatus.PreconditionsFailed, false, ObdLang.IsEnglish
+                ? $"The car is moving ({speed:0} km/h). Stop the car, turn the engine off, leave the ignition on and try again."
+                : $"მანქანა მოძრაობს ({speed:0} კმ/სთ). გააჩერე მანქანა, გამორთე ძრავა, ანთება დატოვე ჩართული და სცადე თავიდან.");
+        }
+
+        try
+        {
+            var raw = await SendTrackedAsync("010C", token, TimeSpan.FromMilliseconds(900), 1, false).ConfigureAwait(false);
+            if (!ObdResponseParser.IsNegative(raw) && _decoder.TryDecode(0x0C, raw, out var value)) rpm = value;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex) { _logger.LogDebug(ex, "RPM read before DTC clear failed"); }
+
+        if (rpm is > 50)
+        {
+            return new(DiagnosticOperationStatus.PreconditionsFailed, false, ObdLang.IsEnglish
+                ? $"The engine is running ({rpm:0} rpm). Turn the engine off (hybrid: switch READY off), leave the ignition on and try again."
+                : $"ძრავა მუშაობს ({rpm:0} ბრ/წთ). გამორთე ძრავა (ჰიბრიდზე: გამორთე READY), ანთება დატოვე ჩართული და სცადე თავიდან.");
+        }
+
+        return null;
+    }
+
     private async Task<DiagnosticOperationResult<bool>> TryClearDtcOnceAsync(CancellationToken token)
     {
         try
         {
+            var precondition = await CheckClearPreconditionsAsync(token).ConfigureAwait(false);
+            if (precondition is not null) return precondition;
+
             var raw = await SendTrackedAsync("04", token, TimeSpan.FromSeconds(7), 1, false).ConfigureAwait(false);
             var bytes = ObdResponseParser.ParseHex(raw);
 
@@ -620,6 +735,17 @@ public sealed class OBDService
     public Task<string> ReadMode06RawAsync(CancellationToken token = default) => SendTrackedAsync("06", token, TimeSpan.FromSeconds(7), 2, true);
     public Task<string> ReadMode05QuickAsync(CancellationToken token = default) => SendTrackedAsync("05", token, TimeSpan.FromSeconds(2), 1, false);
     public Task<string> ReadMode06QuickAsync(CancellationToken token = default) => SendTrackedAsync("06", token, TimeSpan.FromSeconds(2), 1, false);
+
+    /// <summary>
+    /// Non-CAN Mode $05 request for one O2 sensor test: "05 TID SENSOR"
+    /// (TID 00 = supported tests). A bare "05" is not a valid request.
+    /// </summary>
+    public Task<string> ReadMode05TestAsync(byte tid, byte sensor, CancellationToken token = default) =>
+        SendTrackedAsync($"05{tid:X2}{sensor:X2}", token, TimeSpan.FromMilliseconds(1500), 1, false);
+
+    /// <summary>Non-CAN Mode $06 request for one test ID ("06 TID"; 00 = supported tests).</summary>
+    public Task<string> ReadMode06TidAsync(byte tid, CancellationToken token = default) =>
+        SendTrackedAsync($"06{tid:X2}", token, TimeSpan.FromMilliseconds(2000), 1, false);
 
     /// <summary>CAN Mode $06 request for one monitor ID (e.g. 0600 = supported MIDs 01–20, 0621 = catalyst bank 1).</summary>
     public Task<string> ReadMode06MidAsync(byte mid, CancellationToken token = default) =>
@@ -1006,9 +1132,45 @@ public sealed class OBDService
         var normalized = new string((command ?? string.Empty).Where(Uri.IsHexDigit).ToArray()).ToUpperInvariant();
         if (string.IsNullOrWhiteSpace(normalized))
             throw new ArgumentException("Command must contain hexadecimal data.", nameof(command));
-        if (normalized.StartsWith("270", StringComparison.Ordinal) || normalized.StartsWith("2E", StringComparison.Ordinal) || normalized.StartsWith("2F", StringComparison.Ordinal) || normalized.StartsWith("31", StringComparison.Ordinal) || normalized.StartsWith("34", StringComparison.Ordinal) || normalized.StartsWith("36", StringComparison.Ordinal) || normalized.StartsWith("37", StringComparison.Ordinal) || normalized.StartsWith("23", StringComparison.Ordinal))
-            throw new InvalidOperationException("Write/security/programming/raw-memory commands are disabled in consumer mode. Use a supported OEM Service Function with safety gating.");
+        if (IsBlockedRawCommand(normalized))
+            throw new InvalidOperationException(ObdLang.IsEnglish
+                ? "Write, clear, reset, security and programming commands are disabled here. Use the matching app function with its safety checks."
+                : "ჩაწერის, წაშლის, გადატვირთვის, დაცვის და პროგრამირების ბრძანებები აქ გამორთულია. გამოიყენე აპის შესაბამისი ფუნქცია უსაფრთხოების შემოწმებით.");
         return await SendTrackedAsync(normalized, token, TimeSpan.FromSeconds(5), 2, true);
+    }
+
+    /// <summary>
+    /// Raw console filter, compared on the hex bytes with spaces removed.
+    /// Blocks session control (10 except 10 01), ECU reset (11), clear DTC
+    /// (14 / 04), write services (3B, 3D, 2E), I/O control (2F), routines (31),
+    /// security access (27 any sub-function), up/download (34-37) and memory read (23).
+    /// </summary>
+    private static bool IsBlockedRawCommand(string normalizedHex)
+    {
+        if (normalizedHex.Length < 2) return false;
+        var service = normalizedHex.Substring(0, 2);
+        switch (service)
+        {
+            case "10":
+                return normalizedHex != "1001";
+            case "11":
+            case "14":
+            case "04":
+            case "3B":
+            case "3D":
+            case "2E":
+            case "2F":
+            case "31":
+            case "27":
+            case "34":
+            case "35":
+            case "36":
+            case "37":
+            case "23":
+                return true;
+            default:
+                return false;
+        }
     }
 
     public async Task<AdapterDiagnostics> GetAdapterDiagnosticsAsync(

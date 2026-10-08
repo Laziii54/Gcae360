@@ -88,7 +88,7 @@
 
             </Grid>
 
-            <Label
+            <Label IsVisible="False"
                 Text="{Binding PidRefreshStatus}"
                 TextColor="{DynamicResource SubTextColor}"
                 FontSize="11"
@@ -111,7 +111,7 @@
                                     ColumnSpacing="12"
                                     Padding="14,13">
 
-                                    <Label
+                                    <Label IsVisible="False"
                                         Text="{Binding Command}"
                                         FontSize="12"
                                         FontFamily="monospace"

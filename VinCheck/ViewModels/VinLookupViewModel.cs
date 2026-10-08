@@ -1,3 +1,4 @@
+using CarScanner.Services.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CarScanner.Services;
@@ -26,7 +27,7 @@ public partial class VinLookupViewModel(
     public string SampleHint => VinText.T("SampleHint");
     public string HistoryText => VinText.T("History");
     public string FavoritesText => VinText.T("Favorites");
-    public string LanguageText => VinText.T("Language");
+    public string LanguageText => LanguageCatalog.Current.Flag;
     public string VinCodeText => VinText.T("VinCode");
     public string TapHintText => VinText.T("TapHint");
     public string ClearText => VinText.T("Clear");
@@ -159,10 +160,17 @@ public partial class VinLookupViewModel(
     private Task OpenHistoryAsync() => Shell.Current.GoToAsync(nameof(VinHistoryPage));
 
     [RelayCommand]
-    private void ToggleLanguage()
+    private async Task ToggleLanguage()
     {
-        VinText.Toggle();
-        RefreshTexts();
+        try
+        {
+            await VinText.PickLanguageAsync();
+            RefreshTexts();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "VinLookupViewModel.ToggleLanguage");
+        }
     }
 
     [RelayCommand]

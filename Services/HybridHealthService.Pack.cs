@@ -152,8 +152,7 @@ public sealed partial class HybridHealthService
             value -= Math.Min(24, HvPackAssessment.HighResistanceBlocks(pack.Resistances).Length * 8);
             score = value;
         }
-        if (ecuLife is { } life)
-            score = (int)Math.Min(score ?? 100, life);
+        // PID 5B (ecuLife) is not used for quality: on many cars it is the state of charge.
         if (pack.SohPercent is { } soh)
             score = (int)Math.Min(score ?? 100, Math.Round(soh));
         if (score is { } final)
@@ -188,8 +187,8 @@ public sealed partial class HybridHealthService
             maximum,
             pack.Temperatures.Length > 0 ? pack.Temperatures.Min() : null,
             pack.Temperatures.Length > 0 ? pack.Temperatures.Max() : null,
-            ecuLife,
-            ecuLife.HasValue,
+            pack.SohPercent,
+            false,
             pack.Blocks.Length > 0 ? pack.Blocks.Length : (pack.CellRange is null ? 0 : 2),
             pack.Temperatures.Length,
             "რეალური მონაცემები მიღებულია HV ბატარეის ECU-დან.",

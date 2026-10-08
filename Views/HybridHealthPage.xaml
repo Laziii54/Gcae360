@@ -162,8 +162,8 @@
             </Border>
 
             <!-- Technical (collapsed) -->
-            <Button IsVisible="{Binding HasResult}" Text="{Binding TechnicalToggleText}" Command="{Binding ToggleTechnicalCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" FontSize="12" HeightRequest="36" Padding="0" HorizontalOptions="Center" />
-            <Border IsVisible="{Binding ShowTechnical}" Style="{StaticResource ListCardStyle}" Padding="14">
+            <Button IsVisible="False" Text="{Binding TechnicalToggleText}" Command="{Binding ToggleTechnicalCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" FontSize="12" HeightRequest="36" Padding="0" HorizontalOptions="Center" />
+            <Border IsVisible="False" Style="{StaticResource ListCardStyle}" Padding="14">
                 <VerticalStackLayout Spacing="7">
                     <Label Text="{Binding ValidationStatus}" FontSize="12" TextColor="#C98A1A" LineBreakMode="WordWrap" />
                     <Label Text="{Binding EvidenceText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />

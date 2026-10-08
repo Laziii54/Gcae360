@@ -15,7 +15,7 @@
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                 <VerticalStackLayout Spacing="4">
                     <Label Text="დიაგნოსტიკური ანგარიში" Style="{StaticResource ReportTitleStyle}" />
-                    <Label Text="მხოლოდ მანქანიდან წაკითხული რეალური მონაცემები" Style="{StaticResource ReportMetaStyle}" FontSize="13" />
+                    <Label IsVisible="False" Text="მხოლოდ მანქანიდან წაკითხული რეალური მონაცემები" Style="{StaticResource ReportMetaStyle}" FontSize="13" />
                 </VerticalStackLayout>
                 <Button Grid.Column="1" Text="განახლება" Command="{Binding LoadCommand}"
                         BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderWidth="0"

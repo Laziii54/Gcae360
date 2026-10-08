@@ -231,8 +231,8 @@ public partial class ResetRecorderViewModel(
 
     private void SetResult(string color, string background, string title, string text)
     {
-        ResultColor = color;
-        ResultBackground = background;
+        ResultColor = CarScanner.Services.Localization.ThemeService.SoftHex(color);
+        ResultBackground = CarScanner.Services.Localization.ThemeService.SoftHex(background);
         ResultTitle = title;
         ResultText = text;
     }

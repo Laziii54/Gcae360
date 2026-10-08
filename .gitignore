@@ -35,3 +35,11 @@ aapt-log.txt
 aapt-verbose.txt
 
 Backend/CarScanner.Api/Properties/launchSettings.json
+
+# Server data (SQLite databases, uploaded review videos) and publish profiles
+**/data/
+*.db
+*.db-wal
+*.db-shm
+**/appsettings.Production.json
+*.pubxml.user

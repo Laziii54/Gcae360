@@ -256,16 +256,25 @@ public partial class DiagnosticReportViewModel : BaseViewModel
         var display = new[] { vehicle.Manufacturer, vehicle.Model, vehicle.Year }
             .Where(value => !IsUnknown(value))
             .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        // Same limits as the server (QrReportStore); an unknown vehicle is "GCar360".
+        static string Clip(string? text, int max)
+        {
+            text = (text ?? string.Empty).Trim();
+            return text.Length <= max ? text : text[..(max - 1)] + "…";
+        }
+
+        var vehicleName = string.Join(" ", display);
         _qrSession.Set(new QrReportDraft
         {
-            Vehicle = string.Join(" ", display),
+            Vehicle = Clip(string.IsNullOrWhiteSpace(vehicleName) ? "GCar360" : vehicleName, 160),
             Vin = vehicle.VIN ?? string.Empty,
             CheckedAt = _report.FinishedAt,
-            Status = ReportState,
-            Summary = ScanSummary + (string.IsNullOrWhiteSpace(EcuSummary) ? string.Empty : "\n" + EcuSummary),
-            DtcSummary = DtcSummary,
-            ReadinessSummary = EmissionsSummary,
-            ServiceHistory = BuildServiceHistoryText(vehicle)
+            Status = Clip(ReportState, 120),
+            Summary = Clip(ScanSummary + (string.IsNullOrWhiteSpace(EcuSummary) ? string.Empty : "\n" + EcuSummary), 4000),
+            DtcSummary = Clip(DtcSummary, 8000),
+            ReadinessSummary = Clip(EmissionsSummary, 4000),
+            ServiceHistory = Clip(BuildServiceHistoryText(vehicle), 4000)
         });
         await Shell.Current.GoToAsync(nameof(Views.QrReportPage));
         }

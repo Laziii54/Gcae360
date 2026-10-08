@@ -27,16 +27,37 @@ public partial class ProPage : ContentPage
 
     private async void OnAccountClicked(object? sender, EventArgs e)
     {
-        try { await Shell.Current.GoToAsync(nameof(AccountPage)); } catch { }
+        try { await Shell.Current.GoToAsync(nameof(AccountPage)); }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ProPage.OnAccountClicked");
+        }
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        ApplyUiLocalization();
+        try
+        {
+            ApplyUiLocalization();
 
-        // Monthly automatic payment from the website (status + cancel).
-        if (BindingContext is ProViewModel vm)
-            _ = vm.LoadWebSubscriptionAsync();
+            // Monthly automatic payment from the website (status + cancel).
+            if (BindingContext is ProViewModel vm)
+            {
+                vm.Attach();
+                _ = vm.LoadWebSubscriptionAsync();
+            }
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ProPage.OnAppearing");
+        }
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        // Release the singleton PRO/language events (no page leak).
+        (BindingContext as ProViewModel)?.Detach();
     }
 }

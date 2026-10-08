@@ -946,8 +946,7 @@ public sealed class ModuleLiveDataService
     private static string NameKa(string name) =>
         _namesKa is not null && _namesKa.TryGetValue(name.Trim(), out var ka) ? ka : string.Empty;
 
-    private static bool IsEnglish() =>
-        Preferences.Default.Get("language", "English").Equals("English", StringComparison.OrdinalIgnoreCase);
+    private static bool IsEnglish() => CarScanner.Services.Localization.LanguageCatalog.UsesEnglishBase;
 
     private static bool IsExcludedPath(string? path) =>
         !string.IsNullOrWhiteSpace(path) &&

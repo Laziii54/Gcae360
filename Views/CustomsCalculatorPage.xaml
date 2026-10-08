@@ -285,7 +285,7 @@
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="vm:CustomsHint">
                             <Border Padding="12,10" StrokeThickness="1" StrokeShape="RoundRectangle 12"
-                                    BackgroundColor="#EEF4FF" Stroke="#C9DAFB">
+                                    BackgroundColor="{DynamicResource InfoBg}" Stroke="{DynamicResource InfoStroke}">
                                 <Border.Triggers>
                                     <DataTrigger TargetType="Border" Binding="{Binding IsWarning}" Value="True">
                                         <Setter Property="BackgroundColor" Value="#FFF6E8" />
@@ -303,7 +303,7 @@
                                         <Label Text="{Binding Icon}" FontSize="12" FontAttributes="Bold" TextColor="White"
                                                HorizontalOptions="Center" VerticalOptions="Center" />
                                     </Border>
-                                    <Label Grid.Column="1" Text="{Binding Text}" FontSize="13" TextColor="#1B1D20" LineBreakMode="WordWrap" />
+                                    <Label Grid.Column="1" Text="{Binding Text}" FontSize="13" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
                                 </Grid>
                             </Border>
                         </DataTemplate>

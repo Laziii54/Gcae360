@@ -14,6 +14,7 @@ public partial class SettingsViewModel : BaseViewModel
     private readonly UnitSystemService _units;
     private readonly LocalizationService _localization;
     private readonly ReminderNotificationService _notifications;
+    private bool _initialized;
 
     [ObservableProperty]
     private string bluetoothStatus = "უცნობი";
@@ -43,11 +44,8 @@ public partial class SettingsViewModel : BaseViewModel
         "System"
     };
 
-    public string[] LanguageOptions { get; } =
-    {
-        "ქართული",
-        "English"
-    };
+    // ქართული, English, Türkçe, Deutsch, Polski, Español, Português, Français, Italiano
+    public string[] LanguageOptions { get; } = LanguageCatalog.DisplayNames;
 
     public string[] UnitOptions { get; } =
     {
@@ -84,10 +82,7 @@ public partial class SettingsViewModel : BaseViewModel
                 "theme",
                 "Light");
 
-        LanguageOption =
-            Preferences.Default.Get(
-                "language",
-                "English");
+        LanguageOption = LanguageCatalog.Current.DisplayName;
 
         NotificationsEnabled =
             Preferences.Default.Get(
@@ -108,6 +103,7 @@ public partial class SettingsViewModel : BaseViewModel
 
         UpdateStatus();
         ApplyTheme();
+        _initialized = true;
 
         // The language can also be changed on the home page or VIN pages;
         // keep this (singleton) view model in sync so the picker never
@@ -144,7 +140,12 @@ public partial class SettingsViewModel : BaseViewModel
             "theme",
             value);
 
-        ApplyTheme();
+        ApplyTheme(force: _initialized);
+
+        // The launcher icon follows the theme only after an explicit change
+        // here; it is switched when the app goes to the background.
+        if (_initialized)
+            AppIconSwitcher.RequestSwitch();
 
         _localization.ApplyCurrentPage();
     }
@@ -190,7 +191,7 @@ public partial class SettingsViewModel : BaseViewModel
             value);
     }
 
-    private void ApplyTheme()
+    private void ApplyTheme(bool force = false)
     {
         if (Application.Current == null)
             return;
@@ -213,6 +214,10 @@ public partial class SettingsViewModel : BaseViewModel
                 "System" => AppTheme.Unspecified,
                 _ => AppTheme.Dark
             };
+
+        // LocalizationService.Apply no longer re-applies the theme, so the
+        // resource palette is written here (forced after a user change).
+        ThemeService.Apply(force);
 
         MainThread.BeginInvokeOnMainThread(
             async () =>

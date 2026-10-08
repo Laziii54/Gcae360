@@ -8,16 +8,25 @@ using CarScanner.ViewModels; namespace CarScanner.Views; public partial class Mi
 
     protected override async void OnAppearing()
     {
+        base.OnAppearing();
         try
         {
-        base.OnAppearing();
         ApplyUiLocalization();
         if (BindingContext is MileageViewModel viewModel)
+        {
+            viewModel.Attach();
             await viewModel.LoadVehicleContextAsync();
+        }
         }
         catch (Exception commandException)
         {
             CarScanner.Services.CommandErrors.Report(commandException, "MileagePage.OnAppearing");
         }
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        (BindingContext as MileageViewModel)?.Detach();
     }
 }

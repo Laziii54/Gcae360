@@ -290,7 +290,9 @@
                         IsVisible="{Binding Report,Converter={StaticResource NotNull}}"
                         Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="48" FontSize="14" />
 
-                <!-- ===== Paid full history: offer ===== -->
+                <!-- ===== Paid full history: offer =====
+                     ShowFullOffer is always false on Android / iOS (no outside payment
+                     for digital content in the mobile app); kept for a future IAP. -->
                 <Border Style="{StaticResource ListCardStyle}" Padding="16" IsVisible="{Binding ShowFullOffer}">
                     <VerticalStackLayout Spacing="10">
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
@@ -305,7 +307,7 @@
                     </VerticalStackLayout>
                 </Border>
 
-                <!-- ===== Paid full history: waiting for the bank / report ===== -->
+                <!-- ===== Paid full history: report already bought, being prepared ===== -->
                 <Border Style="{StaticResource ListCardStyle}" Padding="14,13" IsVisible="{Binding ShowFullPending}">
                     <VerticalStackLayout Spacing="10">
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">

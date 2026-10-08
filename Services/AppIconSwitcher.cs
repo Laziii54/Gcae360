@@ -10,6 +10,35 @@ namespace CarScanner.Services;
 /// </summary>
 public static class AppIconSwitcher
 {
+    // Switching the launcher activity-alias removes pinned home-screen
+    // shortcuts on many launchers, so it happens only after the user changed
+    // the theme in Settings — never for OS theme changes or on every stop.
+    private const string PendingKey = "app_icon_switch_pending";
+
+    /// <summary>Called by Settings when the user explicitly picks a theme.</summary>
+    public static void RequestSwitch()
+    {
+        try { Preferences.Default.Set(PendingKey, true); }
+        catch { }
+    }
+
+    /// <summary>Applies the icon only if Settings requested it (call while in the background).</summary>
+    public static void ApplyIfRequested()
+    {
+        try
+        {
+            if (!Preferences.Default.Get(PendingKey, false))
+                return;
+            Preferences.Default.Remove(PendingKey);
+        }
+        catch
+        {
+            return;
+        }
+
+        Apply();
+    }
+
     public static void Apply()
     {
 #if ANDROID

@@ -77,7 +77,9 @@ public sealed partial class ServiceDataReaderService
     {
         var resolved = _vehicleProfiles.Resolve(vehicle);
         _currentVehicleKey = VehicleKey(vehicle);
+        _currentVin = IsFullVin(vehicle.VIN) ? vehicle.VIN.Trim().ToUpperInvariant() : string.Empty;
         _verifiedGmResetProfile = IsFirstGenerationChevroletVolt(resolved);
+        _reviewedGmReset = FindReviewedGmOilLifeReset(resolved);
 
         // GM oil life (read-only). Tried before the identity gate: the
         // learned source and the GM oil-life identifiers are harmless 0x22 /
@@ -486,15 +488,34 @@ public sealed partial class ServiceDataReaderService
     // GM OIL-LIFE DISCOVERY (read-only)
     // ============================================================
 
-    private const string LearnedOilLifeKey = "gm_oil_life_source_v1";
+    // The old app-wide key let an address found on one car be used on every
+    // other car. It is no longer read; learned READ sources are kept per VIN.
+    private const string LegacyLearnedOilLifeKey = "gm_oil_life_source_v1";
+    private const string LearnedOilLifeKeyPrefix = "gm_oil_life_source_v2_";
+
+    /// <summary>Full 17-character VIN of the car of the last read, or empty.</summary>
+    private string _currentVin = string.Empty;
+
+    private static bool IsFullVin(string? vin) =>
+        !string.IsNullOrWhiteSpace(vin) && vin.Trim().Length == 17 &&
+        !vin.Trim().Equals("Unknown", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Per-VIN key; empty when the VIN is unknown (nothing is stored then).</summary>
+    private string LearnedOilLifeKey =>
+        _currentVin.Length == 17 ? LearnedOilLifeKeyPrefix + _currentVin : string.Empty;
 
     private readonly record struct LearnedOilLifeSource(int Tx, int Rx, int Did, int ByteIndex, bool Scale255, int Service = 0x22);
 
-    private static LearnedOilLifeSource? LoadLearnedOilLifeSource()
+    private LearnedOilLifeSource? LoadLearnedOilLifeSource()
     {
         try
         {
-            var text = Preferences.Default.Get(LearnedOilLifeKey, string.Empty);
+            Preferences.Default.Remove(LegacyLearnedOilLifeKey);
+            var key = LearnedOilLifeKey;
+            if (key.Length == 0)
+                return null;
+
+            var text = Preferences.Default.Get(key, string.Empty);
             var parts = text.Split('|');
             if (parts.Length is not (5 or 6))
                 return null;
@@ -513,13 +534,28 @@ public sealed partial class ServiceDataReaderService
         }
     }
 
-    private static void SaveLearnedOilLifeSource(LearnedOilLifeSource source) =>
-        Preferences.Default.Set(
-            LearnedOilLifeKey,
-            $"{source.Tx:X3}|{source.Rx:X3}|{source.Did:X4}|{source.ByteIndex}|{(source.Scale255 ? "255" : "1")}|{source.Service:X2}");
+    /// <summary>
+    /// Stores a READ source found by discovery for this VIN only. It is never
+    /// used as a write address.
+    /// </summary>
+    private bool SaveLearnedOilLifeSource(LearnedOilLifeSource source)
+    {
+        var key = LearnedOilLifeKey;
+        if (key.Length == 0)
+            return false;
 
-    public static void ForgetLearnedOilLifeSource() =>
-        Preferences.Default.Remove(LearnedOilLifeKey);
+        Preferences.Default.Set(
+            key,
+            $"{source.Tx:X3}|{source.Rx:X3}|{source.Did:X4}|{source.ByteIndex}|{(source.Scale255 ? "255" : "1")}|{source.Service:X2}");
+        return true;
+    }
+
+    public void ForgetLearnedOilLifeSource()
+    {
+        var key = LearnedOilLifeKey;
+        if (key.Length > 0)
+            Preferences.Default.Remove(key);
+    }
 
     // ============================================================
     // GM OIL-LIFE RESET (Service page "Reset service reminder")
@@ -528,13 +564,91 @@ public sealed partial class ServiceDataReaderService
     private const string OilResetHistoryKey = "gm_oil_life_reset_history_v1";
 
     /// <summary>
-    /// Learned sources are read-only. Reading a GMLAN $1A identifier does not
-    /// authorize an inferred $3B write to the same identifier.
+    /// The oil-life reset is offered only when a REVIEWED catalog entry exists
+    /// for the connected (VIN-verified) model. Learned/discovered sources are
+    /// read-only: matching a byte to the dashboard percentage does not prove
+    /// that writing to it is safe.
     /// </summary>
     public bool CanResetLearnedOilLife =>
-        _verifiedGmResetProfile &&
-        LoadLearnedOilLifeSource() is { Service: 0x1A } source &&
-        source.Did is > 0 and < 0x90;
+        _verifiedGmResetProfile && _reviewedGmReset is not null;
+
+    /// <summary>
+    /// A GM oil-life write address confirmed from service documentation and a
+    /// real-car test for this exact model range. Only these are ever written.
+    /// </summary>
+    private sealed record ReviewedGmOilLifeReset(
+        string Make,
+        string Model,
+        int YearFrom,
+        int YearTo,
+        int Tx,
+        int Rx,
+        int Did,
+        int ByteIndex,
+        bool Scale255);
+
+    /// <summary>
+    /// Reviewed write catalog. Intentionally empty until an entry has been
+    /// reviewed (documented address + write/read-back/dashboard test on that
+    /// model). Without an entry the reset is not offered.
+    /// </summary>
+    private static readonly ReviewedGmOilLifeReset[] ReviewedGmOilLifeResets =
+        Array.Empty<ReviewedGmOilLifeReset>();
+
+    private ReviewedGmOilLifeReset? _reviewedGmReset;
+
+    private static ReviewedGmOilLifeReset? FindReviewedGmOilLifeReset(ResolvedVehicleProfile vehicle)
+    {
+        if (!vehicle.Manufacturer.IsVerified || !vehicle.Model.IsVerified || !vehicle.Year.IsVerified)
+            return null;
+        if (!int.TryParse(vehicle.Year.Value, out var year))
+            return null;
+
+        return ReviewedGmOilLifeResets.FirstOrDefault(entry =>
+            entry.Make.Equals(vehicle.Manufacturer.Value, StringComparison.OrdinalIgnoreCase) &&
+            entry.Model.Equals(vehicle.Model.Value, StringComparison.OrdinalIgnoreCase) &&
+            year >= entry.YearFrom && year <= entry.YearTo);
+    }
+
+    /// <summary>Minimum module voltage for any write (engine off, battery healthy).</summary>
+    private const double MinimumWriteVoltage = 12.0;
+
+    /// <summary>
+    /// Speed must be readable and 0, voltage readable and at least 12.0 V.
+    /// Returns null when it is safe to write, otherwise the refusal result.
+    /// </summary>
+    private async Task<OilLifeResetResult?> CheckWriteSafetyAsync(List<string> steps, CancellationToken token)
+    {
+        var speed = await TryReadPidByteAsync(0x0D, token).ConfigureAwait(false);
+        if (speed is null)
+            return OilLifeResetResult.NotSent(OilLifeResetFailure.SafetyCheckUnavailable, "speed not readable");
+        if (speed > 0)
+            return OilLifeResetResult.NotSent(OilLifeResetFailure.VehicleMoving, $"speed {speed} km/h");
+
+        byte[]? voltageData = null;
+        try
+        {
+            voltageData = await _obd.ReadMode01PidDataAsync(0x42, token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            voltageData = null;
+        }
+
+        if (voltageData is not { Length: >= 2 })
+            return OilLifeResetResult.NotSent(OilLifeResetFailure.SafetyCheckUnavailable, "voltage not readable");
+
+        var volts = ((voltageData[0] << 8) | voltageData[1]) / 1000d;
+        steps.Add($"{volts:0.0} V");
+        if (volts < MinimumWriteVoltage)
+            return OilLifeResetResult.NotSent(OilLifeResetFailure.LowVoltage, $"{volts:0.0} V");
+
+        return null;
+    }
 
     /// <summary>
     /// The connected car is a VIN-verified first-generation Chevrolet Volt
@@ -545,7 +659,7 @@ public sealed partial class ServiceDataReaderService
     private bool _verifiedGmResetProfile;
 
     /// <summary>Short text of the learned source, e.g. "GMLAN 1A $4F · A×100/255".</summary>
-    public static string LearnedOilLifeDescription
+    public string LearnedOilLifeDescription
     {
         get
         {
@@ -594,11 +708,15 @@ public sealed partial class ServiceDataReaderService
     }
 
     /// <summary>
-    /// Reads the learned GM oil-life value once (read-only). Returns null when
-    /// there is no learned source or the ECU did not answer.
+    /// Reads the GM oil-life value once (read-only): from the reviewed reset
+    /// entry when one exists, otherwise from the source learned for this VIN.
+    /// Returns null when there is no source or the ECU did not answer.
     /// </summary>
     public async Task<double?> ReadLearnedOilLifePercentAsync(CancellationToken token)
     {
+        if (_reviewedGmReset is { } reviewed)
+            return await ReadReviewedOilLifePercentAsync(reviewed, token).ConfigureAwait(false);
+
         var learned = LoadLearnedOilLifeSource();
         if (learned is null || learned.Value.Service != 0x1A)
             return null;
@@ -613,16 +731,34 @@ public sealed partial class ServiceDataReaderService
     private static double ToOilPercent(LearnedOilLifeSource source, byte value) =>
         source.Scale255 ? value * 100d / 255d : value;
 
+    private static double ToOilPercent(ReviewedGmOilLifeReset entry, byte value) =>
+        entry.Scale255 ? value * 100d / 255d : value;
+
+    /// <summary>Reads the reviewed identifier, accepting only the reviewed module's reply.</summary>
+    private async Task<(byte Raw, string Reply)?> ReadReviewedOilLifeByteAsync(ReviewedGmOilLifeReset entry, CancellationToken token)
+    {
+        var raw = await _obd.ReadGmlanDidFilteredAsync(entry.Tx, entry.Rx, entry.Did, TimeSpan.FromMilliseconds(2000), token).ConfigureAwait(false);
+        if (!TryExtractGmlanData(LinesFrom(raw, entry.Rx), entry.Did, out var data) || data.Length <= entry.ByteIndex)
+            return null;
+        return (data[entry.ByteIndex], raw);
+    }
+
+    private async Task<double?> ReadReviewedOilLifePercentAsync(ReviewedGmOilLifeReset entry, CancellationToken token)
+    {
+        var read = await ReadReviewedOilLifeByteAsync(entry, token).ConfigureAwait(false);
+        return read is { } value ? ToOilPercent(entry, value.Raw) : null;
+    }
+
     /// <summary>
     /// Resets the GM oil-life value to <paramref name="targetPercent"/> (100 or 50)
-    /// by writing one byte with GMLAN $3B to the same identifier that the app
-    /// reads the value from. Safeguards:
-    ///  - only a learned GMLAN $1A identifier below 0x90 is used;
-    ///  - vehicle speed must be 0 and module voltage ≥ 11.5 V when readable;
-    ///  - the answering module is identified first (reply filter); nothing is
-    ///    written when no module, or more than one module, answers;
-    ///  - exactly one write request is sent (a functional retry only when the
-    ///    direct request got no reply at all);
+    /// with one GMLAN $3B write. Safeguards:
+    ///  - only an address from a REVIEWED catalog entry for this VIN-verified
+    ///    model is written — never a learned/inferred address; without an
+    ///    entry the reset is not supported and nothing is sent;
+    ///  - vehicle speed must be readable and 0, module voltage readable and
+    ///    at least 12.0 V; otherwise nothing is sent;
+    ///  - the write goes only to the reviewed physical module address — never
+    ///    as a functional (broadcast 0x7DF) request, and it is not retried;
     ///  - a negative reply (7F 3B xx) is reported, and the value is read back —
     ///    success is reported only when the ECU really shows the new value.
     /// </summary>
@@ -631,116 +767,51 @@ public sealed partial class ServiceDataReaderService
         IProgress<string>? progress,
         CancellationToken token)
     {
-        // Fail before adapter initialization or any vehicle I/O: only the
-        // verified vehicle profile (see _verifiedGmResetProfile) may be written.
-        if (!_verifiedGmResetProfile)
+        // Fail before adapter initialization or any vehicle I/O.
+        if (!_verifiedGmResetProfile || _reviewedGmReset is not { } entry)
             return OilLifeResetResult.NotSent(
-                OilLifeResetFailure.NoLearnedSource,
-                "GM oil-life reset is enabled only for a VIN-verified Chevrolet Volt 2011–2015");
-
-        var steps = new List<string>();
-        var learned = LoadLearnedOilLifeSource();
-        if (learned is not { Service: 0x1A } source || source.Did is <= 0 or >= 0x90)
-            return OilLifeResetResult.NotSent(OilLifeResetFailure.NoLearnedSource, "no learned GMLAN oil-life identifier");
+                OilLifeResetFailure.NotSupported,
+                "GM oil-life reset is not supported for this car yet (no reviewed reset entry for this model)");
 
         if (targetPercent is < 1 or > 100)
             throw new ArgumentOutOfRangeException(nameof(targetPercent));
 
+        var steps = new List<string>();
         if (!_obd.IsInitialized)
             await _obd.InitializeAsync(token).ConfigureAwait(false);
 
-        // 1) Vehicle must be stationary, voltage must be healthy.
+        // 1) Vehicle must be stationary, voltage must be healthy — both readable.
         progress?.Report("speed / voltage");
-        var speed = await TryReadPidByteAsync(0x0D, token).ConfigureAwait(false);
-        if (speed is > 0)
-            return OilLifeResetResult.NotSent(OilLifeResetFailure.VehicleMoving, $"speed {speed} km/h");
+        if (await CheckWriteSafetyAsync(steps, token).ConfigureAwait(false) is { } refused)
+            return refused;
 
-        var voltageData = await _obd.ReadMode01PidDataAsync(0x42, token).ConfigureAwait(false);
-        if (voltageData is { Length: >= 2 })
-        {
-            var volts = ((voltageData[0] << 8) | voltageData[1]) / 1000d;
-            steps.Add($"{volts:0.0} V");
-            if (volts is > 1 and < 11.5)
-                return OilLifeResetResult.NotSent(OilLifeResetFailure.LowVoltage, $"{volts:0.0} V");
-        }
-
-        // 2) Current value (backup).
+        // 2) Current value (backup), from the reviewed module only.
         progress?.Report("read");
-        var beforeRaw = await _obd.ReadGmlanDidFunctionalAsync(source.Did, TimeSpan.FromMilliseconds(2000), token).ConfigureAwait(false);
-        if (!TryExtractGmlanData(beforeRaw, source.Did, out var beforeData) || beforeData.Length <= source.ByteIndex)
-            return OilLifeResetResult.NotSent(OilLifeResetFailure.ReadFailed, $"1A {source.Did:X2} → {Shorten(beforeRaw)}");
-
-        var beforeByte = beforeData[source.ByteIndex];
-        var before = ToOilPercent(source, beforeByte);
-        steps.Add($"before {before:0.#}% (0x{beforeByte:X2})");
-
-        // 3) Which module answers this identifier? (read-only, reply filter)
         progress?.Report("module");
-        var responders = new List<int>();
-        for (var rx = 0x7E8; rx <= 0x7EF; rx++)
-        {
-            token.ThrowIfCancellationRequested();
-            string raw;
-            try
-            {
-                raw = await _obd.ReadGmlanDidFilteredAsync(0x7DF, rx, source.Did, TimeSpan.FromMilliseconds(700), token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (token.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch
-            {
-                continue;
-            }
+        var beforeRead = await ReadReviewedOilLifeByteAsync(entry, token).ConfigureAwait(false);
+        if (beforeRead is not { } beforeValue)
+            return OilLifeResetResult.NotSent(OilLifeResetFailure.ModuleNotFound,
+                string.Join(" · ", steps.Append($"1A {entry.Did:X2} (0x{entry.Rx:X3}) → no reply")));
 
-            if (rx == 0x7E8)
-                steps.Add($"1A {source.Did:X2} (7E8) → {Shorten(raw)}");
-
-            // Only lines whose CAN header is exactly this reply ID count:
-            // some adapters ignore the reply filter and show every module.
-            if (TryExtractGmlanData(LinesFrom(raw, rx), source.Did, out var data) &&
-                data.Length > source.ByteIndex &&
-                data[source.ByteIndex] == beforeByte)
-            {
-                responders.Add(rx);
-            }
-        }
-
-        if (responders.Count == 0)
-            return OilLifeResetResult.NotSent(OilLifeResetFailure.ModuleNotFound, string.Join(" · ", steps), before);
-        if (responders.Count > 1)
-            return OilLifeResetResult.NotSent(OilLifeResetFailure.ModuleAmbiguous,
-                string.Join(" · ", steps.Append("modules " + string.Join(",", responders.Select(r => r.ToString("X3"))))), before);
-
-        var rxId = responders[0];
-        var txId = rxId - 8;
-        steps.Add($"module 0x{txId:X3}/0x{rxId:X3}");
+        var beforeByte = beforeValue.Raw;
+        var before = ToOilPercent(entry, beforeByte);
+        steps.Add($"before {before:0.#}% (0x{beforeByte:X2})");
+        steps.Add($"module 0x{entry.Tx:X3}/0x{entry.Rx:X3}");
 
         // Already at the requested value → nothing to write.
         // 100% → 0xFF, 50% → 0x80, 90% → 0xE6 (A×100/255).
-        var value = source.Scale255
+        var value = entry.Scale255
             ? (byte)Math.Clamp((int)Math.Round(targetPercent * 255d / 100d), 0, 255)
             : (byte)targetPercent;
         if (beforeByte == value)
             return new OilLifeResetResult(true, false, before, before, OilLifeResetFailure.None, string.Join(" · ", steps.Append("already set")));
 
-        // 4) One write request.
+        // 3) Exactly one physical write request (no broadcast, no retry).
         progress?.Report("write");
-        var writeRaw = await SafeWriteAsync(txId, rxId, source.Did, value, token).ConfigureAwait(false);
-        steps.Add($"3B {source.Did:X2} {value:X2} → {Shorten(writeRaw)}");
+        var writeRaw = await SafeWriteAsync(entry.Tx, entry.Rx, entry.Did, value, token).ConfigureAwait(false);
+        steps.Add($"3B {entry.Did:X2} {value:X2} → {Shorten(writeRaw)}");
 
-        var outcome = ParseWriteReply(LinesFrom(writeRaw, rxId), source.Did, out var nrc);
-        if (outcome == WriteReply.NoReply)
-        {
-            // The direct request got no reply at all (adapter/header issue).
-            // Only one module answers this identifier, so repeat once with
-            // the functional header that the read uses, still reply-filtered.
-            writeRaw = await SafeWriteAsync(0x7DF, rxId, source.Did, value, token).ConfigureAwait(false);
-            steps.Add($"7DF 3B {source.Did:X2} {value:X2} → {Shorten(writeRaw)}");
-            outcome = ParseWriteReply(LinesFrom(writeRaw, rxId), source.Did, out nrc);
-        }
-
+        var outcome = ParseWriteReply(LinesFrom(writeRaw, entry.Rx), entry.Did, out var nrc);
         if (outcome == WriteReply.Negative)
         {
             var failed = new OilLifeResetResult(false, true, before, before, OilLifeResetFailure.Rejected, string.Join(" · ", steps)) { NegativeCode = nrc };
@@ -748,7 +819,7 @@ public sealed partial class ServiceDataReaderService
             return failed;
         }
 
-        // 5) Read back.
+        // 4) Read back.
         progress?.Report("verify");
         double? after = null;
         for (var attempt = 0; attempt < 3 && after is null; attempt++)
@@ -756,7 +827,7 @@ public sealed partial class ServiceDataReaderService
             await Task.Delay(700, token).ConfigureAwait(false);
             try
             {
-                after = await ReadLearnedOilLifePercentAsync(token).ConfigureAwait(false);
+                after = await ReadReviewedOilLifePercentAsync(entry, token).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested)
             {
@@ -901,20 +972,10 @@ public sealed partial class ServiceDataReaderService
         if (!_obd.IsInitialized)
             await _obd.InitializeAsync(token).ConfigureAwait(false);
 
-        // 1) Stationary + voltage.
+        // 1) Stationary + voltage — both must be readable.
         progress?.Report("speed / voltage");
-        var speed = await TryReadPidByteAsync(0x0D, token).ConfigureAwait(false);
-        if (speed is > 0)
-            return OilLifeResetResult.NotSent(OilLifeResetFailure.VehicleMoving, $"speed {speed} km/h");
-
-        var voltageData = await _obd.ReadMode01PidDataAsync(0x42, token).ConfigureAwait(false);
-        if (voltageData is { Length: >= 2 })
-        {
-            var volts = ((voltageData[0] << 8) | voltageData[1]) / 1000d;
-            steps.Add($"{volts:0.0} V");
-            if (volts is > 1 and < 11.5)
-                return OilLifeResetResult.NotSent(OilLifeResetFailure.LowVoltage, $"{volts:0.0} V");
-        }
+        if (await CheckWriteSafetyAsync(steps, token).ConfigureAwait(false) is { } refused)
+            return refused;
 
         // 2) Current value (backup).
         progress?.Report("read");
@@ -1292,7 +1353,9 @@ public sealed partial class ServiceDataReaderService
                 positives++;
                 gmlanPositives.Add($"{did:X2}={string.Join(" ", data.Take(4).Select(x => x.ToString("X2")))}");
                 var match = MatchOilPercent(0x7DF, 0x7E8, did, data, dashboardPercent.Value);
-                if (match is not null)
+                // First match only: a later byte that happens to equal the
+                // dashboard percentage must not replace it.
+                if (match is not null && found is null)
                     found = match.Value with { Service = 0x1A };
             }
 
@@ -1340,10 +1403,12 @@ public sealed partial class ServiceDataReaderService
 
         if (found is not null)
         {
-            SaveLearnedOilLifeSource(found.Value);
+            // Saved for READING on this VIN only; never used as a write address.
+            var saved = SaveLearnedOilLifeSource(found.Value);
             report.AppendLine(
                 $"★ MATCH: 0x{found.Value.Tx:X3} · {found.Value.Service:X2} {found.Value.Did:X4} · byte {found.Value.ByteIndex} · " +
-                (found.Value.Scale255 ? "A×100/255" : "A = %") + " — saved.");
+                (found.Value.Scale255 ? "A×100/255" : "A = %") +
+                (saved ? " — saved for this VIN (read-only)." : " — not saved (VIN unknown)."));
         }
         else if (dashboardPercent.HasValue)
         {
@@ -2028,7 +2093,11 @@ public enum OilLifeResetFailure
     ModuleNotFound,
     ModuleAmbiguous,
     Rejected,
-    NotChanged
+    NotChanged,
+    /// <summary>No reviewed reset entry exists for this model: the reset is not offered.</summary>
+    NotSupported,
+    /// <summary>Vehicle speed or module voltage could not be read: nothing was sent.</summary>
+    SafetyCheckUnavailable
 }
 
 /// <summary>Result of one Service page oil-life reset.</summary>

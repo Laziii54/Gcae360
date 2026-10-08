@@ -56,6 +56,40 @@
                 </VerticalStackLayout>
             </Border>
 
+
+            <!-- Odometer finder: when this model's odometer place is not known yet -->
+            <Border IsVisible="{Binding ShowFinder}" Style="{StaticResource ListCardStyle}" Padding="14,12">
+                <VerticalStackLayout Spacing="8">
+                    <Label AutomationId="DynamicTextFinderTitle" Text="{Binding FinderTitle}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                    <Label AutomationId="DynamicTextFinderText" Text="{Binding FinderText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <Border Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 10" Padding="10,0" BackgroundColor="{DynamicResource PageBg}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Entry Text="{Binding DashboardMileage}" Placeholder="{Binding DashboardPlaceholder}" Keyboard="Numeric" FontSize="15" TextColor="{DynamicResource TextColor}" />
+                                <Label Grid.Column="1" AutomationId="DynamicTextFinderUnit" Text="{Binding DashboardUnit}" FontSize="13" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
+                        <Button Grid.Column="1" Text="{Binding FinderButtonText}" Command="{Binding SearchOdometerCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="10" HeightRequest="44" Padding="16,0" />
+                    </Grid>
+                    <ProgressBar IsVisible="{Binding IsFinding}" Progress="{Binding FinderProgress}" ProgressColor="{DynamicResource Primary}" />
+                    <Label AutomationId="DynamicTextFinderStatus" Text="{Binding FinderStatus}" IsVisible="{Binding HasFinderStatus}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                    <VerticalStackLayout IsVisible="{Binding HasFinderMatches}" Spacing="0" BindableLayout.ItemsSource="{Binding FinderMatches}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:OdometerMatchRow">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" Padding="0,6">
+                                    <CheckBox IsChecked="{Binding IsSelected}" VerticalOptions="Center" />
+                                    <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                                        <Label AutomationId="DynamicTextFinderMatch" Text="{Binding Title}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                                        <Label AutomationId="DynamicTextFinderMatchDetail" Text="{Binding Detail}" FontSize="11" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                    <Button IsVisible="{Binding HasFinderMatches}" Text="{Binding SaveFoundText}" Command="{Binding SaveFoundCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="10" HeightRequest="44" />
+                </VerticalStackLayout>
+            </Border>
+
             <!-- One button: filled before the check, outlined after it -->
             <Button IsVisible="{Binding HasResult, Converter={StaticResource InverseBoolConverter}}" Text="{Binding CheckButtonText}" Command="{Binding CheckCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="52" />
             <Button IsVisible="{Binding HasResult}" Text="{Binding CheckButtonText}" Command="{Binding CheckCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" CornerRadius="12" HeightRequest="48" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.2" />
@@ -63,6 +97,15 @@
 
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" />
             <Label AutomationId="DynamicTextMileageProgress" Text="{Binding StatusMessage}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+
+            <!-- Technical log -->
+            <Button IsVisible="False" Text="{Binding LogToggleText}" Command="{Binding ToggleLogCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" HorizontalOptions="Center" HeightRequest="36" />
+            <Border IsVisible="False" Style="{StaticResource ListCardStyle}" Padding="12,10">
+                <VerticalStackLayout Spacing="6">
+                    <Label AutomationId="DynamicTextMileageLog" Text="{Binding Log}" FontSize="11" FontFamily="monospace" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                    <Button Text="{Binding CopyLogText}" Command="{Binding CopyLogCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" HorizontalOptions="Start" HeightRequest="34" />
+                </VerticalStackLayout>
+            </Border>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

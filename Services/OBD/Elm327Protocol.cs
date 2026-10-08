@@ -199,14 +199,38 @@ namespace CarScanner.Services.OBD
                 await SendInitCommandAsync(CMD_SET_PROTOCOL_AUTO, "set protocol auto", cancellationToken).ConfigureAwait(false);
                 await SendInitCommandAsync(CMD_ADAPTIVE_TIMING_2, "adaptive timing 2", cancellationToken).ConfigureAwait(false);
 
-                var probeResponse = await SendCommandInternalAsync(
-                    CMD_TEST_PID_0100,
-                    ProtocolSearchTimeout,
-                    DefaultMaxRetries,
-                    treatNegativeStatusAsError: false,
-                    cancellationToken).ConfigureAwait(false);
+                string? probeResponse = null;
+                Elm327TimeoutException? probeTimeout = null;
+                try
+                {
+                    probeResponse = await SendCommandInternalAsync(
+                        CMD_TEST_PID_0100,
+                        ProtocolSearchTimeout,
+                        DefaultMaxRetries,
+                        treatNegativeStatusAsError: false,
+                        cancellationToken).ConfigureAwait(false);
+                }
+                catch (Elm327TimeoutException ex)
+                {
+                    probeTimeout = ex;
+                }
 
-                ValidateInitialProbeResponse(probeResponse);
+                // Older cars (K-line / J1850) and some clones never finish the
+                // automatic search: try every protocol explicitly.
+                if (probeTimeout is not null || ProbeNeedsProtocolFallback(probeResponse ?? string.Empty))
+                {
+                    var fallbackResponse = await TryExplicitProtocolsAsync(cancellationToken).ConfigureAwait(false);
+                    if (fallbackResponse is not null)
+                    {
+                        probeResponse = fallbackResponse;
+                    }
+                    else if (probeTimeout is not null)
+                    {
+                        throw probeTimeout;
+                    }
+                }
+
+                ValidateInitialProbeResponse(probeResponse ?? string.Empty);
 
                 await DetectAndCacheProtocolAsync(cancellationToken).ConfigureAwait(false);
 
@@ -552,6 +576,10 @@ namespace CarScanner.Services.OBD
             private bool _flowControlSupported = true;
             private string? _extendedAddress;
             private string? _flowControlData;
+            // When the adapter rejects ATCRA (and ATCF/ATCM), replies are
+            // filtered by CAN ID in software (headers are on, ATH1).
+            private string? _softwareFilterId;
+            private bool _hardwareFilterViaMask;
 
             public DtcModuleSession(Elm327Protocol elm, ObdProtocol originalProtocol)
             {
@@ -566,8 +594,71 @@ namespace CarScanner.Services.OBD
                 // S0: every received frame becomes one token (header+data).
                 await _elm.RequireOkInternalAsync("ATS0", token).ConfigureAwait(false);
                 await _elm.RequireOkInternalAsync("ATH1", token).ConfigureAwait(false);
-                await _elm.RequireOkInternalAsync("ATD0", token).ConfigureAwait(false);
-                await _elm.RequireOkInternalAsync("ATCFC1", token).ConfigureAwait(false);
+                // D0 and CFC1 are the adapter defaults: some clones reject the
+                // commands themselves, which must not stop the whole scan.
+                if (!await TryAsync("ATD0", token).ConfigureAwait(false))
+                    _elm._logger.LogInformation("Module session: adapter rejected ATD0; continuing with its default.");
+                if (!await TryAsync("ATCFC1", token).ConfigureAwait(false))
+                    _elm._logger.LogInformation("Module session: adapter rejected ATCFC1; continuing with its default.");
+            }
+
+            /// <summary>
+            /// Sets the receive filter for one module: ATCRA, else ATCF + ATCM,
+            /// else no hardware filter and the reply is filtered by ID in software.
+            /// </summary>
+            private async Task SetReceiveFilterAsync(string receive, bool ext29, CancellationToken token)
+            {
+                if (await TryAsync($"ATCRA{receive}", token).ConfigureAwait(false))
+                {
+                    _softwareFilterId = null;
+                    return;
+                }
+
+                var mask = ext29 ? "1FFFFFFF" : "7FF";
+                if (await TryAsync($"ATCF{receive}", token).ConfigureAwait(false) &&
+                    await TryAsync($"ATCM{mask}", token).ConfigureAwait(false))
+                {
+                    _elm._logger.LogInformation("Module session: ATCRA rejected; using ATCF/ATCM filter for {Receive}.", receive);
+                    _hardwareFilterViaMask = true;
+                    _softwareFilterId = null;
+                    return;
+                }
+
+                _elm._logger.LogWarning("Module session: adapter has no receive filter; filtering {Receive} in software.", receive);
+                _softwareFilterId = receive;
+            }
+
+            /// <summary>Keeps only frames whose CAN ID equals the software filter (ATH1 output).</summary>
+            private string ApplySoftwareFilter(string response)
+            {
+                var id = _softwareFilterId;
+                if (id is null || string.IsNullOrEmpty(response))
+                    return response;
+
+                var kept = new List<string>();
+                var sawFrame = false;
+                foreach (var rawLine in response.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var line = rawLine.Trim();
+                    if (line.Length == 0)
+                        continue;
+
+                    var compact = line.Replace(" ", string.Empty).ToUpperInvariant();
+                    if (!Regex.IsMatch(compact, @"^[0-9A-F]+$"))
+                    {
+                        // Status text (NO DATA, STOPPED …) is kept as is.
+                        kept.Add(line);
+                        continue;
+                    }
+
+                    sawFrame = true;
+                    if (compact.Length > id.Length && compact.StartsWith(id, StringComparison.Ordinal))
+                        kept.Add(line);
+                }
+
+                if (sawFrame && kept.Count == 0)
+                    return "NO DATA";
+                return string.Join("\r", kept);
             }
 
             private static void EnsureReadOrClear(byte[] payload)
@@ -650,6 +741,8 @@ namespace CarScanner.Services.OBD
 
                     // Flow control must go to this module's request ID (not
                     // "reply − 8", which is wrong for many OEM modules).
+                    // Adapters without user flow control keep their automatic
+                    // flow control; the scan continues either way.
                     if (_flowControlSupported)
                     {
                         _flowControlSupported =
@@ -658,13 +751,15 @@ namespace CarScanner.Services.OBD
                              (await TryAsync("ATFCSD300000", token).ConfigureAwait(false) &&
                               await TryAsync("ATFCSM1", token).ConfigureAwait(false)));
                         _flowControlSet = _flowControlSupported;
+                        if (!_flowControlSupported)
+                            _elm._logger.LogInformation("Module session: adapter rejected user flow control (ATFCSH/ATFCSM1); using automatic flow control.");
                     }
                 }
 
                 var receive = rx.ToString($"X{width}");
                 if (_receive != receive)
                 {
-                    await SetAsync($"ATCRA{receive}", token).ConfigureAwait(false);
+                    await SetReceiveFilterAsync(receive, ext29, token).ConfigureAwait(false);
                     _receive = receive;
                 }
 
@@ -693,7 +788,8 @@ namespace CarScanner.Services.OBD
                 var timing = longWait ? "ATSTFF" : "ATST64";
                 if (_timing != timing)
                 {
-                    await SetAsync(timing, token).ConfigureAwait(false);
+                    if (!await TryAsync(timing, token).ConfigureAwait(false))
+                        _elm._logger.LogInformation("Module session: adapter rejected {Timing}; keeping its timeout.", timing);
                     _timing = timing;
                 }
             }
@@ -704,12 +800,12 @@ namespace CarScanner.Services.OBD
                 ValidateCanIdentifiers(transmitCanId, receiveCanId, extended29Bit);
                 await ConfigureAsync(transmitCanId, receiveCanId, extended29Bit, caf: true, longWait, token, extendedAddress).ConfigureAwait(false);
                 var command = string.Concat(payload.Select(b => b.ToString("X2")));
-                return await _elm.SendCommandInternalAsync(
+                return ApplySoftwareFilter(await _elm.SendCommandInternalAsync(
                     command,
                     TimeSpan.FromSeconds(longWait ? 4 : 2.5),
                     maxRetries: 1,
                     treatNegativeStatusAsError: false,
-                    token).ConfigureAwait(false);
+                    token).ConfigureAwait(false));
             }
 
             public async Task<string> MonitorBroadcastAsync(int canId, bool extended29Bit, int milliseconds, CancellationToken token)
@@ -717,12 +813,12 @@ namespace CarScanner.Services.OBD
                 var tx = extended29Bit ? 0x18DB33F1 : 0x7DF;
                 ValidateCanIdentifiers(tx, canId, extended29Bit);
                 await ConfigureAsync(tx, canId, extended29Bit, caf: false, longWait: false, token).ConfigureAwait(false);
-                return await _elm.SendCommandInternalAsync(
+                return ApplySoftwareFilter(await _elm.SendCommandInternalAsync(
                     ObdMonitorCommand.Create("ATMA", milliseconds),
                     TimeSpan.FromMilliseconds(milliseconds + 4000),
                     maxRetries: 1,
                     treatNegativeStatusAsError: false,
-                    token).ConfigureAwait(false);
+                    token).ConfigureAwait(false));
             }
 
             public async Task<string> MonitorRawAsync(int? filter, int? mask, bool extended29Bit, int milliseconds, CancellationToken token)
@@ -758,6 +854,7 @@ namespace CarScanner.Services.OBD
 
                 // The next normal request sets its own receive address again.
                 _receive = null;
+                _softwareFilterId = null;
 
                 try
                 {
@@ -781,12 +878,12 @@ namespace CarScanner.Services.OBD
 
                 // Raw frame "02 01 00" (standard OBD request, harmless) + response count 1:
                 // the adapter returns as soon as the first frame with the wanted ID arrives.
-                return await _elm.SendCommandInternalAsync(
+                return ApplySoftwareFilter(await _elm.SendCommandInternalAsync(
                     "02010000000000001",
                     TimeSpan.FromSeconds(3),
                     maxRetries: 1,
                     treatNegativeStatusAsError: false,
-                    token).ConfigureAwait(false);
+                    token).ConfigureAwait(false));
             }
 
             public async Task<string> SendGmlanDtcRequestAsync(int transmitCanId, int uudtReceiveCanId, byte[] payload, CancellationToken token)
@@ -802,12 +899,12 @@ namespace CarScanner.Services.OBD
                 frame[0] = (byte)payload.Length;
                 Array.Copy(payload, 0, frame, 1, payload.Length);
                 var command = string.Concat(frame.Select(b => b.ToString("X2")));
-                return await _elm.SendCommandInternalAsync(
+                return ApplySoftwareFilter(await _elm.SendCommandInternalAsync(
                     command,
                     TimeSpan.FromSeconds(3),
                     maxRetries: 1,
                     treatNegativeStatusAsError: false,
-                    token).ConfigureAwait(false);
+                    token).ConfigureAwait(false));
             }
 
             public async Task RestoreAsync()
@@ -822,6 +919,11 @@ namespace CarScanner.Services.OBD
 
                     if (_extendedAddress is not null)
                         await _elm.SendCommandInternalAsync("ATCEA", TimeSpan.FromSeconds(2), 1, false, CancellationToken.None).ConfigureAwait(false);
+
+                    // An ATCF/ATCM filter is cleared by ATCRA / ATAR. If neither
+                    // works the filter would stay: force a full re-init (ATZ).
+                    if (_hardwareFilterViaMask && !await _elm.TryResetReceiveFilterAsync(CancellationToken.None).ConfigureAwait(false))
+                        _elm._isInitialized = false;
 
                     if (_protocolSwitched || _is29Bit != Is29BitCanProtocol(_originalProtocol))
                         await SetAsync($"ATSP{GetElmCanProtocolNumber(_originalProtocol)}", CancellationToken.None).ConfigureAwait(false);
@@ -1405,14 +1507,51 @@ namespace CarScanner.Services.OBD
                     response);
         }
 
+        /// <summary>Sends an AT command and reports whether the adapter accepted it. Never throws except on cancellation.</summary>
+        private async Task<bool> TryOkInternalAsync(string command, CancellationToken token)
+        {
+            try
+            {
+                var response = await SendCommandInternalAsync(
+                    command,
+                    TimeSpan.FromSeconds(2),
+                    maxRetries: 1,
+                    treatNegativeStatusAsError: false,
+                    token).ConfigureAwait(false);
+                if (IsAffirmativeAtResponse(response))
+                    return true;
+                _logger.LogInformation("Adapter rejected optional command '{Command}': '{Response}'.", command, response);
+                return false;
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Optional adapter command '{Command}' failed.", command);
+                return false;
+            }
+        }
+
+        /// <summary>Clears the receive filter: ATCRA, falling back to ATAR. Failures are ignored.</summary>
+        private async Task<bool> TryResetReceiveFilterAsync(CancellationToken token)
+        {
+            if (await TryOkInternalAsync("ATCRA", token).ConfigureAwait(false))
+                return true;
+            return await TryOkInternalAsync("ATAR", token).ConfigureAwait(false);
+        }
+
         private async Task RestoreGenericCanSettingsCoreAsync(CancellationToken token)
         {
             try
             {
-                await RequireOkInternalAsync("ATCRA", token).ConfigureAwait(false);
+                // Clones that reject ATCRA never had a receive address set by
+                // it, so a rejection here is not a reason to distrust the adapter.
+                await TryResetReceiveFilterAsync(token).ConfigureAwait(false);
                 await RequireOkInternalAsync("ATCAF1", token).ConfigureAwait(false);
-                await RequireOkInternalAsync("ATCFC1", token).ConfigureAwait(false);
-                await RequireOkInternalAsync("ATD0", token).ConfigureAwait(false);
+                await TryOkInternalAsync("ATCFC1", token).ConfigureAwait(false);
+                await TryOkInternalAsync("ATD0", token).ConfigureAwait(false);
                 await RequireOkInternalAsync("ATS1", token).ConfigureAwait(false);
 
                 var functionalHeader = Is29BitCanProtocol(_currentProtocol)
@@ -1579,6 +1718,95 @@ namespace CarScanner.Services.OBD
             }
 
             await Task.Delay(PostResetSettleDelay, cancellationToken).ConfigureAwait(false);
+        }
+
+        private static bool ProbeNeedsProtocolFallback(string probeResponse)
+        {
+            var normalized = (probeResponse ?? string.Empty).Trim().ToUpperInvariant();
+            if (Regex.IsMatch(normalized, @"41\s*00"))
+                return false;
+
+            return ContainsToken(normalized, "UNABLE TO CONNECT")
+                   || (ContainsToken(normalized, "BUS INIT") && ContainsToken(normalized, "ERROR"))
+                   || ContainsToken(normalized, "NO DATA");
+        }
+
+        // CAN first (most cars), then K-line (ISO 9141 / KWP), then J1850.
+        private static readonly int[] FallbackProtocolNumbers = { 6, 8, 7, 9, 3, 4, 5, 1, 2 };
+        private static readonly TimeSpan ProtocolFallbackBudget = TimeSpan.FromSeconds(45);
+
+        /// <summary>
+        /// Tries ATSP6, 8, 7, 9, 3, 4, 5, 1, 2 one by one (0100 each time) and
+        /// keeps the first protocol that answers "41 00". K-line protocols get
+        /// a longer ATST because their ECUs answer slowly after the slow init.
+        /// Returns the 0100 answer, or null (adapter back on ATSP0) when no
+        /// protocol answered. Total time is bounded to ~45 s.
+        /// </summary>
+        private async Task<string?> TryExplicitProtocolsAsync(CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Automatic protocol search failed; trying protocols explicitly.");
+            var elapsed = System.Diagnostics.Stopwatch.StartNew();
+
+            foreach (var number in FallbackProtocolNumbers)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (elapsed.Elapsed > ProtocolFallbackBudget)
+                {
+                    _logger.LogWarning("Protocol fallback stopped: time budget used up.");
+                    break;
+                }
+
+                var isKLine = number is 3 or 4 or 5;
+                var probeTimeout = isKLine
+                    ? TimeSpan.FromSeconds(7)
+                    : number is 1 or 2
+                        ? TimeSpan.FromSeconds(4)
+                        : TimeSpan.FromSeconds(3);
+
+                try
+                {
+                    var selected = await SendCommandInternalAsync(
+                        $"ATSP{number}", InitCommandTimeout, 1, treatNegativeStatusAsError: false, cancellationToken).ConfigureAwait(false);
+                    if (!IsAffirmativeAtResponse(selected))
+                        continue;
+
+                    // ATST is in 4 ms units: C8 ≈ 800 ms for slow K-line ECUs, 32 ≈ 200 ms default.
+                    await SendCommandInternalAsync(
+                        isKLine ? "ATSTC8" : "ATST32", InitCommandTimeout, 1, treatNegativeStatusAsError: false, cancellationToken).ConfigureAwait(false);
+
+                    var response = await SendCommandInternalAsync(
+                        CMD_TEST_PID_0100, probeTimeout, 1, treatNegativeStatusAsError: false, cancellationToken).ConfigureAwait(false);
+
+                    if (Regex.IsMatch(response.ToUpperInvariant(), @"41\s*00"))
+                    {
+                        _logger.LogInformation("Protocol fallback: ATSP{Number} answered 0100.", number);
+                        return response;
+                    }
+
+                    _logger.LogDebug("Protocol fallback: ATSP{Number} gave '{Response}'.", number, response);
+                }
+                catch (Elm327TimeoutException ex)
+                {
+                    _logger.LogDebug(ex, "Protocol fallback: ATSP{Number} timed out.", number);
+                }
+                catch (Elm327CommandException ex)
+                {
+                    _logger.LogDebug(ex, "Protocol fallback: ATSP{Number} failed.", number);
+                }
+            }
+
+            // Nothing answered: leave the adapter in automatic mode as before.
+            try
+            {
+                await SendCommandInternalAsync("ATST32", InitCommandTimeout, 1, treatNegativeStatusAsError: false, cancellationToken).ConfigureAwait(false);
+                await SendCommandInternalAsync(CMD_SET_PROTOCOL_AUTO, InitCommandTimeout, 1, treatNegativeStatusAsError: false, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Elm327TimeoutException ex)
+            {
+                _logger.LogDebug(ex, "Could not return the adapter to ATSP0 after the protocol fallback.");
+            }
+
+            return null;
         }
 
         private void ValidateInitialProbeResponse(string probeResponse)
@@ -1771,7 +1999,7 @@ namespace CarScanner.Services.OBD
 
                     try
                     {
-                        rawResponse = await _bluetooth.SendCommandAsync(command, timeout).ConfigureAwait(false);
+                        rawResponse = await _bluetooth.SendCommandAsync(command, timeout, cancellationToken).ConfigureAwait(false);
                     }
                     catch (TimeoutException)
                     {
@@ -1808,6 +2036,24 @@ namespace CarScanner.Services.OBD
                         if (treatNegativeStatusAsError)
                         {
                             throw lastException;
+                        }
+
+                        return cleaned;
+                    }
+
+                    if (IsMismatchedModeReply(command, cleaned))
+                    {
+                        // A late answer to an earlier request (after a timeout)
+                        // must never be used as the value of this PID.
+                        _logger.LogWarning(
+                            "Command '{Command}' got a reply for a different request: '{Cleaned}'.", command, cleaned);
+                        lastException = new Elm327CommandException(
+                            $"Reply does not match request '{command}'.", cleaned);
+
+                        if (attempt < maxRetries)
+                        {
+                            await DelayBeforeRetryAsync(attempt, cancellationToken).ConfigureAwait(false);
+                            continue;
                         }
 
                         return cleaned;
@@ -1875,6 +2121,64 @@ namespace CarScanner.Services.OBD
 
             throw new Elm327TimeoutException(
                 $"Command '{command}' failed after {maxRetries} attempt(s).");
+        }
+
+        /// <summary>
+        /// True when a Mode 01 / 09 / 22 request ("01PP", "09PP", "22DDDD",
+        /// optionally with a response-count digit) got a positive answer of the
+        /// same service for a different PID/DID and no answer for the requested
+        /// one. Only spaced output (ATS1, the generic session) is checked;
+        /// negative/status replies are left to the normal handling.
+        /// </summary>
+        private static bool IsMismatchedModeReply(string command, string cleaned)
+        {
+            if (string.IsNullOrEmpty(cleaned) || !cleaned.Contains(' '))
+                return false;
+
+            var cmd = command.Replace(" ", string.Empty).ToUpperInvariant();
+            if (!Regex.IsMatch(cmd, @"^[0-9A-F]+$"))
+                return false;
+
+            byte[] expected;
+            if (cmd.Length is 4 or 5 && (cmd.StartsWith("01", StringComparison.Ordinal) || cmd.StartsWith("09", StringComparison.Ordinal)))
+            {
+                var service = cmd.StartsWith("01", StringComparison.Ordinal) ? (byte)0x41 : (byte)0x49;
+                expected = new[] { service, Convert.ToByte(cmd.Substring(2, 2), 16) };
+            }
+            else if (cmd.Length is 6 or 7 && cmd.StartsWith("22", StringComparison.Ordinal))
+            {
+                expected = new[] { (byte)0x62, Convert.ToByte(cmd.Substring(2, 2), 16), Convert.ToByte(cmd.Substring(4, 2), 16) };
+            }
+            else
+            {
+                return false;
+            }
+
+            if (ContainsTransientStatus(cleaned) || ContainsNegativeStatus(cleaned))
+                return false;
+
+            var bytes = ObdResponseParser.ParseHex(cleaned);
+            if (bytes.Length < expected.Length)
+                return false;
+
+            var otherPositive = false;
+            for (var i = 0; i + expected.Length <= bytes.Length; i++)
+            {
+                if (bytes[i] != expected[0])
+                    continue;
+
+                var match = true;
+                for (var k = 1; k < expected.Length; k++)
+                {
+                    if (bytes[i + k] != expected[k]) { match = false; break; }
+                }
+
+                if (match)
+                    return false;
+                otherPositive = true;
+            }
+
+            return otherPositive;
         }
 
         private static async Task DelayBeforeRetryAsync(int attempt, CancellationToken cancellationToken)

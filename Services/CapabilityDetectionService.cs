@@ -115,7 +115,8 @@ public sealed class CapabilityDetectionService
         var mode06Available = false;
         try
         {
-            var mode06 = await _obd.ReadMode06QuickAsync(token).ConfigureAwait(false);
+            // "06 00" = list of supported monitors/tests (a bare "06" is not a valid request).
+            var mode06 = await _obd.ReadMode06MidAsync(0x00, token).ConfigureAwait(false);
             mode06Available = IsPositiveData(mode06);
         }
         catch
@@ -236,42 +237,31 @@ public sealed class CapabilityDetectionService
         values.Add(Capability("pro.ai", "AI Diagnostic", "რეალურ DTC, Freeze Frame, Readiness და Live Data კონტექსტზე აგებული სავარაუდო დიაგნოზი.", ProEvidence(hasLiveData, "AI-სთვის საჭირო Live Data კონტექსტი ხელმისაწვდომია.", "ჯერ საჭიროა მინიმუმ ერთი რეალური Live Data PID."), CapabilityTier.ProAnalytics, ResolveProState(proState, hasLiveData)));
         values.Add(Capability("pro.fuel", "Fuel Analytics", "ECU Fuel Rate/MAF/Fuel Level-ის მიხედვით რეალური ან მკაფიოდ მონიშნული calculated consumption.", ProEvidence(hasFuelInputs, "საწვავის გამოთვლისთვის აუცილებელი მინიმუმ ერთი PID არის." , "Fuel Rate, MAF ან Fuel Level PID ვერ დადასტურდა."), CapabilityTier.ProAnalytics, ResolveProState(proState, hasFuelInputs)));
         values.Add(Capability("pro.report", "Professional Diagnostic Report", "VIN, სკანის შედეგი, DTC, Freeze Frame და readiness-ის PDF/გაზიარება.", "სტანდარტული OBD სკანის შედეგი ხელმისაწვდომია.", CapabilityTier.ProAnalytics, proState));
-        values.Add(Capability("pro.mileage", "Mileage Verification", "რამდენიმე ECU-ის გარბენისა და VIN-ის შედარება მხოლოდ დადასტურებული OEM პროფილების შემთხვევაში.", "Generic OBD-II ერთ ECU-დან „ორიგინალურ გარბენს“ ვერ ამტკიცებს.", CapabilityTier.ProAnalytics, CapabilityState.RequiresVerifiedDefinition));
+        // The features below are what the app actually does on this car today
+        // (module scan, module live data, mileage, coding backup) — they work on
+        // every CAN car and do not wait for the older OEM-definition catalog.
+        var isCan = _obd.IsCanProtocol;
+        values.Add(Capability("pro.mileage", "გარბენის გადამოწმება",
+            "გარბენს რამდენიმე მოდულიდან კითხულობს და ადარებს ერთმანეთს.",
+            isCan ? "თუ ამ მოდელზე გარბენის ადგილი ჯერ უცნობია, აპი მას ერთხელ მოძებნის." : "საჭიროა CAN კავშირი (დაახლ. 2008 წლიდან).",
+            CapabilityTier.ProAnalytics, ResolveProState(proState, isCan)));
 
-        // Layer 3 — brand choice alone is deliberately never enough.
-        var profile = resolvedVehicle.CanUseManufacturerSpecificDefinitions
-            ? _oemProfiles.Resolve(vehicle)
-            : null;
-        var hasBrandProfile = profile is not null && !string.Equals(profile.Id, "UNIVERSAL-OEM", StringComparison.OrdinalIgnoreCase);
-        var addresses = hasBrandProfile
-            ? _oemAddresses.GetForVehicle(resolvedVehicle).ToArray()
-            : Array.Empty<VerifiedEcuAddress>();
-        var oemState = manufacturerResolution.HasVerifiedReadOnlyDefinition &&
-                       executableOemDefinitionCount > 0 &&
-                       addresses.Length > 0 && transport.State == CapabilityState.Conditional
-            ? CapabilityState.Conditional
-            : CapabilityState.RequiresVerifiedDefinition;
-        var oemEvidence = !resolvedVehicle.CanUseManufacturerSpecificDefinitions
-            ? $"{resolvedVehicle.VerificationMessage} OEM definition არ გაიხსნება."
-            : !manufacturerResolution.HasVerifiedReadOnlyDefinition
-            ? manufacturerResolution.Evidence
-            : executableOemDefinitionCount == 0
-            ? "Vehicle coverage ჩანაწერი არსებობს, მაგრამ მისი executable ECU definition ვერ დადასტურდა."
-            : !hasBrandProfile
-            ? "VIN-ით დადასტურებული მარკის OEM პროფილი ჯერ არ არის." 
-            : addresses.Length == 0
-                ? $"{profile!.DisplayName} არჩეულია, მაგრამ ამ მოდელის/წლისთვის დადასტურებული ECU მისამართი არ არის." 
-                : $"{addresses.Length} დადასტურებული ECU მისამართი მოიძებნა; ECU probe აუცილებელია აქტივაციამდე.";
-
-        values.Add(Capability("oem.transport", "OEM Transport Readiness", "OEM მოდულების read-only სკანირება იწყება მხოლოდ რეალურად დადასტურებული ტრანსპორტით.", transport.Evidence, CapabilityTier.ManufacturerSpecific, transport.State));
-        var modulesState = RuntimeOemState(runtimeOem.ModuleCount > 0, runtimeOem.WasChecked, oemState);
-        var liveState = RuntimeOemState(runtimeOem.LiveDataCount > 0, runtimeOem.WasChecked, oemState);
-        var serviceState = RuntimeOemState(runtimeOem.ServiceCount > 0, runtimeOem.WasChecked, CapabilityState.RequiresVerifiedDefinition);
-        var codingState = RuntimeOemState(runtimeOem.CodingCount > 0, runtimeOem.WasChecked, CapabilityState.RequiresVerifiedDefinition);
-        values.Add(Capability("oem.modules", "Manufacturer-specific Module Scan", "ABS, SRS, TCM, BCM და სხვა ECU-ები მხოლოდ დადასტურებული მისამართებით.", RuntimeEvidence(runtimeOem, $"რეალურად აღმოჩენილი OEM ECU: {runtimeOem.ModuleCount}.", oemEvidence), CapabilityTier.ManufacturerSpecific, modulesState));
-        values.Add(Capability("oem.live-data", "OEM Live Data", "მწარმოებლის სპეციფიკური sensor და hybrid/EV მონაცემები.", RuntimeEvidence(runtimeOem, $"ECU პასუხით დადასტურებული OEM Live Data command: {runtimeOem.LiveDataCount}.", oemEvidence), CapabilityTier.ManufacturerSpecific, liveState));
-        values.Add(Capability("oem.service", "Service / Active Tests", "Oil reset, EPB, calibration და აქტიური ტესტები მხოლოდ უსაფრთხოების შემოწმების შემდეგ.", RuntimeEvidence(runtimeOem, $"ამ კავშირზე ახლა შესრულებადი reviewed Service/Active Test: {runtimeOem.ServiceCount}.", oemEvidence + " საჭიროა ძაბვის კონტროლი და მომხმარებლის დადასტურება."), CapabilityTier.ManufacturerSpecific, serviceState));
-        values.Add(Capability("oem.coding", "Coding & Adaptations", "ECU-ს კონფიგურაციის შეცვლა მხოლოდ OEM definition, backup, security access და სტაბილური ძაბვის შემთხვევაში.", RuntimeEvidence(runtimeOem, $"ამ კავშირზე ახლა შესრულებადი reviewed Coding operation: {runtimeOem.CodingCount}.", oemEvidence + " Generic adapter-ზე ბრძანება არ გაიგზავნება."), CapabilityTier.ManufacturerSpecific, codingState));
+        values.Add(Capability("oem.modules", "ყველა მოდულის შეცდომები",
+            "ABS, Airbag, BCM, კოლოფი, ჰიბრიდი და სხვა მოდულების შეცდომები და მათი წაშლა.",
+            isCan ? "მუშაობს ამ მანქანაზე." : "საჭიროა CAN კავშირი (დაახლ. 2008 წლიდან).",
+            CapabilityTier.ManufacturerSpecific, isCan ? CapabilityState.Available : CapabilityState.NotAvailable));
+        values.Add(Capability("oem.live-data", "მოდულების ცოცხალი მონაცემები",
+            "ბატარეა, ჰიბრიდი, ABS, საჭე და სხვა მოდულების მონაცემები.",
+            isCan ? "ხელმისაწვდომია ამ მარკის ცნობილი მოდულებისთვის." : "საჭიროა CAN კავშირი (დაახლ. 2008 წლიდან).",
+            CapabilityTier.ManufacturerSpecific, ResolveProState(proState, isCan)));
+        values.Add(Capability("oem.service", "სერვისის ფუნქციები",
+            "ზეთის ინტერვალი და სერვისის მაჩვენებლები.",
+            isCan ? "ფუნქციების რაოდენობა მოდელზეა დამოკიდებული." : "საჭიროა CAN კავშირი (დაახლ. 2008 წლიდან).",
+            CapabilityTier.ManufacturerSpecific, isCan ? CapabilityState.Conditional : CapabilityState.NotAvailable));
+        values.Add(Capability("oem.coding", "კოდირება",
+            "ყველა მოდულის სარეზერვო ასლი და შედარება; პარამეტრების შეცვლა — შემოწმებულ მოდელებზე.",
+            isCan ? "სარეზერვო ასლი მუშაობს ამ მანქანაზე." : "საჭიროა CAN კავშირი (დაახლ. 2008 წლიდან).",
+            CapabilityTier.ManufacturerSpecific, isCan ? CapabilityState.Conditional : CapabilityState.NotAvailable));
 
         return values;
     }

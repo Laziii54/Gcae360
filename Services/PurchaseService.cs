@@ -1,17 +1,35 @@
 using System.Net.Http.Json;
+using CarScanner.Services.OBD;
 
-#if ANDROID
-using CarScanner.Platforms.Android.Billing;
-#endif
 #if IOS
 using CarScanner.Platforms.iOS.Billing;
 #endif
 
 namespace CarScanner.Services;
 
+/// <summary>
+/// Store purchases. The secure backend is the only authority for PRO and VIN
+/// credits; the app never grants anything locally.
+///
+/// iOS: App Store (StoreKit). A transaction is finished only after the server
+/// accepted it; unfinished transactions that StoreKit delivers again at launch
+/// (or an approved "Ask to Buy") are sent to the server in the background.
+///
+/// Android: no in-app purchases (Google Play Billing is not used). PRO bought
+/// on the website is unlocked by signing in to the account.
+/// </summary>
 public sealed class PurchaseService
 {
     public const string ProProductId = ProService.ProductId;
+
+    /// <summary>Result code on Android, where the app sells nothing.</summary>
+    public const string PurchasesNotAvailableOnAndroid = "PURCHASES_NOT_AVAILABLE_ANDROID";
+
+    /// <summary>User text for <see cref="PurchasesNotAvailableOnAndroid"/>.</summary>
+    public static string PurchasesNotAvailableOnAndroidMessage =>
+        ObdLang.L(
+            "Android აპში შეძენა არ არის ხელმისაწვდომი. თუ შენს GCar360 ანგარიშზე PRO უკვე აქტიურია, შედი ანგარიშზე ან დააჭირე „PRO-ს აღდგენას“.",
+            "Purchases are not available in the Android app. If PRO is already active on your GCar360 account, sign in or tap Restore PRO.");
 
     private readonly ProService _pro;
     private readonly AccountService _account;
@@ -19,9 +37,6 @@ public sealed class PurchaseService
     private readonly SemaphoreSlim _synchronizationGate = new(1, 1);
     private DateTimeOffset _lastAutomaticSynchronization = DateTimeOffset.MinValue;
 
-#if ANDROID
-    private readonly AndroidBillingService _androidBilling;
-#endif
 #if IOS
     private readonly iOSBillingService _iosBilling;
 #endif
@@ -29,9 +44,6 @@ public sealed class PurchaseService
     public PurchaseService(
         ProService pro,
         AccountService account
-#if ANDROID
-        , AndroidBillingService androidBilling
-#endif
 #if IOS
         , iOSBillingService iosBilling
 #endif
@@ -45,11 +57,13 @@ public sealed class PurchaseService
             Timeout = TimeSpan.FromSeconds(20)
         };
 
-#if ANDROID
-        _androidBilling = androidBilling;
-#endif
 #if IOS
         _iosBilling = iosBilling;
+
+        // Purchased transactions that nobody is waiting for (re-delivered at
+        // launch, approved Ask to Buy, renewals) are synced here and finished
+        // only when the server accepted them.
+        _iosBilling.SetServerVerifier(VerifyUnfinishedAppleTransactionAsync);
 #endif
     }
 
@@ -66,43 +80,9 @@ public sealed class PurchaseService
     public async Task<string?> GetProPriceAsync(
         CancellationToken token = default)
     {
-#if ANDROID
-        return await _androidBilling
-            .GetLocalizedProPriceAsync();
-#elif IOS
+#if IOS
         return await _iosBilling
             .GetLocalizedProPriceAsync(token);
-#elif IOS
-        try
-        {
-            var purchaseResult = await _iosBilling.PurchaseProductAsync(productId, token);
-            if (string.IsNullOrWhiteSpace(purchaseResult))
-                return "ERROR:EMPTY_PURCHASE_RESULT";
-            if (purchaseResult == "USER_CANCELED")
-                return "CANCELLED";
-            if (purchaseResult.StartsWith("ERROR:", StringComparison.Ordinal))
-                return purchaseResult;
-
-            if (!await SyncWithServerAsync(
-                    _account.EffectiveUserId,
-                    "apple",
-                    productId,
-                    purchaseResult,
-                    token))
-                return "ERROR:SERVER_VERIFICATION_FAILED";
-
-            await _pro.LoadAsync(forceServerRefresh: true);
-            return IsCovered(productId) ? "SUCCESS" : "ERROR:ENTITLEMENT_NOT_ACTIVE";
-        }
-        catch (OperationCanceledException)
-        {
-            return "ERROR:CANCELLED_BY_APP";
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"App Store purchase failed: {ex.GetType().Name}");
-            return "ERROR:UNEXPECTED";
-        }
 #else
         await Task.CompletedTask;
         return null;
@@ -127,17 +107,7 @@ public sealed class PurchaseService
     public async Task<Dictionary<string, string>> GetPricesAsync(
         CancellationToken token = default)
     {
-#if ANDROID
-        try
-        {
-            return await _androidBilling.GetLocalizedPricesAsync(
-                SubscriptionProductIds.Concat(VinCreditProductIds));
-        }
-        catch
-        {
-            return new Dictionary<string, string>();
-        }
-#elif IOS
+#if IOS
         var prices = new Dictionary<string, string>();
         foreach (var productId in SubscriptionProductIds.Concat(VinCreditProductIds))
         {
@@ -159,10 +129,7 @@ public sealed class PurchaseService
 #endif
     }
 
-    /// <summary>
-    /// Buys OBD PRO, VIN PRO or Full PRO. Moving to or from Full PRO
-    /// replaces the current subscription (Google credits the unused time).
-    /// </summary>
+    /// <summary>Buys OBD PRO, VIN PRO or Full PRO.</summary>
     public async Task<string> BeginSubscriptionPurchaseAsync(
         string productId,
         CancellationToken token = default)
@@ -175,89 +142,13 @@ public sealed class PurchaseService
             return "PRO_ALREADY_ACTIVE";
 
 #if ANDROID
-        try
-        {
-            var owned = await _androidBilling.GetOwnedPurchasesAsync(true, token);
-            var replace = ReplacementToken(productId, owned);
-
-            var purchaseResult = await _androidBilling.PurchaseProductAsync(productId, replace, token);
-            if (string.IsNullOrWhiteSpace(purchaseResult))
-                return "ERROR:EMPTY_PURCHASE_RESULT";
-            if (purchaseResult == "USER_CANCELED")
-                return "CANCELLED";
-            if (purchaseResult == "PENDING")
-                return "PENDING";
-
-            if (purchaseResult == "ERROR:ITEM_ALREADY_OWNED")
-            {
-                purchaseResult = (await _androidBilling.GetOwnedPurchasesAsync(true, token))
-                    .FirstOrDefault(item => item.ProductId == productId).Token;
-                if (string.IsNullOrWhiteSpace(purchaseResult))
-                    return "ERROR:OWNED_SUBSCRIPTION_NOT_FOUND";
-            }
-
-            if (purchaseResult.StartsWith("ERROR:", StringComparison.Ordinal))
-                return purchaseResult;
-
-            if (!await SyncWithServerAsync(_account.EffectiveUserId, "google", productId, purchaseResult, token))
-                return "ERROR:SERVER_VERIFICATION_FAILED";
-
-            await _pro.LoadAsync(forceServerRefresh: true);
-            return IsCovered(productId) ? "SUCCESS" : "ERROR:ENTITLEMENT_NOT_ACTIVE";
-        }
-        catch (OperationCanceledException)
-        {
-            return "ERROR:CANCELLED_BY_APP";
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Google Play purchase failed: {ex.GetType().Name}");
-            return "ERROR:UNEXPECTED";
-        }
+        return PurchasesNotAvailableOnAndroid;
 #elif IOS
         try
         {
-            var purchaseResult = await _iosBilling.PurchaseProductAsync(productId, token);
-            if (string.IsNullOrWhiteSpace(purchaseResult))
-                return "ERROR:EMPTY_PURCHASE_RESULT";
-            if (purchaseResult == "USER_CANCELED")
-                return "CANCELLED";
-            if (purchaseResult.StartsWith("ERROR:", StringComparison.Ordinal))
-                return purchaseResult;
-
-            if (!await SyncWithServerAsync(
-                    _account.EffectiveUserId,
-                    "apple",
-                    productId,
-                    purchaseResult,
-                    token))
-                return "ERROR:SERVER_VERIFICATION_FAILED";
-
-            await _pro.LoadAsync(forceServerRefresh: true);
-            return IsCovered(productId) ? "SUCCESS" : "ERROR:ENTITLEMENT_NOT_ACTIVE";
-        }
-        catch (OperationCanceledException)
-        {
-            return "ERROR:CANCELLED_BY_APP";
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"App Store purchase failed: {ex.GetType().Name}");
-            return "ERROR:UNEXPECTED";
-        }
-#elif IOS
-        try
-        {
-            var purchaseResult = await _iosBilling.PurchaseProductAsync(productId, token);
-            if (string.IsNullOrWhiteSpace(purchaseResult))
-                return "ERROR:EMPTY_PURCHASE_RESULT";
-            if (purchaseResult == "USER_CANCELED")
-                return "CANCELLED";
-            if (purchaseResult.StartsWith("ERROR:", StringComparison.Ordinal))
-                return purchaseResult;
-
-            if (!await SyncWithServerAsync(_account.EffectiveUserId, "apple", productId, purchaseResult, token))
-                return "ERROR:SERVER_VERIFICATION_FAILED";
+            var result = await PurchaseAppleAsync(productId, token);
+            if (result != "VERIFIED")
+                return result;
 
             await _pro.LoadAsync(forceServerRefresh: true);
             return IsCovered(productId) ? "SUCCESS" : "ERROR:ENTITLEMENT_NOT_ACTIVE";
@@ -272,15 +163,13 @@ public sealed class PurchaseService
             return "ERROR:UNEXPECTED";
         }
 #else
-        await Task.CompletedTask;
         return "STORE_UNAVAILABLE";
 #endif
     }
 
     /// <summary>
     /// Buys VIN report credits (+5, +10 or a single report). The server
-    /// adds the credits once; the purchase is then consumed so it can be
-    /// bought again.
+    /// adds the credits once per transaction.
     /// </summary>
     public async Task<string> BuyVinCreditsAsync(
         string productId,
@@ -290,88 +179,13 @@ public sealed class PurchaseService
             return "ERROR:UNKNOWN_PRODUCT";
 
 #if ANDROID
-        try
-        {
-            var purchaseResult = await _androidBilling.PurchaseProductAsync(productId, null, token);
-            if (string.IsNullOrWhiteSpace(purchaseResult))
-                return "ERROR:EMPTY_PURCHASE_RESULT";
-            if (purchaseResult == "USER_CANCELED")
-                return "CANCELLED";
-            if (purchaseResult == "PENDING")
-                return "PENDING";
-
-            if (purchaseResult == "ERROR:ITEM_ALREADY_OWNED")
-            {
-                // An earlier purchase was not finished: credit and consume it.
-                purchaseResult = (await _androidBilling.GetOwnedPurchasesAsync(false, token))
-                    .FirstOrDefault(item => item.ProductId == productId).Token;
-                if (string.IsNullOrWhiteSpace(purchaseResult))
-                    return "ERROR:OWNED_PURCHASE_NOT_FOUND";
-            }
-
-            if (purchaseResult.StartsWith("ERROR:", StringComparison.Ordinal))
-                return purchaseResult;
-
-            if (!await SyncWithServerAsync(_account.EffectiveUserId, "google", productId, purchaseResult, token))
-                return "ERROR:SERVER_VERIFICATION_FAILED";
-
-            await _androidBilling.ConsumeAsync(purchaseResult);
-            return "SUCCESS";
-        }
-        catch (OperationCanceledException)
-        {
-            return "ERROR:CANCELLED_BY_APP";
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Google Play purchase failed: {ex.GetType().Name}");
-            return "ERROR:UNEXPECTED";
-        }
+        await Task.CompletedTask;
+        return PurchasesNotAvailableOnAndroid;
 #elif IOS
         try
         {
-            var purchaseResult = await _iosBilling.PurchaseProductAsync(productId, token);
-            if (string.IsNullOrWhiteSpace(purchaseResult))
-                return "ERROR:EMPTY_PURCHASE_RESULT";
-            if (purchaseResult == "USER_CANCELED")
-                return "CANCELLED";
-            if (purchaseResult.StartsWith("ERROR:", StringComparison.Ordinal))
-                return purchaseResult;
-
-            return await SyncWithServerAsync(
-                _account.EffectiveUserId,
-                "apple",
-                productId,
-                purchaseResult,
-                token)
-                ? "SUCCESS"
-                : "ERROR:SERVER_VERIFICATION_FAILED";
-        }
-        catch (OperationCanceledException)
-        {
-            return "ERROR:CANCELLED_BY_APP";
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"App Store purchase failed: {ex.GetType().Name}");
-            return "ERROR:UNEXPECTED";
-        }
-#elif IOS
-        try
-        {
-            // The App Store finishes the consumable transaction itself; the
-            // server adds the credits once per transaction ID.
-            var purchaseResult = await _iosBilling.PurchaseProductAsync(productId, token);
-            if (string.IsNullOrWhiteSpace(purchaseResult))
-                return "ERROR:EMPTY_PURCHASE_RESULT";
-            if (purchaseResult == "USER_CANCELED")
-                return "CANCELLED";
-            if (purchaseResult.StartsWith("ERROR:", StringComparison.Ordinal))
-                return purchaseResult;
-
-            return await SyncWithServerAsync(_account.EffectiveUserId, "apple", productId, purchaseResult, token)
-                ? "SUCCESS"
-                : "ERROR:SERVER_VERIFICATION_FAILED";
+            var result = await PurchaseAppleAsync(productId, token);
+            return result == "VERIFIED" ? "SUCCESS" : result;
         }
         catch (OperationCanceledException)
         {
@@ -396,40 +210,6 @@ public sealed class PurchaseService
         _ => false
     };
 
-    private static string? ReplacementToken(
-        string productId,
-        IReadOnlyList<(string ProductId, string Token)> owned)
-    {
-        // Upgrade to Full replaces OBD / VIN; leaving Full replaces Full.
-        // Buying VIN next to OBD (or the reverse) keeps both.
-        if (productId == ProService.FullProductId)
-            return owned.FirstOrDefault(item =>
-                item.ProductId is ProService.ObdProductId or ProService.VinProductId).Token;
-
-        return owned.FirstOrDefault(item => item.ProductId == ProService.FullProductId).Token;
-    }
-
-    /// <summary>Sends every purchase Google Play still holds to the server.</summary>
-    private async Task SyncAllOwnedAsync(CancellationToken token)
-    {
-#if ANDROID
-        foreach (var (productId, purchaseToken) in await _androidBilling.GetOwnedPurchasesAsync(true, token))
-        {
-            if (SubscriptionProductIds.Contains(productId))
-                await SyncWithServerAsync(_account.EffectiveUserId, "google", productId, purchaseToken, token);
-        }
-
-        foreach (var (productId, purchaseToken) in await _androidBilling.GetOwnedPurchasesAsync(false, token))
-        {
-            if (VinCreditProductIds.Contains(productId) &&
-                await SyncWithServerAsync(_account.EffectiveUserId, "google", productId, purchaseToken, token))
-                await _androidBilling.ConsumeAsync(purchaseToken);
-        }
-#else
-        await Task.CompletedTask;
-#endif
-    }
-
     public async Task<string> BeginProPurchaseAsync(
         CancellationToken token = default)
     {
@@ -439,125 +219,13 @@ public sealed class PurchaseService
             return "PRO_ALREADY_ACTIVE";
 
 #if ANDROID
-        try
-        {
-            /*
-             * Start the real Google Play Billing flow.
-             *
-             * The Android billing service will:
-             *
-             * 1. Connect to Google Play
-             * 2. Load the subscription
-             * 3. Open Google's purchase UI
-             * 4. Wait for the purchase callback
-             * 5. Return the purchase token only when the
-             *    purchase is actually completed
-             */
-
-            var purchaseResult =
-                await _androidBilling
-                    .PurchaseProAsync(token);
-
-            if (string.IsNullOrWhiteSpace(purchaseResult))
-                return "ERROR:EMPTY_PURCHASE_RESULT";
-
-            if (purchaseResult == "USER_CANCELED")
-                return "CANCELLED";
-
-            if (purchaseResult == "PENDING")
-                return "PENDING";
-
-            if (purchaseResult == "ERROR:ITEM_ALREADY_OWNED")
-            {
-                purchaseResult = await _androidBilling
-                    .GetActiveProPurchaseTokenAsync(token);
-                if (string.IsNullOrWhiteSpace(purchaseResult))
-                    return "ERROR:OWNED_SUBSCRIPTION_NOT_FOUND";
-            }
-
-            if (purchaseResult.StartsWith("ERROR:",
-                    StringComparison.Ordinal))
-            {
-                return purchaseResult;
-            }
-
-            /*
-             * For a successful Google Play purchase,
-             * the returned value is the purchase token.
-             */
-            var purchaseToken = purchaseResult;
-
-            var userId = _account.EffectiveUserId;
-
-            /*
-             * IMPORTANT:
-             * The purchase token is sent to our secure backend.
-             *
-             * The backend must verify the token with Google Play
-             * before granting the PRO entitlement.
-             */
-            var verified =
-                await SyncWithServerAsync(
-                    userId,
-                    "google",
-                    ProProductId,
-                    purchaseToken,
-                    token);
-
-            if (!verified)
-                return "ERROR:SERVER_VERIFICATION_FAILED";
-
-            /*
-             * Reload the entitlement from the server.
-             *
-             * We do NOT locally manufacture a PRO subscription.
-             */
-            await _pro.LoadAsync(forceServerRefresh: true);
-
-            return _pro.IsPro
-                ? "SUCCESS"
-                : "ERROR:ENTITLEMENT_NOT_ACTIVE";
-        }
-        catch (OperationCanceledException)
-        {
-            return "ERROR:CANCELLED_BY_APP";
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine(
-                $"Google Play purchase failed: {ex.GetType().Name}");
-            return "ERROR:UNEXPECTED";
-        }
-
+        return PurchasesNotAvailableOnAndroid;
 #elif IOS
         try
         {
-            var purchaseResult =
-                await _iosBilling.PurchaseProAsync(token);
-
-            if (string.IsNullOrWhiteSpace(purchaseResult))
-                return "ERROR:EMPTY_PURCHASE_RESULT";
-
-            if (purchaseResult == "USER_CANCELED")
-                return "CANCELLED";
-
-            if (purchaseResult.StartsWith(
-                    "ERROR:",
-                    StringComparison.Ordinal))
-            {
-                return purchaseResult;
-            }
-
-            var verified =
-                await SyncWithServerAsync(
-                    _account.EffectiveUserId,
-                    "apple",
-                    ProProductId,
-                    purchaseResult,
-                    token);
-
-            if (!verified)
-                return "ERROR:SERVER_VERIFICATION_FAILED";
+            var result = await PurchaseAppleAsync(ProProductId, token);
+            if (result != "VERIFIED")
+                return result;
 
             await _pro.LoadAsync(forceServerRefresh: true);
 
@@ -575,51 +243,36 @@ public sealed class PurchaseService
                 $"App Store purchase failed: {ex.GetType().Name}");
             return "ERROR:UNEXPECTED";
         }
-
 #else
-
         return "STORE_UNAVAILABLE";
-
 #endif
     }
 
     public async Task RestorePurchasesAsync(
         CancellationToken token = default)
     {
-#if ANDROID
-
+#if IOS
         try
         {
-            await SyncAllOwnedAsync(token);
-            await _pro.LoadAsync(forceServerRefresh: true);
-        }
-        catch
-        {
-            /*
-             * Do not manufacture a local PRO entitlement.
-             */
-        }
+            // Each restored subscription is sent with its own transaction ID,
+            // its own product ID and its original transaction ID.
+            var restored =
+                await _iosBilling.RestoreAsync(token);
 
-#elif IOS
-        try
-        {
-            var transactionId =
-                await _iosBilling.RestoreProAsync(token);
-
-            if (!string.IsNullOrWhiteSpace(transactionId))
+            foreach (var transaction in restored)
             {
-                var verified =
-                    await SyncWithServerAsync(
-                        _account.EffectiveUserId,
-                        "apple",
-                        ProProductId,
-                        transactionId,
-                        token);
-
-                if (!verified)
-                    return;
+                await SyncWithServerAsync(
+                    _account.EffectiveUserId,
+                    "apple",
+                    transaction.ProductId,
+                    transaction.TransactionId,
+                    transaction.OriginalTransactionId,
+                    token);
             }
 
+            // Purchases still waiting in the StoreKit queue are retried too.
+            await _iosBilling.ProcessUnfinishedAsync(token);
+
             await _pro.LoadAsync(forceServerRefresh: true);
         }
         catch
@@ -628,18 +281,23 @@ public sealed class PurchaseService
              * Do not manufacture a local PRO entitlement.
              */
         }
-
 #else
-
-        await _pro.LoadAsync();
-
+        // Android: nothing to restore from a store. PRO bought on the website
+        // comes from the account on the server.
+        try
+        {
+            await _pro.LoadAsync(forceServerRefresh: true);
+        }
+        catch
+        {
+        }
 #endif
     }
 
     /// <summary>
-    /// Quietly reconciles the locally owned store subscription with the
-    /// server. This is safe to call during app startup/resume and never opens
-    /// a purchase or restore UI. Repeated lifecycle events are throttled.
+    /// Quietly reconciles store purchases with the server. This is safe to call
+    /// during app startup/resume and never opens a purchase or restore UI.
+    /// Repeated lifecycle events are throttled.
     /// </summary>
     public async Task SynchronizeOwnedPurchaseAsync(
         CancellationToken token = default)
@@ -661,14 +319,13 @@ public sealed class PurchaseService
                 return;
             }
 
-#if ANDROID
-            await SyncAllOwnedAsync(token);
+#if IOS
+            // Unfinished App Store transactions (e.g. the server was not
+            // reachable when they were bought) are retried on resume.
+            await _iosBilling.ProcessUnfinishedAsync(token);
 #endif
 
-            // The server remains the authority on all platforms. On iOS the
-            // StoreKit transaction observer handles purchases, while an
-            // explicit restore stays user initiated to avoid system UI during
-            // app startup.
+            // The server remains the authority on all platforms.
             await _pro.LoadAsync(forceServerRefresh: true);
             _lastAutomaticSynchronization = DateTimeOffset.UtcNow;
         }
@@ -687,11 +344,96 @@ public sealed class PurchaseService
         }
     }
 
+#if IOS
+    /// <summary>
+    /// Runs one App Store purchase and sends it to the server. Returns
+    /// "VERIFIED" when the server accepted the transaction (it is then
+    /// finished), otherwise the result code for the UI. "PENDING" means Ask to
+    /// Buy: the purchase waits for approval and is synced in the background.
+    /// </summary>
+    private async Task<string> PurchaseAppleAsync(
+        string productId,
+        CancellationToken token)
+    {
+        var purchaseResult =
+            await _iosBilling.PurchaseProductAsync(
+                productId,
+                token,
+                _account.HashedAccountId);
+
+        if (string.IsNullOrWhiteSpace(purchaseResult))
+            return "ERROR:EMPTY_PURCHASE_RESULT";
+
+        if (purchaseResult == "USER_CANCELED")
+            return "CANCELLED";
+
+        if (purchaseResult == "PENDING")
+            return "PENDING";
+
+        if (purchaseResult.StartsWith("ERROR:", StringComparison.Ordinal))
+            return purchaseResult;
+
+        var transactionId = purchaseResult;
+        var info = _iosBilling.GetTransaction(transactionId);
+        var accepted = false;
+
+        try
+        {
+            accepted = await SyncWithServerAsync(
+                _account.EffectiveUserId,
+                "apple",
+                info?.ProductId ?? productId,
+                transactionId,
+                info?.OriginalTransactionId,
+                token);
+        }
+        finally
+        {
+            // Finished only when the server accepted it; otherwise StoreKit
+            // keeps it and it is verified again later (resume / next launch).
+            _iosBilling.CompleteTransaction(transactionId, accepted);
+        }
+
+        return accepted
+            ? "VERIFIED"
+            : "ERROR:SERVER_VERIFICATION_FAILED";
+    }
+
+    private async Task<bool> VerifyUnfinishedAppleTransactionAsync(
+        StoreTransactionInfo transaction,
+        CancellationToken token)
+    {
+        var accepted = await SyncWithServerAsync(
+            _account.EffectiveUserId,
+            "apple",
+            transaction.ProductId,
+            transaction.TransactionId,
+            transaction.OriginalTransactionId,
+            token);
+
+        if (accepted)
+        {
+            try
+            {
+                await MainThread.InvokeOnMainThreadAsync(
+                    () => _pro.LoadAsync(forceServerRefresh: true));
+            }
+            catch
+            {
+                // The entitlement is on the server; the UI refreshes later.
+            }
+        }
+
+        return accepted;
+    }
+#endif
+
     private async Task<bool> SyncWithServerAsync(
         string userId,
         string store,
         string productId,
         string transactionId,
+        string? originalTransactionId,
         CancellationToken token)
     {
         if (!Uri.TryCreate(
@@ -714,12 +456,15 @@ public sealed class PurchaseService
         {
             using var request = await _account.CreateAuthorizedRequestAsync(
                 HttpMethod.Post, "/api/store/verify");
-            request.Content = JsonContent.Create(new
+            request.Content = JsonContent.Create(new StoreVerifyRequest
             {
-                userId,
-                store,
-                productId,
-                transactionId
+                UserId = userId,
+                Store = store,
+                ProductId = productId,
+                TransactionId = transactionId,
+                OriginalTransactionId = string.IsNullOrWhiteSpace(originalTransactionId)
+                    ? null
+                    : originalTransactionId
             });
             using var response = await _http.SendAsync(request, token);
 
@@ -737,6 +482,26 @@ public sealed class PurchaseService
         {
             return false;
         }
+    }
+
+    /// <summary>Body of POST /api/store/verify (backend StoreVerifyRequest).</summary>
+    private sealed class StoreVerifyRequest
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("userId")]
+        public string? UserId { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("store")]
+        public string? Store { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("productId")]
+        public string? ProductId { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("transactionId")]
+        public string? TransactionId { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("originalTransactionId")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public string? OriginalTransactionId { get; set; }
     }
 
     private sealed class ServerEntitlement

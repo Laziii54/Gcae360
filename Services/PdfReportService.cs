@@ -11,11 +11,7 @@ namespace CarScanner.Services;
 /// </summary>
 public sealed class PdfReportService
 {
-    private static bool IsEnglish =>
-        string.Equals(
-            Preferences.Default.Get(LocalizationService.LanguageKey, "English"),
-            "English",
-            StringComparison.OrdinalIgnoreCase);
+    private static bool IsEnglish => LanguageCatalog.UsesEnglishBase;
 
     private static string L(string ka, string en) => IsEnglish ? en : ka;
 

@@ -25,12 +25,14 @@ public sealed class CalendarNotificationService
                     return;
             }
 
-            await ScheduleOneAsync(reminder, reminder.DueDate.Date.AddDays(-1), 0, "ხვალ");
-            await ScheduleOneAsync(reminder, reminder.DueDate.Date, 1, "დღეს");
+            await ScheduleOneAsync(reminder, reminder.DueDate.Date.AddDays(-1), 0, tomorrow: true);
+            await ScheduleOneAsync(reminder, reminder.DueDate.Date, 1, tomorrow: false);
         }
-        catch
+        catch (Exception ex)
         {
-            // A denied permission or unavailable platform must not affect the calendar.
+            // A denied permission or unavailable platform must not affect the
+            // calendar — but the failure is logged instead of disappearing.
+            System.Diagnostics.Debug.WriteLine($"[CalendarNotificationService.Schedule] {ex}");
         }
     }
 
@@ -42,14 +44,17 @@ public sealed class CalendarNotificationService
             LocalNotificationCenter.Current.Cancel(NotificationId(reminderId, 0));
             LocalNotificationCenter.Current.Cancel(NotificationId(reminderId, 1));
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CalendarNotificationService.Cancel] {ex}");
+        }
     }
 
     private static async Task ScheduleOneAsync(
         MaintenanceReminder reminder,
         DateTime date,
         int slot,
-        string when)
+        bool tomorrow)
     {
         var now = DateTime.Now;
         var notifyAt = date.AddHours(9);
@@ -61,8 +66,10 @@ public sealed class CalendarNotificationService
         await LocalNotificationCenter.Current.Show(new NotificationRequest
         {
             NotificationId = NotificationId(reminder.Id, slot),
-            Title = LocalizationService.T("GCar360 · სერვისის კალენდარი"),
-            Description = LocalizationService.T($"{when} შესასრულებელია: {reminder.Title}"),
+            Title = L("GCar360 · სერვისის კალენდარი", "GCar360 · Service calendar"),
+            Description = tomorrow
+                ? L($"ხვალ შესასრულებელია: {reminder.Title}", $"Due tomorrow: {reminder.Title}")
+                : L($"დღეს შესასრულებელია: {reminder.Title}", $"Due today: {reminder.Title}"),
             ReturningData = $"calendar-reminder:{reminder.Id}",
             Schedule = new NotificationRequestSchedule
             {
@@ -70,6 +77,8 @@ public sealed class CalendarNotificationService
             }
         });
     }
+
+    private static string L(string ka, string en) => CarScanner.Services.OBD.ObdLang.IsEnglish ? en : ka;
 
     private static int NotificationId(int reminderId, int slot) =>
         IdBase + (Math.Abs(reminderId) % 40000) * 2 + slot;

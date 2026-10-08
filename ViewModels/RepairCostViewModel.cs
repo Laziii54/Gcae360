@@ -28,7 +28,7 @@ public partial class RepairCostViewModel : BaseViewModel
     /// <summary>The cost estimate becomes the "repair" part of the combined report.</summary>
     private void AddCostsToReport()
     {
-        var english = Preferences.Default.Get("language", "English").Equals("English", StringComparison.OrdinalIgnoreCase);
+        var english = CarScanner.Services.Localization.LanguageCatalog.UsesEnglishBase;
         var min = Estimates.Sum(item => item.PartMinGel + item.LaborMinGel);
         var max = Estimates.Sum(item => item.PartMaxGel + item.LaborMaxGel);
         var section = new CarScanner.Services.Reports.ReportSectionItem

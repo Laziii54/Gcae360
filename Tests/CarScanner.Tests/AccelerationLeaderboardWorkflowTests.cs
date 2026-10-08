@@ -16,7 +16,7 @@ public sealed class AccelerationLeaderboardWorkflowTests
         try
         {
             var configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?> { ["Storage:DataDirectory"] = directory })
+                .AddInMemoryCollection(new Dictionary<string, string?> { ["Storage:DataDirectory"] = directory, ["Acceleration:ShowDemo"] = "true" })
                 .Build();
             var environment = new TestEnvironment(directory);
             var store = new AccelerationLeaderboardStore(environment, configuration);
@@ -28,11 +28,9 @@ public sealed class AccelerationLeaderboardWorkflowTests
             var request = ValidRequest();
             var gps = new RunGpsCheckResult(RunGpsCheck.Passed, 0.5, 0, 100, 20);
             await store.SaveAsync("account-1", request, gps, CancellationToken.None);
-            Assert.Equal(20, (await store.GetAsync(CancellationToken.None)).Count);
+            // Fewer than 10 approved real results: a GPS-confirmed run is approved without video review.
             Assert.Contains(await store.GetAdminAsync(CancellationToken.None), item =>
-                item.SubmissionId == request.SubmissionId && item.Status == "Pending");
-
-            Assert.True(await store.ReviewAsync(request.SubmissionId, "approve", "owner@example.com", CancellationToken.None));
+                item.SubmissionId == request.SubmissionId && item.Status == "Approved");
             Assert.Equal(21, (await store.GetAsync(CancellationToken.None)).Count);
             Assert.True(await store.ReviewAsync(request.SubmissionId, "delete", "owner@example.com", CancellationToken.None));
             Assert.Equal(20, (await store.GetAsync(CancellationToken.None)).Count);

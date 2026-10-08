@@ -25,6 +25,13 @@ public sealed class AccelerationMeasurementService
     private DateTime? _startedAt;
     private DateTime? _previousAt;
     private int _previousSpeed;
+    // Stationary starts: last sample at a standstill and the first sample that
+    // moved after it, so timing begins when the car actually starts to roll
+    // (~0.5 km/h) instead of at the last sample ≤ 3 km/h (a rollout).
+    private DateTime? _standstillAt;
+    private DateTime? _firstMoveAt;
+    private int _firstMoveSpeed;
+    private const double RollStartKph = 0.5;
     private int _samples;
     private readonly Dictionary<int, double> _splits = new();
     private bool _startConditionObserved;
@@ -245,7 +252,7 @@ public sealed class AccelerationMeasurementService
         if (!_gps.IsAvailable)
         {
             lock (_gate)
-                Status = Preferences.Default.Get("language", "English") == "English"
+                Status = CarScanner.Services.Localization.LanguageCatalog.UsesEnglishBase
                     ? "GPS is not available. Allow location for GCar360 and try outdoors."
                     : "GPS მიუწვდომელია. მიეცი GCar360-ს ლოკაციის ნებართვა და სცადე ღია ცის ქვეშ.";
             StateChanged?.Invoke(this, EventArgs.Empty);
@@ -286,6 +293,7 @@ public sealed class AccelerationMeasurementService
             _startedAt = null;
             _previousAt = null;
             _previousSpeed = 0;
+            ClearRollStart();
             _samples = 0;
             _splits.Clear(); MaximumSpeed = MaximumRpm = 0;
             _startConditionObserved = false; _distanceMeters = 0; _peakAcceleration = 0; _accelerationSum = 0; _accelerationSamples = 0;
@@ -396,6 +404,7 @@ public sealed class AccelerationMeasurementService
                                 : $"READY — დრო ავტომატურად დაიწყება {_startSpeedKph:0} km/h-ის გადაკვეთისას.";
                             _previousAt = now;
                             _previousSpeed = data.Speed;
+                            TrackRollStart(now, data.Speed);
                         }
                         else if (!_startConditionObserved)
                         {
@@ -409,17 +418,20 @@ public sealed class AccelerationMeasurementService
                         {
                             _previousAt = now;
                             _previousSpeed = data.Speed;
+                            TrackRollStart(now, data.Speed);
                         }
                         else
                         {
                             // Time is derived from two real ECU speed samples;
                             // it is never started by a UI timer or demo value.
-                            _startedAt = InterpolateSpeedTime(
-                                _previousAt ?? now,
-                                _previousSpeed,
-                                now,
-                                data.Speed,
-                                _startSpeedKph);
+                            _startedAt = _activeTest.RequiresStationaryStart
+                                ? RollStartTime(now, data.Speed)
+                                : InterpolateSpeedTime(
+                                    _previousAt ?? now,
+                                    _previousSpeed,
+                                    now,
+                                    data.Speed,
+                                    _startSpeedKph);
                             Status = $"GO! — {CurrentTestLabel} იზომება რეალური ECU სიჩქარით…";
                         }
                     }
@@ -562,7 +574,7 @@ public sealed class AccelerationMeasurementService
         var gpsOk = gpsCheck.Status == RunGpsCheck.Passed;
         // GPS-timed runs are estimates (≈1 update a second): never ranked.
         var eligible = !timedByGps && ranked && validVin && verifiedModel && plausible && gpsOk;
-        var en = Preferences.Default.Get("language", "English") == "English";
+        var en = CarScanner.Services.Localization.LanguageCatalog.UsesEnglishBase;
         var rejection = eligible ? string.Empty
             : timedByGps ? (en ? "Timed by phone GPS (no adapter): an estimate, not ranked." : "გაიზომა ტელეფონის GPS-ით (ადაპტერის გარეშე): შეფასებაა და რეიტინგში არ შედის.")
             : !ranked ? (en ? "Only 0–100 km/h, 0–60 mph and ¼ mile runs are ranked." : "რეიტინგში მიიღება მხოლოდ 0–100 km/h, 0–60 mph და ¼ მილი.")
@@ -629,9 +641,61 @@ public sealed class AccelerationMeasurementService
     }
 
     /// <summary>Clears the current attempt but stays armed (unless the caller disarms).</summary>
+    private void ClearRollStart()
+    {
+        _standstillAt = null;
+        _firstMoveAt = null;
+        _firstMoveSpeed = 0;
+    }
+
+    /// <summary>Remembers the standstill sample and the first moving sample after it.</summary>
+    private void TrackRollStart(DateTime at, int speed)
+    {
+        if (!_activeTest.RequiresStationaryStart)
+            return;
+
+        if (speed <= 0)
+        {
+            _standstillAt = at;
+            _firstMoveAt = null;
+            _firstMoveSpeed = 0;
+        }
+        else if (_firstMoveAt is null)
+        {
+            _firstMoveAt = at;
+            _firstMoveSpeed = speed;
+        }
+    }
+
+    /// <summary>
+    /// The moment the car crossed ~0.5 km/h, interpolated between the last
+    /// standstill sample and the first moving one. Without a standstill
+    /// sample (car already creeping when armed) it is extrapolated back from
+    /// the two latest samples, at most 2 s — never later than the old start.
+    /// </summary>
+    private DateTime RollStartTime(DateTime now, int speed)
+    {
+        var moveAt = _firstMoveAt ?? now;
+        var moveSpeed = _firstMoveAt is null ? speed : _firstMoveSpeed;
+
+        if (_standstillAt is { } stillAt && moveAt > stillAt && moveSpeed > 0)
+            return InterpolateSpeedTime(stillAt, 0, moveAt, moveSpeed, RollStartKph);
+
+        var previousAt = _previousAt ?? now;
+        if (now <= previousAt || speed <= _previousSpeed)
+            return previousAt;
+
+        var slopeKphPerTick = (speed - _previousSpeed) / (double)(now - previousAt).Ticks;
+        var backTicks = (long)Math.Max(0, (_previousSpeed - RollStartKph) / slopeKphPerTick);
+        backTicks = Math.Min(backTicks, TimeSpan.FromSeconds(2).Ticks);
+        return previousAt.AddTicks(-backTicks);
+    }
+
     private void ResetAttempt(DateTime now, int speed)
     {
         _startedAt = null;
+        ClearRollStart();
+        TrackRollStart(now, speed);
         _startConditionObserved = _activeTest.RequiresStationaryStart ? speed <= 3 : speed <= _startSpeedKph;
         _previousAt = now;
         _previousSpeed = speed;

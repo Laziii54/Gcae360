@@ -11,7 +11,15 @@ namespace CarScanner.Services;
 /// </summary>
 public sealed partial class CrashReportingService
 {
+    // Older versions kept a single pending report in this file.
     private const string PendingFileName = "pending-crash-report.json";
+    private const string PendingFolderName = "pending-crash-reports";
+
+    /// <summary>At most this many reports wait for upload; older ones are dropped.</summary>
+    private const int MaxPending = 5;
+
+    /// <summary>The server refuses reports older than 30 days (permanent 400).</summary>
+    private static readonly TimeSpan MaxAge = TimeSpan.FromDays(30);
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(12) };
     private int _initialized;
 
@@ -45,7 +53,9 @@ public sealed partial class CrashReportingService
                 fatal);
 
             var json = JsonSerializer.Serialize(report);
-            File.WriteAllText(PendingPath, json);
+            Directory.CreateDirectory(PendingFolder);
+            File.WriteAllText(Path.Combine(PendingFolder, report.ReportId + ".json"), json);
+            TrimPending();
         }
         catch
         {
@@ -57,28 +67,93 @@ public sealed partial class CrashReportingService
     {
         try
         {
-            if (!File.Exists(PendingPath) ||
-                !Uri.TryCreate(AIConfig.BackendBaseUrl, UriKind.Absolute, out var baseUri) ||
+            if (!Uri.TryCreate(AIConfig.BackendBaseUrl, UriKind.Absolute, out var baseUri) ||
                 baseUri.Scheme != Uri.UriSchemeHttps)
                 return;
 
-            var json = await File.ReadAllTextAsync(PendingPath, token);
-            var report = JsonSerializer.Deserialize<CrashEnvelope>(json);
-            if (report is null)
+            MigrateLegacyFile();
+            if (!Directory.Exists(PendingFolder))
                 return;
+            TrimPending();
 
-            using var response = await _http.PostAsJsonAsync(
-                new Uri(baseUri, "/api/telemetry/crash"), report, token);
-            if (response.IsSuccessStatusCode)
-                File.Delete(PendingPath);
+            foreach (var file in new DirectoryInfo(PendingFolder).GetFiles("*.json").OrderBy(f => f.LastWriteTimeUtc))
+            {
+                CrashEnvelope? report;
+                try
+                {
+                    report = JsonSerializer.Deserialize<CrashEnvelope>(await File.ReadAllTextAsync(file.FullName, token));
+                }
+                catch (JsonException)
+                {
+                    report = null;
+                }
+
+                // Unreadable or too old for the server: it would be refused forever.
+                if (report is null || report.OccurredAt < DateTimeOffset.UtcNow - MaxAge)
+                {
+                    TryDelete(file.FullName);
+                    continue;
+                }
+
+                using var response = await _http.PostAsJsonAsync(
+                    new Uri(baseUri, "/api/telemetry/crash"), report, token);
+
+                // 400 = the server will never accept this report; do not retry it.
+                if (response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+                {
+                    TryDelete(file.FullName);
+                    continue;
+                }
+
+                // Rate limited or server down: keep the rest for the next launch.
+                break;
+            }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
         }
         catch
         {
-            // Keep the report for the next launch.
+            // Keep the reports for the next launch.
         }
+    }
+
+    /// <summary>Moves the old single pending report into the folder.</summary>
+    private static void MigrateLegacyFile()
+    {
+        try
+        {
+            if (!File.Exists(PendingPath))
+                return;
+            Directory.CreateDirectory(PendingFolder);
+            File.Move(PendingPath, Path.Combine(PendingFolder, "legacy-" + Guid.NewGuid().ToString("N") + ".json"), overwrite: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            TryDelete(PendingPath);
+        }
+    }
+
+    /// <summary>Keeps only the newest <see cref="MaxPending"/> reports.</summary>
+    private static void TrimPending()
+    {
+        try
+        {
+            if (!Directory.Exists(PendingFolder))
+                return;
+            foreach (var old in new DirectoryInfo(PendingFolder).GetFiles("*.json")
+                         .OrderByDescending(f => f.LastWriteTimeUtc).Skip(MaxPending))
+                TryDelete(old.FullName);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try { File.Delete(path); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
     private void OnUnhandledException(object sender, UnhandledExceptionEventArgs args)
@@ -102,6 +177,9 @@ public sealed partial class CrashReportingService
 
     private static string PendingPath =>
         Path.Combine(FileSystem.Current.AppDataDirectory, PendingFileName);
+
+    private static string PendingFolder =>
+        Path.Combine(FileSystem.Current.AppDataDirectory, PendingFolderName);
 
     private static string SanitizeStack(string? stack)
     {

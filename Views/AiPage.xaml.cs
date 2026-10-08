@@ -13,7 +13,6 @@ public partial class AiPage : ContentPage
         InitializeComponent();
         BindingContext = vm;
         _viewModel = vm;
-        _viewModel.ChatMessages.CollectionChanged += OnChatMessagesChanged;
     }
 
     private void ApplyUiLocalization()
@@ -22,11 +21,29 @@ public partial class AiPage : ContentPage
         localization?.Apply(this);
     }
 
-    protected override void OnAppearing()
+    protected override async void OnAppearing()
     {
         base.OnAppearing();
-        ApplyUiLocalization();
-        ScrollChatToEnd();
+        try
+        {
+            // The view model is a singleton: subscribe only while this page is
+            // visible so a closed page is not kept alive by the collection.
+            _viewModel.ChatMessages.CollectionChanged -= OnChatMessagesChanged;
+            _viewModel.ChatMessages.CollectionChanged += OnChatMessagesChanged;
+            ApplyUiLocalization();
+            ScrollChatToEnd();
+            await _viewModel.EnsureCurrentVehicleAsync();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AiPage.OnAppearing");
+        }
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        _viewModel.ChatMessages.CollectionChanged -= OnChatMessagesChanged;
     }
 
     private void OnChatMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e) =>

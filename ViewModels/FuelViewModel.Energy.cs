@@ -237,6 +237,27 @@ public partial class FuelViewModel
         _socNow = null;
     }
 
+    /// <summary>Electric range the car itself shows (Volt / Bolt), refreshed every ~30 s.</summary>
+    private double? _carRangeKm;
+
+    private async Task RefreshCarRangeAsync(CarScanner.Models.VehicleInfo? vehicle, CancellationToken token)
+    {
+        try
+        {
+            var km = await _evReader.ReadElectricRangeKmAsync(vehicle, token).ConfigureAwait(false);
+            if (km is null)
+                return;
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                _carRangeKm = km;
+                RefreshPresentation();
+            });
+        }
+        catch (Exception) when (!token.IsCancellationRequested)
+        {
+        }
+    }
+
     private async Task RunEnergyLoopAsync(CancellationToken token)
     {
         try
@@ -278,6 +299,8 @@ public partial class FuelViewModel
                 EvBatteryReading? reading;
                 try
                 {
+                    if (tick % 15 == 0)
+                        await RefreshCarRangeAsync(vehicle, token).ConfigureAwait(false);
                     reading = await _evReader.ReadAsync(active, tick++ % 10 == 0, token).ConfigureAwait(false);
                 }
                 catch (Exception) when (!token.IsCancellationRequested)
@@ -334,6 +357,7 @@ public partial class FuelViewModel
     {
         while (!token.IsCancellationRequested)
         {
+            await RefreshCarRangeAsync(vehicle, token).ConfigureAwait(false);
             var soc = await _evReader.ReadSocOnlyAsync(vehicle, token).ConfigureAwait(false);
             if (soc is { } value)
             {
@@ -409,7 +433,7 @@ public partial class FuelViewModel
                     ? EvEnergyAccumulator.InstantKWhPer100Km(_ev.PowerKw, _latestSpeedKph ?? 0)
                     : null;
                 var energy = _ev.HasSample ? _ev.NetKWh : ApproxKWh();
-                double? average = energy is { } e ? EvEnergyAccumulator.KWhPer100Km(e, km) : null;
+                double? average = energy is { } e ? EvEnergyAccumulator.KWhPer100Km(e, EnergyKm(km)) : null;
                 HeadLeftCaption = L("მომენტალური", "Instant");
                 HeadLeftValue = instant is { } i ? i.ToString("0.0", invariant) : "—";
                 HeadLeftUnit = "kWh/100km";
@@ -455,7 +479,7 @@ public partial class FuelViewModel
             ? "—"
             : $"₾{((fuelCost ?? 0) + (energyCost ?? 0)).ToString("0.00", invariant)}";
         EnergyPerKmCaption = L("ენერგია 100 კმ-ზე", "Energy per 100 km");
-        EnergyPerKmText = tripEnergy is { } tripKwh && EvEnergyAccumulator.KWhPer100Km(tripKwh, km) is { } per100Km
+        EnergyPerKmText = tripEnergy is { } tripKwh && EvEnergyAccumulator.KWhPer100Km(tripKwh, EnergyKm(km)) is { } per100Km
             ? $"{per100Km.ToString("0.0", invariant)} kWh"
             : "—";
 
@@ -533,7 +557,7 @@ public partial class FuelViewModel
             : L("დამუხტვის % ჯერ არ მოსულა", "No state of charge yet");
         ApproxConsumptionText = ApproxKWh() is { } approx
             ? $"{approx.ToString("0.0", invariant)} kWh" +
-              (EvEnergyAccumulator.KWhPer100Km(approx, km) is { } per100 ? $" · {per100.ToString("0.0", invariant)} kWh/100km" : string.Empty)
+              (EvEnergyAccumulator.KWhPer100Km(approx, EnergyKm(km)) is { } per100 ? $" · {per100.ToString("0.0", invariant)} kWh/100km" : string.Empty)
             : "—";
 
         if (ShowEnergy)

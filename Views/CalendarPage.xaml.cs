@@ -13,9 +13,9 @@ public partial class CalendarPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        base.OnAppearing();
         try
         {
-        base.OnAppearing();
         var localization = Application.Current?.Handler?.MauiContext?.Services.GetService<LocalizationService>();
         localization?.Apply(this);
         if (BindingContext is CalendarViewModel viewModel)

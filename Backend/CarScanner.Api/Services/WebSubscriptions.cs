@@ -525,6 +525,28 @@ NextChargeAt,Attempts,PendingOrderId,CardMask,Currency FROM WebSubscriptions WHE
         finally { _gate.Release(); }
     }
 
+    /// <summary>
+    /// Account deletion (after <see cref="CancelSubscriptionAsync"/>): the
+    /// payment records are kept for accounting, but no longer point to the
+    /// account, and the saved card description is removed. Orders hold no
+    /// e-mail or name, only the account id.
+    /// </summary>
+    public async Task AnonymizeUserAsync(string userId, CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            await using var c = new SqliteConnection(_connectionString);
+            await c.OpenAsync(ct);
+            await using var cmd = c.CreateCommand();
+            cmd.CommandText = @"UPDATE WebSubscriptions SET UserId='deleted', CardMask=NULL, NextChargeAt=NULL, Status=CASE WHEN Status IN ('active','past_due') THEN 'canceled' ELSE Status END WHERE UserId=$u;
+UPDATE WebOrders SET UserId='deleted' WHERE UserId=$u;";
+            cmd.Parameters.AddWithValue("$u", userId);
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+        finally { _gate.Release(); }
+    }
+
     private static DateTimeOffset? ParseDate(string? value) =>
         DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var at) ? at : null;
 }

@@ -22,8 +22,8 @@ public partial class ProViewModel
     [ObservableProperty] private bool showWebSubscription;
     [ObservableProperty] private string webSubTitleText = "";
     [ObservableProperty] private string webSubStateText = "";
-    [ObservableProperty] private Color webSubStateColor = Color.FromArgb("#1F8A4C");
-    [ObservableProperty] private Color webSubStateBackground = Color.FromArgb("#E8F5EE");
+    [ObservableProperty] private Color webSubStateColor = CarScanner.Services.Localization.ThemeService.Soft("#1F8A4C");
+    [ObservableProperty] private Color webSubStateBackground = CarScanner.Services.Localization.ThemeService.Soft("#E8F5EE");
     [ObservableProperty] private string webSubDetailsText = "";
     [ObservableProperty] private bool showWebSubAlert;
     [ObservableProperty] private string webSubAlertText = "";
@@ -81,15 +81,19 @@ public partial class ProViewModel
             ? value.ToLocalTime().ToString("d MMM yyyy", _localization.IsEnglish ? CultureInfo.GetCultureInfo("en-US") : CultureInfo.GetCultureInfo("ka-GE"))
             : "—";
 
-        var price = s.Amount is { } amount ? amount.ToString("0.00", CultureInfo.InvariantCulture) + " ₾" : "";
-        WebSubTitleText = $"{name} · {price} {L("/ თვე", "/ month")}".Trim();
+        // Google Play payments policy: no prices of outside purchases on Android
+        // (status, renewal date and cancel stay so the user can manage the plan).
+        var price = CanBuyInApp && s.Amount is { } amount ? amount.ToString("0.00", CultureInfo.InvariantCulture) + " ₾" : "";
+        WebSubTitleText = price.Length > 0
+            ? $"{name} · {price} {L("/ თვე", "/ month")}".Trim()
+            : name;
 
         var lines = new List<string>();
         if (s.Status == "past_due")
         {
             WebSubStateText = L("გადაუხდელი", "Payment failed");
-            WebSubStateColor = Color.FromArgb("#B3361F");
-            WebSubStateBackground = Color.FromArgb("#FDECEA");
+            WebSubStateColor = CarScanner.Services.Localization.ThemeService.Soft("#B3361F");
+            WebSubStateBackground = CarScanner.Services.Localization.ThemeService.Soft("#FDECEA");
             lines.Add(L("შემდეგი ცდა: ", "Next try: ") + Day(s.NextChargeAt));
             ShowWebSubAlert = true;
             WebSubAlertText = L(
@@ -99,16 +103,16 @@ public partial class ProViewModel
         else if (s.AutoRenew)
         {
             WebSubStateText = L("აქტიური", "Active");
-            WebSubStateColor = Color.FromArgb("#1F8A4C");
-            WebSubStateBackground = Color.FromArgb("#E8F5EE");
+            WebSubStateColor = CarScanner.Services.Localization.ThemeService.Soft("#1F8A4C");
+            WebSubStateBackground = CarScanner.Services.Localization.ThemeService.Soft("#E8F5EE");
             lines.Add(L("ავტომატურად განახლდება: ", "Renews automatically: ") + Day(s.NextChargeAt));
             ShowWebSubAlert = false;
         }
         else
         {
             WebSubStateText = L("გაუქმებული", "Cancelled");
-            WebSubStateColor = Color.FromArgb("#5D636B");
-            WebSubStateBackground = Color.FromArgb("#ECEEF0");
+            WebSubStateColor = CarScanner.Services.Localization.ThemeService.Soft("#5D636B");
+            WebSubStateBackground = CarScanner.Services.Localization.ThemeService.Soft("#ECEEF0");
             lines.Add(L("მოქმედებს: ", "Active until: ") + Day(s.ActiveUntil));
             ShowWebSubAlert = false;
         }
@@ -194,7 +198,9 @@ public partial class ProViewModel
             {
                 NotificationId = RenewReminderId,
                 Title = "GCar360",
-                Description = L($"3 დღეში {name} განახლდება: {price}.", $"{name} renews in 3 days: {price}."),
+                Description = price.Length > 0
+                    ? L($"3 დღეში {name} განახლდება: {price}.", $"{name} renews in 3 days: {price}.")
+                    : L($"3 დღეში {name} განახლდება.", $"{name} renews in 3 days."),
                 Schedule = new NotificationRequestSchedule { NotifyTime = when },
                 ReturningData = "web-renewal"
             });

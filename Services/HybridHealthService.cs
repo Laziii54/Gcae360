@@ -103,14 +103,33 @@ public sealed partial class HybridHealthService
             progress?.Report("e-Golf ბატარეის სისტემის კითხვა…");
             pack = await ReadEGolfPackAsync(log, token).ConfigureAwait(false);
         }
-        else if (GmVoltBoltBattery.IsBolt(vehicle.Manufacturer, vehicle.Model) is not null || profile == HybridProfileKind.ChevroletVolt)
+        else if (GmKind(vehicle) is not null || profile == HybridProfileKind.ChevroletVolt || IsGmFamily(vehicle))
         {
-            progress?.Report("Volt/Bolt ბატარეის (BECM) კითხვა — 96 უჯრედი, ~10–20 წამი…");
-            pack = await ReadGmPackAsync(vehicle, GmVoltBoltBattery.IsBolt(vehicle.Manufacturer, vehicle.Model) == true, log, progress, token).ConfigureAwait(false);
+            // Volt / Bolt (also recognised from the VIN when the model name is missing).
+            // Any other GM car answers nothing within 3 cells, so this costs ~1 s.
+            progress?.Report("ბატარეის უჯრედების კითხვა…");
+            pack = await ReadGmPackAsync(vehicle, GmKind(vehicle) == true, log, progress, token).ConfigureAwait(false);
+            if (pack is null && (GmKind(vehicle) is not null || profile == HybridProfileKind.ChevroletVolt))
+            {
+                // A Volt / Bolt whose BECM did not answer: the car is not READY.
+                // The generic module search would only take long and find the same.
+                return Empty(profile, vehicleName,
+                    "ბატარეამ არ უპასუხა. ჩართე მანქანა (READY) და სცადე თავიდან.",
+                    ValidationText(profile, false));
+            }
         }
 
         if (pack is not null)
+        {
+            // On plug-in GM cars PID 5B follows the state of charge, not the battery's
+            // health — it is shown as the charge and kept out of the score.
+            if (pack.Kind == HvPackKind.GmVoltBolt && ecuLife is { } charge)
+            {
+                pack = pack with { SocPercent = pack.SocPercent ?? charge };
+                ecuLife = null;
+            }
             return BuildPackResult(profile, vehicleName, ecuLife, pack, log.ToString());
+        }
 
         _sampler = null;
         _lastPackKind = null;
@@ -182,35 +201,49 @@ public sealed partial class HybridHealthService
         var delta = cells.Length >= 2 ? maximumCell - minimumCell : null;
         var minimumTemperature = temperatures.Length > 0 ? temperatures.Min() : (double?)null;
         var maximumTemperature = temperatures.Length > 0 ? temperatures.Max() : (double?)null;
-        var score = CalculateScore(ecuLife, delta, maximumTemperature);
-        var estimatedLife = ecuLife ?? score;
-        var realDataReturned = ecuLife.HasValue || cells.Length > 0 || temperatures.Length > 0;
+        // PID 5B is not used for the battery's quality: on many hybrids and plug-ins it
+        // follows the state of charge. Quality comes only from the cells (and SOH).
+        // A spread of 2–7 readings says nothing about a whole pack: a health
+        // score needs at least MinimumCellsForScore cell/block voltages.
+        var enoughCells = cells.Length >= MinimumCellsForScore;
+        var score = enoughCells ? CalculateScore(null, delta, maximumTemperature) : null;
+        double? estimatedLife = score;
+        var realDataReturned = cells.Length > 0 || temperatures.Length > 0;
+        var rating = score is null
+            ? cells.Length > 0 ? "საკმარისი მონაცემი არ არის" : Rating(score)
+            : $"{Rating(score)} · მოსვენების მდგომარეობის სნეპშოტი";
 
         var evidence = string.Join(" · ", new[]
         {
             cells.Length > 0 ? (blockVoltages ? $"{cells.Length} ბლოკის ძაბვა (HV ბატარეის ECU)" : $"{cells.Length} voltage reading") : string.Empty,
             temperatures.Length > 0 ? $"{temperatures.Length} temperature reading" : string.Empty,
-            ecuLife.HasValue ? "PID 015B remaining life" : string.Empty
+            string.Empty
         }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
         var status = realDataReturned
-            ? "რეალური ECU/BMS მონაცემები მიღებულია."
+            ? cells.Length > 0 && !enoughCells
+                ? $"რეალური ECU/BMS მონაცემები მიღებულია, მაგრამ მხოლოდ {cells.Length} უჯრედის ძაბვა — ჯანმრთელობის შესაფასებლად საჭიროა მინიმუმ {MinimumCellsForScore}. ქულა არ არის გამოთვლილი."
+                : score is not null
+                    ? "რეალური ECU/BMS მონაცემები მიღებულია. ქულა არის მოსვენების მდგომარეობის სნეპშოტი (უჯრედებს შორის სხვაობა), არა დატვირთვის ტესტი."
+                    : "რეალური ECU/BMS მონაცემები მიღებულია."
             : profile == HybridProfileKind.Unsupported
                 ? "HV ბატარეის მონაცემი ვერ მოიძებნა. მანქანა ჰიბრიდად/ელექტროდ ვერ დადასტურდა — შესაძლოა ეს ჩვეულებრივი ბენზინის ვერსიაა."
-                : discoveryNote ?? "HV ბატარეის ECU-მ არ უპასუხა. შეამოწმე, რომ ანთება ჩართულია (READY).";
+                : cells.Length == 0 && temperatures.Length == 0
+                    ? "ბატარეის უჯრედების მონაცემი ამ მანქანამ არ დააბრუნა. ჩართე მანქანა (READY) და სცადე თავიდან."
+                    : discoveryNote ?? "HV ბატარეის ECU-მ არ უპასუხა. შეამოწმე, რომ ანთება ჩართულია (READY).";
 
         return new HybridHealthResult(
             profile,
             vehicleName,
             score,
-            Rating(score),
+            rating,
             delta,
             minimumCell,
             maximumCell,
             minimumTemperature,
             maximumTemperature,
             estimatedLife,
-            ecuLife.HasValue,
+            false,
             cells.Length,
             temperatures.Length,
             status,
@@ -226,8 +259,35 @@ public sealed partial class HybridHealthService
     private static string Shorten(string value, int max) =>
         value.Length <= max ? value : value[..max] + "…";
 
+    /// <summary>true = Bolt, false = Volt, null = neither (model name first, then the VIN).</summary>
+    private static bool? GmKind(VehicleInfo vehicle)
+    {
+        if (GmVoltBoltBattery.IsBolt(vehicle.Manufacturer, vehicle.Model) is { } byModel)
+            return byModel;
+        var vin = (vehicle.VIN ?? string.Empty).Trim().ToUpperInvariant();
+        if (vin.Length != 17)
+            return null;
+        if (vin.StartsWith("1G1R", StringComparison.Ordinal))
+            return false; // Chevrolet Volt 2011–2019
+        if (vin.StartsWith("1G1FW", StringComparison.Ordinal) || vin.StartsWith("1G1FX", StringComparison.Ordinal) ||
+            vin.StartsWith("1G1FY", StringComparison.Ordinal) || vin.StartsWith("1G1FZ", StringComparison.Ordinal))
+            return true; // Chevrolet Bolt EV / EUV
+        return null;
+    }
+
+    private static bool IsGmFamily(VehicleInfo vehicle)
+    {
+        var make = vehicle.Manufacturer ?? string.Empty;
+        return make.Contains("Chevrolet", StringComparison.OrdinalIgnoreCase) ||
+               make.Contains("Cadillac", StringComparison.OrdinalIgnoreCase) ||
+               make.Contains("Opel", StringComparison.OrdinalIgnoreCase) ||
+               make.Contains("Vauxhall", StringComparison.OrdinalIgnoreCase);
+    }
+
     public static HybridProfileKind ResolveProfile(VehicleInfo vehicle)
     {
+        if (GmKind(vehicle) == false)
+            return HybridProfileKind.ChevroletVolt;
         var make = vehicle.Manufacturer ?? string.Empty;
         var model = vehicle.Model ?? string.Empty;
         if ((make.Contains("Toyota", StringComparison.OrdinalIgnoreCase) ||
@@ -262,12 +322,17 @@ public sealed partial class HybridHealthService
         return HybridProfileKind.Unsupported;
     }
 
+    /// <summary>Fewest cell/block voltages from which a pack health score is produced.</summary>
+    private const int MinimumCellsForScore = 8;
+
     public static int? CalculateScore(double? ecuLife, double? cellDelta, double? maximumTemperatureC)
     {
-        if (!ecuLife.HasValue && !cellDelta.HasValue && !maximumTemperatureC.HasValue)
+        // Quality is judged from the cells only (ecuLife / PID 5B is ignored —
+        // on many cars it is the state of charge). No cells → no score.
+        if (!cellDelta.HasValue)
             return null;
 
-        var score = ecuLife.HasValue ? Math.Clamp(ecuLife.Value, 0, 100) : 85d;
+        var score = 100d;
         if (cellDelta.HasValue)
         {
             score -= cellDelta.Value switch

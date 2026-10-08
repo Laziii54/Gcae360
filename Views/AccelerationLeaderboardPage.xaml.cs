@@ -15,9 +15,9 @@ public partial class AccelerationLeaderboardPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        base.OnAppearing();
         try
         {
-        base.OnAppearing();
         Application.Current?.Handler?.MauiContext?.Services.GetService<LocalizationService>()?.Apply(this);
         await _viewModel.LoadCommand.ExecuteAsync(null);
         }

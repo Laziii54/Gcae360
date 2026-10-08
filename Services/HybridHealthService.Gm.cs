@@ -70,6 +70,24 @@ public sealed partial class HybridHealthService
                     from2019);
             }
 
+            else
+            {
+                // Volt: capacity in Ah (OBDb 7E4 22 41A3 ÷10; 2019: 22 45FF ÷100).
+                // Health = capacity ÷ capacity when new (Gen 1 2011–2015 ≈ 45 Ah,
+                // Gen 2 2016–2019 ≈ 52 Ah). Implausible values are ignored.
+                var from2019 = year is >= 2019;
+                var ah = GM.DecodeCapacity(
+                    await AskAsync(session, from2019 ? new HvRequest(0x7E4, 0x7EC, new byte[] { 0x22, 0x45, 0xFF }) : GM.BoltCapacityTo2018, log, token).ConfigureAwait(false),
+                    from2019);
+                var nominal = year is >= 2016 ? 52d : 45d;
+                if (ah is { } value && value >= nominal * 0.5 && value <= nominal * 1.1)
+                    capacity = value;
+            }
+
+            double? soh = capacity is { } capAh && !bolt
+                ? Math.Round(Math.Min(100, capAh / (year is >= 2016 ? 52d : 45d) * 100))
+                : null;
+
             if (temperatures.Count == 0 &&
                 GM.DecodeTemperature(await AskAsync(session, GM.BatteryTemperature, log, token).ConfigureAwait(false)) is { } packTemperature)
                 temperatures.Add(packTemperature);
@@ -83,9 +101,12 @@ public sealed partial class HybridHealthService
                 soc,
                 current,
                 packVoltage,
-                null,
+                soh,
                 numbers.Count == GM.CellCount ? null : numbers.ToArray(),
-                capacity);
+                capacity,
+                Note: soh is not null
+                    ? $"ტევადობა {capacity:0.#} Ah · ახალზე ≈ {(year is >= 2016 ? 52 : 45)} Ah"
+                    : null);
         }, token).ConfigureAwait(false);
 
         // Cells are read one by one, so there is no load test for this pack.

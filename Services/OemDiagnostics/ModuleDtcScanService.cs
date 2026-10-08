@@ -271,6 +271,18 @@ public sealed class ModuleDtcScanService
         var is29BitCar = protocol is ObdProtocol.ISO_15765_4_CAN_29BIT_500K
             or ObdProtocol.ISO_15765_4_CAN_29BIT_250K;
         var family = DetectFamily(vehicle);
+        if (family is BrandFamily.Unknown or BrandFamily.Other)
+        {
+            // The brand decides which manufacturer modules are asked. When the
+            // identity read gave no usable make, use the VIN's WMI (reading the
+            // VIN now when the earlier read did not get it).
+            var vin = (vehicle.VIN ?? string.Empty).Trim();
+            if (!VinResponseParser.IsValidVin(vin))
+                vin = await TryReadVinAsync(token).ConfigureAwait(false) ?? vin;
+            var fromVin = DetectFamilyFromVin(vin);
+            if (fromVin != BrandFamily.Unknown)
+                family = fromVin;
+        }
         var carMoving = vehicleSpeedKph is > 0.5;
 
         var candidates = new List<Candidate>();
@@ -308,6 +320,7 @@ public sealed class ModuleDtcScanService
 
         var results = new List<ModuleDtcReport>();
         var checkedCount = 0;
+        Exception? sessionError = null;
 
         try
         {
@@ -347,8 +360,9 @@ public sealed class ModuleDtcScanService
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Module DTC session failed: {ex}");
+            sessionError = ex;
             if (results.Count == 0)
-                return new ScanOutcome(results, checkedCount, "სხვა მოდულების შემოწმება ვერ მოხერხდა ამ ადაპტერით.");
+                return new ScanOutcome(results, checkedCount, SessionFailureNote(ex, partial: false));
         }
 
         await DescribeAsync(results, token).ConfigureAwait(false);
@@ -356,13 +370,58 @@ public sealed class ModuleDtcScanService
         LastModules = results.Where(item => item.Responded).ToList();
         LastScanAt = DateTime.Now;
 
-        var note = carMoving
+        var note = sessionError is not null
+            ? SessionFailureNote(sessionError, partial: true)
+            : carMoving
             ? "მანქანა მოძრაობდა, ამიტომ შემოწმდა მხოლოდ ძრავი და კოლოფი. სრული სკანისთვის გააჩერე მანქანა."
             : family == BrandFamily.Unknown && results.Count(item => item.Responded) <= 1
                 ? "მარკა ვერ დადგინდა, ამიტომ მხოლოდ სტანდარტული მოდულები შემოწმდა."
                 : string.Empty;
 
         return new ScanOutcome(results, checkedCount, note);
+    }
+
+    private static string L(string ka, string en) => ObdLang.IsEnglish ? en : ka;
+
+    /// <summary>Short, bilingual hint for a module session that stopped with an error.</summary>
+    private static string SessionFailureNote(Exception ex, bool partial)
+    {
+        string hint;
+        if (ex is NotSupportedException)
+            hint = L("ამ კავშირის ტიპზე მოდულების სკანი არ მუშაობს.", "Module scan is not available on this connection type.");
+        else if (ex is Elm327CommandException)
+            hint = L("ადაპტერი მოდულების მისამართის ბრძანებებს არ უჭერს მხარს (იაფი კლონი?). სცადე სხვა ადაპტერი (მაგ. OBDLink, vLinker).",
+                     "The adapter does not support module addressing commands (cheap clone?). Try another adapter (e.g. OBDLink, vLinker).");
+        else if (ex is Elm327TimeoutException or TimeoutException)
+            hint = L("ადაპტერმა დროზე არ უპასუხა. ანთება ჩართე და სცადე თავიდან.", "The adapter did not answer in time. Turn the ignition on and try again.");
+        else if (ex is Elm327NotConnectedException or IOException)
+            hint = L("ადაპტერთან კავშირი გაწყდა. დააკავშირე თავიდან.", "The connection to the adapter was lost. Reconnect and try again.");
+        else
+            hint = UserError.Describe(ex);
+
+        return partial
+            ? L($"მოდულების სკანი შუაში შეწყდა, ნაჩვენებია ნაწილობრივი შედეგი. {hint}", $"The module scan stopped early; partial results are shown. {hint}")
+            : L($"სხვა მოდულების შემოწმება ვერ მოხერხდა. {hint}", $"Other modules could not be checked. {hint}");
+    }
+
+    /// <summary>Reads the VIN (Mode 09 PID 02) for brand detection; null when unavailable.</summary>
+    private async Task<string?> TryReadVinAsync(CancellationToken token)
+    {
+        try
+        {
+            var raw = await _obd.ReadMode09QuickAsync(0x02, token).ConfigureAwait(false);
+            var vin = VinResponseParser.ParseMode09Vin(raw);
+            return VinResponseParser.IsValidVin(vin) ? vin : null;
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"VIN read for module scan failed: {ex.Message}");
+            return null;
+        }
     }
 
     /// <summary>
@@ -460,21 +519,27 @@ public sealed class ModuleDtcScanService
             return report;
         }
 
-        if (!uds.AnyReply)
+        // GMLAN modules (GM / Chevrolet Volt …) often ignore UDS $19
+        // completely: still try $A9 for GM 11-bit candidates.
+        var tryGmlan = family == BrandFamily.Gm && !candidate.Ext29;
+        if (!uds.AnyReply && !tryGmlan)
             return null;
 
-        // 2) KWP2000 ReadDTCByStatus (older Hyundai/Kia, Toyota …).
-        var kwp = await SendIsoTpAsync(session, candidate, new byte[] { 0x18, 0x02, 0xFF, 0x00 }, token).ConfigureAwait(false);
-        if (kwp.Positive is { } kwpMessage && kwpMessage.Length >= 2 && kwpMessage[0] == 0x58)
+        if (uds.AnyReply)
         {
-            report.Protocol = "KWP";
-            report.Responded = true;
-            report.Codes = ParseKwp(kwpMessage);
-            return report;
+            // 2) KWP2000 ReadDTCByStatus (older Hyundai/Kia, Toyota …).
+            var kwp = await SendIsoTpAsync(session, candidate, new byte[] { 0x18, 0x02, 0xFF, 0x00 }, token).ConfigureAwait(false);
+            if (kwp.Positive is { } kwpMessage && kwpMessage.Length >= 2 && kwpMessage[0] == 0x58)
+            {
+                report.Protocol = "KWP";
+                report.Responded = true;
+                report.Codes = ParseKwp(kwpMessage);
+                return report;
+            }
         }
 
         // 3) GM (GMLAN) $A9 — reply comes as unsegmented frames on 0x5xx.
-        if (family == BrandFamily.Gm && !candidate.Ext29)
+        if (tryGmlan)
         {
             try
             {
@@ -499,6 +564,10 @@ public sealed class ModuleDtcScanService
                 // Some adapters cannot send raw (unformatted) CAN frames.
                 System.Diagnostics.Debug.WriteLine($"GMLAN A9 {candidate.Tx:X} failed: {ex.Message}");
             }
+
+            // Neither $19 nor $A9 got any answer: no module at this address.
+            if (!uds.AnyReply)
+                return null;
         }
 
         // The module answers but does not report trouble codes this way.
@@ -1280,11 +1349,24 @@ public sealed class ModuleDtcScanService
         if (Has("BMW", "MINI")) return BrandFamily.Bmw;
 
         // VIN world manufacturer identifier as a fallback.
-        var vin = (vehicle.VIN ?? string.Empty).Trim().ToUpperInvariant();
+        var fromVin = DetectFamilyFromVin(vehicle.VIN);
+        if (fromVin != BrandFamily.Unknown)
+            return fromVin;
+
+        return string.IsNullOrWhiteSpace(make) || make == "UNKNOWN" ? BrandFamily.Unknown : BrandFamily.Other;
+    }
+
+    /// <summary>Brand family from the VIN's world manufacturer identifier (first 3 characters).</summary>
+    private static BrandFamily DetectFamilyFromVin(string? rawVin)
+    {
+        var vin = (rawVin ?? string.Empty).Trim().ToUpperInvariant();
         if (vin.Length >= 3)
         {
             var wmi = vin[..3];
-            if (wmi is "1G1" or "1GC" or "1GT" or "1G4" or "1G6" or "2G1" or "3G1" or "1GN" or "1GK" or "KL1" or "KL8") return BrandFamily.Gm;
+            // GM: 1G*, 2G* (Canada), 3G* (Mexico), KL* (Korea), 6G* (Holden), LSG (SAIC-GM).
+            if (wmi.StartsWith("1G", StringComparison.Ordinal) || wmi.StartsWith("2G", StringComparison.Ordinal) ||
+                wmi.StartsWith("3G", StringComparison.Ordinal) || wmi.StartsWith("KL", StringComparison.Ordinal) ||
+                wmi.StartsWith("6G", StringComparison.Ordinal) || wmi == "LSG") return BrandFamily.Gm;
             if (wmi.StartsWith("1F", StringComparison.Ordinal) || wmi.StartsWith("3F", StringComparison.Ordinal) || wmi == "WF0") return BrandFamily.Ford;
             if (wmi.StartsWith("KM", StringComparison.Ordinal) || wmi.StartsWith("KN", StringComparison.Ordinal) || wmi is "5NP" or "5XY" or "5NM") return BrandFamily.HyundaiKia;
             if (wmi.StartsWith("JT", StringComparison.Ordinal) || wmi is "4T1" or "4T3" or "5TD" or "5TF" or "2T1") return BrandFamily.Toyota;
@@ -1299,6 +1381,6 @@ public sealed class ModuleDtcScanService
             if (wmi is "WBA" or "WBS" or "WMW") return BrandFamily.Bmw;
         }
 
-        return string.IsNullOrWhiteSpace(make) || make == "UNKNOWN" ? BrandFamily.Unknown : BrandFamily.Other;
+        return BrandFamily.Unknown;
     }
 }

@@ -148,7 +148,7 @@ public sealed class FullObdScanService
             }
             catch (Exception ex)
             {
-                notes.Add($"Freeze frame: {ex.Message}");
+                notes.Add($"Freeze frame: {UserError.Describe(ex)}");
             }
         }
         string? odo = null;
@@ -168,7 +168,7 @@ public sealed class FullObdScanService
         }
         catch (Exception ex)
         {
-            notes.Add($"Modules: {ex.Message}");
+            notes.Add($"Modules: {UserError.Describe(ex)}");
             modules = new ModuleDtcScanService.ScanOutcome(Array.Empty<ModuleDtcReport>(), 0,
                 "სხვა მოდულების შემოწმება ვერ მოხერხდა.");
         }

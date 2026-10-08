@@ -211,6 +211,80 @@ public partial class HomeViewModel : BaseViewModel
 
     private CancellationTokenSource? _servicePreviewCts;
 
+    // Service preview cache: one adapter read per VIN per minute at most.
+    private static readonly TimeSpan ServicePreviewCacheLifetime = TimeSpan.FromSeconds(60);
+    private ServiceDataReadResult? _servicePreviewCache;
+    private string? _servicePreviewCacheVin;
+    private DateTime _servicePreviewCacheAt = DateTime.MinValue;
+    private bool _servicePreviewReading;
+
+    /// <summary>True while HomePage is on screen (set by Start/StopServicePreview).</summary>
+    public bool IsHomeVisible { get; private set; }
+
+    /// <summary>Called from HomePage.OnAppearing: polls service data only while Home is visible.</summary>
+    public void StartServicePreview()
+    {
+        IsHomeVisible = true;
+        if (_bluetooth.IsConnected)
+            _ = StartServicePreviewPolling();
+    }
+
+    /// <summary>Called from HomePage.OnDisappearing: frees the adapter for other pages.</summary>
+    public void StopServicePreview()
+    {
+        IsHomeVisible = false;
+        StopServicePreviewPolling(hidePreview: false);
+    }
+
+
+    /// <summary>PRO marks on the home tiles: shown only while PRO is not active.</summary>
+    public bool ShowProBadges => ProGate.IsLocked;
+
+    /// <summary>Top bar: "PRO" to buy, "PRO ✓" when active.</summary>
+    public string ProButtonText => ProGate.IsLocked ? "PRO" : "PRO ✓";
+
+    private void RefreshProState()
+    {
+        OnPropertyChanged(nameof(ShowProBadges));
+        OnPropertyChanged(nameof(ProButtonText));
+        OnPropertyChanged(nameof(AiSendText));
+    }
+
+    // ---- AI question field on the home page ----
+
+    [ObservableProperty] private string aiQuestion = string.Empty;
+
+    /// <summary>Send button: "PRO" until PRO is active, then an arrow.</summary>
+    public string AiSendText => ProGate.IsLocked ? "PRO" : "➤";
+
+    [RelayCommand]
+    private async Task AskAi(string? preset)
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(preset))
+                AiQuestion = LocalizationService.T(preset);
+
+            if (!await RequireObdConnectionAsync())
+                return;
+
+            if (!await ProGate.EnsureOrOpenAsync(_pro))
+                return;
+
+            var question = AiQuestion?.Trim() ?? string.Empty;
+            AiQuestion = string.Empty;
+
+            await Shell.Current.GoToAsync(nameof(Views.AiPage));
+
+            if (question.Length > 0 &&
+                IPlatformApplication.Current?.Services.GetService<AiDiagnosticViewModel>() is { } ai)
+                _ = ai.AskFromHomeAsync(question);
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.AskAi");
+        }
+    }
 
     public HomeViewModel(
         IBluetoothService bluetooth,
@@ -233,6 +307,7 @@ public partial class HomeViewModel : BaseViewModel
         _vehicle = vehicle;
         _loading = loading;
         _pro = pro;
+        _pro.ProChanged += (_, _) => MainThread.BeginInvokeOnMainThread(RefreshProState);
         _vehicleContext = vehicleContext;
         _brand = brand;
         _vehicleProfile = vehicleProfile;
@@ -273,8 +348,7 @@ public partial class HomeViewModel : BaseViewModel
             {
                 UpdateAccelerationState();
 
-                LanguageToggleFlag =
-                    _localization.IsEnglish ? "KA" : "EN";
+                LanguageToggleFlag = _localization.CurrentFlag;
 
                 UpdateHomeLanguageTexts();
 
@@ -285,8 +359,7 @@ public partial class HomeViewModel : BaseViewModel
         _units.UnitSystemChanged += (_, __) =>
             MainThread.BeginInvokeOnMainThread(UpdateAccelerationState);
 
-        LanguageToggleFlag =
-            _localization.IsEnglish ? "KA" : "EN";
+        LanguageToggleFlag = _localization.CurrentFlag;
 
         UpdateHomeLanguageTexts();
         UpdateAccelerationState();
@@ -298,9 +371,8 @@ public partial class HomeViewModel : BaseViewModel
         _brand.Changed += OnBrandChanged;
         _vehicle.VehicleInfoUpdated += OnVehicleInfoUpdated;
 
-        // Start/stop service preview based on connection state
-        if (_bluetooth.IsConnected)
-            _ = StartServicePreviewPolling();
+        // The service preview is started by HomePage.OnAppearing
+        // (StartServicePreview) so it never polls while Home is hidden.
 
         // მხოლოდ ავტომობილი
         ApplyVehicleContext(VehicleKind.Car);
@@ -527,9 +599,10 @@ public partial class HomeViewModel : BaseViewModel
             UpdateAccelerationState();
             AccelerationSpeed = "—";
             AccelerationSpeedSource = L("ECU-მ სიჩქარე (PID 01 0D) არ დააბრუნა", "The ECU did not return the speed (PID 01 0D)");
-            AccelerationStatus = string.IsNullOrWhiteSpace(ex.Message)
-                ? L("სიჩქარის წაკითხვა ვერ დაიწყო. შეამოწმე OBD კავშირი, ან გაზომე GPS-ით.", "Could not start reading the speed. Check the OBD connection, or measure with GPS.")
-                : ex.Message;
+            System.Diagnostics.Debug.WriteLine($"Acceleration preview failed: {ex}");
+            AccelerationStatus = ex is InvalidOperationException or TimeoutException
+                ? UserError.Describe(ex)
+                : L("სიჩქარის წაკითხვა ვერ დაიწყო. შეამოწმე OBD კავშირი, ან გაზომე GPS-ით.", "Could not start reading the speed. Check the OBD connection, or measure with GPS.");
         }
     }
 
@@ -569,7 +642,7 @@ public partial class HomeViewModel : BaseViewModel
             }
             catch (Exception ex)
             {
-                AccelerationStatus = ex.Message;
+                AccelerationStatus = UserError.Describe(ex);
             }
             finally
             {
@@ -590,7 +663,7 @@ public partial class HomeViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            AccelerationStatus = ex.Message;
+            AccelerationStatus = UserError.Describe(ex);
         }
         finally
         {
@@ -700,9 +773,49 @@ public partial class HomeViewModel : BaseViewModel
         }
     }
 
+    /// <summary>Opens the language window (all languages); the tapped language is stored and applied.</summary>
     [RelayCommand]
-    private void ToggleLanguage()
-        => _localization.SetLanguage(_localization.IsEnglish ? "ქართული" : "English");
+    private async Task ToggleLanguage()
+    {
+        try
+        {
+            var picked = await Views.LanguagePickerPage.ShowAsync(_localization.Translate("ენა"));
+            if (picked is not null && picked.Code != _localization.CurrentLanguageCode)
+                _localization.SetLanguage(picked.DisplayName);
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.ToggleLanguage");
+        }
+    }
+
+    /// <summary>"All tools" page: the less used rows moved off the home page.</summary>
+    [RelayCommand]
+    private async Task GoToAllTools()
+    {
+        try
+        {
+            await Shell.Current.GoToAsync(nameof(Views.AllToolsPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToAllTools");
+        }
+    }
+
+    /// <summary>Text-only vehicle report: scan, then save/share as a .txt file.</summary>
+    [RelayCommand]
+    private async Task GoToVehicleJournal()
+    {
+        try
+        {
+            await Shell.Current.GoToAsync(nameof(Views.VehicleJournalPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToVehicleJournal");
+        }
+    }
 
 
     private void OnConnectionChanged(
@@ -725,11 +838,14 @@ public partial class HomeViewModel : BaseViewModel
                 else
                     ShowIdentityLoading();
                 _ = ObserveIdentityReadAsync(identityRead);
-                _ = StartServicePreviewPolling();
+                if (IsHomeVisible)
+                    _ = StartServicePreviewPolling();
             }
             else
             {
                 StopServicePreviewPolling();
+                _servicePreviewCache = null;
+                _servicePreviewCacheVin = null;
                 _vehicle.ClearConnectedVehicleState();
                 ConnectedBrandImage = string.Empty;
 
@@ -769,22 +885,48 @@ public partial class HomeViewModel : BaseViewModel
             ApplyVehicleInfo(vehicle);
             UpdateStatus(_bluetooth.IsConnected);
             // When vehicle identity becomes available, refresh preview immediately
-            if (_bluetooth.IsConnected)
-                _ = RefreshServicePreviewOnceAsync();
+            if (_bluetooth.IsConnected && IsHomeVisible && _servicePreviewCts is { } previewCts)
+                _ = RefreshServicePreviewOnceAsync(previewCts.Token);
         });
     }
 
-    private async Task RefreshServicePreviewOnceAsync()
+    private async Task RefreshServicePreviewOnceAsync(CancellationToken token)
     {
+        if (_servicePreviewReading)
+            return;
+
         try
         {
+            _servicePreviewReading = true;
+
             var vehicle = _vehicle.CurrentVehicle;
-            if (vehicle is null)
+            if (vehicle is null || token.IsCancellationRequested)
                 return;
 
-            var result = await _serviceDataReader.ReadAsync(vehicle, CancellationToken.None);
+            var vin = vehicle.VIN ?? string.Empty;
+            ServiceDataReadResult result;
+            if (_servicePreviewCache is not null &&
+                string.Equals(_servicePreviewCacheVin, vin, StringComparison.OrdinalIgnoreCase) &&
+                DateTime.UtcNow - _servicePreviewCacheAt < ServicePreviewCacheLifetime)
+            {
+                result = _servicePreviewCache;
+            }
+            else
+            {
+                result = await _serviceDataReader.ReadAsync(vehicle, token);
+                if (token.IsCancellationRequested)
+                    return;
+
+                _servicePreviewCache = result;
+                _servicePreviewCacheVin = vin;
+                _servicePreviewCacheAt = DateTime.UtcNow;
+            }
+
             MainThread.BeginInvokeOnMainThread(() =>
             {
+                if (token.IsCancellationRequested)
+                    return;
+
                 ServicePreview.Clear();
                 foreach (var r in result.Values.Take(4))
                     ServicePreview.Add(new CarScanner.Models.ServiceMetricDisplayItem
@@ -804,49 +946,57 @@ public partial class HomeViewModel : BaseViewModel
         }
         catch
         {
-            // ignore preview failures
+            // ignore preview failures (including cancellation)
+        }
+        finally
+        {
+            _servicePreviewReading = false;
         }
     }
 
-    private void StopServicePreviewPolling()
+    private void StopServicePreviewPolling(bool hidePreview = true)
     {
         try
         {
             _servicePreviewCts?.Cancel();
             _servicePreviewCts?.Dispose();
             _servicePreviewCts = null;
-            ShowServicePreview = false;
+            if (hidePreview)
+                ShowServicePreview = false;
         }
         catch { }
     }
 
     private async Task StartServicePreviewPolling()
     {
-        StopServicePreviewPolling();
-        _servicePreviewCts = new CancellationTokenSource();
-        var token = _servicePreviewCts.Token;
+        StopServicePreviewPolling(hidePreview: false);
+        var cts = new CancellationTokenSource();
+        _servicePreviewCts = cts;
+        var token = cts.Token;
 
-        // Poll every 6 seconds while connected
-        while (!token.IsCancellationRequested && _bluetooth.IsConnected)
+        // Only while Home is visible and connected. Reads are cached per VIN
+        // for 60 s, so this loop touches the adapter at most once a minute.
+        while (!token.IsCancellationRequested && _bluetooth.IsConnected && IsHomeVisible)
         {
-            await RefreshServicePreviewOnceAsync();
-            try { await Task.Delay(TimeSpan.FromSeconds(6), token); } catch { break; }
+            await RefreshServicePreviewOnceAsync(token);
+            try { await Task.Delay(ServicePreviewCacheLifetime, token); } catch { break; }
         }
     }
 
-    private static string GetServiceMetricIcon(ServiceMetricKind kind) => kind switch
+    // Short, user-readable tile words (no technical abbreviations).
+    private string GetServiceMetricIcon(ServiceMetricKind kind) => kind switch
     {
-        ServiceMetricKind.OilLifePercent => "OIL",
-        ServiceMetricKind.OilLevel => "LVL",
-        ServiceMetricKind.DistanceToNextService => "KM",
-        ServiceMetricKind.DaysToNextService => "DAY",
-        ServiceMetricKind.DistanceSinceOilChange => "KM",
-        ServiceMetricKind.OilChangeInterval => "INT",
-        ServiceMetricKind.InspectionDistance => "INSP",
-        ServiceMetricKind.InspectionDays => "DAY",
-        ServiceMetricKind.MaintenanceCounter => "CNT",
-        ServiceMetricKind.ServiceStatus => "SRV",
-        _ => "DATA"
+        ServiceMetricKind.OilLifePercent => L("ზეთი", "Oil"),
+        ServiceMetricKind.OilLevel => L("დონე", "Level"),
+        ServiceMetricKind.DistanceToNextService => L("კმ", "km"),
+        ServiceMetricKind.DaysToNextService => L("დღე", "Days"),
+        ServiceMetricKind.DistanceSinceOilChange => L("კმ", "km"),
+        ServiceMetricKind.OilChangeInterval => L("ციკლი", "Cycle"),
+        ServiceMetricKind.InspectionDistance => L("შემოწმ.", "Check"),
+        ServiceMetricKind.InspectionDays => L("დღე", "Days"),
+        ServiceMetricKind.MaintenanceCounter => L("მთვლელი", "Count"),
+        ServiceMetricKind.ServiceStatus => L("სერვისი", "Service"),
+        _ => L("ინფო", "Info")
     };
 
     private string LocalizeServiceMetricName(ServiceMetricReading reading) => reading.Kind switch
@@ -1230,6 +1380,7 @@ public partial class HomeViewModel : BaseViewModel
     {
         try
         {
+            if (!_bluetooth.IsConnected) return;
             await Shell.Current.GoToAsync(nameof(Views.CodingPage));
         }
         catch (Exception commandException)
@@ -1244,6 +1395,7 @@ public partial class HomeViewModel : BaseViewModel
     {
         try
         {
+            if (!_bluetooth.IsConnected) return;
             await Shell.Current.GoToAsync(nameof(Views.GraphStudioPage));
         }
         catch (Exception commandException)
@@ -1446,9 +1598,6 @@ public partial class HomeViewModel : BaseViewModel
         if (!await RequireObdConnectionAsync())
             return;
 
-        if (!await RequireProAsync("გარბენის გადამოწმება"))
-            return;
-
         await Shell.Current.GoToAsync(
             nameof(Views.MileagePage));
         }
@@ -1480,9 +1629,6 @@ public partial class HomeViewModel : BaseViewModel
     {
         try
         {
-        if (!await RequireProAsync("დიაგნოსტიკური ანგარიში"))
-            return;
-
         // One combined report: every check of this car, exported together.
         await Shell.Current.GoToAsync(nameof(Views.VehicleReportPage));
         }
@@ -1501,9 +1647,6 @@ public partial class HomeViewModel : BaseViewModel
         if (!await RequireObdConnectionAsync())
             return;
 
-        if (!await RequireProAsync("AI Diagnostic"))
-            return;
-
         await Shell.Current.GoToAsync(
             nameof(Views.AiPage));
         }
@@ -1520,9 +1663,6 @@ public partial class HomeViewModel : BaseViewModel
         try
         {
         if (!await RequireObdConnectionAsync())
-            return;
-
-        if (!await RequireProAsync("Fuel Consumption"))
             return;
 
         await Shell.Current.GoToAsync(
@@ -1619,14 +1759,11 @@ public partial class HomeViewModel : BaseViewModel
         }
     }
 
-    private async Task<bool> RequireObdConnectionAsync()
-    {
-        if (_bluetooth.IsConnected)
-            return true;
-
-        await Shell.Current.GoToAsync(nameof(Views.VehicleBrandSelectionPage));
-        return false;
-    }
+    /// <summary>
+    /// Car features are dimmed and disabled on the home page until the
+    /// adapter is connected; a tap that still gets here simply does nothing.
+    /// </summary>
+    private Task<bool> RequireObdConnectionAsync() => Task.FromResult(_bluetooth.IsConnected);
 
     // ============================================================
     // OBD PROTOCOL EXPLANATION
@@ -1686,6 +1823,7 @@ public partial class HomeViewModel : BaseViewModel
 
     public async Task RefreshConnectionSummaryAsync(bool forceVinRefresh = false)
     {
+        RefreshProState();
         var connected = _bluetooth.IsConnected;
         UpdateStatus(connected);
 

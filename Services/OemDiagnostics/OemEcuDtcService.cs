@@ -192,8 +192,7 @@ public sealed class OemEcuDtcService
             }
         }
 
-        var english = Preferences.Default.Get(LocalizationService.LanguageKey, "English")
-            .Equals("English", StringComparison.OrdinalIgnoreCase);
+        var english = CarScanner.Services.Localization.LanguageCatalog.UsesEnglishBase;
         var title = catalogEntry is null
             ? string.Empty
             : english

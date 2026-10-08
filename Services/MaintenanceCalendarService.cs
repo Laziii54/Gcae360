@@ -42,6 +42,7 @@ public sealed class MaintenanceCalendarService
             {
                 // A mileage interval that arrives first becomes actionable today.
                 item.DueDate = DateTime.Today;
+                await NotifyMileageDueOnceAsync(item);
             }
         }
 
@@ -49,6 +50,29 @@ public sealed class MaintenanceCalendarService
             .OrderBy(item => item.DueDate)
             .ThenBy(item => item.Title)
             .ToArray();
+    }
+
+    /// <summary>
+    /// The date-based alerts were scheduled for the original due date; an item
+    /// that became due by mileage gets its own alert — once per item and due
+    /// odometer, so opening the calendar again does not repeat it.
+    /// </summary>
+    private async Task NotifyMileageDueOnceAsync(MaintenanceReminder item)
+    {
+        try
+        {
+            var key = $"calendar_km_due_notified_v1_{item.Id}";
+            var stamp = item.DueOdometerKm?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+            if (item.Id <= 0 || Preferences.Default.Get(key, string.Empty) == stamp)
+                return;
+
+            await _notifications.ScheduleAsync(item);
+            Preferences.Default.Set(key, stamp);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MaintenanceCalendarService.NotifyMileageDue] {ex}");
+        }
     }
 
     public async Task<MaintenanceReminder> AddAsync(
@@ -109,7 +133,10 @@ public sealed class MaintenanceCalendarService
             foreach (var item in await GetAsync())
                 await _notifications.ScheduleAsync(item);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MaintenanceCalendarService.RescheduleAll] {ex}");
+        }
     }
 
     public async Task SyncServiceReadingsAsync(

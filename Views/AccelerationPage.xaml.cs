@@ -21,12 +21,66 @@ public partial class AccelerationPage : ContentPage
         localization?.Apply(this);
         PageTitleView.BindingContext = Shell.Current?.BindingContext;
         SemanticProperties.SetDescription(CameraButton, PerformanceVideoText.Get(PerformanceVideoText.OpenCamera));
+        SafetyWarningLabel.Text = L(
+            "⚠ გაზომე მხოლოდ დახურულ ტრასაზე ან ცარიელ, ლეგალურ ადგილას. დაიცავი მოძრაობის წესები.",
+            "⚠ Measure only on a closed track or an empty, legal place. Obey traffic laws.");
+
+        // One-time safety acknowledgement before the first measurement.
+        if (!await EnsureSafetyAcknowledgedAsync())
+            return;
+
         if (BindingContext is HomeViewModel viewModel)
             await viewModel.StartAccelerationPreviewAsync();
         }
         catch (Exception commandException)
         {
             CarScanner.Services.CommandErrors.Report(commandException, "AccelerationPage.OnAppearing");
+        }
+    }
+
+    private const string SafetyAckKey = "accel_safety_ack_v1";
+    private bool _askingSafety;
+
+    private static string L(string ka, string en) => CarScanner.Services.OBD.ObdLang.IsEnglish ? en : ka;
+
+    /// <summary>
+    /// Shows the safety notice until the user accepts it once. Declining
+    /// leaves the page, so no measurement can start without it.
+    /// </summary>
+    private async Task<bool> EnsureSafetyAcknowledgedAsync()
+    {
+        bool acknowledged;
+        try { acknowledged = Preferences.Default.Get(SafetyAckKey, false); }
+        catch { acknowledged = false; }
+        if (acknowledged)
+            return true;
+        if (_askingSafety)
+            return false;
+
+        _askingSafety = true;
+        try
+        {
+            var accepted = await DisplayAlertAsync(
+                L("უსაფრთხოება", "Safety"),
+                L("გაზომე მხოლოდ დახურულ ტრასაზე ან ცარიელ, ლეგალურ ადგილას. დაიცავი მოძრაობის წესები. შენს უსაფრთხოებაზე პასუხისმგებელი შენ ხარ.",
+                  "Measure only on a closed track or an empty, legal place. Obey traffic laws. You are responsible for your safety."),
+                L("ვეთანხმები", "Accept"),
+                L("გაუქმება", "Cancel"));
+
+            if (accepted)
+            {
+                try { Preferences.Default.Set(SafetyAckKey, true); }
+                catch { /* asked again next time */ }
+                return true;
+            }
+
+            if (Shell.Current is { } shell)
+                await shell.GoToAsync("..");
+            return false;
+        }
+        finally
+        {
+            _askingSafety = false;
         }
     }
 

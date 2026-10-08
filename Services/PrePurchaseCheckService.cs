@@ -84,7 +84,8 @@ public sealed class PrePurchaseCheckService
         penalty += AddMileage(result, mileage);
 
         // 4) Condition: battery, temperature, fuel trims, readiness, recently cleared codes.
-        penalty += AddCondition(result, report);
+        var (conditionPenalty, codesCleared, readinessIncomplete) = AddCondition(result, report);
+        penalty += conditionPenalty;
 
         // 5) VIN history (90–98 %), only with a real history provider.
         progress?.Report((90, string.Empty));
@@ -103,15 +104,44 @@ public sealed class PrePurchaseCheckService
             _ => ("სერიოზული პრობლემები", "Serious problems", Red)
         };
 
+        // Recently cleared codes and unfinished self-tests hide faults: the
+        // ECU simply has not re-checked the car yet, so a high score would be
+        // misleading. Cap the verdict regardless of the points.
+        string? capNoteKa = null, capNoteEn = null;
+        if (codesCleared && readinessIncomplete)
+        {
+            result.Score = Math.Min(result.Score, 49);
+            (result.VerdictKa, result.VerdictEn, result.Color) = ("რისკიანი — სისტემები შემოწმებული არ არის", "Risky — the car has not re-checked itself", Red);
+            capNoteKa = "შეცდომები ახლახან წაიშალა და თვითშემოწმებები (Readiness) არ არის დასრულებული — არსებული დეფექტები შეიძლება ჯერ არ ჩანდეს. ყიდვამდე მოითხოვე რამდენიმე დღის ნორმალური მგზავრობა და ხელახალი შემოწმება.";
+            capNoteEn = "Codes were cleared recently and the self-tests (readiness) are not finished — existing faults may not show yet. Before buying, ask for a few days of normal driving and check again.";
+        }
+        else if (codesCleared || readinessIncomplete)
+        {
+            if (result.Score >= 70)
+            {
+                result.Score = Math.Min(result.Score, 69);
+                (result.VerdictKa, result.VerdictEn, result.Color) = ("საჭიროებს ყურადღებას", "Needs attention", Orange);
+            }
+
+            capNoteKa = codesCleared
+                ? "შეცდომები ახლახან წაიშალა — დეფექტები შეიძლება დამალული იყოს. გაარკვიე რატომ წაიშალა და გაიმეორე შემოწმება მგზავრობის შემდეგ."
+                : "თვითშემოწმებები (Readiness) არ არის დასრულებული — მანქანას ჯერ არ შეუმოწმებია ყველა სისტემა. გაიმეორე შემოწმება მგზავრობის შემდეგ.";
+            capNoteEn = codesCleared
+                ? "Codes were cleared recently — faults may be hidden. Ask why they were cleared and check again after some driving."
+                : "Self-tests (readiness) are not finished — the car has not re-checked all systems yet. Check again after some driving.";
+        }
+
         var faultCount = result.Faults.Count(finding => finding.Color != Green);
         result.SummaryKa = string.Join(" · ", new[]
         {
+            capNoteKa,
             faultCount == 0 ? "შეცდომა არ არის" : $"{faultCount} შეცდომა",
             string.IsNullOrWhiteSpace(result.MileageBadgeKa) ? null : $"გარბენი: {result.MileageBadgeKa}",
             result.Condition.Any(item => item.Color is Red or Orange or Yellow) ? "მდგომარეობაში შენიშვნებია" : "მდგომარეობა ნორმაშია"
         }.Where(part => part is not null));
         result.SummaryEn = string.Join(" · ", new[]
         {
+            capNoteEn,
             faultCount == 0 ? "no fault codes" : $"{faultCount} fault code(s)",
             string.IsNullOrWhiteSpace(result.MileageBadgeEn) ? null : $"mileage: {result.MileageBadgeEn}",
             result.Condition.Any(item => item.Color is Red or Orange or Yellow) ? "condition remarks" : "condition normal"
@@ -253,7 +283,7 @@ public sealed class PrePurchaseCheckService
                 LabelEn = FirstNonEmpty(evidence.Ecu, evidence.Source),
                 ValueKa = $"{evidence.ValueKm.ToString("N0", CultureInfo.InvariantCulture).Replace(',', ' ')} კმ",
                 ValueEn = $"{evidence.ValueKm.ToString("N0", CultureInfo.InvariantCulture)} km",
-                Color = mileage.HasMismatch ? Yellow : Green
+                Color = mileage.HasMismatch ? Yellow : Grey
             });
         }
 
@@ -265,7 +295,7 @@ public sealed class PrePurchaseCheckService
                 LabelEn = "Odometer",
                 ValueKa = $"{odometer.ToString("N0", CultureInfo.InvariantCulture).Replace(',', ' ')} კმ",
                 ValueEn = $"{odometer.ToString("N0", CultureInfo.InvariantCulture)} km",
-                Color = Green
+                Color = Grey
             });
         }
 
@@ -285,7 +315,19 @@ public sealed class PrePurchaseCheckService
         }
 
         if (mileage.SourceCount >= 2)
-            (result.MileageBadgeKa, result.MileageBadgeEn, result.MileageBadgeColor) = ("სანდო", "consistent", Green);
+        {
+            // Agreement between modules does not rule out a full rollback of
+            // every module, so this is neutral information, not a green light.
+            (result.MileageBadgeKa, result.MileageBadgeEn, result.MileageBadgeColor) = ("მოდულები თანხმდება", "modules agree", Yellow);
+            result.Mileage.Add(new PrePurchaseFinding
+            {
+                LabelKa = "მოდულები თანხმდება",
+                LabelEn = "Modules agree",
+                ValueKa = "ეს სრულ გადახვევას არ გამორიცხავს — შეადარე სერვისის ისტორიას",
+                ValueEn = "this doesn't rule out a full rollback — compare with service history",
+                Color = Yellow
+            });
+        }
         else
             (result.MileageBadgeKa, result.MileageBadgeEn, result.MileageBadgeColor) = ("ერთი წყარო", "one source", Grey);
         return 0;
@@ -295,9 +337,11 @@ public sealed class PrePurchaseCheckService
     // Condition
     // ------------------------------------------------------------------
 
-    private static int AddCondition(PrePurchaseResult result, ObdScanReport report)
+    private static (int Penalty, bool CodesCleared, bool ReadinessIncomplete) AddCondition(PrePurchaseResult result, ObdScanReport report)
     {
         var penalty = 0;
+        var codesCleared = false;
+        var readinessIncomplete = false;
         var rpm = Sensor(report, 0x0C);
         var running = rpm is > 400;
 
@@ -385,6 +429,7 @@ public sealed class PrePurchaseCheckService
         var sinceClearMin = Sensor(report, 0x4E);
         if (sinceClearKm is < 100 || sinceClearMin is < 300)
         {
+            codesCleared = true;
             penalty += 6;
             var detailKa = sinceClearKm is { } km ? $"{km:0} კმ-ის წინ" : $"{sinceClearMin:0} წთ-ის წინ";
             var detailEn = sinceClearKm is { } km2 ? $"{km2:0} km ago" : $"{sinceClearMin:0} min ago";
@@ -404,6 +449,10 @@ public sealed class PrePurchaseCheckService
             var (ready, total) = CountReadiness(readiness.RawBytes);
             var incomplete = total - ready;
             var ok = !readiness.MilOn && incomplete <= 1;
+            // Non-continuous monitors (catalyst, EVAP, O2, EGR…) are the ones
+            // reset by clearing codes. One (usually EVAP) may legitimately lag.
+            var (ncReady, ncTotal) = CountNonContinuousReadiness(readiness.RawBytes);
+            readinessIncomplete = ncTotal - ncReady > 1;
             if (!ok)
                 penalty += readiness.MilOn ? 5 : 4;
             result.Condition.Add(new PrePurchaseFinding
@@ -424,7 +473,23 @@ public sealed class PrePurchaseCheckService
             });
         }
 
-        return penalty;
+        return (penalty, codesCleared, readinessIncomplete);
+    }
+
+    private static (int Ready, int Total) CountNonContinuousReadiness(byte[] data)
+    {
+        var c = data[2];
+        var d = data[3];
+        var ready = 0;
+        var total = 0;
+        for (var bit = 0; bit < 8; bit++)
+        {
+            if ((c & (1 << bit)) == 0) continue;
+            total++;
+            if ((d & (1 << bit)) == 0) ready++;
+        }
+
+        return (ready, total);
     }
 
     private static (int Ready, int Total) CountReadiness(byte[] data)
@@ -658,7 +723,7 @@ public sealed class PrePurchaseCheckService
         var report = result.Report;
         var sb = new StringBuilder();
         sb.AppendLine("===== PRE-PURCHASE CHECK RESULT (read-only scan done by GCar360 just now) =====");
-        sb.AppendLine($"Vehicle: {report.Vehicle.Manufacturer} {report.Vehicle.Model} {report.Vehicle.Year} · VIN {report.Vehicle.VIN}");
+        sb.AppendLine($"Vehicle: {report.Vehicle.Manufacturer} {report.Vehicle.Model} {report.Vehicle.Year} · VIN {CarScanner.AI.AiDiagnosticService.MaskVin(report.Vehicle.VIN)}");
         sb.AppendLine($"Engine: {report.Vehicle.Engine} · Fuel: {report.Vehicle.FuelType}");
         sb.AppendLine($"Overall score: {result.Score}/100 ({result.VerdictEn})");
         sb.AppendLine($"Modules that answered: {report.Modules.Count(module => module.Responded)} of {report.ModulesChecked} addresses checked.");

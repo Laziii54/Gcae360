@@ -20,7 +20,7 @@
 
         <Button
             Grid.Row="0"
-            Text="AI დიაგნოსტიკის დაწყება"
+            Text="{Binding AnalyzeButtonText}"
             Command="{Binding AnalyzeCommand}"
             Style="{StaticResource PrimaryButtonStyle}"
             CornerRadius="12"

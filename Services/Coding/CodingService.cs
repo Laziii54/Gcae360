@@ -139,6 +139,9 @@ public sealed class CodingService
             .Where(o => o.Models.Count == 0 || o.Models.Any(m => model.Contains(m.ToUpperInvariant())))
             .Where(o => year == 0 ? false : year >= o.YearFrom && year <= o.YearTo)
             .Where(o => o.TxId > 0 && o.RxId > 0 && o.DidId >= 0 && o.Values.Count >= 2)
+            // Without a module part-number list the target module cannot be
+            // identified before writing: such an option is not verified.
+            .Where(o => o.PartNumbers.Any(p => !string.IsNullOrWhiteSpace(p)))
             .ToList();
     }
 
@@ -241,9 +244,15 @@ public sealed class CodingService
                 modules = outcome.Modules.Where(m => m.Responded).ToList();
             }
 
+            // Some adapters/cars (e.g. Chevrolet Volt) fail the full module scan.
+            // Ask the standard engine-bay addresses directly with read-only requests.
             if (modules.Count == 0)
-                throw new InvalidOperationException(L("მოდულები ვერ მოიძებნა. ეს მანქანა CAN კავშირს არ იყენებს ან ანთება გამორთულია.",
-                    "No modules found. This car may not use CAN, or the ignition is off."));
+                modules = await ProbeStandardModulesAsync(progress, token).ConfigureAwait(false);
+
+            if (modules.Count == 0)
+                throw new InvalidOperationException(L(
+                    "მოდულებმა არ უპასუხეს. ჩართე მანქანა (ანთება ან READY) და სცადე თავიდან.",
+                    "No module answered. Turn the car on (ignition or READY) and try again."));
 
             var catalog = await CatalogAsync().ConfigureAwait(false);
             var brandDids = catalog.BrandReadDids.TryGetValue(BrandKey(_vehicle.CurrentVehicle), out var extra)
@@ -299,6 +308,73 @@ public sealed class CodingService
         {
             _busy.Release();
         }
+    }
+
+    private static readonly (int Tx, string Ka, string En)[] StandardModuleNames =
+    {
+        (0x7E0, "ძრავი", "Engine"),
+        (0x7E1, "ჰიბრიდის / კოლოფის მართვა", "Hybrid / transmission control"),
+        (0x7E2, "გადაცემათა კოლოფი", "Transmission"),
+        (0x7E3, "მოდული", "Module"),
+        (0x7E4, "ენერგიის მოდული", "Energy module"),
+        (0x7E5, "მოდული", "Module"),
+        (0x7E6, "მოდული", "Module"),
+        (0x7E7, "ბატარეის მართვა", "Battery control")
+    };
+
+    /// <summary>
+    /// Fallback when the module scan finds nothing: asks 7E0–7E7 with read-only
+    /// requests (UDS 22 F190, then GMLAN 1A 90). Any answer — even a refusal —
+    /// means the module is there.
+    /// </summary>
+    private async Task<List<ModuleDtcReport>> ProbeStandardModulesAsync(
+        IProgress<(double Fraction, string Text)>? progress, CancellationToken token)
+    {
+        var found = new List<ModuleDtcReport>();
+        if (!_obd.IsCanProtocol)
+            return found;
+
+        for (var i = 0; i < StandardModuleNames.Length; i++)
+        {
+            token.ThrowIfCancellationRequested();
+            var (tx, ka, en) = StandardModuleNames[i];
+            var rx = tx + 8;
+            progress?.Report((0.4 * i / StandardModuleNames.Length,
+                L($"მოდულების ძებნა ({i + 1}/{StandardModuleNames.Length})", $"Looking for modules ({i + 1}/{StandardModuleNames.Length})")));
+
+            var module = new ModuleDtcReport
+            {
+                ModuleId = $"ECU {tx:X3}",
+                NameKa = ka,
+                NameEn = en,
+                TransmitCanId = tx,
+                ReceiveCanId = rx,
+                Extended29Bit = false
+            };
+
+            var uds = await ReadDidAsync(AddressOf(tx, rx, false), 0xF190, token).ConfigureAwait(false);
+            if (uds.IsRead)
+            {
+                module.Protocol = "UDS";
+                module.Responded = true;
+                found.Add(module);
+                continue;
+            }
+
+            // UDS refused or silent: GM cars answer the GMLAN way (1A).
+            var gm = await ReadGmlanAsync(module, 0x90, token).ConfigureAwait(false);
+            if (gm.IsRead || Answered(gm.Error) || Answered(uds.Error))
+            {
+                module.Protocol = gm.IsRead || Answered(gm.Error) ? "GMLAN" : "UDS";
+                module.Responded = true;
+                found.Add(module);
+            }
+        }
+
+        return found;
+
+        static bool Answered(string? error) =>
+            !string.IsNullOrEmpty(error) && error.StartsWith("NRC", StringComparison.OrdinalIgnoreCase);
     }
 
     private static ServiceDiagnosticAddress AddressOf(ModuleDtcReport m) =>
@@ -592,7 +668,12 @@ public sealed class CodingService
             var state = await ReadOptionAsync(option, token).ConfigureAwait(false);
             if (state.Block is null || state.Current is null)
                 return new CodingResult(false, string.IsNullOrWhiteSpace(state.Error) ? L("მნიშვნელობა ვერ წავიკითხე.", "Could not read the value.") : state.Error);
-            if (option.PartNumbers.Count > 0 && !option.PartNumbers.Any(p => state.PartNumber.Replace(" ", "").Contains(p.Replace(" ", ""), StringComparison.OrdinalIgnoreCase)))
+            // The module must identify itself with a listed part number; an
+            // unreadable part number or an option without a list blocks the write.
+            var modulePart = (state.PartNumber ?? string.Empty).Replace(" ", "");
+            if (modulePart.Length == 0 ||
+                !option.PartNumbers.Where(p => !string.IsNullOrWhiteSpace(p))
+                    .Any(p => modulePart.Contains(p.Replace(" ", ""), StringComparison.OrdinalIgnoreCase)))
                 return new CodingResult(false, L($"მოდულის ნაწილის ნომერი ({state.PartNumber}) სიაში არ არის — ცვლილება დაბლოკილია.", $"Module part number ({state.PartNumber}) is not on the list — change blocked."));
             if (state.Current.Raw == target.Raw)
                 return new CodingResult(true, L("უკვე ეს მნიშვნელობაა დაყენებული.", "This value is already set."));
@@ -664,6 +745,23 @@ public sealed class CodingService
             if (failed is not null)
                 return new CodingResult(false, failed.Text);
 
+            // The logged "before" bytes belong to one car: never write them to another.
+            var changeVin = (change.Vin ?? string.Empty).Trim();
+            if (changeVin.Length != 17)
+                return new CodingResult(false, L(
+                    "ამ ჩანაწერს VIN არ აქვს, ამიტომ ვერ დავადასტურებ, რომ იგივე მანქანაა — აღდგენა დაბლოკილია.",
+                    "This record has no VIN, so it cannot be confirmed to be the same car — restore blocked."));
+
+            var connectedVin = await ReadConnectedVinAsync(token).ConfigureAwait(false);
+            if (connectedVin is null)
+                return new CodingResult(false, L(
+                    "დაკავშირებული მანქანის VIN ვერ წავიკითხე — აღდგენა დაბლოკილია. სცადე თავიდან.",
+                    "Could not read the connected car's VIN — restore blocked. Try again."));
+            if (!string.Equals(connectedVin, changeVin, StringComparison.OrdinalIgnoreCase))
+                return new CodingResult(false, L(
+                    $"ეს ცვლილება სხვა მანქანაზე (VIN {changeVin}) გაკეთდა, დაკავშირებულია {connectedVin} — აღდგენა დაბლოკილია.",
+                    $"This change was made on another car (VIN {changeVin}); the connected car is {connectedVin} — restore blocked."));
+
             var address = AddressOf(change.Tx, change.Rx, change.Tx > 0x7FF);
             var current = await ReadDidAsync(address, option.DidId, token).ConfigureAwait(false);
             if (!current.IsRead)
@@ -689,6 +787,29 @@ public sealed class CodingService
                 try { await _engine.StartAsync().ConfigureAwait(false); } catch { }
             }
         }
+    }
+
+    /// <summary>VIN read from the car now (Mode 09 / UDS F190), else the identity already read; null when unknown.</summary>
+    private async Task<string?> ReadConnectedVinAsync(CancellationToken token)
+    {
+        string? vin = null;
+        try
+        {
+            vin = await _vehicle.ReadVinAsync(token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Coding VIN read failed: {ex.Message}");
+        }
+
+        if (vin is not { Length: 17 })
+            vin = _vehicle.CurrentVehicle?.VIN;
+
+        return vin is { Length: 17 } ? vin.Trim().ToUpperInvariant() : null;
     }
 
     private void MarkRestored(CodingChange change)

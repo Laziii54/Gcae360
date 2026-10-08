@@ -23,16 +23,17 @@ public sealed class MaintenancePartRow
     public string DueText { get; init; } = string.Empty;
     public string PillText { get; init; } = string.Empty;
     public Color PillColor { get; init; } = MaintenanceText.UnknownColor;
-    public Color PillBackground { get; init; } = Color.FromArgb("#EEF0F2");
+    public Color PillBackground { get; init; } = CarScanner.Services.Localization.ThemeService.Soft("#EEF0F2");
 }
 
 /// <summary>Texts and colors shared by the Service page and the item page.</summary>
 public static class MaintenanceText
 {
-    public static readonly Color OkColor = Color.FromArgb("#1F8A4C");
-    public static readonly Color SoonColor = Color.FromArgb("#C98A1A");
-    public static readonly Color OverdueColor = Color.FromArgb("#C0392B");
-    public static readonly Color UnknownColor = Color.FromArgb("#9AA1A9");
+    // Properties (not cached fields) so they follow the current light/dark theme.
+    public static Color OkColor => CarScanner.Services.Localization.ThemeService.Soft("#1F8A4C");
+    public static Color SoonColor => CarScanner.Services.Localization.ThemeService.Soft("#C98A1A");
+    public static Color OverdueColor => CarScanner.Services.Localization.ThemeService.Soft("#C0392B");
+    public static Color UnknownColor => CarScanner.Services.Localization.ThemeService.Soft("#9AA1A9");
 
     public static Color ColorOf(PartState state) => state switch
     {
@@ -97,10 +98,10 @@ public static class MaintenanceText
 
     public static Color PillBackground(PartState state) => state switch
     {
-        PartState.Ok => Color.FromArgb("#E6F4EC"),
-        PartState.Soon => Color.FromArgb("#FBF0D9"),
-        PartState.Overdue => Color.FromArgb("#FBE5E1"),
-        _ => Color.FromArgb("#EEF0F2")
+        PartState.Ok => CarScanner.Services.Localization.ThemeService.Soft("#E6F4EC"),
+        PartState.Soon => CarScanner.Services.Localization.ThemeService.Soft("#FBF0D9"),
+        PartState.Overdue => CarScanner.Services.Localization.ThemeService.Soft("#FBE5E1"),
+        _ => CarScanner.Services.Localization.ThemeService.Soft("#EEF0F2")
     };
 
     /// <summary>"3 200 km left" / "in 4 months" / the car's own % — one short line.</summary>

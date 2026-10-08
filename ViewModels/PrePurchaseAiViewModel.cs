@@ -18,6 +18,7 @@ public partial class PrePurchaseAiViewModel : BaseViewModel
     private readonly AiDiagnosticService _ai;
     private readonly LocalizationService _localization;
     private PrePurchaseResult? _started;
+    private const int MaxContextChars = 6_000;
 
     public ObservableCollection<PrePurchaseChatMessage> Messages { get; } = new();
 
@@ -97,7 +98,12 @@ public partial class PrePurchaseAiViewModel : BaseViewModel
             .Select(message => (message.IsUser ? "User: " : "AI: ") + message.Text)
             .ToList();
 
-        var prompt = result.AiContext + "\n" + Rules(English) + "\n\nQUESTION:\n" + question;
+        // The backend rejects requests above 30,000 characters; the check
+        // summary is capped here and the chat history is budgeted by the service.
+        var context = result.AiContext ?? string.Empty;
+        if (context.Length > MaxContextChars)
+            context = context[..MaxContextChars] + "\n[... check result shortened ...]\n===== END OF CHECK RESULT =====";
+        var prompt = context + "\n" + Rules(English) + "\n\nQUESTION:\n" + question;
 
         try
         {

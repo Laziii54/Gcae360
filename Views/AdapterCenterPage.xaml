@@ -63,16 +63,16 @@
                             <Label Text="{Binding Adapter}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                         </VerticalStackLayout>
                     </Grid>
-                    <BoxView Style="{StaticResource RowDividerStyle}" />
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,13">
+                    <BoxView IsVisible="False" Style="{StaticResource RowDividerStyle}" />
+                    <Grid IsVisible="False" ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,13">
                         <Path Data="M3,12 L7,12 L10,5 L14,19 L17,12 L21,12" Style="{StaticResource RowIconStyle}" VerticalOptions="Start" />
                         <VerticalStackLayout Grid.Column="1" Spacing="3">
                             <Label Text="Connection Diagnostics" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
                             <Label Text="{Binding Connection}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                         </VerticalStackLayout>
                     </Grid>
-                    <BoxView Style="{StaticResource RowDividerStyle}" />
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,13">
+                    <BoxView IsVisible="False" Style="{StaticResource RowDividerStyle}" />
+                    <Grid IsVisible="False" ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,13">
                         <Path Data="M4,12 A8,8 0 1 0 20,12 A8,8 0 1 0 4,12 M12,8 L12,12 L15,14" Style="{StaticResource RowIconStyle}" VerticalOptions="Start" />
                         <VerticalStackLayout Grid.Column="1" Spacing="3">
                             <Label Text="Response Benchmark" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />

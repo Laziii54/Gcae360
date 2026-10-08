@@ -14,9 +14,9 @@ public partial class AccelerationHistoryPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        base.OnAppearing();
         try
         {
-        base.OnAppearing();
         await _viewModel.RefreshAsync();
         }
         catch (Exception commandException)

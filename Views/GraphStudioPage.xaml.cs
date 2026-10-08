@@ -21,9 +21,9 @@ public partial class GraphStudioPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        base.OnAppearing();
         try
         {
-            base.OnAppearing();
             Application.Current?.Handler?.MauiContext?.Services.GetService<LocalizationService>()?.Apply(this);
             await _viewModel.OnAppearingAsync();
         }
@@ -35,9 +35,9 @@ public partial class GraphStudioPage : ContentPage
 
     protected override async void OnDisappearing()
     {
+        base.OnDisappearing();
         try
         {
-            base.OnDisappearing();
             await _viewModel.OnDisappearingAsync();
         }
         catch (Exception exception)

@@ -104,6 +104,13 @@ CREATE INDEX IF NOT EXISTS IX_AccelerationLeaderboard_Finished ON AccelerationLe
     /// <summary>Top places that always need a video and a review.</summary>
     public const int ReviewTopPlaces = 10;
 
+    /// <summary>
+    /// Until a test category has this many approved results, a GPS-confirmed
+    /// run is approved without a video (otherwise the first users would all
+    /// wait for a review). Extreme times are still reviewed.
+    /// </summary>
+    public const int ReviewAfterApproved = 10;
+
     /// <summary>Uploaded videos and GPS coordinates are deleted this long after the review.</summary>
     public static readonly TimeSpan EvidenceKeep = TimeSpan.FromDays(30);
 
@@ -130,6 +137,9 @@ CREATE INDEX IF NOT EXISTS IX_AccelerationLeaderboard_Finished ON AccelerationLe
         };
     }
 
+    /// <summary>Returned by <see cref="SaveAsync"/> when the SubmissionId belongs to another account (→ 409).</summary>
+    public const string SubmissionIdTaken = "SUBMISSION_ID_TAKEN";
+
     /// <summary>
     /// Saves a checked result. Top-10 places and results that are much faster
     /// than the same model get "Pending" (shown as "under review") until the
@@ -146,6 +156,17 @@ CREATE INDEX IF NOT EXISTS IX_AccelerationLeaderboard_Finished ON AccelerationLe
             await using var connection = new SqliteConnection(_connectionString);
             await connection.OpenAsync(token);
 
+            // A SubmissionId used by ANOTHER account is refused (videos and
+            // reviews are keyed by it; see SubmissionIdTaken).
+            await using (var taken = connection.CreateCommand())
+            {
+                taken.CommandText = "SELECT COUNT(*) FROM AccelerationLeaderboard WHERE SubmissionId=$s AND AccountId<>$a";
+                taken.Parameters.AddWithValue("$a", accountId);
+                taken.Parameters.AddWithValue("$s", request.SubmissionId);
+                if (Convert.ToInt32(await taken.ExecuteScalarAsync(token)) > 0)
+                    return SubmissionIdTaken;
+            }
+
             // Already reviewed results keep their status.
             await using (var existing = connection.CreateCommand())
             {
@@ -154,6 +175,17 @@ CREATE INDEX IF NOT EXISTS IX_AccelerationLeaderboard_Finished ON AccelerationLe
                 existing.Parameters.AddWithValue("$s", request.SubmissionId);
                 if (await existing.ExecuteScalarAsync(token) is string known && known is "Rejected" or "Verified")
                     return known;
+            }
+
+            int approvedInTest;
+            await using (var approvedCount = connection.CreateCommand())
+            {
+                approvedCount.CommandText = @"SELECT COUNT(*) FROM AccelerationLeaderboard
+WHERE TestId=$test AND IsDemo=0 AND Status IN ('Approved','Verified') AND NOT (AccountId=$a AND SubmissionId=$s)";
+                approvedCount.Parameters.AddWithValue("$test", test);
+                approvedCount.Parameters.AddWithValue("$a", accountId);
+                approvedCount.Parameters.AddWithValue("$s", request.SubmissionId);
+                approvedInTest = Convert.ToInt32(await approvedCount.ExecuteScalarAsync(token));
             }
 
             int faster;
@@ -189,14 +221,17 @@ WHERE TestId=$test AND IsDemo=0 AND Status IN ('Approved','Verified') AND Vehicl
                 "quarter-mile" => duration < 9.0,
                 _ => false
             };
-            var review = faster < ReviewTopPlaces || extreme || (modelMedian is { } median && duration < median * 0.8);
+            // The GPS cross-check already passed (CheckGps) before saving.
+            var review = approvedInTest < ReviewAfterApproved
+                ? extreme
+                : faster < ReviewTopPlaces || extreme || (modelMedian is { } median && duration < median * 0.8);
             var status = review ? "Pending" : "Approved";
 
             // Coordinates are kept only for results that are reviewed.
             var gpsJson = System.Text.Json.JsonSerializer.Serialize(review
-                ? request.GpsTrace!.Select(p => p.Select(v => Math.Round(v, 6)).ToArray())
-                : request.GpsTrace!.Select(p => new[] { Math.Round(p[0], 2), Math.Round(p[1], 1) }));
-            var speedJson = System.Text.Json.JsonSerializer.Serialize(request.SpeedTrace!.Select(p => new[] { Math.Round(p[0], 2), Math.Round(p[1], 1) }));
+                ? (request.GpsTrace ?? Array.Empty<double[]>()).Select(p => p.Select(v => Math.Round(v, 6)).ToArray())
+                : (request.GpsTrace ?? Array.Empty<double[]>()).Select(p => new[] { Math.Round(p[0], 2), Math.Round(p[1], 1) }));
+            var speedJson = System.Text.Json.JsonSerializer.Serialize((request.SpeedTrace ?? Array.Empty<double[]>()).Select(p => new[] { Math.Round(p[0], 2), Math.Round(p[1], 1) }));
 
             await using var command = connection.CreateCommand();
             command.CommandText = @"INSERT INTO AccelerationLeaderboard
@@ -233,7 +268,108 @@ WHERE AccelerationLeaderboard.Status NOT IN ('Rejected','Verified');";
 
     public string VideoDirectory { get; }
 
-    public string VideoPath(string submissionId) => Path.Combine(VideoDirectory, submissionId + ".mp4");
+    /// <summary>Per-account limits for review videos.</summary>
+    public const int MaxVideosPerAccountPerDay = 3;
+    public const long MaxVideoBytesPerAccount = 300L * 1024 * 1024;
+
+    /// <summary>Total review videos kept on disk (GCS_VIDEO_DISK_LIMIT_MB, default 5000).</summary>
+    public static long VideoDiskLimitBytes =>
+        (long.TryParse(Environment.GetEnvironmentVariable("GCS_VIDEO_DISK_LIMIT_MB"), out var mb) && mb > 0 ? mb : 5000) * 1024 * 1024;
+
+    /// <summary>New uploads are refused when the data drive has less free space than this.</summary>
+    public const long MinFreeDiskBytes = 2L * 1024 * 1024 * 1024;
+
+    private static string AccountHash(string accountId) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("gcar360-video:" + accountId)))[..16];
+
+    /// <summary>Where a new upload is stored: {accountHash}_{submissionId}.mp4 (ids are unique only per account).</summary>
+    public string VideoPath(string accountId, string submissionId) =>
+        Path.Combine(VideoDirectory, AccountHash(accountId) + "_" + submissionId + ".mp4");
+
+    /// <summary>Old file name (before account-scoped names); read and deleted, never written.</summary>
+    private string LegacyVideoPath(string submissionId) => Path.Combine(VideoDirectory, submissionId + ".mp4");
+
+    /// <summary>The existing video file of a result (new name first, then the old one), or null.</summary>
+    public string? ExistingVideoPath(string accountId, string submissionId)
+    {
+        var current = VideoPath(accountId, submissionId);
+        if (File.Exists(current))
+            return current;
+        var legacy = LegacyVideoPath(submissionId);
+        return File.Exists(legacy) ? legacy : null;
+    }
+
+    private void DeleteVideoFiles(string accountId, string submissionId)
+    {
+        foreach (var path in new[] { VideoPath(accountId, submissionId), LegacyVideoPath(submissionId) })
+        {
+            try { File.Delete(path); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    /// <summary>
+    /// Null when a new upload of <paramref name="size"/> bytes is allowed,
+    /// else the reason: per account 3 uploads / day and 300 MB kept; globally
+    /// GCS_VIDEO_DISK_LIMIT_MB of videos and 2 GB free on the data drive.
+    /// </summary>
+    public async Task<string?> CheckVideoQuotaAsync(string accountId, string submissionId, long size, CancellationToken token)
+    {
+        var ownFiles = new List<string>();
+        var uploadsToday = 0;
+        await using (var connection = new SqliteConnection(_connectionString))
+        {
+            await connection.OpenAsync(token);
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT SubmissionId, VideoUploadedAt FROM AccelerationLeaderboard WHERE AccountId=$a AND VideoUploadedAt IS NOT NULL";
+            command.Parameters.AddWithValue("$a", accountId);
+            await using var reader = await command.ExecuteReaderAsync(token);
+            var since = DateTime.UtcNow.AddDays(-1);
+            while (await reader.ReadAsync(token))
+            {
+                var id = reader.GetString(0);
+                // A re-upload for the same result replaces the file: not counted twice.
+                if (id == submissionId)
+                    continue;
+                if (DateTime.TryParse(reader.GetString(1), null, System.Globalization.DateTimeStyles.RoundtripKind, out var at) &&
+                    at.ToUniversalTime() > since)
+                    uploadsToday++;
+                if (ExistingVideoPath(accountId, id) is { } path)
+                    ownFiles.Add(path);
+            }
+        }
+
+        if (uploadsToday >= MaxVideosPerAccountPerDay)
+            return "daily video limit reached";
+
+        long ownBytes = 0, allBytes = 0;
+        try
+        {
+            foreach (var path in ownFiles)
+                ownBytes += new FileInfo(path).Length;
+            foreach (var path in Directory.EnumerateFiles(VideoDirectory))
+                allBytes += new FileInfo(path).Length;
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+
+        if (ownBytes + size > MaxVideoBytesPerAccount)
+            return "video storage limit for this account reached";
+        if (allBytes + size > VideoDiskLimitBytes)
+            return "video storage is full";
+
+        try
+        {
+            var root = Path.GetPathRoot(Path.GetFullPath(VideoDirectory));
+            if (!string.IsNullOrEmpty(root) && new DriveInfo(root).AvailableFreeSpace - size < MinFreeDiskBytes)
+                return "server disk is almost full";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            // Free space unknown (e.g. a network share): the byte limits above still apply.
+        }
+
+        return null;
+    }
 
     /// <summary>True when the result belongs to the account and waits for a video.</summary>
     public async Task<bool> CanUploadVideoAsync(string accountId, string submissionId, CancellationToken token)
@@ -247,7 +383,7 @@ WHERE AccelerationLeaderboard.Status NOT IN ('Rejected','Verified');";
         return Convert.ToInt32(await command.ExecuteScalarAsync(token)) > 0;
     }
 
-    public async Task MarkVideoAsync(string submissionId, CancellationToken token)
+    public async Task MarkVideoAsync(string accountId, string submissionId, CancellationToken token)
     {
         await _gate.WaitAsync(token);
         try
@@ -255,8 +391,9 @@ WHERE AccelerationLeaderboard.Status NOT IN ('Rejected','Verified');";
             await using var connection = new SqliteConnection(_connectionString);
             await connection.OpenAsync(token);
             await using var command = connection.CreateCommand();
-            command.CommandText = "UPDATE AccelerationLeaderboard SET VideoUploadedAt=$at WHERE SubmissionId=$s";
+            command.CommandText = "UPDATE AccelerationLeaderboard SET VideoUploadedAt=$at WHERE AccountId=$a AND SubmissionId=$s";
             command.Parameters.AddWithValue("$at", DateTime.UtcNow.ToString("O"));
+            command.Parameters.AddWithValue("$a", accountId);
             command.Parameters.AddWithValue("$s", submissionId);
             await command.ExecuteNonQueryAsync(token);
         }
@@ -267,7 +404,7 @@ WHERE AccelerationLeaderboard.Status NOT IN ('Rejected','Verified');";
     public async Task CleanupEvidenceAsync(CancellationToken token)
     {
         var cutoff = DateTime.UtcNow - EvidenceKeep;
-        var expired = new List<string>();
+        var expired = new List<(string AccountId, string SubmissionId)>();
         await _gate.WaitAsync(token);
         try
         {
@@ -275,21 +412,57 @@ WHERE AccelerationLeaderboard.Status NOT IN ('Rejected','Verified');";
             await connection.OpenAsync(token);
             await using (var select = connection.CreateCommand())
             {
-                select.CommandText = "SELECT SubmissionId FROM AccelerationLeaderboard WHERE ReviewedAt IS NOT NULL AND ReviewedAt<$cut AND (VideoUploadedAt IS NOT NULL OR GpsTrace IS NOT NULL)";
+                select.CommandText = "SELECT AccountId, SubmissionId FROM AccelerationLeaderboard WHERE ReviewedAt IS NOT NULL AND ReviewedAt<$cut AND (VideoUploadedAt IS NOT NULL OR GpsTrace IS NOT NULL)";
                 select.Parameters.AddWithValue("$cut", cutoff.ToString("O"));
                 await using var reader = await select.ExecuteReaderAsync(token);
                 while (await reader.ReadAsync(token))
-                    expired.Add(reader.GetString(0));
+                    expired.Add((reader.GetString(0), reader.GetString(1)));
             }
 
-            foreach (var id in expired)
+            foreach (var (accountId, id) in expired)
             {
-                try { File.Delete(VideoPath(id)); } catch (IOException) { }
+                DeleteVideoFiles(accountId, id);
                 await using var update = connection.CreateCommand();
-                update.CommandText = "UPDATE AccelerationLeaderboard SET VideoUploadedAt=NULL, GpsTrace=NULL WHERE SubmissionId=$s";
+                update.CommandText = "UPDATE AccelerationLeaderboard SET VideoUploadedAt=NULL, GpsTrace=NULL WHERE AccountId=$a AND SubmissionId=$s";
+                update.Parameters.AddWithValue("$a", accountId);
                 update.Parameters.AddWithValue("$s", id);
                 await update.ExecuteNonQueryAsync(token);
             }
+        }
+        finally { _gate.Release(); }
+    }
+
+    /// <summary>
+    /// Account deletion: results waiting for a review are deleted; public
+    /// results stay on the board anonymised ("Deleted", no VIN hash, no GPS
+    /// coordinates). Review videos are deleted.
+    /// </summary>
+    public async Task ForgetAccountAsync(string accountId, CancellationToken token)
+    {
+        var ids = new List<string>();
+        await _gate.WaitAsync(token);
+        try
+        {
+            await using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync(token);
+            await using (var select = connection.CreateCommand())
+            {
+                select.CommandText = "SELECT SubmissionId FROM AccelerationLeaderboard WHERE AccountId=$a";
+                select.Parameters.AddWithValue("$a", accountId);
+                await using var reader = await select.ExecuteReaderAsync(token);
+                while (await reader.ReadAsync(token))
+                    ids.Add(reader.GetString(0));
+            }
+
+            foreach (var id in ids)
+                DeleteVideoFiles(accountId, id);
+
+            await using var command = connection.CreateCommand();
+            command.CommandText = @"DELETE FROM AccelerationLeaderboard WHERE AccountId=$a AND Status NOT IN ('Approved','Verified');
+UPDATE AccelerationLeaderboard SET AccountId='deleted', UserName='Deleted', VinHash='', GpsTrace=NULL, VideoUploadedAt=NULL
+WHERE AccountId=$a;";
+            command.Parameters.AddWithValue("$a", accountId);
+            await command.ExecuteNonQueryAsync(token);
         }
         finally { _gate.Release(); }
     }
@@ -301,7 +474,7 @@ WHERE AccelerationLeaderboard.Status NOT IN ('Rejected','Verified');";
         await connection.OpenAsync(token);
         await using var command = connection.CreateCommand();
         command.CommandText = @"SELECT SubmissionId,UserName,VehicleModel,DurationSeconds,FinishedAt,HasVerifiedVideo,IsDemo,MaxSpeedKph,Status
-FROM AccelerationLeaderboard WHERE Status IN ('Approved','Pending','Verified') AND TestId=$test AND ($demo=1 OR IsDemo=0) ORDER BY DurationSeconds ASC,FinishedAt ASC LIMIT 100";
+FROM AccelerationLeaderboard WHERE Status IN ('Approved','Verified') AND TestId=$test AND ($demo=1 OR IsDemo=0) ORDER BY DurationSeconds ASC,FinishedAt ASC LIMIT 100";
         command.Parameters.AddWithValue("$demo", _showDemo ? 1 : 0);
         command.Parameters.AddWithValue("$test", NormalizeTest(testId));
         await using var reader = await command.ExecuteReaderAsync(token);
@@ -335,9 +508,32 @@ FROM AccelerationLeaderboard ORDER BY CASE Status WHEN 'Pending' THEN 0 WHEN 'Ap
         return result;
     }
 
+    /// <summary>
+    /// Compatibility overload (SubmissionId only): acts only when exactly one
+    /// account has that SubmissionId, never on an ambiguous id.
+    /// </summary>
     public async Task<bool> ReviewAsync(string submissionId, string action, string reviewer, CancellationToken token)
     {
-        if (submissionId.Length > 64 || action is not ("approve" or "reject" or "delete")) return false;
+        if (submissionId.Length > 64) return false;
+        var owners = new List<string>();
+        await using (var connection = new SqliteConnection(_connectionString))
+        {
+            await connection.OpenAsync(token);
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT AccountId FROM AccelerationLeaderboard WHERE SubmissionId=$id LIMIT 2";
+            command.Parameters.AddWithValue("$id", submissionId);
+            await using var reader = await command.ExecuteReaderAsync(token);
+            while (await reader.ReadAsync(token))
+                owners.Add(reader.GetString(0));
+        }
+        return owners.Count == 1 && await ReviewAsync(submissionId, owners[0], action, reviewer, token);
+    }
+
+    /// <summary>Admin review of ONE row: SubmissionId + AccountId (ids are unique only per account).</summary>
+    public async Task<bool> ReviewAsync(string submissionId, string accountId, string action, string reviewer, CancellationToken token)
+    {
+        if (submissionId.Length > 64 || string.IsNullOrEmpty(accountId) || accountId.Length > 64 ||
+            action is not ("approve" or "reject" or "delete")) return false;
         await _gate.WaitAsync(token);
         try
         {
@@ -345,13 +541,14 @@ FROM AccelerationLeaderboard ORDER BY CASE Status WHEN 'Pending' THEN 0 WHEN 'Ap
             await connection.OpenAsync(token);
             await using var command = connection.CreateCommand();
             command.CommandText = action == "delete"
-                ? "DELETE FROM AccelerationLeaderboard WHERE SubmissionId=$id"
+                ? "DELETE FROM AccelerationLeaderboard WHERE SubmissionId=$id AND AccountId=$a"
                 // Approving a result that has a review video makes it "Verified".
                 : @"UPDATE AccelerationLeaderboard SET
 Status=CASE WHEN $status='Approved' AND VideoUploadedAt IS NOT NULL THEN 'Verified' ELSE $status END,
 HasVerifiedVideo=CASE WHEN $status='Approved' AND VideoUploadedAt IS NOT NULL THEN 1 ELSE HasVerifiedVideo END,
-ReviewedAt=$at,ReviewedBy=$by WHERE SubmissionId=$id";
+ReviewedAt=$at,ReviewedBy=$by WHERE SubmissionId=$id AND AccountId=$a";
             command.Parameters.AddWithValue("$id", submissionId);
+            command.Parameters.AddWithValue("$a", accountId);
             if (action != "delete")
             {
                 command.Parameters.AddWithValue("$status", action == "approve" ? "Approved" : "Rejected");
@@ -360,9 +557,7 @@ ReviewedAt=$at,ReviewedBy=$by WHERE SubmissionId=$id";
             }
             var changed = await command.ExecuteNonQueryAsync(token) > 0;
             if (changed && action == "delete")
-            {
-                try { File.Delete(VideoPath(submissionId)); } catch (IOException) { }
-            }
+                DeleteVideoFiles(accountId, submissionId);
             return changed;
         }
         finally { _gate.Release(); }

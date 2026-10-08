@@ -23,8 +23,14 @@ public partial class AiDiagnosticViewModel : BaseViewModel
     private readonly OBDService _obd;
     private readonly ProService _pro;
     private readonly LocalizationService _localization;
+    private readonly IBluetoothService _connection;
+
+    /// <summary>A restored or completed scan older than this is re-read before answering.</summary>
+    private static readonly TimeSpan MaxSessionAge = TimeSpan.FromHours(24);
 
     private VehicleInfo? _vehicle;
+    private DateTime? _scanTime;
+    private bool _scannedThisConnection;
     private List<ErrorCode> _codes = new();
     private List<SensorValue> _sensors = new();
     private ReadinessInfo? _lastReadiness;
@@ -52,20 +58,29 @@ public partial class AiDiagnosticViewModel : BaseViewModel
     [ObservableProperty] private bool isAiThinking;
     [ObservableProperty] private string aiThinkingText = "AI აანალიზებს...";
 
+    /// <summary>Start button — marked PRO until PRO is active (the page is open to everyone).</summary>
+    public string AnalyzeButtonText => CarScanner.Services.Localization.LocalizationService.T("AI დიაგნოსტიკის დაწყება") + ProGate.Suffix;
+
     public AiDiagnosticViewModel(
         AiDiagnosticService ai,
         VehicleInfoService vehicleService,
         DiagnosticService diagnostic,
         OBDService obd,
         ProService pro,
-        LocalizationService localization)
+        LocalizationService localization,
+        IBluetoothService connection)
     {
         _ai = ai;
         _vehicleService = vehicleService;
         _diagnostic = diagnostic;
         _obd = obd;
         _pro = pro;
+        _pro.ProChanged += (_, _) => MainThread.BeginInvokeOnMainThread(() => OnPropertyChanged(nameof(AnalyzeButtonText)));
         _localization = localization;
+        _connection = connection;
+        // A new connection may be a different car: the next question must
+        // not be answered from the previous connection's scan.
+        _connection.ConnectionChanged += (_, _) => _scannedThisConnection = false;
         AiThinkingText = _localization.IsEnglish ? "AI is analyzing..." : "AI აანალიზებს...";
         _localization.LanguageChanged += (_, __) =>
             MainThread.BeginInvokeOnMainThread(() =>
@@ -89,6 +104,8 @@ public partial class AiDiagnosticViewModel : BaseViewModel
             Result = "AI-სთვის რეალური მონაცემები მზადდება…";
             ChatMessages.Clear();
             ResetScanPresentation();
+            _scanTime = null;
+            _scannedThisConnection = false;
 
             SetStage(5, "1/7 OBD adapter და ECU კავშირის შემოწმება…");
             if (!_obd.IsInitialized)
@@ -135,7 +152,9 @@ public partial class AiDiagnosticViewModel : BaseViewModel
                 : $"Emissions: MIL {(readiness.MilOn ? "ON" : "OFF")} · ECU DTC count: {readiness.StoredDtcCount}";
 
             EvidenceSummary = BuildEvidenceSummary(_codes, _sensors, readiness, freezeFrame);
-            LastScanText = $"ბოლო AI სკანი: {DateTime.Now:dd.MM.yyyy HH:mm}";
+            _scanTime = DateTime.Now;
+            _scannedThisConnection = true;
+            LastScanText = $"ბოლო AI სკანი: {_scanTime:dd.MM.yyyy HH:mm}";
 
             SetStage(90, "7/7 AI აანალიზებს მიღებულ მტკიცებულებას…");
             try
@@ -156,7 +175,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
                 // The OBD scan above completed successfully. An AI/network
                 // outage must not be presented as an ECU disconnection and
                 // must not discard the confirmed evidence already on screen.
-                Result = $"OBD სკანი წარმატებით დასრულდა, მაგრამ AI პასუხი ამჯერად ვერ მივიღეთ. {ex.Message}";
+                Result = $"OBD სკანი წარმატებით დასრულდა, მაგრამ AI პასუხი ამჯერად ვერ მივიღეთ. {UserError.Describe(ex)}";
                 ChatMessages.Add("AI: OBD მონაცემები შენარჩუნებულია. AI სერვისის აღდგენის შემდეგ სცადე თავიდან.");
                 SetStage(100, "OBD სკანი დასრულდა — AI პასუხი დროებით მიუწვდომელია.");
             }
@@ -165,7 +184,16 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         {
             ConnectionStatus = "ECU მონაცემი მიუწვდომელია";
             Result = "AI დიაგნოსტიკა ვერ დასრულდა. შეამოწმე OBD კავშირი და ინტერნეტი, შემდეგ სცადე თავიდან.";
-            EvidenceSummary = $"მიზეზი: {ex.Message}";
+            EvidenceSummary = $"მიზეზი: {UserError.Describe(ex)}";
+            // A half-finished scan (e.g. VIN read, codes not) must not be
+            // used later as if it described this car completely.
+            if (_scanTime is null || !_scannedThisConnection)
+            {
+                _vehicle = null;
+                _codes = new();
+                _sensors = new();
+                _lastReadiness = null;
+            }
             SetStage(100, "სკანი შეწყდა — რეალური მონაცემები ვერ მივიღეთ.");
         }
         finally
@@ -214,6 +242,27 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         CarScanner.Services.Reports.VehicleReportService.Instance?.AddOrReplace(section);
     }
 
+    /// <summary>
+    /// A question typed on the home page. <see cref="SendMessage"/> reads the
+    /// connected car first when there is no scan of it yet (or the saved scan
+    /// belongs to another car or is older than 24 hours).
+    /// </summary>
+    public async Task AskFromHomeAsync(string question)
+    {
+        if (string.IsNullOrWhiteSpace(question) || IsBusy)
+            return;
+
+        try
+        {
+            ChatInput = question.Trim();
+            await SendMessage();
+        }
+        catch (Exception exception)
+        {
+            CarScanner.Services.CommandErrors.Report(exception, "AiDiagnosticViewModel.AskFromHome");
+        }
+    }
+
     [RelayCommand]
     private async Task SendMessage()
     {
@@ -223,11 +272,32 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         if (string.IsNullOrWhiteSpace(question) || IsBusy) return;
         if (!await EnsureProAsync()) return;
 
+        var connected = _connection.IsConnected;
+        if (connected && NeedsFreshScan())
+        {
+            // The saved scan is of another car, of an unknown car or too old:
+            // read the connected car first and drop the old conversation.
+            DiscardSession();
+            await Analyze();
+            if (_vehicle is null || !_scannedThisConnection)
+            {
+                ChatMessages.Add(L(
+                    "AI: დაკავშირებული მანქანის სკანი ვერ დასრულდა, ამიტომ კითხვაზე პასუხს ძველ მონაცემებზე არ დავაფუძნებ. შეამოწმე კავშირი და სცადე თავიდან.",
+                    "AI: The scan of the connected car did not finish, so I won't answer from old data. Check the connection and try again."));
+                return;
+            }
+        }
+
         if (_vehicle is null)
         {
-            ChatMessages.Add("AI: ჯერ გაუშვი Start AI Diagnostic, რომ პასუხი ამ მანქანის რეალურ OBD მონაცემებს დაეყრდნოს.");
+            ChatMessages.Add(L(
+                "AI: ჯერ გაუშვი Start AI Diagnostic, რომ პასუხი ამ მანქანის რეალურ OBD მონაცემებს დაეყრდნოს.",
+                "AI: Run Start AI Diagnostic first so the answer is based on this car's real OBD data."));
             return;
         }
+
+        // Not connected: the answer can only come from the saved scan — say so.
+        var sourceNote = connected ? null : SavedScanNote();
 
         ChatMessages.Add(AiDiagnosticService.AnswerInEnglish(question) ? $"You: {question}" : $"თქვენ: {question}");
         ChatInput = string.Empty;
@@ -237,18 +307,22 @@ public partial class AiDiagnosticViewModel : BaseViewModel
             IsAiThinking = true;
             AiThinkingText = _localization.IsEnglish ? "AI is analyzing..." : "AI აანალიზებს...";
 
+            // The question was just added to the chat and is sent separately,
+            // so it must not be repeated inside the history.
+            var history = ChatMessages.Take(Math.Max(0, ChatMessages.Count - 1)).ToList();
+
             var reply = await _ai.ChatAsync(
                 _vehicle,
                 _codes,
                 _sensors,
-                ChatMessages,
+                history,
                 question);
 
-            ChatMessages.Add($"AI: {reply}");
+            ChatMessages.Add(sourceNote is null ? $"AI: {reply}" : $"AI: {sourceNote}\n{reply}");
         }
         catch (Exception ex)
         {
-            ChatMessages.Add($"AI: პასუხი ვერ მივიღე — {ex.Message}");
+            ChatMessages.Add(L("AI: პასუხი ვერ მივიღე — ", "AI: Could not get an answer — ") + UserError.Describe(ex));
         }
         finally
         {
@@ -264,6 +338,115 @@ public partial class AiDiagnosticViewModel : BaseViewModel
     }
 
     // =========================================================
+    // WHICH CAR THE SAVED SCAN BELONGS TO
+    // =========================================================
+
+    private string L(string ka, string en) => _localization.IsEnglish ? en : ka;
+
+    /// <summary>
+    /// Called by the AI page when it appears. A saved scan of a different (or
+    /// unidentified) car, or one older than 24 hours, is discarded while a car
+    /// is connected, so the chat never mixes two cars. Without a connection
+    /// the saved scan stays visible and answers are marked as coming from it.
+    /// </summary>
+    public Task EnsureCurrentVehicleAsync()
+    {
+        try
+        {
+            if (IsBusy || _vehicle is null || !_connection.IsConnected || !NeedsFreshScan())
+                return Task.CompletedTask;
+
+            DiscardSession();
+            Result = L(
+                "წინა AI სკანი სხვა ან ამოუცნობ მანქანას ეკუთვნის, ან 24 საათზე ძველია. დაიწყე ახალი AI დიაგნოსტიკა — ან უბრალოდ დასვი კითხვა და ჯერ მანქანას წავიკითხავ.",
+                "The previous AI scan belongs to another or unidentified car, or is older than 24 hours. Start a new AI diagnostic — or just ask a question and the car will be read first.");
+        }
+        catch (Exception exception)
+        {
+            CarScanner.Services.CommandErrors.Report(exception, "AiDiagnosticViewModel.EnsureCurrentVehicle");
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// True when the data in memory must not be used for the connected car:
+    /// no scan, scan older than 24 h, or a VIN that differs from (or cannot be
+    /// matched to) the connected car's VIN. Only meaningful while connected.
+    /// </summary>
+    private bool NeedsFreshScan()
+    {
+        if (_vehicle is null || _scanTime is not { } scannedAt)
+            return true;
+
+        if (DateTime.Now - scannedAt > MaxSessionAge)
+            return true;
+
+        // Scanned during this connection: it is this car, even when the ECU
+        // does not report a VIN.
+        if (_scannedThisConnection)
+            return false;
+
+        var connectedVin = _vehicleService.CurrentVehicle?.VIN;
+        if (IsUnknownVin(connectedVin) || IsUnknownVin(_vehicle.VIN))
+            return true;
+
+        return !string.Equals(connectedVin!.Trim(), _vehicle.VIN.Trim(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Forgets the saved scan and its chat (memory and file).</summary>
+    private void DiscardSession()
+    {
+        _vehicle = null;
+        _codes = new();
+        _sensors = new();
+        _lastReadiness = null;
+        _scanTime = null;
+        _scannedThisConnection = false;
+        ChatMessages.Clear();
+
+        VehicleSummary = L("ავტომობილი: —", "Vehicle: —");
+        VinText = "VIN: —";
+        ModuleSummary = L("ECU მოდულები: —", "ECU modules: —");
+        DtcSummary = L("აქტიური DTC: —", "Active DTC: —");
+        LiveDataSummary = "Live Data: —";
+        EmissionsSummary = "Emissions: —";
+        FreezeFrameSummary = "Freeze Frame: —";
+        EvidenceSummary = L("მტკიცებულება: ჯერ არ არის წაკითხული.", "Evidence: not read yet.");
+        LastScanText = L("ბოლო AI სკანი: —", "Last AI scan: —");
+        ConnectionStatus = L("ECU ჯერ არ შემოწმებულა", "ECU not checked yet");
+        ScanProgress = 0;
+        ScanProgressValue = 0;
+        ScanStage = L("დააჭირე „Start AI Diagnostic“-ს.", "Tap \u201cStart AI Diagnostic\u201d.");
+
+        try
+        {
+            if (File.Exists(SessionPath))
+                File.Delete(SessionPath);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"AI chat session delete failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>"Based on the scan of Toyota Camry 2018 from 01.10.2026 14:20".</summary>
+    private string SavedScanNote()
+    {
+        var vehicle = _vehicle;
+        var name = vehicle is null
+            ? string.Empty
+            : string.Join(" ", new[] { vehicle.Manufacturer, vehicle.Model, vehicle.Year }
+                .Where(part => !string.IsNullOrWhiteSpace(part) && !part.Equals("Unknown", StringComparison.OrdinalIgnoreCase)));
+        if (string.IsNullOrWhiteSpace(name))
+            name = L("მანქანის", "the car");
+        var when = _scanTime is { } time ? time.ToString("dd.MM.yyyy HH:mm") : "—";
+        return L(
+            $"(მანქანა არ არის დაკავშირებული — პასუხი ეყრდნობა {name} სკანს {when}-დან.)",
+            $"(No car connected — based on the scan of {name} from {when}.)");
+    }
+
+    // =========================================================
     // CHAT SESSION (kept when leaving the page and after a restart)
     // =========================================================
 
@@ -274,6 +457,8 @@ public partial class AiDiagnosticViewModel : BaseViewModel
     private sealed class AiChatSession
     {
         public DateTime SavedAt { get; set; }
+        /// <summary>When the OBD scan itself was made (SavedAt changes with every chat message).</summary>
+        public DateTime? ScannedAt { get; set; }
         public VehicleInfo? Vehicle { get; set; }
         public List<ErrorCode> Codes { get; set; } = new();
         public List<SensorValue> Sensors { get; set; } = new();
@@ -302,6 +487,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
             var session = new AiChatSession
             {
                 SavedAt = DateTime.Now,
+                ScannedAt = _scanTime,
                 Vehicle = _vehicle,
                 Codes = _codes.Select(code => new ErrorCode
                 {
@@ -354,6 +540,8 @@ public partial class AiDiagnosticViewModel : BaseViewModel
                 return;
 
             _vehicle = session.Vehicle;
+            _scanTime = session.ScannedAt ?? session.SavedAt;
+            _scannedThisConnection = false;
             _codes = session.Codes;
             _sensors = session.Sensors;
             foreach (var message in session.Messages)
@@ -451,7 +639,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            GuidedTestResult = $"Guided Test ვერ შესრულდა: {ex.Message}";
+            GuidedTestResult = $"Guided Test ვერ შესრულდა: {UserError.Describe(ex)}";
         }
         finally
         {
@@ -543,7 +731,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            RepairVerificationSummary = $"Repair Verification ვერ დასრულდა: {ex.Message}";
+            RepairVerificationSummary = $"Repair Verification ვერ დასრულდა: {UserError.Describe(ex)}";
         }
         finally
         {
@@ -558,9 +746,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
 
     private async Task<bool> EnsureProAsync()
     {
-        if (await _pro.EnsureProAsync()) return true;
-        await Shell.Current.DisplayAlertAsync(CarScanner.Services.Localization.LocalizationService.T("PRO ფუნქცია"), CarScanner.Services.Localization.LocalizationService.T("AI Diagnostic და AI Chat ხელმისაწვდომია მხოლოდ PRO მომხმარებლებისთვის."), CarScanner.Services.Localization.LocalizationService.T("კარგი"));
-        return false;
+        return await ProGate.EnsureOrOpenAsync(_pro);
     }
 
     private void ResetScanPresentation()

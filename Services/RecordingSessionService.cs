@@ -161,6 +161,9 @@ public sealed class RecordingSessionService
         }
     }
 
+    /// <summary>Reads the samples of one saved recording (used by the vehicle report).</summary>
+    public Task<RecordingSessionData?> LoadAsync(RecordingSession session) => ReadDataAsync(session);
+
     private async Task<RecordingSessionData?> ReadDataAsync(RecordingSession session)
     {
         await _gate.WaitAsync();

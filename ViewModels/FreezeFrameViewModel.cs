@@ -78,10 +78,7 @@ public partial class FreezeFrameViewModel : BaseViewModel
         _localization = localization;
         _units = units;
 
-        _localization.LanguageChanged += (_, __) =>
-            MainThread.BeginInvokeOnMainThread(() => _ = RenderAsync());
-        _units.UnitSystemChanged += (_, __) =>
-            MainThread.BeginInvokeOnMainThread(() => _ = RenderAsync());
+        Attach();
 
         UpdateStaticTexts();
         StateDetail = L(
@@ -91,6 +88,31 @@ public partial class FreezeFrameViewModel : BaseViewModel
             "Freeze Frame ჯერ არ არის წაკითხული.",
             "Freeze Frame has not been read yet.");
     }
+
+    // Detached by the page when it goes away (no leak through singleton services).
+    private bool _attached;
+
+    public void Attach()
+    {
+        if (_attached) return;
+        _attached = true;
+        _localization.LanguageChanged += HandleLanguageChanged;
+        _units.UnitSystemChanged += HandleUnitSystemChanged;
+    }
+
+    public void Detach()
+    {
+        if (!_attached) return;
+        _attached = false;
+        _localization.LanguageChanged -= HandleLanguageChanged;
+        _units.UnitSystemChanged -= HandleUnitSystemChanged;
+    }
+
+    private void HandleLanguageChanged(object? sender, EventArgs e) =>
+        MainThread.BeginInvokeOnMainThread(() => _ = RenderAsync());
+
+    private void HandleUnitSystemChanged(object? sender, EventArgs e) =>
+        MainThread.BeginInvokeOnMainThread(() => _ = RenderAsync());
 
     /// <summary>Called when the page appears: reads automatically once.</summary>
     public async Task OnAppearingAsync()

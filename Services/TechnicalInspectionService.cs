@@ -42,14 +42,26 @@ public sealed class TechnicalInspectionService
             issues.Add(IncompleteMonitorIssue(monitor.Name));
 
         List<ErrorCode> codes;
+        var codesRead = true;
         try
         {
             codes = await _diagnostics.ScanForErrorsAsync(token).ConfigureAwait(false);
         }
-        catch
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
-            codes = new List<ErrorCode>();
+            throw;
         }
+        catch (Exception ex)
+        {
+            // A failed read is "not checked", never "no codes".
+            System.Diagnostics.Debug.WriteLine($"TechnicalInspection DTC read failed: {ex}");
+            codes = new List<ErrorCode>();
+            codesRead = false;
+            issues.Add(CodesUnreadableIssue());
+        }
+
+        if (supported.Count == 0)
+            issues.Add(NoMonitorsIssue());
 
         foreach (var code in codes)
             issues.Add(DtcIssue(code));
@@ -68,11 +80,17 @@ public sealed class TechnicalInspectionService
         var dangerous = codes.Any(x => IsDangerousCode(x.Code));
         var fails = readiness.MilOn || readiness.StoredDtcCount > 0 || incomplete.Count > 0 || codes.Count > 0;
 
+        // A "Pass" needs real evidence: the code list must have been read and
+        // the ECU must report at least one supported readiness monitor.
+        var couldCheck = codesRead && supported.Count > 0;
+
         return new TechnicalInspectionResult
         {
             Verdict = dangerous
                 ? TechnicalInspectionVerdict.Dangerous
-                : fails ? TechnicalInspectionVerdict.Fail : TechnicalInspectionVerdict.Pass,
+                : fails
+                    ? TechnicalInspectionVerdict.Fail
+                    : couldCheck ? TechnicalInspectionVerdict.Pass : TechnicalInspectionVerdict.Unavailable,
             Issues = issues,
             SupportedMonitorCount = supported.Count,
             CompleteMonitorCount = supported.Count(x => x.Complete == true),
@@ -204,6 +222,40 @@ public sealed class TechnicalInspectionService
         CheckEn = "Check the adapter, ignition and connection, then retry.",
         FixKa = "აღადგინე სტაბილური OBD კავშირი.",
         FixEn = "Restore a stable OBD connection.",
+        Color = "#F59E0B"
+    };
+
+    private static TechnicalInspectionIssue CodesUnreadableIssue() => new()
+    {
+        TitleKa = "შეცდომის კოდები ვერ წავიკითხე",
+        TitleEn = "Could not read the trouble codes",
+        CategoryKa = "OBD კავშირი",
+        CategoryEn = "OBD connection",
+        SeverityKa = "საჭიროა გადამოწმება",
+        SeverityEn = "Needs inspection",
+        ImpactKa = "კოდების გარეშე შედეგი ვერ შეფასდება — ეს არ ნიშნავს, რომ კოდი არ არის.",
+        ImpactEn = "Without the codes the result cannot be assessed — this does not mean there are none.",
+        CheckKa = "შეამოწმე ადაპტერი, ანთება და კავშირი, შემდეგ სცადე თავიდან.",
+        CheckEn = "Check the adapter, ignition and connection, then retry.",
+        FixKa = "აღადგინე სტაბილური OBD კავშირი და გაიმეორე შემოწმება.",
+        FixEn = "Restore a stable OBD connection and run the check again.",
+        Color = "#F59E0B"
+    };
+
+    private static TechnicalInspectionIssue NoMonitorsIssue() => new()
+    {
+        TitleKa = "ECU-მ readiness მონიტორები არ დაადასტურა",
+        TitleEn = "The ECU did not report any readiness monitors",
+        CategoryKa = "მზადყოფნის მონიტორი",
+        CategoryEn = "Readiness monitor",
+        SeverityKa = "საჭიროა გადამოწმება",
+        SeverityEn = "Needs inspection",
+        ImpactKa = "მონიტორების გარეშე OBD ნაწილის მზადყოფნა ვერ შეფასდება.",
+        ImpactEn = "Without monitors the OBD readiness cannot be assessed.",
+        CheckKa = "ჩართე ანთება (ან ძრავა) და სცადე თავიდან.",
+        CheckEn = "Turn the ignition (or engine) on and try again.",
+        FixKa = "თუ კვლავ არ ჩანს, შეამოწმე სხვა ადაპტერით ან ხელოსანთან.",
+        FixEn = "If it still does not show, check with another adapter or at a workshop.",
         Color = "#F59E0B"
     };
 

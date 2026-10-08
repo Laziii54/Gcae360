@@ -88,15 +88,49 @@ public partial class PrePurchaseViewModel : BaseViewModel
             Steps.Add(new PrePurchaseStep { Key = key, TextKa = ka, TextEn = en });
 
         ApplyLanguage();
-        _localization.LanguageChanged += (_, _) => MainThread.BeginInvokeOnMainThread(ApplyLanguage);
+        Attach();
     }
+
+    // Detached by the page when it goes away (no leak through singleton services).
+    private bool _attached;
+    private bool _refreshOnAttach;
+
+    public void Attach()
+    {
+        if (_attached) return;
+        _attached = true;
+        _pro.ProChanged += HandleProChanged;
+        _localization.LanguageChanged += HandleLanguageChanged;
+
+        // Texts may have changed while the page was hidden (e.g. Settings on top).
+        if (_refreshOnAttach)
+        {
+            _refreshOnAttach = false;
+            HandleLanguageChanged(this, EventArgs.Empty);
+        }
+    }
+
+    public void Detach()
+    {
+        if (!_attached) return;
+        _attached = false;
+        _pro.ProChanged -= HandleProChanged;
+        _localization.LanguageChanged -= HandleLanguageChanged;
+        _refreshOnAttach = true;
+    }
+
+    private void HandleProChanged(object? sender, bool isPro) =>
+        MainThread.BeginInvokeOnMainThread(ApplyLanguage);
+
+    private void HandleLanguageChanged(object? sender, EventArgs e) =>
+        MainThread.BeginInvokeOnMainThread(ApplyLanguage);
 
     private bool English => _localization.IsEnglish;
 
     private void ApplyLanguage()
     {
         PageTitle = English ? "Pre-purchase check" : "ყიდვისწინა შემოწმება";
-        StartButtonText = English ? "▶ Full check" : "▶ სრული შემოწმება";
+        StartButtonText = (English ? "Full check" : "სრული შემოწმება") + ProGate.Suffix;
         StopButtonText = English ? "■ Stop" : "■ გაჩერება";
         RunningTitle = English ? "Checking the car" : "მიმდინარეობს შემოწმება";
         AiButtonText = English ? "AI consultation" : "AI კონსულტაცია";

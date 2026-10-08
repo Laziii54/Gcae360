@@ -122,6 +122,22 @@ WHERE Make=$mk AND Model=$md AND Year=$y AND MatchedKeys<>'[]' ORDER BY Id DESC 
             .ToArray();
     }
 
+    /// <summary>Account deletion: the technical reports stay but lose the account link.</summary>
+    public async Task ForgetAccountAsync(string accountId, CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            await using var c = new SqliteConnection(_connectionString);
+            await c.OpenAsync(ct);
+            await using var cmd = c.CreateCommand();
+            cmd.CommandText = "UPDATE ServiceSearchReports SET AccountId=NULL, Trusted=0 WHERE AccountId=$a";
+            cmd.Parameters.AddWithValue("$a", accountId);
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+        finally { _gate.Release(); }
+    }
+
     /// <summary>Latest reports for the admin page.</summary>
     public async Task<IReadOnlyList<ServiceSearchRow>> LatestAsync(int count, CancellationToken ct)
     {

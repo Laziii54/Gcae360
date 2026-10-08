@@ -13,7 +13,6 @@ public partial class StartPage : ContentPage
     {
         InitializeComponent();
         _localization = localization;
-        _localization.LanguageChanged += (_, _) => MainThread.BeginInvokeOnMainThread(UpdateLanguageButton);
         UpdateLanguageButton();
     }
 
@@ -21,19 +20,50 @@ public partial class StartPage : ContentPage
     {
         base.OnAppearing();
         _navigating = false;
+        // Singleton service, transient page: subscribe only while visible.
+        _localization.LanguageChanged -= OnLanguageChanged;
+        _localization.LanguageChanged += OnLanguageChanged;
         _localization.Apply(this);
         UpdateLanguageButton();
     }
 
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        _localization.LanguageChanged -= OnLanguageChanged;
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e) =>
+        MainThread.BeginInvokeOnMainThread(UpdateLanguageButton);
+
     private void UpdateLanguageButton() =>
-        LanguageButton.Text = _localization.IsEnglish ? "KA" : "EN";
+        LanguageButton.Text = _localization.CurrentFlag;
 
-    private void OnLanguageClicked(object? sender, EventArgs e) =>
-        _localization.SetLanguage(_localization.IsEnglish ? "ქართული" : "English");
+    private async void OnLanguageClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            var picked = await LanguagePickerPage.ShowAsync(_localization.Translate("ენა"));
+            if (picked is not null && picked.Code != _localization.CurrentLanguageCode)
+                _localization.SetLanguage(picked.DisplayName);
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "StartPage.OnLanguageClicked");
+        }
+    }
 
-    private async void OnObdTapped(object? sender, TappedEventArgs e) => await GoAsync("//HomePage");
+    private async void OnObdTapped(object? sender, TappedEventArgs e)
+    {
+        try { await GoAsync("//HomePage"); }
+        catch (Exception commandException) { CarScanner.Services.CommandErrors.Report(commandException, "StartPage.OnObdTapped"); }
+    }
 
-    private async void OnVinTapped(object? sender, TappedEventArgs e) => await GoAsync(nameof(VinLookupPage));
+    private async void OnVinTapped(object? sender, TappedEventArgs e)
+    {
+        try { await GoAsync(nameof(VinLookupPage)); }
+        catch (Exception commandException) { CarScanner.Services.CommandErrors.Report(commandException, "StartPage.OnVinTapped"); }
+    }
 
     private async Task GoAsync(string route)
     {

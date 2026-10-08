@@ -21,7 +21,7 @@ public sealed class AccelerationLeaderboardService
         _account = account;
     }
 
-    private static bool En => Preferences.Default.Get("language", "English") == "English";
+    private static bool En => CarScanner.Services.Localization.LanguageCatalog.UsesEnglishBase;
 
     public Task<IReadOnlyList<AccelerationLeaderboardEntry>> GetAsync(string testId = "0-100", CancellationToken token = default) =>
         GetRealAsync(testId, token);
@@ -116,15 +116,32 @@ public sealed class AccelerationLeaderboardService
             using var request = await _account.CreateAuthorizedRequestAsync(HttpMethod.Post, "/api/acceleration/leaderboard");
             request.Content = JsonContent.Create(payload);
             using var response = await _http.SendAsync(request, token).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode)
-                return (false, En ? "The server did not accept the result. Check the run and try again." : "სერვერმა შედეგი არ მიიღო — გადაამოწმე გაზომვა და სცადე თავიდან.");
+            var body = await response.Content.ReadAsStringAsync(token).ConfigureAwait(false);
+            var (success, status, videoRequired, reason) = ReadAnswer(body);
 
-            var answer = await response.Content.ReadFromJsonAsync<AccelerationLeaderboardPublishResponse>(cancellationToken: token).ConfigureAwait(false);
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                return (false, En ? "Your session has expired. Sign in again and retry." : "სესიას ვადა გაუვიდა. თავიდან შედი ანგარიშზე და სცადე.");
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                return (false, En ? "Too many attempts. Try again in an hour." : "ძალიან ბევრი მცდელობაა. სცადე ერთ საათში.");
+            if (!response.IsSuccessStatusCode)
+                return (false, DescribeReason(reason));
+
+            // A result the administrator already rejected stays rejected (HTTP 200, success:false).
+            if (!success || string.Equals(status, "Rejected", StringComparison.OrdinalIgnoreCase))
+            {
+                run.PublishedAt = DateTime.Now;
+                run.LeaderboardStatus = "Rejected";
+                await _database.SaveAccelerationRunAsync(run).ConfigureAwait(false);
+                return (false, string.IsNullOrWhiteSpace(reason)
+                    ? (En ? "This result was rejected by the review and is not shown in the ranking." : "ეს შედეგი შემოწმებისას უარყოფილია და რეიტინგში არ ჩანს.")
+                    : DescribeReason(reason));
+            }
+
             run.PublishedAt = DateTime.Now;
-            run.LeaderboardStatus = answer?.Status ?? "Approved";
+            run.LeaderboardStatus = string.IsNullOrWhiteSpace(status) ? "Approved" : status;
             await _database.SaveAccelerationRunAsync(run).ConfigureAwait(false);
 
-            if (answer?.VideoRequired == true)
+            if (videoRequired || run.LeaderboardStatus == "Pending")
             {
                 // Top-10 or unusually fast: the video recorded with the run is
                 // sent for review straight away when there is one.
@@ -141,12 +158,69 @@ public sealed class AccelerationLeaderboardService
                     : "შედეგი დაემატა „მოწმდება“ სტატუსით. ტოპ შედეგს ვიდეო სჭირდება: გაზომე ვიდეოს ეკრანიდან და ვიდეო ავტომატურად გაიგზავნება.");
             }
 
+            if (run.LeaderboardStatus == "Verified")
+                return (true, En ? "Result is in the ranking (verified)." : "შედეგი რეიტინგშია (დამოწმებული).");
+
             return (true, En ? "Result added to the ranking." : "შედეგი რეიტინგში დაემატა.");
         }
-        catch
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
             return (false, En ? "Could not connect to the ranking server." : "რეიტინგის სერვერთან დაკავშირება ვერ მოხერხდა.");
         }
+        catch (Exception ex)
+        {
+            return (false, UserError.Describe(ex));
+        }
+    }
+
+    /// <summary>Reads { success, status, videoRequired, reason } from the server's answer.</summary>
+    private static (bool Success, string? Status, bool VideoRequired, string? Reason) ReadAnswer(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+            return (false, null, false, null);
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            if (root.ValueKind != System.Text.Json.JsonValueKind.Object)
+                return (false, null, false, null);
+
+            string? Text(string name) =>
+                root.TryGetProperty(name, out var value) && value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : null;
+            bool Flag(string name) =>
+                root.TryGetProperty(name, out var value) && value.ValueKind == System.Text.Json.JsonValueKind.True;
+
+            return (Flag("success"), Text("status"), Flag("videoRequired"), Text("reason") ?? Text("message") ?? Text("code"));
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return (false, null, false, null);
+        }
+    }
+
+    /// <summary>The server's rejection reason in the user's language.</summary>
+    private static string DescribeReason(string? reason)
+    {
+        var (ka, en) = (reason ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "vin verification required" => ("საჭიროა VIN-ის დადასტურება: წაიკითხე VIN მანქანიდან და გაზომე თავიდან.", "VIN verification is required: read the VIN from the car and measure again."),
+            "ecu speed source required" => ("სიჩქარე მანქანის ECU-დან უნდა იყოს წაკითხული.", "The speed must be read from the car's ECU."),
+            "standing start required" => ("გაზომვა ადგილიდან (0 km/h) უნდა დაიწყოს.", "The run must start from a standstill (0 km/h)."),
+            "invalid target" or "invalid distance" => ("გაზომვის მიზანი ან მანძილი არასწორია.", "The run's target speed or distance is not valid."),
+            "implausible time" => ("დრო არარეალურია — გაზომე თავიდან.", "The time is not plausible — measure again."),
+            "invalid ecu samples" => ("ECU-დან საკმარისი სიჩქარის მონაცემი არ მოვიდა.", "Not enough speed readings came from the ECU."),
+            "implausible telemetry" => ("გაზომვის მონაცემები ერთმანეთს არ ემთხვევა.", "The run's readings do not fit together."),
+            "invalid timestamp" => ("გაზომვა 30 დღეზე ძველია ან თარიღი არასწორია.", "The run is older than 30 days or its date is wrong."),
+            "this test is not ranked" => ("ეს ტესტი რეიტინგში არ მონაწილეობს.", "This test is not ranked."),
+            "gps evidence required" or "gps missing" or "gps check failed" => ("GPS მონაცემი არ არის: ჩართე მდებარეობა და გაზომე ღია ცის ქვეშ.", "GPS data is missing: turn on location and measure under open sky."),
+            "invalid evidence" => ("GPS/სიჩქარის ჩანაწერი დაზიანებულია — გაზომე თავიდან.", "The GPS/speed recording is damaged — measure again."),
+            "gps speed does not match the ecu speed" => ("GPS-ის სიჩქარე მანქანის სიჩქარეს არ ემთხვევა.", "The GPS speed does not match the car's speed."),
+            "invalid user name" => ("სახელი ცარიელია ან ძალიან გრძელია (მაქს. 40).", "The name is empty or too long (max 40)."),
+            "invalid vehicle model" => ("მანქანის მოდელი ცარიელია ან ძალიან გრძელია.", "The vehicle model is empty or too long."),
+            "invalid submission" => ("შედეგის ID არასწორია — გაზომე თავიდან.", "The result ID is not valid — measure again."),
+            _ => ("სერვერმა შედეგი არ მიიღო" + (string.IsNullOrWhiteSpace(reason) ? "." : ": " + reason), "The server did not accept the result" + (string.IsNullOrWhiteSpace(reason) ? "." : ": " + reason))
+        };
+        return En ? en : ka;
     }
 
     private static List<double[]> ParseTrace(string json)

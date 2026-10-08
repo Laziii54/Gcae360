@@ -46,14 +46,8 @@ public sealed class AiDiagnosticService
         return IsEnglish();
     }
 
-    private static bool IsEnglish()
-    {
-        var language = Preferences.Default.Get("language", "English");
-
-        return language.Equals(
-            "English",
-            StringComparison.OrdinalIgnoreCase);
-    }
+    // "Not Georgian": English and every added language (the answer language is named in BuildPrompt).
+    private static bool IsEnglish() => CarScanner.Services.Localization.LanguageCatalog.UsesEnglishBase;
 
     // =========================================================
     // BACKEND URL VALIDATION
@@ -122,7 +116,7 @@ Do not copy any fault code from examples unless that code exists in the real sca
         return await SendAsync(
             AIConfig.DiagnosePath,
             prompt.ToString(),
-            vehicle.VIN,
+            MaskVin(vehicle.VIN),
             token);
     }
 
@@ -244,18 +238,24 @@ Do not copy any fault code from examples unless that code exists in the real sca
                 nameof(question));
         }
 
+        var answerInEnglish = AnswerInEnglish(question);
+        question = TruncateWithMarker(question.Trim(), MaxQuestionChars);
+
+        // History is limited to a character budget (newest first); the
+        // caller passes it WITHOUT the new question, which is sent below.
+        var recentHistory = TrimHistory(history, ChatHistoryBudgetChars);
+        var historyChars = recentHistory.Sum(x => x.Length + 2);
+
+        // ~2,400 characters cover the fixed follow-up rules and section markers.
+        var scanBudget = MaxChatPromptChars - historyChars - question.Length - 2_400;
+
         var prompt = new StringBuilder();
 
         prompt.AppendLine(
-            BuildPrompt(vehicle, codes, sensors, AnswerInEnglish(question)));
+            BuildPrompt(vehicle, codes, sensors, answerInEnglish, Math.Min(DefaultMaxPromptChars, scanBudget)));
 
         prompt.AppendLine();
         prompt.AppendLine("===== RECENT CONVERSATION =====");
-
-        var recentHistory = history?
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .TakeLast(12)
-            .ToList() ?? new List<string>();
 
         if (recentHistory.Count == 0)
         {
@@ -350,7 +350,7 @@ from an ECU-confirmed fault.
         return await SendAsync(
             AIConfig.ChatPath,
             prompt.ToString(),
-            vehicle.VIN,
+            MaskVin(vehicle.VIN),
             token);
     }
 
@@ -521,29 +521,88 @@ from an ECU-confirmed fault.
     // MAIN AI PROMPT
     // =========================================================
 
+    /// <summary>The backend rejects prompts above 30,000 characters.</summary>
+    public const int DefaultMaxPromptChars = 25_000;
+    private const int MaxChatPromptChars = 29_000;
+    private const int ChatHistoryBudgetChars = 6_000;
+    private const int MaxHistoryMessageChars = 2_000;
+    private const int MaxQuestionChars = 8_000;
+    private const int MaxPromptSensors = 40;
+    private const string TruncatedMarker = "\n[... truncated to fit the request size limit ...]";
+
+    /// <summary>Cuts text to <paramref name="maxChars"/> and marks the cut.</summary>
+    private static string TruncateWithMarker(string? text, int maxChars)
+    {
+        if (string.IsNullOrEmpty(text) || text.Length <= maxChars)
+            return text ?? string.Empty;
+
+        var keep = Math.Max(0, maxChars - TruncatedMarker.Length);
+        return text[..keep] + TruncatedMarker;
+    }
+
+    /// <summary>
+    /// Only the first 11 VIN characters (manufacturer, model and year
+    /// descriptors, plant) are sent; the serial part stays on the phone.
+    /// </summary>
+    public static string MaskVin(string? vin)
+    {
+        if (string.IsNullOrWhiteSpace(vin))
+            return string.Empty;
+
+        var trimmed = vin.Trim();
+        if (trimmed.Length != 17)
+            return trimmed.Equals("Unknown", StringComparison.OrdinalIgnoreCase) ? trimmed : string.Empty;
+
+        return trimmed[..11] + "******";
+    }
+
+    /// <summary>Newest messages that fit into a character budget, returned in chat order.</summary>
+    private static List<string> TrimHistory(IEnumerable<string>? history, int budgetChars)
+    {
+        var picked = new List<string>();
+        if (history is null)
+            return picked;
+
+        var used = 0;
+        foreach (var message in history
+                     .Where(x => !string.IsNullOrWhiteSpace(x))
+                     .Reverse())
+        {
+            var text = TruncateWithMarker(message, MaxHistoryMessageChars);
+            if (used + text.Length + 2 > budgetChars)
+                break;
+            used += text.Length + 2;
+            picked.Add(text);
+        }
+
+        picked.Reverse();
+        return picked;
+    }
+
     public static string BuildPrompt(
         VehicleInfo vehicle,
         IEnumerable<ErrorCode> codes,
         IEnumerable<SensorValue>? sensors,
-        bool? english = null)
+        bool? english = null,
+        int maxChars = DefaultMaxPromptChars)
     {
-        var userName =
-            Preferences.Default.Get(
-                "user_name",
-                "მომხმარებელი");
-
+        // Added app languages (Deutsch, Türkçe, …) get the answer in that language.
+        var appLanguage = CarScanner.Services.Localization.LanguageCatalog.Current;
         var responseLanguage =
             (english ?? IsEnglish())
-                ? "English"
+                ? (appLanguage.Code is "ka" or "en" ? "English" : appLanguage.EnglishName)
                 : "Georgian";
 
         var codeList =
             codes?.ToList() ??
             new List<ErrorCode>();
 
+        // Most relevant first: readings flagged by the decoder, then the rest
+        // in their original order (OrderByDescending is a stable sort).
         var sensorList =
             sensors?
-                .Take(80)
+                .OrderByDescending(sensor => sensor.IsProblem)
+                .Take(MaxPromptSensors)
                 .ToList() ??
             new List<SensorValue>();
 
@@ -575,7 +634,6 @@ so explain technical information in simple human language.
 """);
 
         sb.AppendLine();
-        sb.AppendLine($"User name: {userName}");
         sb.AppendLine($"Required response language: {responseLanguage}");
 
         // =====================================================
@@ -1083,44 +1141,46 @@ in the ACTUAL VEHICLE SCAN DATA below.
         // ACTUAL VEHICLE DATA
         // =====================================================
 
-        sb.AppendLine();
-        sb.AppendLine(
+        var data = new StringBuilder();
+
+        data.AppendLine();
+        data.AppendLine(
             "==================================================");
 
-        sb.AppendLine(
+        data.AppendLine(
             "ACTUAL VEHICLE SCAN DATA");
 
-        sb.AppendLine(
+        data.AppendLine(
             "==================================================");
 
-        sb.AppendLine(
+        data.AppendLine(
             $"Manufacturer: {vehicle.Manufacturer}");
 
-        sb.AppendLine(
+        data.AppendLine(
             $"Model: {vehicle.Model}");
 
-        sb.AppendLine(
+        data.AppendLine(
             $"Year: {vehicle.Year}");
 
-        sb.AppendLine(
-            $"VIN: {vehicle.VIN}");
+        data.AppendLine(
+            $"VIN (masked, serial removed): {MaskVin(vehicle.VIN)}");
 
-        sb.AppendLine(
+        data.AppendLine(
             $"Protocol: {vehicle.Protocol}");
 
         // =====================================================
         // ACTUAL DTC DATA
         // =====================================================
 
-        sb.AppendLine();
-        sb.AppendLine(
+        data.AppendLine();
+        data.AppendLine(
             $"Detected DTC count: {codeList.Count}");
 
-        sb.AppendLine("DTC DATA:");
+        data.AppendLine("DTC DATA:");
 
         if (codeList.Count == 0)
         {
-            sb.AppendLine(
+            data.AppendLine(
                 "No DTC codes were supplied by the ECU/module scan.");
         }
         else
@@ -1129,26 +1189,26 @@ in the ACTUAL VEHICLE SCAN DATA below.
             {
                 var code = codeList[i];
 
-                sb.AppendLine();
-                sb.AppendLine(
+                data.AppendLine();
+                data.AppendLine(
                     $"DTC #{i + 1}");
 
-                sb.AppendLine(
+                data.AppendLine(
                     $"Code: {code.Code}");
 
-                sb.AppendLine(
+                data.AppendLine(
                     $"Title: {code.TitleKa}");
 
-                sb.AppendLine(
+                data.AppendLine(
                     $"Description: {code.DescriptionKa}");
 
-                sb.AppendLine(
+                data.AppendLine(
                     $"Status: {code.Status}");
 
-                sb.AppendLine(
+                data.AppendLine(
                     $"Severity: {code.Severity}");
 
-                sb.AppendLine(
+                data.AppendLine(
                     $"Possible causes from scanner database: {code.PossibleCausesKa}");
             }
         }
@@ -1157,23 +1217,23 @@ in the ACTUAL VEHICLE SCAN DATA below.
         // ACTUAL LIVE DATA
         // =====================================================
 
-        sb.AppendLine();
-        sb.AppendLine(
+        data.AppendLine();
+        data.AppendLine(
             $"Live sensor count: {sensorList.Count}");
 
-        sb.AppendLine(
+        data.AppendLine(
             "LIVE SENSOR DATA:");
 
         if (sensorList.Count == 0)
         {
-            sb.AppendLine(
+            data.AppendLine(
                 "No live sensor data was supplied.");
         }
         else
         {
             foreach (var sensor in sensorList)
             {
-                sb.AppendLine(
+                data.AppendLine(
                     $"- PID=0x{sensor.Pid:X2}; " +
                     $"Name={sensor.Name}; " +
                     $"Value={sensor.Value}; " +
@@ -1183,18 +1243,20 @@ in the ACTUAL VEHICLE SCAN DATA below.
             }
         }
 
-        sb.AppendLine();
-        sb.AppendLine(
+        data.AppendLine();
+        data.AppendLine(
             "==================================================");
 
-        sb.AppendLine(
+        var footer = new StringBuilder();
+
+        footer.AppendLine(
             "END OF ACTUAL VEHICLE SCAN DATA");
 
-        sb.AppendLine(
+        footer.AppendLine(
             "==================================================");
 
-        sb.AppendLine();
-        sb.AppendLine("""
+        footer.AppendLine();
+        footer.AppendLine("""
 
 FINAL RULE:
 
@@ -1212,6 +1274,12 @@ do not invent a fault.
 
 Respond naturally in the required response language.
 """);
+
+        // Keep the whole prompt under the backend limit: the fixed rules stay
+        // intact and only the vehicle data block is shortened, with a marker.
+        var dataBudget = Math.Max(1_500, maxChars - sb.Length - footer.Length);
+        sb.Append(TruncateWithMarker(data.ToString(), dataBudget));
+        sb.Append(footer);
 
         return sb.ToString();
     }

@@ -28,7 +28,7 @@
                     </Grid>
                     <ProgressBar Progress="{Binding ScanProgress}" ProgressColor="{Binding ScanColor}" BackgroundColor="{DynamicResource DividerColor}" />
                     <Label Text="{Binding ScanDetail}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                    <Label Text="{Binding RawStatus}" FontSize="11" FontFamily="monospace" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                    <Label IsVisible="False" Text="{Binding RawStatus}" FontSize="11" FontFamily="monospace" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
 
@@ -53,7 +53,8 @@
                                         <Label Grid.Column="1" Text="{Binding LimitsText}" FontSize="12" HorizontalTextAlignment="End" TextColor="{DynamicResource SubTextColor}" />
                                     </Grid>
                                     <Label Text="{Binding AuxiliaryText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
-                                    <Label Text="{Binding DefinitionNote}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                    <Label AutomationId="DynamicTextMode06Explanation" Text="{Binding ExplanationText}" IsVisible="{Binding HasExplanation}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" Margin="0,3,0,0" />
+                                    <Label IsVisible="False" Text="{Binding DefinitionNote}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                                 </VerticalStackLayout>
                             </VerticalStackLayout>
                         </DataTemplate>

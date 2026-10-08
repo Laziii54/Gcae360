@@ -167,7 +167,7 @@
                             </BindableLayout.ItemTemplate>
                         </VerticalStackLayout>
                         <Label AutomationId="DynamicTextServiceDiscoveryResult" IsVisible="{Binding HasDiscoveryResult}" Text="{Binding DiscoveryResultText}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                        <Button AutomationId="DynamicTextServiceDiscoveryCopy" Text="{Binding DiscoveryCopyText}" Command="{Binding CopyDiscoveryReportCommand}" IsVisible="{Binding HasDiscoveryReport}" HeightRequest="36" MinimumHeightRequest="36" Padding="0" FontSize="12" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderWidth="0" HorizontalOptions="Start" />
+                        <Button AutomationId="DynamicTextServiceDiscoveryCopy" Text="{Binding DiscoveryCopyText}" Command="{Binding CopyDiscoveryReportCommand}" IsVisible="False" HeightRequest="36" MinimumHeightRequest="36" Padding="0" FontSize="12" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderWidth="0" HorizontalOptions="Start" />
                         </VerticalStackLayout>
                         <BoxView Style="{StaticResource RowDividerStyle}" />
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,12" AutomationId="DynamicTextServiceHelpRecorder">

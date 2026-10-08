@@ -122,6 +122,28 @@ namespace CarScanner.Services.OBD
         }
 
         /// <summary>
+        /// Decodes a Mode 03 reply. <paramref name="isCan"/> = true for ISO 15765
+        /// (DTC count byte after 43), false for ISO 9141/KWP/J1850 (no count byte),
+        /// null to auto-detect per ECU message.
+        /// </summary>
+        public List<DiagnosticCode> DecodeStored(string rawResponse, bool? isCan)
+        {
+            return DecodeMultiple(rawResponse, ModeStoredResponsePrefix, DiagnosticCodeStatus.Stored, isCan);
+        }
+
+        /// <summary>Decodes a Mode 07 reply; see <see cref="DecodeStored(string, bool?)"/>.</summary>
+        public List<DiagnosticCode> DecodePending(string rawResponse, bool? isCan)
+        {
+            return DecodeMultiple(rawResponse, ModePendingResponsePrefix, DiagnosticCodeStatus.Pending, isCan);
+        }
+
+        /// <summary>Decodes a Mode 0A reply; see <see cref="DecodeStored(string, bool?)"/>.</summary>
+        public List<DiagnosticCode> DecodePermanent(string rawResponse, bool? isCan)
+        {
+            return DecodeMultiple(rawResponse, ModePermanentResponsePrefix, DiagnosticCodeStatus.Permanent, isCan);
+        }
+
+        /// <summary>
         /// Decodes a single two-byte DTC pair into a structured DiagnosticCode.
         /// The first byte's top two bits select the category (P/C/B/U) and the
         /// remaining six bits combine with the second byte to form the numeric suffix,
@@ -158,30 +180,183 @@ namespace CarScanner.Services.OBD
 
         #region Internal Parsing
 
-        private List<DiagnosticCode> DecodeMultiple(string rawResponse, byte expectedPrefix, DiagnosticCodeStatus status)
+        private List<DiagnosticCode> DecodeMultiple(string rawResponse, byte expectedPrefix, DiagnosticCodeStatus status, bool? isCan = null)
         {
-            var bytes = ParseHexBytes(rawResponse);
-            var prefixIndex = -1;
-            for (var i = 0; i < bytes.Length; i++)
+            var text = rawResponse ?? string.Empty;
+            var messages = SplitMessages(text, expectedPrefix);
+            var codes = new List<DiagnosticCode>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var prefixFound = false;
+
+            foreach (var message in messages)
             {
-                if (bytes[i] == expectedPrefix) { prefixIndex = i; break; }
+                var bytes = message.Bytes;
+                var prefixIndex = Array.IndexOf(bytes, expectedPrefix);
+                if (prefixIndex < 0) continue;
+                prefixFound = true;
+
+                var dataLength = bytes.Length - prefixIndex - 1;
+                var data = new byte[dataLength];
+                Array.Copy(bytes, prefixIndex + 1, data, 0, dataLength);
+
+                // ISO 15765 (CAN): first data byte is the DTC count. Non-CAN
+                // (ISO 9141 / KWP / J1850): no count byte, 3 codes per frame.
+                // Auto-detect: a CAN reply always has exactly count*2 bytes after
+                // the count byte; a non-CAN frame always has an odd remainder.
+                var canLayout = isCan ?? (message.IsMultiFrame
+                    || (data.Length >= 1 && data[0] * 2 == data.Length - 1));
+
+                int start;
+                int pairLimit;
+                if (canLayout && data.Length >= 1)
+                {
+                    start = 1;
+                    var available = (data.Length - 1) / 2;
+                    pairLimit = data[0] <= available ? data[0] : available;
+                }
+                else
+                {
+                    start = 0;
+                    pairLimit = data.Length / 2;
+                }
+
+                for (var pair = 0; pair < pairLimit; pair++)
+                {
+                    var i = start + pair * 2;
+                    if (i + 1 >= data.Length) break;
+                    var first = data[i];
+                    var second = data[i + 1];
+                    if (first == 0x00 && second == 0x00) continue;
+                    var code = DecodeSingle(first, second, status);
+                    if (seen.Add(code.Code)) codes.Add(code);
+                }
             }
-            if (prefixIndex < 0)
+
+            if (!prefixFound)
             {
-                if (rawResponse.Contains("NO DATA", StringComparison.OrdinalIgnoreCase)) return new List<DiagnosticCode>();
+                if (text.Contains("NO DATA", StringComparison.OrdinalIgnoreCase)) return new List<DiagnosticCode>();
+                if (ParseHexBytes(text).Length == 0)
+                    throw new FormatException($"DTC პასუხი hex მონაცემებს არ შეიცავს: '{rawResponse}'.");
                 throw new FormatException($"DTC პასუხში {expectedPrefix:X2} header ვერ მოიძებნა: '{rawResponse}'.");
             }
 
-            var codes = new List<DiagnosticCode>();
-            for (var i = prefixIndex + 1; i + 1 < bytes.Length; i += 2)
-            {
-                var first = bytes[i];
-                var second = bytes[i + 1];
-                if (first == 0x00 && second == 0x00) continue;
-                codes.Add(DecodeSingle(first, second, status));
-            }
             return codes;
         }
+
+        private sealed class DtcMessage
+        {
+            public List<byte> Data { get; } = new();
+            public bool IsMultiFrame { get; set; }
+            public int ExpectedLength { get; set; } = -1;
+
+            public byte[] Bytes
+            {
+                get
+                {
+                    if (IsMultiFrame && ExpectedLength > 0 && Data.Count > ExpectedLength)
+                        return Data.GetRange(0, ExpectedLength).ToArray();
+                    return Data.ToArray();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Splits an ELM327 reply into per-ECU messages. Handles CAN multi-frame
+        /// output with CAF1/ATH0 ("00A" length line followed by "0:", "1:" ...
+        /// lines), CAN single frames, non-CAN frames that each start with the
+        /// response prefix, and ignores status text such as SEARCHING... / NO DATA.
+        /// </summary>
+        private static List<DtcMessage> SplitMessages(string text, byte expectedPrefix)
+        {
+            var messages = new List<DtcMessage>();
+            DtcMessage? current = null;
+            var lines = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var rawLine in lines)
+            {
+                var line = rawLine.Trim().TrimStart('>').Trim();
+                if (line.Length == 0) continue;
+
+                // Multi-frame length line, e.g. "00A" or "014".
+                if (line.Length == 3 && IsHexOnly(line))
+                {
+                    current = new DtcMessage
+                    {
+                        IsMultiFrame = true,
+                        ExpectedLength = int.Parse(line, NumberStyles.HexNumber, CultureInfo.InvariantCulture)
+                    };
+                    messages.Add(current);
+                    continue;
+                }
+
+                // Multi-frame continuation line, e.g. "0: 43 04 01 33 02 20".
+                var isContinuation = false;
+                if (line.Length >= 2 && line[1] == ':' && IsHexChar(line[0]))
+                {
+                    isContinuation = true;
+                    line = line.Substring(2).Trim();
+                }
+
+                var lineBytes = ParseLineBytes(line);
+                if (lineBytes == null || lineBytes.Length == 0) continue;
+
+                if (isContinuation && current != null && current.IsMultiFrame)
+                {
+                    current.Data.AddRange(lineBytes);
+                    continue;
+                }
+
+                if (isContinuation || current == null || lineBytes[0] == expectedPrefix || Array.IndexOf(lineBytes, expectedPrefix) >= 0)
+                {
+                    current = new DtcMessage { IsMultiFrame = isContinuation };
+                    current.Data.AddRange(lineBytes);
+                    messages.Add(current);
+                    continue;
+                }
+
+                current.Data.AddRange(lineBytes);
+            }
+            return messages;
+        }
+
+        /// <summary>Returns the bytes of a single data line, or null for status/text lines.</summary>
+        private static byte[]? ParseLineBytes(string line)
+        {
+            if (line.Length == 0) return null;
+            var compact = line.Replace(" ", string.Empty);
+            if (!IsHexOnly(compact)) return null;
+
+            var tokens = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var allPairs = true;
+            foreach (var token in tokens)
+            {
+                if (token.Length != 2) { allPairs = false; break; }
+            }
+
+            if (allPairs || tokens.Length == 1)
+            {
+                if ((compact.Length & 1) != 0) return null;
+                var result = new byte[compact.Length / 2];
+                for (var i = 0; i < result.Length; i++)
+                    result[i] = byte.Parse(compact.Substring(i * 2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+                return result;
+            }
+
+            // Headers (ATH1) or mixed tokens: keep only two-digit data bytes.
+            return PIDDecoder.ParseHexBytes(line);
+        }
+
+        private static bool IsHexOnly(string value)
+        {
+            if (value.Length == 0) return false;
+            foreach (var c in value)
+            {
+                if (!IsHexChar(c)) return false;
+            }
+            return true;
+        }
+
+        private static bool IsHexChar(char c) =>
+            (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
 
         private static byte[] ParseHexBytes(string rawResponse)
         {

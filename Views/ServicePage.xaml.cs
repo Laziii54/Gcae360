@@ -35,9 +35,10 @@ public partial class ServicePage : ContentPage
 
     protected override async void OnAppearing()
     {
+        base.OnAppearing();
         try
         {
-        base.OnAppearing();
+        _viewModel.Attach();
         _viewModel.ReloadMaintenanceParts();
 
         // Let the page open smoothly first; the ECU reads start right after.
@@ -85,10 +86,20 @@ public partial class ServicePage : ContentPage
 
     protected override void OnDisappearing()
     {
-        _viewModel.CancelRefresh();
+        try
+        {
+            _viewModel.CancelRefresh();
 
-        if (_viewModel.IsActiveTestRunning)
-            _viewModel.StopActiveTestCommand.Execute(null);
+            if (_viewModel.IsActiveTestRunning)
+                _viewModel.StopActiveTestCommand.Execute(null);
+
+            // Release the singleton OEM-progress/language events (no page leak).
+            _viewModel.Detach();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "ServicePage.OnDisappearing");
+        }
 
         base.OnDisappearing();
     }

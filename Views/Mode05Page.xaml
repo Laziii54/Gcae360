@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:vm="clr-namespace:CarScanner.ViewModels"
     xmlns:m="clr-namespace:CarScanner.Models"
+    xmlns:obd="clr-namespace:CarScanner.Services.OBD"
     x:Class="CarScanner.Views.Mode05Page"
     x:DataType="vm:Mode05ViewModel"
     Title="Mode 05"
@@ -28,9 +29,11 @@
                     </Grid>
                     <ProgressBar Progress="{Binding ScanProgress}" ProgressColor="{Binding ScanColor}" BackgroundColor="{DynamicResource DividerColor}" />
                     <Label Text="{Binding ScanDetail}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                    <Label Text="{Binding RawStatus}" FontSize="11" FontFamily="monospace" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                    <Label IsVisible="False" Text="{Binding RawStatus}" FontSize="11" FontFamily="monospace" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
+
+            <Label AutomationId="DynamicTextO2Source" Text="{Binding SourceNote}" IsVisible="False" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0" />
 
             <!-- Results -->
             <Label Text="{Binding ResultsCaptionText}" Style="{StaticResource SectionCaptionStyle}" />
@@ -40,20 +43,20 @@
                         <Label Text="{Binding EmptyText}" FontSize="13" TextColor="{DynamicResource SubTextColor}" Padding="14,14" LineBreakMode="WordWrap" />
                     </BindableLayout.EmptyView>
                     <BindableLayout.ItemTemplate>
-                        <DataTemplate x:DataType="m:Mode05MonitorResult">
+                        <DataTemplate x:DataType="obd:O2TestRow">
                             <VerticalStackLayout Spacing="0">
                                 <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
                                 <VerticalStackLayout Spacing="3" Padding="14,13">
                                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                                        <Label Text="{Binding Identifier}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                                        <Label Grid.Column="1" Text="{Binding StatusText}" FontSize="13" FontAttributes="Bold" TextColor="{Binding StatusColor}" />
+                                        <Label AutomationId="DynamicTextO2Title" Text="{Binding Title}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                                        <Label Grid.Column="1" AutomationId="DynamicTextO2Status" Text="{Binding StatusText}" FontSize="13" FontAttributes="Bold" TextColor="{Binding StatusColor}" />
                                     </Grid>
+                                    <Label AutomationId="DynamicTextO2Subtitle" Text="{Binding Subtitle}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                                     <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                                        <Label Text="{Binding ActualText}" FontSize="13" TextColor="{DynamicResource TextColor}" />
-                                        <Label Grid.Column="1" Text="{Binding LimitText}" FontSize="12" HorizontalTextAlignment="End" TextColor="{DynamicResource SubTextColor}" />
+                                        <Label AutomationId="DynamicTextO2Value" Text="{Binding ValueText}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                        <Label Grid.Column="1" AutomationId="DynamicTextO2Limits" Text="{Binding LimitsText}" FontSize="12" HorizontalTextAlignment="End" TextColor="{DynamicResource SubTextColor}" />
                                     </Grid>
-                                    <Label Text="{Binding RawStatus}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
-                                    <Label Text="{Binding DefinitionNote}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                    <Label AutomationId="DynamicTextO2Explanation" Text="{Binding Explanation}" IsVisible="{Binding HasExplanation}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" Margin="0,3,0,0" />
                                 </VerticalStackLayout>
                             </VerticalStackLayout>
                         </DataTemplate>
@@ -61,7 +64,7 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Label Text="{Binding FooterText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0" />
+            <Label IsVisible="False" Text="{Binding FooterText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0" />
 
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{Binding ScanColor}" Margin="0,6" />
         </VerticalStackLayout>

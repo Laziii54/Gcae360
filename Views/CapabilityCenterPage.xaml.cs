@@ -14,9 +14,9 @@ public partial class CapabilityCenterPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        base.OnAppearing();
         try
         {
-        base.OnAppearing();
         _viewModel.ApplyCurrentIfAny();
         if (!_viewModel.IsBusy)
             await _viewModel.RefreshCommand.ExecuteAsync(null);

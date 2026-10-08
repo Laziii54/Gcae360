@@ -140,9 +140,21 @@ DELETE FROM AccountSessions WHERE AccountId=$id;";
         return result;
     }
 
-    public async Task<AccountSessionResult?> LoginAsync(string email, string password, string deviceId, CancellationToken token)
+    /// <summary>Self-service device move: at most once per this period.</summary>
+    public static readonly TimeSpan RebindCooldown = TimeSpan.FromDays(7);
+
+    public Task<AccountSessionResult?> LoginAsync(string email, string password, string deviceId, CancellationToken token) =>
+        LoginAsync(email, password, deviceId, moveDevice: false, token);
+
+    /// <summary>
+    /// Device-bound login. With <paramref name="moveDevice"/> and the right
+    /// password, an account bound to another phone moves to this one (all
+    /// other sessions end); allowed once per <see cref="RebindCooldown"/>,
+    /// otherwise <see cref="AccountRebindCooldownException"/>.
+    /// </summary>
+    public async Task<AccountSessionResult?> LoginAsync(string email, string password, string deviceId, bool moveDevice, CancellationToken token)
     {
-        var result = await LoginCoreAsync(email, password, deviceId, token);
+        var result = await LoginCoreAsync(email, password, deviceId, moveDevice, token);
         if (result is not null && IsBanned(result.AccountId))
         {
             await DropSessionsAsync(result.AccountId, token);
@@ -218,6 +230,20 @@ CREATE INDEX IF NOT EXISTS IX_AccountSessions_AccountId
             "AccountSessions",
             "DeviceHash",
             "TEXT NULL");
+
+        // Last self-service device move (7-day cooldown).
+        EnsureColumn(
+            connection,
+            "Accounts",
+            "LastRebindAt",
+            "TEXT NULL");
+
+        // Set by the admin "temporary password"; cleared by POST /api/accounts/password.
+        EnsureColumn(
+            connection,
+            "Accounts",
+            "MustChangePassword",
+            "INTEGER NOT NULL DEFAULT 0");
     }
 
     // ============================================================
@@ -386,6 +412,127 @@ VALUES(
     }
 
     // ============================================================
+    // CREDENTIALS (PBKDF2 runs OUTSIDE the database gate; only the
+    // reads and writes are serialized)
+    // ============================================================
+
+    private sealed record StoredCredentials(
+        string AccountId,
+        string DisplayEmail,
+        string Salt,
+        string Hash,
+        string? DeviceHash,
+        string? LastRebindAt,
+        bool MustChangePassword);
+
+    // Unknown e-mail: the same PBKDF2 work is done against these, so the
+    // answer takes as long as for an existing account.
+    private static readonly byte[] DummySalt = RandomNumberGenerator.GetBytes(16);
+    private static readonly byte[] DummyHash = RandomNumberGenerator.GetBytes(32);
+
+    private async Task<StoredCredentials?> ReadCredentialsAsync(
+        string? normalizedEmail,
+        string? accountId,
+        CancellationToken token)
+    {
+        await _gate.WaitAsync(token);
+        try
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+            using var query = connection.CreateCommand();
+            query.CommandText = normalizedEmail is not null
+                ? """
+SELECT AccountId, EmailDisplay, PasswordSalt, PasswordHash, DeviceHash, LastRebindAt, MustChangePassword
+FROM Accounts
+WHERE EmailNormalized=$key
+LIMIT 1;
+"""
+                : """
+SELECT AccountId, EmailDisplay, PasswordSalt, PasswordHash, DeviceHash, LastRebindAt, MustChangePassword
+FROM Accounts
+WHERE AccountId=$key
+LIMIT 1;
+""";
+            query.Parameters.AddWithValue("$key", (object?)normalizedEmail ?? accountId ?? string.Empty);
+            using var reader = query.ExecuteReader();
+            if (!reader.Read())
+                return null;
+
+            return new StoredCredentials(
+                reader.GetString(0),
+                reader.GetString(1),
+                reader.GetString(2),
+                reader.GetString(3),
+                reader.IsDBNull(4) ? null : reader.GetString(4),
+                reader.IsDBNull(5) ? null : reader.GetString(5),
+                !reader.IsDBNull(6) && reader.GetInt64(6) != 0);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>Constant-work password check (dummy PBKDF2 when the account does not exist).</summary>
+    private static bool PasswordMatches(StoredCredentials? stored, string password)
+    {
+        if (stored is null)
+        {
+            CryptographicOperations.FixedTimeEquals(HashPassword(password, DummySalt), DummyHash);
+            return false;
+        }
+
+        byte[] salt;
+        byte[] expected;
+        try
+        {
+            salt = Convert.FromBase64String(stored.Salt);
+            expected = Convert.FromBase64String(stored.Hash);
+        }
+        catch (FormatException)
+        {
+            CryptographicOperations.FixedTimeEquals(HashPassword(password, DummySalt), DummyHash);
+            return false;
+        }
+
+        return CryptographicOperations.FixedTimeEquals(expected, HashPassword(password, salt));
+    }
+
+    /// <summary>
+    /// Inside a transaction: re-reads the account and confirms the password
+    /// hash is still the one that was verified (it may have changed while
+    /// PBKDF2 ran outside the gate). Returns the fresh row or null.
+    /// </summary>
+    private static StoredCredentials? Reread(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        StoredCredentials verified)
+    {
+        using var query = connection.CreateCommand();
+        query.Transaction = transaction;
+        query.CommandText = """
+SELECT AccountId, EmailDisplay, PasswordSalt, PasswordHash, DeviceHash, LastRebindAt, MustChangePassword
+FROM Accounts
+WHERE AccountId=$id
+LIMIT 1;
+""";
+        query.Parameters.AddWithValue("$id", verified.AccountId);
+        using var reader = query.ExecuteReader();
+        if (!reader.Read() || !string.Equals(reader.GetString(3), verified.Hash, StringComparison.Ordinal))
+            return null;
+
+        return new StoredCredentials(
+            reader.GetString(0),
+            reader.GetString(1),
+            reader.GetString(2),
+            reader.GetString(3),
+            reader.IsDBNull(4) ? null : reader.GetString(4),
+            reader.IsDBNull(5) ? null : reader.GetString(5),
+            !reader.IsDBNull(6) && reader.GetInt64(6) != 0);
+    }
+
+    // ============================================================
     // LOGIN - LEGACY
     // ============================================================
 
@@ -397,6 +544,13 @@ VALUES(
         var normalized =
             NormalizeEmail(email);
 
+        if (string.IsNullOrEmpty(password) || password.Length > 128)
+            return null;
+
+        var stored = await ReadCredentialsAsync(normalized, null, token);
+        if (!PasswordMatches(stored, password))
+            return null;
+
         await _gate.WaitAsync(token);
 
         try
@@ -407,87 +561,33 @@ VALUES(
 
             connection.Open();
 
-            using var query =
-                connection.CreateCommand();
+            using var transaction =
+                connection.BeginTransaction();
 
-            query.CommandText = """
-SELECT
-    AccountId,
-    EmailDisplay,
-    PasswordSalt,
-    PasswordHash,
-    DeviceHash
-FROM Accounts
-WHERE EmailNormalized=$email
-LIMIT 1;
-""";
-
-            query.Parameters.AddWithValue(
-                "$email",
-                normalized);
-
-            using var reader =
-                query.ExecuteReader();
-
-            if (!reader.Read())
-                return null;
-
-            var accountId =
-                reader.GetString(0);
-
-            var displayEmail =
-                reader.GetString(1);
-
-            var salt =
-                Convert.FromBase64String(
-                    reader.GetString(2));
-
-            var expected =
-                Convert.FromBase64String(
-                    reader.GetString(3));
-
-            var storedDeviceHash =
-                reader.IsDBNull(4)
-                    ? null
-                    : reader.GetString(4);
-
-            var actual =
-                HashPassword(
-                    password,
-                    salt);
-
-            if (!CryptographicOperations.FixedTimeEquals(
-                    expected,
-                    actual))
-            {
-                return null;
-            }
+            var current = Reread(connection, transaction, stored!);
 
             // Once an account is device-bound,
             // legacy login is no longer allowed.
-            if (!string.IsNullOrWhiteSpace(
-                    storedDeviceHash))
+            if (current is null ||
+                !string.IsNullOrWhiteSpace(
+                    current.DeviceHash))
             {
+                transaction.Rollback();
                 return null;
             }
-
-            reader.Close();
-
-            using var transaction =
-                connection.BeginTransaction();
 
             DeleteSessions(
                 connection,
                 transaction,
-                accountId);
+                current.AccountId);
 
             var result =
                 CreateSession(
                     connection,
                     transaction,
-                    accountId,
-                    displayEmail,
-                    deviceHash: null);
+                    current.AccountId,
+                    current.DisplayEmail,
+                    deviceHash: null) with { MustChangePassword = current.MustChangePassword };
 
             transaction.Commit();
 
@@ -525,33 +625,10 @@ LIMIT 1;
         if (string.IsNullOrEmpty(password) || password.Length > 128)
             return null;
 
-        await _gate.WaitAsync(token);
-        try
-        {
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
-            using var query = connection.CreateCommand();
-            query.CommandText = """
-SELECT AccountId, EmailDisplay, PasswordSalt, PasswordHash
-FROM Accounts
-WHERE EmailNormalized=$email
-LIMIT 1;
-""";
-            query.Parameters.AddWithValue("$email", normalized);
-            using var reader = query.ExecuteReader();
-            if (!reader.Read())
-                return null;
-
-            var expected = Convert.FromBase64String(reader.GetString(3));
-            var actual = HashPassword(password, Convert.FromBase64String(reader.GetString(2)));
-            return CryptographicOperations.FixedTimeEquals(expected, actual)
-                ? new AccountIdentity(reader.GetString(0), reader.GetString(1))
-                : null;
-        }
-        finally
-        {
-            _gate.Release();
-        }
+        var stored = await ReadCredentialsAsync(normalized, null, token);
+        return PasswordMatches(stored, password)
+            ? new AccountIdentity(stored!.AccountId, stored.DisplayEmail)
+            : null;
     }
 
     // ============================================================
@@ -562,6 +639,7 @@ LIMIT 1;
         string email,
         string password,
         string deviceId,
+        bool moveDevice,
         CancellationToken token)
     {
         var normalized =
@@ -574,6 +652,16 @@ LIMIT 1;
             HashDeviceId(
                 normalizedDeviceId);
 
+        if (string.IsNullOrEmpty(password) || password.Length > 128)
+            return null;
+
+        // Password is checked before device status,
+        // so an attacker cannot use this endpoint to
+        // discover whether an account is device-bound.
+        var stored = await ReadCredentialsAsync(normalized, null, token);
+        if (!PasswordMatches(stored, password))
+            return null;
+
         await _gate.WaitAsync(token);
 
         try
@@ -584,69 +672,31 @@ LIMIT 1;
 
             connection.Open();
 
-            using var query =
-                connection.CreateCommand();
+            using var transaction =
+                connection.BeginTransaction();
 
-            query.CommandText = """
-SELECT
-    AccountId,
-    EmailDisplay,
-    PasswordSalt,
-    PasswordHash,
-    DeviceHash
-FROM Accounts
-WHERE EmailNormalized=$email
-LIMIT 1;
-""";
-
-            query.Parameters.AddWithValue(
-                "$email",
-                normalized);
-
-            using var reader =
-                query.ExecuteReader();
-
-            if (!reader.Read())
-                return null;
-
-            var accountId =
-                reader.GetString(0);
-
-            var displayEmail =
-                reader.GetString(1);
-
-            var salt =
-                Convert.FromBase64String(
-                    reader.GetString(2));
-
-            var expected =
-                Convert.FromBase64String(
-                    reader.GetString(3));
-
-            var storedDeviceHash =
-                reader.IsDBNull(4)
-                    ? null
-                    : reader.GetString(4);
-
-            var actual =
-                HashPassword(
-                    password,
-                    salt);
-
-            // Password is checked before device status,
-            // so an attacker cannot use this endpoint to
-            // discover whether an account is device-bound.
-            if (!CryptographicOperations.FixedTimeEquals(
-                    expected,
-                    actual))
+            var current = Reread(connection, transaction, stored!);
+            if (current is null)
             {
+                transaction.Rollback();
                 return null;
             }
 
-            reader.Close();
+            var accountId =
+                current.AccountId;
 
-            using var transaction =
-                connection.BeginTransaction();
+            var storedDeviceHash =
+                current.DeviceHash;
+
+            var lastRebind =
+                current.LastRebindAt is { } rebindText &&
+                DateTimeOffset.TryParse(
+                    rebindText,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.RoundtripKind,
+                    out var rebindAt)
+                    ? rebindAt
+                    : (DateTimeOffset?)null;
 
             // Existing account from the old version:
             // first successful device-aware login binds it.
@@ -680,9 +730,51 @@ WHERE AccountId=$id
                          storedDeviceHash,
                          currentDeviceHash))
             {
-                transaction.Rollback();
+                if (!moveDevice)
+                {
+                    transaction.Rollback();
 
-                throw new AccountDeviceMismatchException();
+                    throw new AccountDeviceMismatchException();
+                }
+
+                var now = DateTimeOffset.UtcNow;
+                if (lastRebind is { } previous &&
+                    previous + RebindCooldown > now)
+                {
+                    transaction.Rollback();
+
+                    throw new AccountRebindCooldownException(
+                        previous + RebindCooldown);
+                }
+
+                // Self-service move to this phone (password verified above).
+                // The old phone's sessions are deleted below.
+                using var move =
+                    connection.CreateCommand();
+
+                move.Transaction =
+                    transaction;
+
+                move.CommandText = """
+UPDATE Accounts
+SET DeviceHash=$device,
+    LastRebindAt=$at
+WHERE AccountId=$id;
+""";
+
+                move.Parameters.AddWithValue(
+                    "$device",
+                    currentDeviceHash);
+
+                move.Parameters.AddWithValue(
+                    "$at",
+                    now.ToString("O"));
+
+                move.Parameters.AddWithValue(
+                    "$id",
+                    accountId);
+
+                move.ExecuteNonQuery();
             }
 
             // Keep only the newest session for this account.
@@ -696,12 +788,99 @@ WHERE AccountId=$id
                     connection,
                     transaction,
                     accountId,
-                    displayEmail,
-                    currentDeviceHash);
+                    current.DisplayEmail,
+                    currentDeviceHash) with { MustChangePassword = current.MustChangePassword };
 
             transaction.Commit();
 
             return result;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    // ============================================================
+    // CHANGE PASSWORD (signed-in user; clears MustChangePassword)
+    // ============================================================
+
+    /// <summary>
+    /// Changes the password of a signed-in account after checking the
+    /// current one. Every other session ends; the session in
+    /// <paramref name="authorization"/> stays. Returns false when the
+    /// current password is wrong. Throws ArgumentException when the new
+    /// password breaks the policy.
+    /// </summary>
+    public async Task<bool> ChangePasswordAsync(
+        string accountId,
+        string? authorization,
+        string currentPassword,
+        string newPassword,
+        CancellationToken token)
+    {
+        ValidatePassword(newPassword);
+
+        var rawToken = ExtractBearerToken(authorization);
+        if (rawToken is null)
+            return false;
+
+        if (string.IsNullOrEmpty(currentPassword) || currentPassword.Length > 128)
+            return false;
+
+        var stored = await ReadCredentialsAsync(null, accountId, token);
+        if (stored is null || !PasswordMatches(stored, currentPassword))
+            return false;
+
+        var salt = RandomNumberGenerator.GetBytes(16);
+        var hash = HashPassword(newPassword, salt);
+
+        await _gate.WaitAsync(token);
+        try
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+            using var transaction = connection.BeginTransaction();
+
+            using (var update = connection.CreateCommand())
+            {
+                update.Transaction = transaction;
+                // Only if the password was not changed meanwhile.
+                update.CommandText = """
+UPDATE Accounts
+SET PasswordSalt=$salt,
+    PasswordHash=$hash,
+    MustChangePassword=0
+WHERE AccountId=$id
+  AND PasswordHash=$old;
+""";
+                update.Parameters.AddWithValue("$salt", Convert.ToBase64String(salt));
+                update.Parameters.AddWithValue("$hash", Convert.ToBase64String(hash));
+                update.Parameters.AddWithValue("$id", accountId);
+                update.Parameters.AddWithValue("$old", stored.Hash);
+                if (update.ExecuteNonQuery() == 0)
+                {
+                    transaction.Rollback();
+                    return false;
+                }
+            }
+
+            using (var sessions = connection.CreateCommand())
+            {
+                sessions.Transaction = transaction;
+                // Other sessions end; the current one stays.
+                sessions.CommandText = """
+DELETE FROM AccountSessions
+WHERE AccountId=$id
+  AND TokenHash<>$current;
+""";
+                sessions.Parameters.AddWithValue("$id", accountId);
+                sessions.Parameters.AddWithValue("$current", HashToken(rawToken));
+                sessions.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+            return true;
         }
         finally
         {
@@ -952,6 +1131,89 @@ WHERE TokenHash=$hash;
         {
             _gate.Release();
         }
+    }
+
+    // ============================================================
+    // TEMPORARY PASSWORD (admin page; there is no e-mail sender)
+    // ============================================================
+
+    /// <summary>
+    /// Admin: sets a new password (shown once to the owner, who passes it to
+    /// the user). Every session ends; the device binding is released so the
+    /// user can sign in on a new phone.
+    /// </summary>
+    public async Task<bool> SetPasswordAsync(
+        string accountId,
+        string newPassword,
+        CancellationToken token,
+        bool mustChange = true)
+    {
+        ValidatePassword(newPassword);
+
+        var salt =
+            RandomNumberGenerator.GetBytes(16);
+
+        var hash =
+            HashPassword(
+                newPassword,
+                salt);
+
+        await _gate.WaitAsync(token);
+
+        try
+        {
+            using var connection =
+                new SqliteConnection(
+                    _connectionString);
+
+            connection.Open();
+
+            using var command =
+                connection.CreateCommand();
+
+            command.CommandText = """
+UPDATE Accounts
+SET PasswordSalt=$salt,
+    PasswordHash=$hash,
+    DeviceHash=NULL,
+    MustChangePassword=$must
+WHERE AccountId=$id;
+DELETE FROM AccountSessions
+WHERE AccountId=$id;
+""";
+
+            command.Parameters.AddWithValue(
+                "$salt",
+                Convert.ToBase64String(salt));
+
+            command.Parameters.AddWithValue(
+                "$hash",
+                Convert.ToBase64String(hash));
+
+            command.Parameters.AddWithValue(
+                "$id",
+                accountId);
+
+            command.Parameters.AddWithValue(
+                "$must",
+                mustChange ? 1 : 0);
+
+            return command.ExecuteNonQuery() > 0;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>Random 14-character password without look-alike characters.</summary>
+    public static string NewTemporaryPassword()
+    {
+        const string alphabet = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        var chars = new char[14];
+        for (var i = 0; i < chars.Length; i++)
+            chars[i] = alphabet[RandomNumberGenerator.GetInt32(alphabet.Length)];
+        return new string(chars);
     }
 
     // ============================================================
@@ -1295,7 +1557,24 @@ public sealed record AccountSessionResult(
     string AccountId,
     string Email,
     string AccessToken,
-    DateTimeOffset ExpiresAt);
+    DateTimeOffset ExpiresAt,
+    // "mustChangePassword": true only after an admin temporary password.
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool MustChangePassword = false);
+
+public sealed class AccountRebindCooldownException
+    : Exception
+{
+    public AccountRebindCooldownException(
+        DateTimeOffset nextAllowedAt)
+        : base(
+            "The account was moved to another device less than 7 days ago.")
+    {
+        NextAllowedAt = nextAllowedAt;
+    }
+
+    public DateTimeOffset NextAllowedAt { get; }
+}
 
 public sealed class AccountDeviceMismatchException
     : Exception

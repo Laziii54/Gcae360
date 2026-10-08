@@ -19,7 +19,11 @@ public partial class SettingsPage : ContentPage
 
     private async void OnAccountClicked(object? sender, EventArgs e)
     {
-        try { await Shell.Current.GoToAsync(nameof(AccountPage)); } catch { }
+        try { await Shell.Current.GoToAsync(nameof(AccountPage)); }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "SettingsPage.OnAccountClicked");
+        }
     }
 
     private void OnAccountTapped(object? sender, TappedEventArgs e) =>

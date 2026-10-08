@@ -75,6 +75,9 @@ public partial class FuelViewModel : BaseViewModel
     public ObservableCollection<RefuelRecord> RefuelHistory { get; } = new();
     public ObservableCollection<string> TripHistory { get; } = new();
 
+    /// <summary>"Start" — marked PRO until PRO is active (the page itself is open to everyone).</summary>
+    public string StartButtonText => CarScanner.Services.Localization.LocalizationService.T("დაწყება") + ProGate.Suffix;
+
     public FuelViewModel(
         LiveDataEngine engine,
         ProService pro,
@@ -86,6 +89,7 @@ public partial class FuelViewModel : BaseViewModel
     {
         _engine = engine;
         _pro = pro;
+        _pro.ProChanged += (_, _) => MainThread.BeginInvokeOnMainThread(() => OnPropertyChanged(nameof(StartButtonText)));
         _units = units;
         _database = database;
         _vehicle = vehicle;
@@ -95,6 +99,7 @@ public partial class FuelViewModel : BaseViewModel
         {
             RefreshPresentation();
             RebuildTripHistoryPresentation();
+            RebuildRefuelSummaries();
         });
         FuelPriceText = Preferences.Default.Get("fuel_price_per_liter", string.Empty);
         RefuelPriceText = FuelPriceText;
@@ -108,11 +113,8 @@ public partial class FuelViewModel : BaseViewModel
     {
         try
         {
-        if (!await _pro.EnsureProAsync())
-        {
-            await Shell.Current.DisplayAlertAsync(CarScanner.Services.Localization.LocalizationService.T("PRO ფუნქცია"), CarScanner.Services.Localization.LocalizationService.T("Fuel consumption statistics ხელმისაწვდომია PRO-ში."), CarScanner.Services.Localization.LocalizationService.T("კარგი"));
+        if (!await ProGate.EnsureOrOpenAsync(_pro))
             return;
-        }
 
         IsTripSummaryVisible = false;
         Subscribe();
@@ -187,11 +189,8 @@ public partial class FuelViewModel : BaseViewModel
     {
         try
         {
-        if (!await _pro.EnsureProAsync())
-        {
-            await Shell.Current.DisplayAlertAsync(CarScanner.Services.Localization.LocalizationService.T("PRO ფუნქცია"), CarScanner.Services.Localization.LocalizationService.T("Fuel consumption statistics ხელმისაწვდომია PRO-ში."), CarScanner.Services.Localization.LocalizationService.T("კარგი"));
+        if (!await ProGate.EnsureOrOpenAsync(_pro))
             return;
-        }
 
         ResetCurrentTrip();
         RefreshPresentation();
@@ -397,17 +396,14 @@ public partial class FuelViewModel : BaseViewModel
     {
         try
         {
-        if (!await _pro.EnsureProAsync())
-        {
-            await Shell.Current.DisplayAlertAsync(CarScanner.Services.Localization.LocalizationService.T("PRO ფუნქცია"), CarScanner.Services.Localization.LocalizationService.T("Refuel Log ხელმისაწვდომია PRO-ში."), CarScanner.Services.Localization.LocalizationService.T("კარგი"));
+        if (!await ProGate.EnsureOrOpenAsync(_pro))
             return;
-        }
 
         if (!TryParsePositive(RefuelLitersText, out var liters) ||
             !TryParseNonNegative(RefuelOdometerText, out var odometer) ||
             !TryParsePositive(RefuelPriceText, out var price))
         {
-            RefuelStatus = "შეიყვანე სწორი ოდომეტრი (km), ლიტრები და ფასი 1 ლიტრზე.";
+            RefuelStatus = $"შეიყვანე სწორი ოდომეტრი ({_units.DistanceUnit}), ლიტრები და ფასი 1 ლიტრზე.";
             return;
         }
 
@@ -422,7 +418,9 @@ public partial class FuelViewModel : BaseViewModel
         {
             VIN = vin!,
             RefueledAt = DateTime.Now,
-            OdometerKm = odometer,
+            // The field is typed in the selected unit (mi with Imperial); the
+            // log is always stored in km and shown through _units.FormatDistance.
+            OdometerKm = _units.DistanceToKilometers(odometer),
             Liters = liters,
             PricePerLiter = price,
             IsFullTank = RefuelIsFullTank,
@@ -457,8 +455,26 @@ public partial class FuelViewModel : BaseViewModel
         var records = await _database.GetRefuelsAsync(vin);
         RefuelHistory.Clear();
         foreach (var record in records.Take(8))
+        {
+            record.FormattedSummary = FormatRefuelSummary(record);
             RefuelHistory.Add(record);
+        }
         TankToTankSummary = BuildTankToTankSummary(records);
+    }
+
+    /// <summary>Refuel line with the odometer in the selected unit (km / mi).</summary>
+    public string FormatRefuelSummary(RefuelRecord record) =>
+        $"{record.RefueledAt:dd.MM.yyyy} · {_units.FormatDistance(record.OdometerKm, "0")} · {record.Liters:0.00} L · ₾{record.Liters * record.PricePerLiter:0.00}";
+
+    private void RebuildRefuelSummaries()
+    {
+        for (var i = 0; i < RefuelHistory.Count; i++)
+        {
+            var record = RefuelHistory[i];
+            record.FormattedSummary = FormatRefuelSummary(record);
+            // Replace notifies the list so a bound row re-reads DisplaySummary.
+            RefuelHistory[i] = record;
+        }
     }
 
     public async Task LoadFuelHistoryAsync()

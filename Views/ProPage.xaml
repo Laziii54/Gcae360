@@ -46,8 +46,8 @@
             <!-- Monthly automatic payment bought on the website (BOG): status + cancel -->
             <Border IsVisible="{Binding ShowWebSubscription}" Padding="14,13" BackgroundColor="{DynamicResource CardBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 16">
                 <VerticalStackLayout Spacing="8">
-                    <Border IsVisible="{Binding ShowWebSubAlert}" Padding="11,9" BackgroundColor="#FDECEA" Stroke="#E9A99D" StrokeThickness="1" StrokeShape="RoundRectangle 10">
-                        <Label Text="{Binding WebSubAlertText}" FontSize="12" TextColor="#7A2416" LineBreakMode="WordWrap" />
+                    <Border IsVisible="{Binding ShowWebSubAlert}" Padding="11,9" BackgroundColor="{DynamicResource ErrBg}" Stroke="{DynamicResource ErrStroke}" StrokeThickness="1" StrokeShape="RoundRectangle 10">
+                        <Label Text="{Binding WebSubAlertText}" FontSize="12" TextColor="{DynamicResource ErrText}" LineBreakMode="WordWrap" />
                     </Border>
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                         <Label Text="{Binding WebSubTitleText}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" LineBreakMode="WordWrap" />
@@ -62,7 +62,7 @@
                         Command="{Binding CancelWebSubscriptionCommand}"
                         BackgroundColor="Transparent"
                         TextColor="#B3361F"
-                        BorderColor="#EFC5BD"
+                        BorderColor="{DynamicResource ErrStroke}"
                         BorderWidth="1.5"
                         CornerRadius="10"
                         HeightRequest="44"

@@ -207,21 +207,43 @@ public partial class EmissionsViewModel : BaseViewModel
         _units = units;
         _localization = localization;
 
-        _units.UnitSystemChanged += (_, __) =>
-            MainThread.BeginInvokeOnMainThread(RefreshUnitPresentation);
-
-        _localization.LanguageChanged += (_, __) =>
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                UpdateLanguageTexts();
-                RefreshReportPresentation();
-                RebuildMonitorLists();
-                RefreshUnitPresentation();
-            });
+        Attach();
 
         UpdateLanguageTexts();
         RefreshReportPresentation();
     }
+
+    // Singleton services must not keep this transient view model (and its
+    // page) alive: the page calls Attach() on appearing and Detach() on leaving.
+    private bool _attached;
+
+    public void Attach()
+    {
+        if (_attached) return;
+        _attached = true;
+        _units.UnitSystemChanged += OnUnitSystemChanged;
+        _localization.LanguageChanged += OnLanguageChanged;
+    }
+
+    public void Detach()
+    {
+        if (!_attached) return;
+        _attached = false;
+        _units.UnitSystemChanged -= OnUnitSystemChanged;
+        _localization.LanguageChanged -= OnLanguageChanged;
+    }
+
+    private void OnUnitSystemChanged(object? sender, EventArgs e) =>
+        MainThread.BeginInvokeOnMainThread(RefreshUnitPresentation);
+
+    private void OnLanguageChanged(object? sender, EventArgs e) =>
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            UpdateLanguageTexts();
+            RefreshReportPresentation();
+            RebuildMonitorLists();
+            RefreshUnitPresentation();
+        });
 
     private void UpdateLanguageTexts()
     {
@@ -320,7 +342,7 @@ public partial class EmissionsViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            StatusMessage = ex.Message;
+            StatusMessage = UserError.Describe(ex);
         }
         finally
         {
@@ -739,9 +761,29 @@ public partial class EcuIdentifiersViewModel : BaseViewModel
         _vehicle = vehicle;
         _units = units;
         _oemIdentification = oemIdentification;
-        _units.UnitSystemChanged += (_, __) => MainThread.BeginInvokeOnMainThread(RefreshUnitPresentation);
+        Attach();
         Title = "ECU ინფორმაცია";
     }
+
+    // Detached by EcuIdentifiersPage when it goes away (no leak through UnitSystemService).
+    private bool _attached;
+
+    public void Attach()
+    {
+        if (_attached) return;
+        _attached = true;
+        _units.UnitSystemChanged += OnUnitSystemChanged;
+    }
+
+    public void Detach()
+    {
+        if (!_attached) return;
+        _attached = false;
+        _units.UnitSystemChanged -= OnUnitSystemChanged;
+    }
+
+    private void OnUnitSystemChanged(object? sender, EventArgs e) =>
+        MainThread.BeginInvokeOnMainThread(RefreshUnitPresentation);
     [RelayCommand]
     public async Task Load()
     {
@@ -820,7 +862,7 @@ public partial class EcuIdentifiersViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            StatusMessage = ex.Message;
+            StatusMessage = UserError.Describe(ex);
             NetworkStatus = "კავშირის შემოწმება ვერ შესრულდა";
             OemIdentificationStatus = "ERROR — OEM identification ვერ შესრულდა.";
         }
@@ -832,8 +874,7 @@ public partial class EcuIdentifiersViewModel : BaseViewModel
         }
     }
 
-    private static bool UiEnglish =>
-        Preferences.Default.Get("language", "English").Equals("English", StringComparison.OrdinalIgnoreCase);
+    private static bool UiEnglish => CarScanner.Services.Localization.LanguageCatalog.UsesEnglishBase;
 
     /// <summary>Shows name, part number, versions and serial of every module from the last scan (PRO).</summary>
     public async Task RefreshModuleInfoAsync()
@@ -953,7 +994,7 @@ public partial class EcuIdentifiersViewModel : BaseViewModel
             }
         }
         catch (OperationCanceledException) { }
-        catch (Exception ex) { StatusMessage = ex.Message; }
+        catch (Exception ex) { StatusMessage = UserError.Describe(ex); }
     }
 
     private async Task RefreshPidBatchAsync(CancellationToken token)
@@ -1112,16 +1153,37 @@ public partial class ProViewModel : BaseViewModel
         Packs.Add(new ProPackItem { ProductId = ProService.VinPack5ProductId, Credits = 5 });
         Packs.Add(new ProPackItem { ProductId = ProService.VinPack10ProductId, Credits = 10 });
 
-        _pro.ProChanged += (_, _) =>
-            MainThread.BeginInvokeOnMainThread(RefreshAccess);
-
-        _localization.LanguageChanged += (_, __) =>
-            MainThread.BeginInvokeOnMainThread(ApplyLanguageTexts);
+        Attach();
 
         ApplyLanguageTexts();
 
         _ = LoadStoreMetadataAsync();
     }
+
+    // Detached by ProPage when it goes away (no leak through singleton services).
+    private bool _attached;
+
+    public void Attach()
+    {
+        if (_attached) return;
+        _attached = true;
+        _pro.ProChanged += OnProChanged;
+        _localization.LanguageChanged += OnLanguageChanged;
+    }
+
+    public void Detach()
+    {
+        if (!_attached) return;
+        _attached = false;
+        _pro.ProChanged -= OnProChanged;
+        _localization.LanguageChanged -= OnLanguageChanged;
+    }
+
+    private void OnProChanged(object? sender, bool isPro) =>
+        MainThread.BeginInvokeOnMainThread(RefreshAccess);
+
+    private void OnLanguageChanged(object? sender, EventArgs e) =>
+        MainThread.BeginInvokeOnMainThread(ApplyLanguageTexts);
 
     private string L(string ka, string en) =>
         _localization.IsEnglish ? en : ka;
@@ -1164,7 +1226,7 @@ public partial class ProViewModel : BaseViewModel
 
         RestorePurchaseText = CanBuyInApp
             ? L("შესყიდვების აღდგენა", "Restore Purchases")
-            : L("სტატუსის განახლება", "Refresh status");
+            : L("PRO-ს აღდგენა", "Restore PRO");
 
         SubscriptionInfoText = (CanBuyInApp
             ? L("გამოწერა ყოველთვე ავტომატურად გრძელდება, სანამ App Store-ში არ გააუქმებ. ", "The subscription renews every month until you cancel it in the App Store. ")
@@ -1278,6 +1340,9 @@ public partial class ProViewModel : BaseViewModel
             plan.StrokeColor = Color.FromArgb(plan.IsActive ? "#22C55E" : plan.IsRecommended ? "#3B82F6" : "#6694A3B8");
         }
 
+        // Android (Google Play payments policy): ShowPrice above is false and
+        // packs stay hidden, so no price is shown and nothing points to another
+        // way to pay; only "Sign in" and "Restore" unlock PRO already on the account.
         foreach (var pack in Packs)
         {
             var fallback = pack.Credits == 5 ? ProService.VinPack5PriceGEL : ProService.VinPack10PriceGEL;
@@ -1643,6 +1708,12 @@ public partial class ProViewModel : BaseViewModel
                     success
                 ),
 
+            CarScanner.Services.PurchaseService.PurchasesNotAvailableOnAndroid =>
+                (
+                    CarScanner.Services.PurchaseService.PurchasesNotAvailableOnAndroidMessage,
+                    warning
+                ),
+
             "PENDING" =>
                 (
                     L(
@@ -1667,8 +1738,8 @@ public partial class ProViewModel : BaseViewModel
             or "ERROR:NETWORK_ERROR" =>
                 (
                     L(
-                        "Google Play დროებით მიუწვდომელია. შეამოწმე ინტერნეტი და სცადე ხელახლა.",
-                        "Google Play is temporarily unavailable. Check your connection and try again."),
+                        $"{StoreName} დროებით მიუწვდომელია. შეამოწმე ინტერნეტი და სცადე ხელახლა.",
+                        $"{StoreName} is temporarily unavailable. Check your connection and try again."),
                     error
                 ),
 
@@ -2016,7 +2087,7 @@ public partial class ServiceViewModel : BaseViewModel
         catch (Exception ex)
         {
             DiscoveryReport = report.ToString();
-            DiscoveryResultText = L($"ძიება ვერ შესრულდა: {ex.Message}", $"Search failed: {ex.Message}");
+            DiscoveryResultText = L($"ძიება ვერ შესრულდა: {UserError.Describe(ex)}", $"Search failed: {UserError.Describe(ex)}");
         }
         finally
         {
@@ -2143,7 +2214,7 @@ public partial class ServiceViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            OilResetStatusText = L($"წაკითხვა ვერ მოხერხდა: {ex.Message}", $"Read failed: {ex.Message}");
+            OilResetStatusText = L($"წაკითხვა ვერ მოხერხდა: {UserError.Describe(ex)}", $"Read failed: {UserError.Describe(ex)}");
             OilResetStatusColor = "#B3361F";
         }
         finally
@@ -2244,7 +2315,7 @@ public partial class ServiceViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            OilResetStatusText = L($"განულება ვერ შესრულდა: {ex.Message}", $"Reset failed: {ex.Message}");
+            OilResetStatusText = L($"განულება ვერ შესრულდა: {UserError.Describe(ex)}", $"Reset failed: {UserError.Describe(ex)}");
             OilResetStatusColor = "#B3361F";
         }
         finally
@@ -2295,6 +2366,12 @@ public partial class ServiceViewModel : BaseViewModel
         OilLifeResetFailure.NotChanged => L(
             $"ბრძანება გაიგზავნა, მაგრამ ECU-ში მნიშვნელობა არ შეიცვალა ({(result.After.HasValue ? $"{result.After:0.#}%" : "—")}). გამოიყენე ქვემოთ მოცემული ინსტრუქცია.",
             $"The command was sent, but the ECU value did not change ({(result.After.HasValue ? $"{result.After:0.#}%" : "—")}). Use the guide below."),
+        OilLifeResetFailure.NotSupported => L(
+            "ამ მანქანაზე ზეთის რესურსის განულება ჯერ არ არის შემოწმებული — არაფერი გაგზავნილა. გამოიყენე ქვემოთ მოცემული ინსტრუქცია.",
+            "Oil-life reset is not verified for this car yet — nothing was sent. Use the guide below."),
+        OilLifeResetFailure.SafetyCheckUnavailable => L(
+            "სიჩქარე ან ძაბვა ვერ წავიკითხე — უსაფრთხოებისთვის არაფერი გაგზავნილა.",
+            "Speed or voltage could not be read — for safety nothing was sent."),
         _ => L("განულება ვერ შესრულდა.", "Reset failed.")
     };
 
@@ -2456,17 +2533,36 @@ public partial class ServiceViewModel : BaseViewModel
         _maintenanceCalendar = maintenanceCalendar;
         _appOilReminder = new AppOilReminderService(obd);
 
-        _oemOperations.ProgressChanged += (_, message) =>
-            MainThread.BeginInvokeOnMainThread(() =>
-                ServiceResult = message);
-
-        _localization.LanguageChanged += (_, __) =>
-            MainThread.BeginInvokeOnMainThread(() =>
-                _ = RefreshLanguageAsync());
+        Attach();
 
         ApplyLanguageTexts();
         ClearOperationLists();
     }
+
+    // Detached by ServicePage when it goes away (no leak through singleton services).
+    private bool _attached;
+
+    public void Attach()
+    {
+        if (_attached) return;
+        _attached = true;
+        _oemOperations.ProgressChanged += OnOemProgressChanged;
+        _localization.LanguageChanged += OnLanguageChanged;
+    }
+
+    public void Detach()
+    {
+        if (!_attached) return;
+        _attached = false;
+        _oemOperations.ProgressChanged -= OnOemProgressChanged;
+        _localization.LanguageChanged -= OnLanguageChanged;
+    }
+
+    private void OnOemProgressChanged(object? sender, string message) =>
+        MainThread.BeginInvokeOnMainThread(() => ServiceResult = message);
+
+    private void OnLanguageChanged(object? sender, EventArgs e) =>
+        MainThread.BeginInvokeOnMainThread(() => _ = RefreshLanguageAsync());
 
     private string L(string ka, string en) => _localization.IsEnglish ? en : ka;
 
@@ -2787,7 +2883,7 @@ public partial class ServiceViewModel : BaseViewModel
                 OemDetail = L(
                     "ECU პასუხობს, მაგრამ VIN/მწარმოებელი/მოდელი საკმარისად ვერ დადასტურდა.",
                     "The ECU responds, but VIN/make/model could not be verified sufficiently.");
-                ServiceResult = $"{OemDetail} {ex.Message}".Trim();
+                ServiceResult = $"{OemDetail} {UserError.Describe(ex)}".Trim();
                 return;
             }
 
@@ -2988,8 +3084,8 @@ public partial class ServiceViewModel : BaseViewModel
         catch (Exception ex)
         {
             ValidationCaptureStatusText = L(
-                $"ანგარიში ვერ შეიქმნა: {ex.Message}",
-                $"Could not create the report: {ex.Message}");
+                $"ანგარიში ვერ შეიქმნა: {UserError.Describe(ex)}",
+                $"Could not create the report: {UserError.Describe(ex)}");
         }
         finally
         {
@@ -3493,7 +3589,7 @@ public partial class ServiceViewModel : BaseViewModel
         catch (Exception ex)
         {
             ReminderStatusColor = "#B3361F";
-            ReminderStatusText = L($"განულება ვერ შესრულდა: {ex.Message}", $"Reset failed: {ex.Message}");
+            ReminderStatusText = L($"განულება ვერ შესრულდა: {UserError.Describe(ex)}", $"Reset failed: {UserError.Describe(ex)}");
         }
         finally
         {
@@ -3867,8 +3963,8 @@ public partial class ServiceViewModel : BaseViewModel
             catch (Exception ex)
             {
                 ServiceResult = L(
-                    $"ინსტრუქციის ჩვენება ვერ მოხერხდა: {ex.Message}",
-                    $"Could not show the instructions: {ex.Message}");
+                    $"ინსტრუქციის ჩვენება ვერ მოხერხდა: {UserError.Describe(ex)}",
+                    $"Could not show the instructions: {UserError.Describe(ex)}");
             }
 
             return;
@@ -4007,8 +4103,8 @@ public partial class ServiceViewModel : BaseViewModel
         catch (Exception ex)
         {
             ServiceResult = L(
-                $"მოქმედება ვერ შესრულდა: {ex.Message}",
-                $"Operation failed: {ex.Message}");
+                $"მოქმედება ვერ შესრულდა: {UserError.Describe(ex)}",
+                $"Operation failed: {UserError.Describe(ex)}");
         }
         finally
         {
@@ -4066,8 +4162,8 @@ public partial class ServiceViewModel : BaseViewModel
         catch (Exception ex)
         {
             ServiceResult = L(
-                $"Backup-ის აღდგენა ვერ შესრულდა: {ex.Message}",
-                $"Backup restore failed: {ex.Message}");
+                $"Backup-ის აღდგენა ვერ შესრულდა: {UserError.Describe(ex)}",
+                $"Backup restore failed: {UserError.Describe(ex)}");
         }
         finally
         {
@@ -4094,7 +4190,7 @@ public partial class ServiceViewModel : BaseViewModel
         OemDetail = L(
             "უსაფრთხოების მიზნით არცერთი OEM ბრძანება არ გაიგზავნა.",
             "No OEM command was sent for safety.");
-        ServiceResult = $"{L("შეცდომა", "Error")}: {exception.Message}";
+        ServiceResult = $"{L("შეცდომა", "Error")}: {UserError.Describe(exception)}";
         ClearOperationLists();
     }
 
@@ -4224,11 +4320,30 @@ public partial class ModuleScanViewModel : BaseViewModel
             OnPropertyChanged(nameof(HasFaults));
         };
 
-        _localization.LanguageChanged += (_, __) =>
-            MainThread.BeginInvokeOnMainThread(UpdateLanguageTexts);
+        Attach();
 
         Title = "შეცდომების სკანი";
     }
+
+    // ModuleScanPage should call Attach() on appearing and Detach() on leaving.
+    private bool _attached;
+
+    public void Attach()
+    {
+        if (_attached) return;
+        _attached = true;
+        _localization.LanguageChanged += OnLanguageChanged;
+    }
+
+    public void Detach()
+    {
+        if (!_attached) return;
+        _attached = false;
+        _localization.LanguageChanged -= OnLanguageChanged;
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e) =>
+        MainThread.BeginInvokeOnMainThread(UpdateLanguageTexts);
     /// <summary>Big report title: "2 შეცდომა" / "DTC კოდები" before a scan.</summary>
     public string FaultSummaryTitle => ModuleFaults.Count switch
     {
@@ -4487,9 +4602,8 @@ public partial class ModuleScanViewModel : BaseViewModel
                     TopologyText += "\n  └── OEM discovery ვერ დასრულდა";
                     TopologyNotice = "OEM extension შეცდომით დასრულდა; Generic OBD შედეგი უცვლელად შენარჩუნდა.";
                     ScanStateDetail = "Generic ECU დადასტურდა. OEM discovery ვერ დასრულდა; Generic შედეგი შენახულია.";
-                    Status = string.IsNullOrWhiteSpace(ex.Message)
-                        ? Status
-                        : $"{Status} OEM: {ex.Message}";
+                    System.Diagnostics.Debug.WriteLine($"OEM discovery failed: {ex}");
+                    Status = $"{Status} OEM: {UserError.Describe(ex)}";
                 }
             }
             else
@@ -4535,9 +4649,11 @@ public partial class ModuleScanViewModel : BaseViewModel
             ScanStateDetail = "OBD მოდულის სკანირება ვერ დასრულდა. მონაცემი არ არის გამოგონილი.";
             ModuleFaultEmptyMessage = "DTC კოდები ვერ წაიკითხა — სკანირება შეცდომით შეწყდა.";
             FreezeFrameText = "Freeze Frame არ იკითხება, რადგან სკანირება ვერ დასრულდა.";
-            Status = string.IsNullOrWhiteSpace(ex.Message)
+            System.Diagnostics.Debug.WriteLine($"Full scan failed: {ex}");
+            var scanError = UserError.Describe(ex);
+            Status = string.Equals(scanError, UserError.Describe(null), StringComparison.Ordinal)
                 ? "სრული სკანირება ვერ დასრულდა. შეამოწმე adapter და მანქანის კონტაქტი."
-                : ex.Message;
+                : scanError;
         }
         finally
         {
@@ -4705,7 +4821,7 @@ public partial class ModuleScanViewModel : BaseViewModel
             }
             catch (Exception ex)
             {
-                Status = ClearL($"წაშლა ვერ შესრულდა: {ex.Message}", $"Clearing failed: {ex.Message}");
+                Status = ClearL($"წაშლა ვერ შესრულდა: {UserError.Describe(ex)}", $"Clearing failed: {UserError.Describe(ex)}");
                 await Shell.Current.DisplayAlertAsync(ClearL("შეცდომა", "Error"), Status, "OK");
                 return;
             }
@@ -5287,7 +5403,7 @@ public partial class ModuleScanViewModel : BaseViewModel
                 : string.Join(" · ", record.Values.Select(value => $"{value.Label}: {value.DisplayValue}"))))));
     [RelayCommand] public async Task Export() {
         try
-        { if (Report == null) return; try { var path = await _report.ExportAsync(Report, "txt"); await Share.Default.RequestAsync(new ShareFileRequest { Title = "OBD-II Report", File = new ShareFile(path) }); } catch (Exception ex) { Status = ex.Message; }
+        { if (Report == null) return; try { var path = await _report.ExportAsync(Report, "txt"); await Share.Default.RequestAsync(new ShareFileRequest { Title = "OBD-II Report", File = new ShareFile(path) }); } catch (Exception ex) { Status = UserError.Describe(ex); }
         }
         catch (Exception commandException)
         {
@@ -5295,7 +5411,7 @@ public partial class ModuleScanViewModel : BaseViewModel
         } }
     [RelayCommand] public async Task ExportJson() {
         try
-        { if (Report == null) return; try { var path = await _report.ExportAsync(Report, "json"); await Share.Default.RequestAsync(new ShareFileRequest { Title = "OBD-II JSON Report", File = new ShareFile(path) }); } catch (Exception ex) { Status = ex.Message; }
+        { if (Report == null) return; try { var path = await _report.ExportAsync(Report, "json"); await Share.Default.RequestAsync(new ShareFileRequest { Title = "OBD-II JSON Report", File = new ShareFile(path) }); } catch (Exception ex) { Status = UserError.Describe(ex); }
         }
         catch (Exception commandException)
         {
@@ -5303,7 +5419,7 @@ public partial class ModuleScanViewModel : BaseViewModel
         } }
     [RelayCommand] public async Task ExportCsv() {
         try
-        { if (Report == null) return; try { var path = await _report.ExportAsync(Report, "csv"); await Share.Default.RequestAsync(new ShareFileRequest { Title = "OBD-II CSV Report", File = new ShareFile(path) }); } catch (Exception ex) { Status = ex.Message; }
+        { if (Report == null) return; try { var path = await _report.ExportAsync(Report, "csv"); await Share.Default.RequestAsync(new ShareFileRequest { Title = "OBD-II CSV Report", File = new ShareFile(path) }); } catch (Exception ex) { Status = UserError.Describe(ex); }
         }
         catch (Exception commandException)
         {
@@ -5311,7 +5427,7 @@ public partial class ModuleScanViewModel : BaseViewModel
         } }
     [RelayCommand] public async Task ExportPdf() {
         try
-        { if (Report == null) return; try { var path = await _report.ExportPdfAsync(Report); await Share.Default.RequestAsync(new ShareFileRequest { Title = "OBD-II PDF Report", File = new ShareFile(path) }); } catch (Exception ex) { Status = ex.Message; }
+        { if (Report == null) return; try { var path = await _report.ExportPdfAsync(Report); await Share.Default.RequestAsync(new ShareFileRequest { Title = "OBD-II PDF Report", File = new ShareFile(path) }); } catch (Exception ex) { Status = UserError.Describe(ex); }
         }
         catch (Exception commandException)
         {

@@ -19,9 +19,9 @@ public partial class BluetoothPage : ContentPage
 
     protected override async void OnAppearing()
     {
+        base.OnAppearing();
         try
         {
-        base.OnAppearing();
         ApplyUiLocalization();
 
         if (BindingContext is BluetoothViewModel viewModel)

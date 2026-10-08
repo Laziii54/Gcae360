@@ -34,6 +34,8 @@
             <VerticalStackLayout Spacing="2">
                 <Label Text="PERFORMANCE LAB" Style="{StaticResource PageTitleStyle}" />
                 <Label AutomationId="DynamicTextAccelerationTestLabel" Text="{Binding AccelerationTestLabel}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
+                <!-- Text set in code-behind (bilingual) -->
+                <Label x:Name="SafetyWarningLabel" AutomationId="DynamicTextAccelerationSafetyWarning" TextColor="#F59E0B" FontSize="11" FontAttributes="Bold" LineBreakMode="WordWrap" Margin="0,4,0,0" />
             </VerticalStackLayout>
 
             <!-- Live speed + RPM / Throttle / OBD status -->
@@ -64,7 +66,7 @@
                         </VerticalStackLayout>
                     </Grid>
 
-                    <Label AutomationId="DynamicTextAccelerationSpeedSource" Text="{Binding AccelerationSpeedSource}" TextColor="{DynamicResource SubTextColor}" FontSize="11" HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" Margin="14,0,14,12" />
+                    <Label IsVisible="False" AutomationId="DynamicTextAccelerationSpeedSource" Text="{Binding AccelerationSpeedSource}" TextColor="{DynamicResource SubTextColor}" FontSize="11" HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" Margin="14,0,14,12" />
                 </VerticalStackLayout>
             </Border>
 

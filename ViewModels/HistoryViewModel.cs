@@ -118,7 +118,7 @@ public partial class HistoryViewModel : BaseViewModel
         {
             await Shell.Current.DisplayAlertAsync(
                 CarScanner.Services.Localization.LocalizationService.T("ექსპორტის შეცდომა"),
-                CarScanner.Services.Localization.LocalizationService.T(ex.Message),
+                CarScanner.Services.UserError.Describe(ex),
                 CarScanner.Services.Localization.LocalizationService.T("კარგი"));
         }
     }

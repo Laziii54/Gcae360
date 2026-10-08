@@ -94,7 +94,7 @@
                                         TextColor="{DynamicResource SubTextColor}"
                                         FontSize="11" />
 
-                                    <Label
+                                    <Label IsVisible="False"
                                         Text="{Binding Protocol}"
                                         TextColor="{DynamicResource SubTextColor}"
                                         FontSize="12" />

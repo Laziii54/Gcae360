@@ -47,6 +47,11 @@
 
           echo "iOS Target Framework: $IOS_TFM"
 
+          # Marketing version comes from CarScanner.csproj (single source of truth).
+          APP_DISPLAY_VERSION=$(grep -oE '<ApplicationDisplayVersion>[^<]+' CarScanner.csproj | head -1 | sed 's/<ApplicationDisplayVersion>//')
+          if [ -z "$APP_DISPLAY_VERSION" ]; then APP_DISPLAY_VERSION="1.0.0"; fi
+          echo "App display version: $APP_DISPLAY_VERSION"
+
           CERT_NAME=$(keychain list-certificates | jq -r '.[] | .common_name' | head -1)
 
           PROFILE_NAME=$(find ~/Library/MobileDevice/Provisioning\ Profiles \
@@ -63,7 +68,7 @@
             -p:BuildIpa=True \
             -p:RuntimeIdentifier=ios-arm64 \
             -p:ApplicationId="com.gcar360.app" \
-            -p:ApplicationDisplayVersion="1.0" \
+            -p:ApplicationDisplayVersion="$APP_DISPLAY_VERSION" \
             -p:ApplicationVersion="$BUILD_NUMBER" \
             -p:CodesignKey="$CERT_NAME" \
             -p:CodesignProvision="$PROFILE_NAME" \

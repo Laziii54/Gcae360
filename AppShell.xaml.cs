@@ -19,28 +19,31 @@ public partial class AppShell : Shell
         _pro = pro;
         BindingContext = new ShellStatusViewModel(pro, bluetooth, vehicleContext);
         Navigating += OnNavigating;
-        Navigated += async (_, __) =>
+        Navigated += (_, __) =>
         {
-            localization.ApplyCurrentPage();
-
-            if (CurrentPage != null)
+            try
             {
+                // Theme once per navigation (cheap: skipped when unchanged);
+                // ApplyCurrentPage only translates texts.
                 ThemeService.Apply();
+                localization.ApplyCurrentPage();
 
-                if (CurrentPage is HomePage homePage &&
-                    homePage.BindingContext is HomeViewModel homeViewModel)
+                if (CurrentPage != null)
                 {
-                    await homeViewModel.RefreshConnectionSummaryAsync(forceVinRefresh: true);
+                    // Home refreshes its connection summary / VIN itself in
+                    // HomePage.OnAppearing; doing it here too ran it twice.
+                    _ = FadeInCurrentPageAsync(CurrentPage);
                 }
-
-                _ = FadeInCurrentPageAsync(CurrentPage);
+            }
+            catch (Exception navigatedException)
+            {
+                CarScanner.Services.CommandErrors.Report(navigatedException, "AppShell.Navigated");
             }
         };
         if (Application.Current != null) Application.Current.RequestedThemeChanged += (_, __) => MainThread.BeginInvokeOnMainThread(() => { if (CurrentPage != null) ThemeService.Apply(); });
         Routing.RegisterRoute(nameof(BluetoothPage), typeof(BluetoothPage));
         Routing.RegisterRoute(nameof(LiveDataPage), typeof(LiveDataPage));
         Routing.RegisterRoute(nameof(HistoryPage), typeof(HistoryPage));
-        Routing.RegisterRoute(nameof(RecordingHistoryPage), typeof(RecordingHistoryPage));
         Routing.RegisterRoute(nameof(ResetRecorderPage), typeof(ResetRecorderPage));
         Routing.RegisterRoute(nameof(CustomsCalculatorPage), typeof(CustomsCalculatorPage));
         Routing.RegisterRoute(nameof(SettingsPage), typeof(SettingsPage));
@@ -87,6 +90,8 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(VinPhotoGalleryPage), typeof(VinPhotoGalleryPage));
         Routing.RegisterRoute(nameof(VinScanPage), typeof(VinScanPage));
         Routing.RegisterRoute(nameof(AccountPage), typeof(AccountPage));
+        Routing.RegisterRoute(nameof(VehicleJournalPage), typeof(VehicleJournalPage));
+        Routing.RegisterRoute(nameof(AllToolsPage), typeof(AllToolsPage));
         localization.Apply(this);
 
 

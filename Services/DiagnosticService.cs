@@ -501,16 +501,6 @@ public sealed class DiagnosticService
     }
 
 
-    private static bool IsEnglish()
-    {
-        var language =
-            Preferences.Default.Get(
-                LocalizationService.LanguageKey,
-                "English");
-
-        return string.Equals(
-            language,
-            "English",
-            StringComparison.OrdinalIgnoreCase);
-    }
+    // Every language except Georgian uses the English DTC texts.
+    private static bool IsEnglish() => CarScanner.Services.Localization.LanguageCatalog.UsesEnglishBase;
 }

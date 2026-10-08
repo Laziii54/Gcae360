@@ -252,6 +252,14 @@ public partial class AccelerationLeaderboardViewModel : BaseViewModel
                 ApplyFilter();
                 await RefreshVideoStateAsync();
             }
+            else
+            {
+                // Rejected / not accepted: the local run's state was updated —
+                // show it instead of a stale "added" state.
+                (_mySubmissionIds, _myBest) = await _leaderboard.GetMineAsync(_testId);
+                ApplyFilter();
+                await RefreshVideoStateAsync();
+            }
         }
         finally { IsBusy = false; }
         }

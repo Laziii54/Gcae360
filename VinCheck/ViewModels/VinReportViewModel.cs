@@ -37,7 +37,20 @@ public partial class VinReportViewModel(
         (ShowNoAuction || ShowHistoryUnavailable ||
          Math.Max(r.Access?.PhotoCount ?? 0, r.AuctionRecords.Sum(a => a.ImageUrls.Count)) + r.WebPhotos.Count < 3);
 
-    public bool ShowFullOffer => Full is { Available: true, Purchased: false, Pending: false } && FreeDataIsThin;
+    /// <summary>
+    /// The paid full history is bought on a bank (BOG/TBC) web checkout. App Store
+    /// (3.1.1) and Google Play payments policy do not allow a mobile app to offer or
+    /// link to an outside payment for digital content, so the offer is hidden on
+    /// phones. A report that is already bought (e.g. on the website) is still shown.
+    /// Turn this back on only together with an in-app purchase product.
+    /// </summary>
+#if ANDROID || IOS
+    private static bool ExternalCheckoutAllowed => false;
+#else
+    private static bool ExternalCheckoutAllowed => true;
+#endif
+
+    public bool ShowFullOffer => ExternalCheckoutAllowed && Full is { Available: true, Purchased: false, Pending: false } && FreeDataIsThin;
     public bool ShowFullPending => Full is { Pending: true, Purchased: false } || !string.IsNullOrEmpty(FullStatusText);
     public bool ShowFullReport => Full is { Purchased: true, Report: not null };
     public FullHistoryReport? FullReport => Full?.Report;
@@ -90,7 +103,7 @@ public partial class VinReportViewModel(
     {
         try
         {
-        if (Report is null || IsBuyingFull)
+        if (Report is null || IsBuyingFull || !ExternalCheckoutAllowed)
             return;
 
         if (!account.IsSignedIn)
@@ -272,7 +285,7 @@ public partial class VinReportViewModel(
         }
     }
 
-    public string CustomsText => Microsoft.Maui.Storage.Preferences.Default.Get("language", "English") == "English"
+    public string CustomsText => CarScanner.Services.Localization.LanguageCatalog.UsesEnglishBase
         ? "🧮 Customs cost in Georgia"
         : "🧮 განბაჟების გამოთვლა";
 

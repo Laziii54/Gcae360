@@ -111,6 +111,22 @@ FROM ResetRecordings ORDER BY Id DESC LIMIT $n";
         return rows;
     }
 
+    /// <summary>Account deletion: the technical reports stay but lose the account link.</summary>
+    public async Task ForgetAccountAsync(string accountId, CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            await using var c = new SqliteConnection(_connectionString);
+            await c.OpenAsync(ct);
+            await using var cmd = c.CreateCommand();
+            cmd.CommandText = "UPDATE ResetRecordings SET AccountId=NULL WHERE AccountId=$a";
+            cmd.Parameters.AddWithValue("$a", accountId);
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+        finally { _gate.Release(); }
+    }
+
     public async Task<string?> FramesAsync(long id, CancellationToken ct)
     {
         await _gate.WaitAsync(ct);

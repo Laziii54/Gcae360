@@ -31,8 +31,36 @@ public partial class QrReportViewModel : BaseViewModel
         _session = session;
         _localization = localization;
         UpdateTexts();
-        _localization.LanguageChanged += (_, _) => UpdateTexts();
+        Attach();
     }
+
+    // Detached by the page when it goes away (no leak through singleton services).
+    private bool _attached;
+    private bool _refreshOnAttach;
+
+    public void Attach()
+    {
+        if (_attached) return;
+        _attached = true;
+        _localization.LanguageChanged += HandleLanguageChanged;
+
+        // Texts may have changed while the page was hidden (e.g. Settings on top).
+        if (_refreshOnAttach)
+        {
+            _refreshOnAttach = false;
+            HandleLanguageChanged(this, EventArgs.Empty);
+        }
+    }
+
+    public void Detach()
+    {
+        if (!_attached) return;
+        _attached = false;
+        _localization.LanguageChanged -= HandleLanguageChanged;
+        _refreshOnAttach = true;
+    }
+
+    private void HandleLanguageChanged(object? sender, EventArgs e) => UpdateTexts();
 
     [RelayCommand]
     public async Task Create()
@@ -60,6 +88,19 @@ public partial class QrReportViewModel : BaseViewModel
                 : (_localization.IsEnglish ? "The QR report could not be created." : "QR ანგარიში ვერ შეიქმნა.");
         }
         catch (OperationCanceledException) { }
+        catch (QrReportServerException server)
+        {
+            var en = _localization.IsEnglish;
+            StatusMessage = server.StatusCode switch
+            {
+                429 => en ? "Too many links in a short time. Try again in an hour." : "მოკლე დროში ძალიან ბევრი ბმული შეიქმნა. სცადე ერთ საათში.",
+                400 when server.Reason.Contains("vehicle") => en ? "The car is not identified. Connect to the car and try again." : "მანქანა ამოცნობილი არ არის. დაუკავშირდი მანქანას და სცადე თავიდან.",
+                400 when server.Reason.Contains("date") => en ? "The check date is not valid. Run the check again." : "შემოწმების თარიღი არასწორია. გაიმეორე შემოწმება.",
+                400 when server.Reason.Contains("large") => en ? "The report is too long for a QR link." : "ანგარიში QR ბმულისთვის ძალიან გრძელია.",
+                404 or 405 => en ? "The server needs an update for QR reports." : "QR ანგარიშისთვის სერვერს განახლება სჭირდება.",
+                _ => en ? $"The server could not create the link ({server.StatusCode}). Try again later." : $"სერვერმა ბმული ვერ შექმნა ({server.StatusCode}). სცადე მოგვიანებით."
+            };
+        }
         catch (Exception ex)
         {
             StatusMessage = _localization.IsEnglish

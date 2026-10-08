@@ -19,22 +19,35 @@ public sealed class ReminderNotificationService
             var enabled = await LocalNotificationCenter.Current.AreNotificationsEnabled();
             if (!enabled)
             {
-                try { await LocalNotificationCenter.Current.RequestNotificationPermission(); }
-                catch { return; }
+                // Nothing is scheduled without the system permission.
+                if (!await LocalNotificationCenter.Current.RequestNotificationPermission())
+                    return;
             }
 
             await ScheduleFromLastScanAsync();
         }
-        catch
+        catch (Exception ex)
         {
             // Notification support must never be allowed to crash application startup.
+            Log("Initialize", ex);
         }
     }
 
     public async Task MarkScanCompletedAsync()
     {
         Preferences.Default.Set(LastScanKey, DateTimeOffset.UtcNow.ToString("O"));
-        try { await ScheduleFromLastScanAsync(); } catch { }
+        try
+        {
+            if (!Preferences.Default.Get(EnabledKey, false) ||
+                !await LocalNotificationCenter.Current.AreNotificationsEnabled())
+                return;
+
+            await ScheduleFromLastScanAsync();
+        }
+        catch (Exception ex)
+        {
+            Log("MarkScanCompleted", ex);
+        }
     }
 
     public async Task SetEnabledAsync(bool enabled)
@@ -50,8 +63,14 @@ public sealed class ReminderNotificationService
 
             await InitializeAsync();
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Log("SetEnabled", ex);
+        }
     }
+
+    private static void Log(string where, Exception ex) =>
+        System.Diagnostics.Debug.WriteLine($"[ReminderNotificationService.{where}] {ex}");
 
     private async Task ScheduleFromLastScanAsync()
     {
@@ -66,13 +85,16 @@ public sealed class ReminderNotificationService
         if (notifyAt <= DateTimeOffset.UtcNow)
             notifyAt = DateTimeOffset.UtcNow.AddMinutes(1);
 
-        try { LocalNotificationCenter.Current.Cancel(NotificationId); } catch { }
+        try { LocalNotificationCenter.Current.Cancel(NotificationId); }
+        catch (Exception ex) { Log("Cancel", ex); }
 
         await LocalNotificationCenter.Current.Show(new NotificationRequest
         {
             NotificationId = NotificationId,
             Title = "Georgian Car Scanner",
-            Description = "უკვე 2 კვირაა მანქანა არ დაგისკანერებიათ. დროა ახალი OBD-II სკანირება ჩაატაროთ.",
+            Description = CarScanner.Services.OBD.ObdLang.IsEnglish
+                ? "It has been 2 weeks since your last scan. Time for a new OBD-II check."
+                : "უკვე 2 კვირაა მანქანა არ დაგისკანერებიათ. დროა ახალი OBD-II სკანირება ჩაატაროთ.",
             Schedule = new NotificationRequestSchedule { NotifyTime = notifyAt.ToLocalTime() },
             ReturningData = "scan-reminder"
         });

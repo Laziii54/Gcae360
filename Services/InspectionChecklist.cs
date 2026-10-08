@@ -62,7 +62,8 @@ public static class InspectionChecklist
     private const InspectionSeverity Major = InspectionSeverity.Major;
     private const InspectionSeverity Dangerous = InspectionSeverity.Dangerous;
 
-    public static IReadOnlyList<InspectionQuestion> Questions { get; } = new[]
+    /// <summary>The full catalogue (kept for reference; the app asks the short list below).</summary>
+    private static readonly InspectionQuestion[] Full = new[]
     {
         // 1. Identification
         Q("id_plates", 1, Major,
@@ -404,6 +405,47 @@ public static class InspectionChecklist
             "A loud or rising noise when accelerating points to a holed silencer or pipe.",
             "შეაკეთე ან შეცვალე მაყუჩი.", "Repair or replace the silencer."),
     };
+
+    /// <summary>
+    /// Short self-check: only what most often fails the inspection. Brake/ABS
+    /// and airbag warning lamps are not asked — the OBD check reads those modules.
+    /// </summary>
+    private static readonly string[] ShortIds =
+    {
+        "id_plates",
+        "br_pedal", "br_pads", "br_park",
+        "st_play",
+        "vi_glass", "vi_wipers", "vi_tint",
+        "li_main", "li_turn", "li_brake",
+        "ti_tread",
+        "ch_fuel",
+        "sa_belts", "sa_kit",
+        "en_smoke"
+    };
+
+    private static readonly InspectionQuestion[] Combined =
+    {
+        Q("li_main", 5, Major,
+            "ახლო და შორი შუქი ორივე ფარში ანთია?",
+            "Do the low and high beams work in both headlights?",
+            "ფარის შუქი არ ანთია", "Headlight beam not working",
+            "ჩართე ახლო, მერე შორი შუქი და შეხედე ორივე ფარს წინიდან.",
+            "Switch on low, then high beam and look at both headlights from the front.",
+            "შეცვალე ნათურა ან შეამოწმე დაუკრავი.", "Replace the bulb or check the fuse."),
+        Q("sa_kit", 8, Major,
+            "მანქანაში არის ცეცხლმაქრი (ვადაგაუსვლელი), საავარიო სამკუთხედი და აფთიაქი?",
+            "Are a fire extinguisher (in date), a warning triangle and a first-aid kit in the car?",
+            "აკლია ცეცხლმაქრი, სამკუთხედი ან აფთიაქი", "Extinguisher, triangle or first-aid kit missing",
+            "შეამოწმე საბარგული. ცეცხლმაქრზე ვადა წერია.",
+            "Check the boot. The extinguisher shows its expiry date.",
+            "იყიდე ის, რაც აკლია — ნებისმიერ ავტონაწილების მაღაზიაშია.", "Buy what is missing — any car parts shop has them."),
+    };
+
+    public static IReadOnlyList<InspectionQuestion> Questions { get; } =
+        ShortIds
+            .Select(id => Full.Concat(Combined).FirstOrDefault(q => q.Id == id))
+            .OfType<InspectionQuestion>()
+            .ToList();
 
     public static IReadOnlyList<InspectionQuestion> ForCategory(int category) =>
         Questions.Where(q => q.Category == category).ToList();

@@ -11,12 +11,13 @@ public partial class EcuIdentifiersPage:ContentPage
 
     protected override async void OnAppearing()
     {
+        base.OnAppearing();
         try
         {
-        base.OnAppearing();
         ApplyUiLocalization();
         if (BindingContext is EcuIdentifiersViewModel viewModel)
         {
+            viewModel.Attach();
             try
             {
                 await viewModel.LoadCommand.ExecuteAsync(null);
@@ -33,11 +34,14 @@ public partial class EcuIdentifiersPage:ContentPage
 
     protected override async void OnDisappearing()
     {
+        base.OnDisappearing();
         try
         {
-        base.OnDisappearing();
         if (BindingContext is EcuIdentifiersViewModel viewModel)
+        {
+            viewModel.Detach();
             await viewModel.StopPidUpdatesAsync();
+        }
         }
         catch (Exception commandException)
         {

@@ -251,6 +251,12 @@ public sealed class EvEnergyReader
         // Pack voltage / current / SoC as published by the GM community PID
         // lists (Torque) and OBDb. Values are accepted only when they decode
         // to a realistic pack voltage and current.
+        // OBDb Chevrolet-Volt: pack volts 22 2429 and current 22 2414 are answered by
+        // the hybrid control module 7E1 (not 7E4); BECM current 22 40D4 on 7E7 and
+        // the "HD" current 22 4356 on 7E4 are alternatives.
+        var hpcmVoltage = (Did(0x7E1, 0x7E9, 0x2429), new EvSignal("HV battery voltage (HPCM)", 0, 16, false, 1, 64, 0));
+        var hpcmCurrent = (Did(0x7E1, 0x7E9, 0x2414), new EvSignal("HV battery current (HPCM)", 0, 16, true, 1, 20, 0));
+        var hdCurrent = (Did(0x7E4, 0x7EC, 0x4356), new EvSignal("HV battery current HD", 0, 16, true, -500, 3333, 0));
         var voltVoltage = (Did(0x7E4, 0x7EC, 0x2429), new EvSignal("HV battery voltage", 0, 16, false, 1, 64, 0));
         var voltCurrent = (Did(0x7E4, 0x7EC, 0x2414), new EvSignal("HV battery current", 0, 16, true, 1, 20, 0));
         var becmCurrent = (Did(0x7E7, 0x7EF, 0x40D4), new EvSignal("HV battery current (BECM)", 0, 16, true, 1, 20, 0));
@@ -272,8 +278,8 @@ public sealed class EvEnergyReader
         {
             yield return new KnownProfile(
                 "Chevrolet Volt · HV battery",
-                new[] { voltVoltage, boltVoltage },
-                new[] { voltCurrent, becmCurrent },
+                new[] { hpcmVoltage, voltVoltage, boltVoltage },
+                new[] { hpcmCurrent, becmCurrent, hdCurrent, voltCurrent },
                 new[] { voltSocShown, voltSocRaw },
                 250, 450);
         }
@@ -449,6 +455,21 @@ public sealed class EvEnergyReader
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Electric range the car itself shows on the dashboard (Chevrolet Volt /
+    /// Bolt, 7E4 22 41A6, ÷64 km). Null for other cars or when not answered.
+    /// </summary>
+    public async Task<double?> ReadElectricRangeKmAsync(VehicleInfo? vehicle, CancellationToken token)
+    {
+        if (vehicle is null || GmVoltBoltBattery.IsBolt(vehicle.Manufacturer, vehicle.Model) is null)
+            return null;
+        var data = await SafeReadAsync(Did(0x7E4, 0x7EC, 0x41A6), token).ConfigureAwait(false);
+        if (data is not { Length: >= 2 })
+            return null;
+        var km = ((data[0] << 8) | data[1]) / 64d;
+        return km is >= 0 and < 900 ? Math.Round(km, 1) : null;
     }
 
     private async Task<byte[]?> SafeReadAsync(EvRequest request, CancellationToken token)

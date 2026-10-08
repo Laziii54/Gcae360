@@ -221,7 +221,7 @@ public partial class PerformanceVideoViewModel : BaseViewModel
 
     /// <summary>Shows an unexpected camera error on the page instead of closing the app.</summary>
     public void ReportCameraError(Exception ex) =>
-        StatusText = PerformanceVideoText.Format(PerformanceVideoText.CameraError, ex.Message);
+        StatusText = PerformanceVideoText.Format(PerformanceVideoText.CameraError, UserError.Describe(ex));
 
     /// <summary>Called by the page once the native camera view is ready.</summary>
     public async Task AttachCameraAsync(IPerformanceCameraController controller)
@@ -264,7 +264,7 @@ public partial class PerformanceVideoViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            StatusText = PerformanceVideoText.Format(PerformanceVideoText.CameraError, ex.Message);
+            StatusText = PerformanceVideoText.Format(PerformanceVideoText.CameraError, UserError.Describe(ex));
         }
     }
 
@@ -380,7 +380,7 @@ public partial class PerformanceVideoViewModel : BaseViewModel
         catch (Exception ex)
         {
             IsRecording = false;
-            StatusText = PerformanceVideoText.Format(PerformanceVideoText.RecordError, ex.Message);
+            StatusText = PerformanceVideoText.Format(PerformanceVideoText.RecordError, UserError.Describe(ex));
         }
         }
         catch (Exception commandException)
@@ -400,7 +400,7 @@ public partial class PerformanceVideoViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            StatusText = PerformanceVideoText.Format(PerformanceVideoText.RecordError, ex.Message);
+            StatusText = PerformanceVideoText.Format(PerformanceVideoText.RecordError, UserError.Describe(ex));
         }
         finally
         {
@@ -432,10 +432,40 @@ public partial class PerformanceVideoViewModel : BaseViewModel
         _recordTimer.Start();
     }
 
-    private void OnRecordTimerTick(object? sender, EventArgs e)
+    /// <summary>
+    /// A 0–100 run fits easily; longer clips would exceed the 80 MB ranking
+    /// upload limit, so recording stops by itself after one minute.
+    /// </summary>
+    private static readonly TimeSpan MaxRecordingLength = TimeSpan.FromSeconds(60);
+    private bool _autoStopping;
+
+    private static string L(string ka, string en) => CarScanner.Services.OBD.ObdLang.IsEnglish ? en : ka;
+
+    private async void OnRecordTimerTick(object? sender, EventArgs e)
     {
-        var elapsed = DateTime.UtcNow - _recordingStartedUtc;
-        RecordTimeText = $"{(int)elapsed.TotalMinutes:00}:{elapsed.Seconds:00}";
+        try
+        {
+            var elapsed = DateTime.UtcNow - _recordingStartedUtc;
+            RecordTimeText = $"{(int)elapsed.TotalMinutes:00}:{elapsed.Seconds:00}";
+
+            if (elapsed < MaxRecordingLength || !IsRecording || _autoStopping || _camera is null)
+                return;
+
+            _autoStopping = true;
+            try
+            {
+                await StopRecordingCoreAsync();
+                StatusText = L("ჩაწერა ავტომატურად შეჩერდა 60 წამზე.", "Recording stopped automatically at 60 seconds.");
+            }
+            finally
+            {
+                _autoStopping = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            CarScanner.Services.CommandErrors.Report(ex, "PerformanceVideoViewModel.OnRecordTimerTick");
+        }
     }
 
     // ------------------------------------------------------------------
@@ -509,15 +539,22 @@ public partial class PerformanceVideoViewModel : BaseViewModel
             // video-verified badge to a matching recent 0–100 run.
             // A private copy (with the data overlay when made) is kept for a
             // ranking review upload.
-            await _leaderboard.AttachVideoToLatestEligibleRunAsync(_recordingStartedUtc, composed ?? source);
+            var reviewCopy = composed ?? source;
+            var tooLarge = File.Exists(reviewCopy) &&
+                           new FileInfo(reviewCopy).Length > AccelerationLeaderboardService.MaxVideoBytes;
+            if (!tooLarge)
+                await _leaderboard.AttachVideoToLatestEligibleRunAsync(_recordingStartedUtc, reviewCopy);
 
             DeletePendingVideo();
             IsSavePanelVisible = false;
-            StatusText = PerformanceVideoText.Get(withData && clean ? PerformanceVideoText.SavedBoth : PerformanceVideoText.Saved);
+            StatusText = tooLarge
+                ? L("ვიდეო გალერეაში შეინახა, მაგრამ რეიტინგისთვის ძალიან დიდია (მაქს. 80 MB). რეიტინგის დასადასტურებლად ჩაწერე უფრო მოკლე ვიდეო.",
+                    "The video was saved to the gallery, but it is too large for the ranking (max 80 MB). Record a shorter clip to verify the run.")
+                : PerformanceVideoText.Get(withData && clean ? PerformanceVideoText.SavedBoth : PerformanceVideoText.Saved);
         }
         catch (Exception ex)
         {
-            StatusText = PerformanceVideoText.Format(PerformanceVideoText.SaveFailed, ex.Message);
+            StatusText = PerformanceVideoText.Format(PerformanceVideoText.SaveFailed, UserError.Describe(ex));
         }
         finally
         {

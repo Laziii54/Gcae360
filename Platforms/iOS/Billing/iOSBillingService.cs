@@ -8,9 +8,21 @@ namespace CarScanner.Platforms.iOS.Billing;
 
 #pragma warning disable CA1422
 
+/// <summary>One StoreKit transaction as it is sent to the server for verification.</summary>
+public sealed record StoreTransactionInfo(
+    string TransactionId,
+    string? OriginalTransactionId,
+    string ProductId);
+
 /// <summary>
-/// StoreKit transaction bridge. It only returns an Apple transaction ID;
+/// StoreKit transaction bridge. It only returns Apple transaction IDs;
 /// the secure backend is solely responsible for granting PRO entitlement.
+///
+/// Purchased transactions are finished (<c>FinishTransaction</c>) only after
+/// the server accepted them. Until then StoreKit keeps them in the payment
+/// queue and delivers them again at the next launch, where the observer
+/// (added at app start, see AppDelegate) hands them to the server verifier
+/// that PurchaseService registers.
 /// </summary>
 public sealed class iOSBillingService : IDisposable
 {
@@ -20,7 +32,10 @@ public sealed class iOSBillingService : IDisposable
     private readonly PaymentObserver _observer;
     private readonly SemaphoreSlim _operationGate =
         new(1, 1);
+    private readonly SemaphoreSlim _processGate =
+        new(1, 1);
 
+    private Func<StoreTransactionInfo, CancellationToken, Task<bool>>? _verifier;
     private bool _disposed;
 
     public bool IsReady =>
@@ -28,9 +43,73 @@ public sealed class iOSBillingService : IDisposable
 
     public iOSBillingService()
     {
-        _observer = new PaymentObserver();
+        _observer = new PaymentObserver(
+            () => _ = ProcessUnfinishedAsync(CancellationToken.None));
         SKPaymentQueue.DefaultQueue
             .AddTransactionObserver(_observer);
+    }
+
+    /// <summary>
+    /// Registers the server check used for purchased transactions that are not
+    /// part of a purchase the user is waiting for (re-delivered at launch,
+    /// approved "Ask to Buy", renewals). It returns true when the transaction may
+    /// be finished.
+    /// </summary>
+    public void SetServerVerifier(
+        Func<StoreTransactionInfo, CancellationToken, Task<bool>> verifier)
+    {
+        _verifier = verifier;
+        _ = ProcessUnfinishedAsync(CancellationToken.None);
+    }
+
+    /// <summary>Sends every unfinished purchased transaction to the server once.</summary>
+    public async Task ProcessUnfinishedAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var verifier = _verifier;
+        if (verifier is null || _disposed)
+            return;
+
+        try
+        {
+            await _processGate.WaitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (ObjectDisposedException)
+        {
+            return;
+        }
+
+        try
+        {
+            foreach (var info in _observer.UnclaimedTransactions())
+            {
+                if (cancellationToken.IsCancellationRequested || _disposed)
+                    break;
+
+                bool accepted;
+                try
+                {
+                    accepted = await verifier(info, cancellationToken);
+                }
+                catch
+                {
+                    accepted = false;
+                }
+
+                // Not accepted: stays in the queue and is tried again on
+                // the next resume / launch.
+                if (accepted)
+                    _observer.Finish(info.TransactionId);
+            }
+        }
+        finally
+        {
+            _processGate.Release();
+        }
     }
 
     public Task<string> GetProductStatusAsync(
@@ -85,9 +164,21 @@ public sealed class iOSBillingService : IDisposable
         CancellationToken cancellationToken = default)
         => await PurchaseProductAsync(ProductId, cancellationToken);
 
+    /// <summary>
+    /// Starts an App Store purchase. Returns the transaction ID of a purchased
+    /// (still unfinished) transaction, "PENDING" (Ask to Buy waits for approval),
+    /// "USER_CANCELED" or "ERROR:...". After the server check the caller must call
+    /// <see cref="CompleteTransaction"/> with the transaction ID.
+    /// </summary>
+    /// <param name="applicationUsername">
+    /// Optional opaque account id (SHA-256 hex of the GCar360 account id) set on
+    /// <c>SKMutablePayment.ApplicationUsername</c> so the server can bind the
+    /// purchase to the account.
+    /// </param>
     public async Task<string> PurchaseProductAsync(
         string productId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? applicationUsername = null)
     {
         if (!IsReady)
             return "ERROR:STORE_UNAVAILABLE";
@@ -108,8 +199,11 @@ public sealed class iOSBillingService : IDisposable
                 cancellationToken.Register(
                     _observer.CancelPurchase);
 
-            SKPaymentQueue.DefaultQueue.AddPayment(
-                SKPayment.CreateFrom(product));
+            var payment = SKMutablePayment.PaymentWithProduct(product);
+            if (!string.IsNullOrWhiteSpace(applicationUsername))
+                payment.ApplicationUsername = applicationUsername;
+
+            SKPaymentQueue.DefaultQueue.AddPayment(payment);
 
             return await resultTask;
         }
@@ -119,7 +213,8 @@ public sealed class iOSBillingService : IDisposable
         }
         catch (Exception ex)
         {
-            return $"ERROR:{ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"App Store purchase failed: {ex.GetType().Name}");
+            return "ERROR:PURCHASE_FAILED";
         }
         finally
         {
@@ -127,11 +222,36 @@ public sealed class iOSBillingService : IDisposable
         }
     }
 
-    public async Task<string?> RestoreProAsync(
+    /// <summary>Details of a purchased transaction that is not finished yet.</summary>
+    public StoreTransactionInfo? GetTransaction(string transactionId) =>
+        _observer.Find(transactionId);
+
+    /// <summary>
+    /// Ends the app's handling of a purchase returned by
+    /// <see cref="PurchaseProductAsync"/>. Accepted by the server: the
+    /// transaction is finished. Otherwise it stays in the StoreKit queue and is
+    /// verified again later (next resume or launch).
+    /// </summary>
+    public void CompleteTransaction(
+        string transactionId,
+        bool acceptedByServer)
+    {
+        if (acceptedByServer)
+            _observer.Finish(transactionId);
+        else
+            _observer.Release(transactionId);
+    }
+
+    /// <summary>
+    /// Restores completed App Store transactions. Returns the newest restored
+    /// transaction per original transaction (each with its own transaction ID,
+    /// original transaction ID and product ID).
+    /// </summary>
+    public async Task<IReadOnlyList<StoreTransactionInfo>> RestoreAsync(
         CancellationToken cancellationToken = default)
     {
         if (!IsReady)
-            return null;
+            return [];
 
         await _operationGate.WaitAsync(cancellationToken);
 
@@ -150,7 +270,7 @@ public sealed class iOSBillingService : IDisposable
         }
         catch (OperationCanceledException)
         {
-            return null;
+            return [];
         }
         finally
         {
@@ -253,29 +373,55 @@ public sealed class iOSBillingService : IDisposable
     private sealed class PaymentObserver :
         SKPaymentTransactionObserver
     {
+        private readonly object _gate = new();
+        private readonly Action _unclaimedArrived;
+
+        // Purchased transactions that are not finished yet, by transaction ID.
+        private readonly Dictionary<string, (SKPaymentTransaction Transaction, StoreTransactionInfo Info)>
+            _unfinished = new(StringComparer.Ordinal);
+
+        // Transactions handed to a purchase the user is waiting for; the
+        // background verifier leaves them alone until they are released.
+        private readonly HashSet<string> _claimed =
+            new(StringComparer.Ordinal);
+
+        private readonly List<(StoreTransactionInfo Info, double Date)> _restored = new();
+
         private string? _activeProductId;
         private TaskCompletionSource<string>?
             _purchaseCompletion;
-        private TaskCompletionSource<string?>?
+        private TaskCompletionSource<IReadOnlyList<StoreTransactionInfo>>?
             _restoreCompletion;
-        private string? _restoredTransactionId;
+
+        public PaymentObserver(Action unclaimedArrived)
+        {
+            _unclaimedArrived = unclaimedArrived;
+        }
 
         public Task<string> BeginPurchase(string productId)
         {
-            _activeProductId = productId;
-            _purchaseCompletion =
+            var completion =
                 new TaskCompletionSource<string>(
                     TaskCreationOptions.RunContinuationsAsynchronously);
-            return _purchaseCompletion.Task;
+            lock (_gate)
+            {
+                _activeProductId = productId;
+                _purchaseCompletion = completion;
+            }
+            return completion.Task;
         }
 
-        public Task<string?> BeginRestore()
+        public Task<IReadOnlyList<StoreTransactionInfo>> BeginRestore()
         {
-            _restoredTransactionId = null;
-            _restoreCompletion =
-                new TaskCompletionSource<string?>(
+            var completion =
+                new TaskCompletionSource<IReadOnlyList<StoreTransactionInfo>>(
                     TaskCreationOptions.RunContinuationsAsynchronously);
-            return _restoreCompletion.Task;
+            lock (_gate)
+            {
+                _restored.Clear();
+                _restoreCompletion = completion;
+            }
+            return completion.Task;
         }
 
         public void CancelPurchase()
@@ -286,84 +432,217 @@ public sealed class iOSBillingService : IDisposable
 
         public void CancelRestore()
         {
-            _restoreCompletion?.TrySetResult(null);
+            _restoreCompletion?.TrySetResult(
+                Array.Empty<StoreTransactionInfo>());
+        }
+
+        public StoreTransactionInfo? Find(string transactionId)
+        {
+            lock (_gate)
+            {
+                return _unfinished.TryGetValue(transactionId, out var entry)
+                    ? entry.Info
+                    : null;
+            }
+        }
+
+        public List<StoreTransactionInfo> UnclaimedTransactions()
+        {
+            lock (_gate)
+            {
+                return _unfinished.Values
+                    .Where(entry => !_claimed.Contains(entry.Info.TransactionId))
+                    .Select(entry => entry.Info)
+                    .ToList();
+            }
+        }
+
+        public void Release(string transactionId)
+        {
+            lock (_gate)
+            {
+                _claimed.Remove(transactionId);
+            }
+        }
+
+        public void Finish(string transactionId)
+        {
+            SKPaymentTransaction? transaction = null;
+            lock (_gate)
+            {
+                if (_unfinished.TryGetValue(transactionId, out var entry))
+                {
+                    transaction = entry.Transaction;
+                    _unfinished.Remove(transactionId);
+                }
+                _claimed.Remove(transactionId);
+            }
+
+            if (transaction is null)
+                return;
+
+            try
+            {
+                SKPaymentQueue.DefaultQueue.FinishTransaction(transaction);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"FinishTransaction failed: {ex.GetType().Name}");
+            }
+        }
+
+        private bool IsActivePurchase(string productId)
+        {
+            var completion = _purchaseCompletion;
+            return completion is not null &&
+                   !completion.Task.IsCompleted &&
+                   string.Equals(
+                       productId,
+                       _activeProductId,
+                       StringComparison.Ordinal);
         }
 
         public override void UpdatedTransactions(
             SKPaymentQueue queue,
             SKPaymentTransaction[] transactions)
         {
+            var unclaimedArrived = false;
+
             foreach (var transaction in transactions)
             {
-                var productId = transaction.Payment.ProductIdentifier;
-                var isActivePurchase = string.Equals(
-                    productId,
-                    _activeProductId,
-                    StringComparison.Ordinal);
-                var isRestoringKnownSubscription =
-                    _restoreCompletion is not null &&
-                    PurchaseService.SubscriptionProductIds.Contains(productId);
-
-                if (!isActivePurchase && !isRestoringKnownSubscription)
-                {
-                    continue;
-                }
+                var productId =
+                    transaction.Payment?.ProductIdentifier ?? string.Empty;
 
                 switch (transaction.TransactionState)
                 {
+                    case SKPaymentTransactionState.Purchasing:
+                        break;
+
+                    case SKPaymentTransactionState.Deferred:
+                    {
+                        // Ask to Buy: waits for a parent's approval. Not finished;
+                        // StoreKit later delivers Purchased (verified in the
+                        // background) or Failed.
+                        if (IsActivePurchase(productId))
+                            _purchaseCompletion?.TrySetResult("PENDING");
+                        break;
+                    }
+
                     case SKPaymentTransactionState.Purchased:
                     {
                         var id = transaction.TransactionIdentifier;
-                        _purchaseCompletion?.TrySetResult(
-                            string.IsNullOrWhiteSpace(id)
-                                ? "ERROR:EMPTY_TRANSACTION_ID"
-                                : id);
-                        queue.FinishTransaction(transaction);
+                        if (string.IsNullOrWhiteSpace(id))
+                        {
+                            if (IsActivePurchase(productId))
+                                _purchaseCompletion?.TrySetResult("ERROR:EMPTY_TRANSACTION_ID");
+                            break;
+                        }
+
+                        var info = new StoreTransactionInfo(
+                            id,
+                            transaction.OriginalTransaction?.TransactionIdentifier,
+                            productId);
+
+                        var claimed = false;
+                        lock (_gate)
+                        {
+                            _unfinished[id] = (transaction, info);
+
+                            if (IsActivePurchase(productId))
+                            {
+                                // Claim first, so the background verifier never
+                                // races the purchase the user is waiting for.
+                                _claimed.Add(id);
+                                claimed = _purchaseCompletion?.TrySetResult(id) == true;
+                                if (!claimed)
+                                    _claimed.Remove(id);
+                            }
+                        }
+
+                        // NOT finished here: only after the server accepted it.
+                        if (!claimed)
+                            unclaimedArrived = true;
                         break;
                     }
 
                     case SKPaymentTransactionState.Restored:
                     {
-                        var id =
-                            transaction.OriginalTransaction?
-                                .TransactionIdentifier
-                            ?? transaction.TransactionIdentifier;
-                        if (!string.IsNullOrWhiteSpace(id))
-                            _restoredTransactionId = id;
+                        var id = transaction.TransactionIdentifier;
+                        if (!string.IsNullOrWhiteSpace(id) &&
+                            !string.IsNullOrWhiteSpace(productId))
+                        {
+                            var date =
+                                transaction.TransactionDate?.SecondsSinceReferenceDate ?? 0;
+                            lock (_gate)
+                            {
+                                _restored.Add((
+                                    new StoreTransactionInfo(
+                                        id,
+                                        transaction.OriginalTransaction?.TransactionIdentifier,
+                                        productId),
+                                    date));
+                            }
+                        }
+
+                        // A restored transaction is a copy; the entitlement is
+                        // kept on the server, so it is finished right away.
                         queue.FinishTransaction(transaction);
                         break;
                     }
 
                     case SKPaymentTransactionState.Failed:
                     {
+                        // SKErrorPaymentCancelled = 2
                         var cancelled =
                             transaction.Error?.Code == 2;
-                        _purchaseCompletion?.TrySetResult(
-                            cancelled
-                                ? "USER_CANCELED"
-                                : "ERROR:" +
-                                  (transaction.Error?
-                                       .LocalizedDescription
-                                   ?? "PURCHASE_FAILED"));
+                        if (IsActivePurchase(productId))
+                        {
+                            _purchaseCompletion?.TrySetResult(
+                                cancelled
+                                    ? "USER_CANCELED"
+                                    : "ERROR:PURCHASE_FAILED");
+                        }
                         queue.FinishTransaction(transaction);
                         break;
                     }
                 }
             }
+
+            if (unclaimedArrived)
+                _unclaimedArrived();
         }
 
         public override void RestoreCompletedTransactionsFinished(
             SKPaymentQueue queue)
         {
-            _restoreCompletion?.TrySetResult(
-                _restoredTransactionId);
+            List<StoreTransactionInfo> result;
+            lock (_gate)
+            {
+                // Every renewal is restored separately: keep the newest one per
+                // subscription (original transaction).
+                result = _restored
+                    .GroupBy(
+                        item => item.Info.OriginalTransactionId ?? item.Info.TransactionId,
+                        StringComparer.Ordinal)
+                    .Select(group => group.OrderByDescending(item => item.Date).First().Info)
+                    .ToList();
+                _restored.Clear();
+            }
+
+            _restoreCompletion?.TrySetResult(result);
         }
 
         public override void RestoreCompletedTransactionsFailedWithError(
             SKPaymentQueue queue,
             NSError error)
         {
-            _restoreCompletion?.TrySetResult(null);
+            lock (_gate)
+            {
+                _restored.Clear();
+            }
+
+            _restoreCompletion?.TrySetResult(
+                Array.Empty<StoreTransactionInfo>());
         }
     }
 }

@@ -63,16 +63,44 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
 </style>
 """;
 
+    /// <summary>
+    /// The only script on admin pages. Static (no user data); allowed by its
+    /// SHA-256 hash in the CSP (AdminService.SecureHeaders). Forms that need a
+    /// confirmation carry the HTML-attribute-encoded text in data-confirm.
+    /// </summary>
+    public const string ConfirmScript =
+        "document.addEventListener('submit',function(e){var f=e.target;if(f&&f.getAttribute){var m=f.getAttribute('data-confirm');if(m&&!window.confirm(m)){e.preventDefault();}}},true);";
+
+    /// <summary>Attribute-encoded data-confirm="…" for a form.</summary>
+    private static string Confirm(string message) => " data-confirm=\"" + H(message) + "\"";
+
     private static string Page(string title, string body) => $$"""
 <!doctype html><html lang="ka"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
-<title>{{H(title)}} · GCar360 ადმინი</title>{{Style}}</head><body>{{body}}</body></html>
+<title>{{H(title)}} · GCar360 ადმინი</title>{{Style}}</head><body>{{body}}<script>{{ConfirmScript}}</script></body></html>
 """;
 
     // ============================================================
     // LOGIN
     // ============================================================
 
-    public static string Login(string? error) => Page("შესვლა", $$"""
+    public static string Login(string? error)
+    {
+        if (!AdminService.TwoStepEnabled)
+            return Page("შესვლა", $$"""
+<div class="login"><div class="panel">
+<div style="font-weight:800;font-size:20px;margin-bottom:4px">GCar<span style="color:var(--accent)">360</span> · ადმინი</div>
+<div class="msg err">შესვლა გამორთულია: ორსაფეხურიანი დაცვა სავალდებულოა. Set GCS_ADMIN_TOTP_SECRET.<br><span class="muted">Admin sign-in is disabled until GCS_ADMIN_TOTP_SECRET is set on the server.</span></div>
+<ol class="muted" style="padding-left:18px">
+<li>ტელეფონზე დააყენე Google Authenticator → „+“ → „Enter a setup key“, გასაღები:<div class="mono" style="font-size:15px;margin:8px 0;padding:10px;border:1px dashed var(--line);border-radius:10px">{{H(AdminService.NewTotpSecret())}}</div></li>
+<li>Azure → App Service → Environment variables → <span class="mono">GCS_ADMIN_TOTP_SECRET</span> = იგივე გასაღები → Apply.</li>
+<li>აპლიკაციის გადატვირთვის შემდეგ შედი მეილით, პაროლით და 6-ნიშნა კოდით.</li>
+</ol>
+</div></div>
+""");
+        return LoginForm(error);
+    }
+
+    private static string LoginForm(string? error) => Page("შესვლა", $$"""
 <div class="login"><div class="panel">
 <div style="font-weight:800;font-size:20px;margin-bottom:4px">GCar<span style="color:var(--accent)">360</span> · ადმინი</div>
 <p class="muted" style="margin:0 0 18px">მხოლოდ მფლობელისთვის</p>
@@ -98,6 +126,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
         ("devices", "📱", "მოწყობილობები"),
         ("acceleration", "🏁", "აჩქარების რეიტინგი"),
         ("service", "🛠", "სერვისის სწავლება"),
+        ("odometer", "⏱", "გარბენის ადგილები"),
         ("crashes", "🐞", "აპის შეცდომები"),
         ("log", "🧾", "ჟურნალი"),
         ("security", "🔒", "უსაფრთხოება"),
@@ -161,7 +190,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
         }
 
         if (item.HasVideo)
-            html.Append($"<video controls preload=\"metadata\" width=\"320\" style=\"border-radius:8px;margin-top:6px\" src=\"/admin/acceleration/video/{H(item.SubmissionId)}\"></video>");
+            html.Append($"<video controls preload=\"metadata\" width=\"320\" style=\"border-radius:8px;margin-top:6px\" src=\"/admin/acceleration/video/{Uri.EscapeDataString(item.AccountId)}/{Uri.EscapeDataString(item.SubmissionId)}\"></video>");
         else if (item.Status == "Pending")
             html.Append("<div class=\"muted\">ვიდეო ჯერ არ ატვირთულა</div>");
 
@@ -191,9 +220,12 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
                     : "<span class=\"pill p-warn\">მოწმდება · ვიდეოს ელოდება</span>"
             };
             var demoPill = item.IsDemo ? " <span class=\"pill p-acc\">DEMO</span>" : string.Empty;
-            var approve = $"<form class=\"inline\" method=\"post\" action=\"/admin/acceleration/{H(item.SubmissionId)}/approve\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button class=\"green\">დამოწმება</button></form>";
-            var reject = $"<form class=\"inline\" method=\"post\" action=\"/admin/acceleration/{H(item.SubmissionId)}/reject\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button>უარყოფა</button></form>";
-            var delete = $"<form class=\"inline\" method=\"post\" action=\"/admin/acceleration/{H(item.SubmissionId)}/delete\" onsubmit=\"return confirm('ნამდვილად წაიშალოს ეს შედეგი?')\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button class=\"red\">წაშლა</button></form>";
+            // The row is identified by SubmissionId AND AccountId (ids are unique only per account).
+            var sid = Uri.EscapeDataString(item.SubmissionId);
+            var owner = $"<input type=\"hidden\" name=\"account\" value=\"{H(item.AccountId)}\">";
+            var approve = $"<form class=\"inline\" method=\"post\" action=\"/admin/acceleration/{sid}/approve\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\">{owner}<button class=\"green\">დამოწმება</button></form>";
+            var reject = $"<form class=\"inline\" method=\"post\" action=\"/admin/acceleration/{sid}/reject\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\">{owner}<button>უარყოფა</button></form>";
+            var delete = $"<form class=\"inline\" method=\"post\" action=\"/admin/acceleration/{sid}/delete\"{Confirm("ნამდვილად წაიშალოს ეს შედეგი?")}><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\">{owner}<button class=\"red\">წაშლა</button></form>";
             rows.Append($"""
 <tr><td><b>{H(item.UserName)}</b>{demoPill}<div class="muted mono">{H(item.SubmissionId)}</div></td>
 <td>{H(item.VehicleModel)}</td><td><b>{item.DurationSeconds:0.00} წმ</b><br><small>{H(item.TestId == "quarter-mile" ? $"¼ მილი · {item.MaxSpeedKph} km/h" : item.TestId)}</small></td><td>{item.SampleCount}</td>
@@ -334,9 +366,11 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
 
             var actions = u.Banned
                 ? $"<form class=\"inline\" method=\"post\" action=\"/admin/users/{H(u.AccountId)}/unban\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button class=\"green\">განბლოკვა</button></form>"
-                : $"<form class=\"inline\" method=\"post\" action=\"/admin/users/{H(u.AccountId)}/ban\" onsubmit=\"return confirm('დაბლოკო {H(u.Email)}? ვეღარ შევა აპში.')\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><input type=\"text\" name=\"reason\" placeholder=\"მიზეზი\" style=\"width:110px\"><button class=\"red\">დაბლოკვა</button></form>";
+                : $"<form class=\"inline\" method=\"post\" action=\"/admin/users/{H(u.AccountId)}/ban\"{Confirm($"დაბლოკო {u.Email}? ვეღარ შევა აპში.")}><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><input type=\"text\" name=\"reason\" placeholder=\"მიზეზი\" style=\"width:110px\"><button class=\"red\">დაბლოკვა</button></form>";
 
-            actions += $"<form class=\"inline\" method=\"post\" action=\"/admin/users/{H(u.AccountId)}/unbind\" onsubmit=\"return confirm('მოვხსნა მოწყობილობის მიბმა: {H(u.Email)}?')\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button>მოწყობილობის მოხსნა</button></form>";
+            actions += $"<form class=\"inline\" method=\"post\" action=\"/admin/users/{H(u.AccountId)}/temppass\"{Confirm($"დროებითი პაროლი: {u.Email}? ძველი პაროლი აღარ იმუშავებს.")}><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button>დროებითი პაროლი</button></form>";
+
+            actions += $"<form class=\"inline\" method=\"post\" action=\"/admin/users/{H(u.AccountId)}/unbind\"{Confirm($"მოვხსნა მოწყობილობის მიბმა: {u.Email}?")}><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button>მოწყობილობის მოხსნა</button></form>";
 
             actions += $"""<form class="inline" method="post" action="/admin/users/{H(u.AccountId)}/grant"><input type="hidden" name="csrf" value="{csrf}"><select name="product"><option value="{ProductCatalog.FullMonthly}">სრული PRO</option><option value="{ProductCatalog.ObdMonthly}">OBD PRO</option><option value="{ProductCatalog.VinMonthly}">VIN PRO</option></select><input type="number" name="days" value="30" min="1" max="365"><button>PRO-ს მიცემა</button></form>""";
 
@@ -360,7 +394,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
         var content = $"""
 <form class="search" method="get" action="/admin"><input type="hidden" name="tab" value="users"><input type="search" name="q" value="{H(search)}" placeholder="მეილის ან ID-ის ძებნა"><button>ძებნა</button></form>
 {table}
-<p class="muted">„დაბლოკვა“ — ანგარიში აპიდან გამოვა და ვეღარ შევა. „PRO-ს მიცემა“ — უფასოდ ჩართავს არჩეულ გეგმას მითითებული დღეებით.</p>
+<p class="muted">„დაბლოკვა“ — ანგარიში აპიდან გამოვა და ვეღარ შევა. „PRO-ს მიცემა“ — უფასოდ ჩართავს არჩეულ გეგმას მითითებული დღეებით. „დროებითი პაროლი“ — ახალ პაროლს ერთხელ აჩვენებს (მეილის გაგზავნა სერვერს არ შეუძლია), ყველა სესიას ასრულებს და მოწყობილობას ხსნის. მომხმარებელს ახალ ტელეფონზე გადასვლა თავადაც შეუძლია (7 დღეში ერთხელ).</p>
 """;
         return Layout(s, "users", "მომხმარებლები", $"{users.Count} ანგარიში (ბოლო 300)", content, message, ok);
     }
@@ -422,7 +456,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
             if (problem)
                 actions.Append($"<form class=\"inline\" method=\"post\" action=\"/admin/orders/{H(o.OrderId)}/retry\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button>ხელახლა ცდა</button></form>");
             if (o.Status == "paid")
-                actions.Append($"<form class=\"inline\" method=\"post\" action=\"/admin/orders/{H(o.OrderId)}/refund\" onsubmit=\"return confirm('დავუბრუნოთ {o.Amount.ToString("0.00", CultureInfo.InvariantCulture)} ₾ ბარათზე? ამის გაუქმება შეუძლებელია.')\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button class=\"red\">დაბრუნება</button></form>");
+                actions.Append($"<form class=\"inline\" method=\"post\" action=\"/admin/orders/{H(o.OrderId)}/refund\"{Confirm("დავუბრუნოთ " + o.Amount.ToString("0.00", CultureInfo.InvariantCulture) + " ₾ ბარათზე? ამის გაუქმება შეუძლებელია.")}><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button class=\"red\">დაბრუნება</button></form>");
 
             sb.Append($"""
 <tr class="{(problem ? "problem" : "")}"><td>{Tbilisi(o.CreatedAt)}</td><td>{H(o.Email ?? "?")}</td><td>{H(AdminService.PlanName(o.ProductId))}</td>
@@ -465,6 +499,58 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
     // ============================================================
     // CRASHES
     // ============================================================
+
+    // ============================================================
+    // ODOMETER PLACES (app "odometer finder")
+    // ============================================================
+
+    public static string Odometer(AdminService.Session s, IReadOnlyList<OdometerGroup> groups, string? message, bool ok)
+    {
+        static string Describe(string key)
+        {
+            var parts = key.Split(';').Select(p => p.Split('=', 2)).Where(p => p.Length == 2).ToDictionary(p => p[0], p => p[1]);
+            string Get(string k) => parts.TryGetValue(k, out var v) ? v : "?";
+            var module = Uri.UnescapeDataString(Get("mod"));
+            var request = Get("svc") == "1A" ? $"1A {Get("id")}" : $"22 {Get("id").PadLeft(4, '0')}";
+            return $"<b>{H(module)}</b> · TX 0x{H(Get("tx"))} → RX 0x{H(Get("rx"))} · <span class=\"mono\">{H(request)}</span> · ბაიტები {H(Get("off"))}+{H(Get("len"))}{(Get("le") == "1" ? " (LE)" : "")} · ×{H(Get("sc"))}{(Get("mi") == "1" ? " · მილი" : " · კმ")}";
+        }
+
+        string Buttons(OdometerGroup g)
+        {
+            string Form(string action, string label, string cls) =>
+                $"<form method=\"post\" action=\"/admin/odometer/{g.Id}/{action}\" style=\"display:inline\"><input type=\"hidden\" name=\"csrf\" value=\"{H(s.Csrf)}\"><button class=\"{cls}\">{label}</button></form> ";
+            return g.Status switch
+            {
+                "approved" => Form("reset", "მოლოდინში დაბრუნება", "ghost") + Form("reject", "უარყოფა", "ghost"),
+                "rejected" => Form("reset", "მოლოდინში დაბრუნება", "ghost") + Form("approve", "დადასტურება", ""),
+                _ => Form("approve", "დადასტურება", "") + Form("reject", "უარყოფა", "ghost")
+            };
+        }
+
+        static string StatusPill(OdometerGroup g) => g.Status switch
+        {
+            "approved" => "<span class=\"pill p-acc\">დადასტურებული · ყველასთვის</span>",
+            "rejected" => "<span class=\"pill p-err\">უარყოფილი</span>",
+            _ when OdometerStore.AutoEnabled(g) => "<span class=\"pill p-acc\">ავტომატურად ჩართული (≥2 ანგარიში სხვადასხვა ტელეფონიდან/ქსელიდან ან ადმინი)</span>",
+            _ => "<span class=\"pill\">მოლოდინში</span>"
+        };
+
+        var rows = string.Concat(groups.Select(g =>
+            $"<tr><td><b>{H(g.Make)} {H(g.Model)}</b><div class=\"muted\">წლები: {H(string.Join(", ", g.Years))}</div></td>" +
+            $"<td>{Describe(g.Key)}</td><td>{N(g.Devices)} · ანგარიში {N(g.Accounts)}{(g.Trusted ? " · ადმინი" : "")}</td><td>{StatusPill(g)}</td><td>{Buttons(g)}</td></tr>"));
+
+        var content =
+            "<div class=\"grid\" style=\"margin-bottom:12px\">" +
+            Kpi("ადგილები", N(groups.Count), "სულ") +
+            Kpi("მოლოდინში", N(groups.Count(g => g.Status == "pending")), "გადასახედი") +
+            Kpi("დადასტურებული", N(groups.Count(g => g.Status == "approved")), "ყველასთვის") +
+            "</div>" +
+            (groups.Count == 0 ? "<div class=\"panel muted\">ჯერ არავის უპოვია.</div>"
+                : $"<div class=\"tbl\"><table><tr><th>მოდელი</th><th>ადგილი</th><th>ტელეფონი</th><th>სტატუსი</th><th></th></tr>{rows}</table></div>") +
+            "<p class=\"muted\">აპი აგზავნის მხოლოდ ადგილს (მოდული, მოთხოვნა, ბაიტები, მასშტაბი) — არა გარბენს და არა სრულ VIN-ს. ადგილი ამ მოდელზე ყველასთვის მუშაობს, როცა დაადასტურებ, როცა შენმა ადმინის ანგარიშმა იპოვა, ან როცა 2 სხვადასხვა შესულმა ანგარიშმა იპოვა სხვადასხვა ტელეფონიდან და სხვადასხვა ქსელიდან. ანონიმური ტელეფონები მას თავისით ვერ ჩართავენ. „უარყოფა“ მას სამუდამოდ თიშავს.</p>";
+
+        return Layout(s, "odometer", "გარბენის ადგილები", "აპის „გარბენის ძებნის“ შედეგები მოდელების მიხედვით", content, message, ok);
+    }
 
     public static string Crashes(AdminService.Session s, IReadOnlyList<CrashGroup> groups, string? message, bool ok)
     {

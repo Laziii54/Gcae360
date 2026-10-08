@@ -14,14 +14,14 @@
             <Label AutomationId="DynamicTextCodingVehicle" Text="{Binding VehicleText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
 
             <!-- Safety -->
-            <Border Style="{StaticResource ListCardStyle}" Padding="14,12" BackgroundColor="#FFF6EC" Stroke="#F0C79A">
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,12" BackgroundColor="{DynamicResource WarnBg}" Stroke="{DynamicResource WarnStroke}">
                 <VerticalStackLayout Spacing="4">
-                    <Label Text="⚠ როგორ ვიცავთ მანქანას" TextColor="#9A4E0E" FontSize="14" FontAttributes="Bold" />
-                    <Label Text="• ჯერ ყოველთვის სრული სარეზერვო ასლი იქმნება." TextColor="#5A3A1A" FontSize="12" />
-                    <Label Text="• იცვლება მხოლოდ ის, რაც ზუსტად ამ მოდელზე, წელზე და მოდულზეა შემოწმებული." TextColor="#5A3A1A" FontSize="12" />
-                    <Label Text="• მანქანა უნდა იდგეს, ძრავი გამორთული, აკუმულატორი 12.2 V-ზე მეტი." TextColor="#5A3A1A" FontSize="12" />
-                    <Label Text="• ჩაწერის შემდეგ მნიშვნელობა მოწმდება; შეუსაბამობისას ძველი ავტომატურად ბრუნდება." TextColor="#5A3A1A" FontSize="12" />
-                    <Label Text="• ნებისმიერი ცვლილება ისტორიიდან ერთი შეხებით ბრუნდება." TextColor="#5A3A1A" FontSize="12" />
+                    <Label Text="⚠ როგორ ვიცავთ მანქანას" TextColor="{DynamicResource WarnTitle}" FontSize="14" FontAttributes="Bold" />
+                    <Label Text="• ჯერ ყოველთვის სრული სარეზერვო ასლი იქმნება." TextColor="{DynamicResource WarnText}" FontSize="12" />
+                    <Label Text="• იცვლება მხოლოდ ის, რაც ზუსტად ამ მოდელზე, წელზე და მოდულზეა შემოწმებული." TextColor="{DynamicResource WarnText}" FontSize="12" />
+                    <Label Text="• მანქანა უნდა იდგეს, ძრავი გამორთული, აკუმულატორი 12.2 V-ზე მეტი." TextColor="{DynamicResource WarnText}" FontSize="12" />
+                    <Label Text="• ჩაწერის შემდეგ მნიშვნელობა მოწმდება; შეუსაბამობისას ძველი ავტომატურად ბრუნდება." TextColor="{DynamicResource WarnText}" FontSize="12" />
+                    <Label Text="• ნებისმიერი ცვლილება ისტორიიდან ერთი შეხებით ბრუნდება." TextColor="{DynamicResource WarnText}" FontSize="12" />
                 </VerticalStackLayout>
             </Border>
 
@@ -31,7 +31,7 @@
                     <ProgressBar Progress="{Binding Progress}" ProgressColor="{DynamicResource Primary}" />
                     <Grid ColumnDefinitions="*,Auto">
                         <Label AutomationId="DynamicTextCodingProgress" Text="{Binding ProgressText}" TextColor="{DynamicResource TextColor}" FontSize="12" VerticalOptions="Center" />
-                        <Button Grid.Column="1" Text="გაჩერება" Command="{Binding CancelCommand}" BackgroundColor="Transparent" TextColor="#C2372B" FontAttributes="Bold" FontSize="12" Padding="4,0" HeightRequest="32" MinimumHeightRequest="32" />
+                        <Button Grid.Column="1" Text="გაჩერება" Command="{Binding CancelCommand}" BackgroundColor="Transparent" TextColor="#C2372B" FontAttributes="Bold" FontSize="12" Padding="4,0" HeightRequest="44" MinimumHeightRequest="44" />
                     </Grid>
                 </VerticalStackLayout>
             </Border>
@@ -66,8 +66,8 @@
                                         <Label AutomationId="DynamicTextCodingOptionDescription" Text="{Binding Description}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" />
                                         <Label AutomationId="DynamicTextCodingOptionCurrent" Text="{Binding CurrentText}" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" />
                                     </VerticalStackLayout>
-                                    <Button Grid.Column="1" Text="წაკითხვა" Command="{Binding ReadOptionCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" Padding="4,0" HeightRequest="34" MinimumHeightRequest="34" VerticalOptions="Center" />
-                                    <Button Grid.Column="2" Text="შეცვლა" Command="{Binding ChangeOptionCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="10" FontSize="12" Padding="10,0" HeightRequest="34" MinimumHeightRequest="34" VerticalOptions="Center" />
+                                    <Button Grid.Column="1" Text="წაკითხვა" Command="{Binding ReadOptionCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" Padding="4,0" HeightRequest="44" MinimumHeightRequest="44" VerticalOptions="Center" />
+                                    <Button Grid.Column="2" Text="{Binding ChangeButtonText, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" Command="{Binding ChangeOptionCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="10" FontSize="12" Padding="10,0" HeightRequest="44" MinimumHeightRequest="44" VerticalOptions="Center" />
                                 </Grid>
                                 <BoxView Style="{StaticResource RowDividerStyle}" />
                             </VerticalStackLayout>
@@ -101,8 +101,8 @@
                                         <Label AutomationId="DynamicTextCodingBackupTitle" Text="{Binding Title}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" />
                                         <Label AutomationId="DynamicTextCodingBackupDetail" Text="{Binding Detail}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
                                     </VerticalStackLayout>
-                                    <Button Grid.Column="2" Text="გაზიარება" Command="{Binding ShareBackupCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" Padding="4,0" HeightRequest="32" MinimumHeightRequest="32" VerticalOptions="Center" />
-                                    <Button Grid.Column="3" Text="✕" Command="{Binding DeleteBackupCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="#C2372B" FontSize="13" Padding="4,0" HeightRequest="32" MinimumHeightRequest="32" WidthRequest="34" VerticalOptions="Center" />
+                                    <Button Grid.Column="2" Text="გაზიარება" Command="{Binding ShareBackupCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" Padding="4,0" HeightRequest="44" MinimumHeightRequest="44" VerticalOptions="Center" />
+                                    <Button Grid.Column="3" Text="✕" Command="{Binding DeleteBackupCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="#C2372B" FontSize="13" Padding="4,0" HeightRequest="44" MinimumHeightRequest="44" WidthRequest="44" VerticalOptions="Center" />
                                 </Grid>
                                 <BoxView Style="{StaticResource RowDividerStyle}" />
                             </VerticalStackLayout>
@@ -144,7 +144,7 @@
                                         <Label AutomationId="DynamicTextCodingHistoryTitle" Text="{Binding Title}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" />
                                         <Label AutomationId="DynamicTextCodingHistoryDetail" Text="{Binding Detail}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
                                     </VerticalStackLayout>
-                                    <Button Grid.Column="1" Text="აღდგენა" IsVisible="{Binding CanRestore}" Command="{Binding RestoreCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="#C2372B" FontSize="12" FontAttributes="Bold" Padding="4,0" HeightRequest="32" MinimumHeightRequest="32" VerticalOptions="Center" />
+                                    <Button Grid.Column="1" Text="აღდგენა" IsVisible="{Binding CanRestore}" Command="{Binding RestoreCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="#C2372B" FontSize="12" FontAttributes="Bold" Padding="4,0" HeightRequest="44" MinimumHeightRequest="44" VerticalOptions="Center" />
                                 </Grid>
                                 <BoxView Style="{StaticResource RowDividerStyle}" />
                             </VerticalStackLayout>

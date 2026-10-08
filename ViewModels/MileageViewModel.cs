@@ -17,8 +17,18 @@ public sealed class MileageModuleRow
     public string DiffText { get; init; } = string.Empty;
     public bool IsOff { get; init; }
     public Color DiffColor { get; init; } = Colors.Gray;
-    public Color ValueColor => IsOff ? Color.FromArgb("#B3361F") : Color.FromArgb("#1B1D20");
-    public Color RowBackground => IsOff ? Color.FromArgb("#FCEDEA") : Colors.Transparent;
+    public Color ValueColor => IsOff ? CarScanner.Services.Localization.ThemeService.Soft("#B3361F") : CarScanner.Services.Localization.ThemeService.Soft("#1B1D20");
+    public Color RowBackground => IsOff ? CarScanner.Services.Localization.ThemeService.Soft("#FCEDEA") : Colors.Transparent;
+}
+
+/// <summary>One place the odometer finder found (Mileage page).</summary>
+public sealed class OdometerMatchRow : CommunityToolkit.Mvvm.ComponentModel.ObservableObject
+{
+    public OdometerMatch Match { get; init; } = null!;
+    public string Title { get; init; } = string.Empty;
+    public string Detail { get; init; } = string.Empty;
+    private bool _isSelected = true;
+    public bool IsSelected { get => _isSelected; set => SetProperty(ref _isSelected, value); }
 }
 
 /// <summary>
@@ -29,9 +39,9 @@ public sealed class MileageModuleRow
 /// </summary>
 public class MileageViewModel : BaseViewModel
 {
-    private static readonly Color Green = Color.FromArgb("#1F8A4C");
-    private static readonly Color Amber = Color.FromArgb("#B06A00");
-    private static readonly Color Grey = Color.FromArgb("#5D636B");
+    private static Color Green => CarScanner.Services.Localization.ThemeService.Soft("#1F8A4C");
+    private static Color Amber => CarScanner.Services.Localization.ThemeService.Soft("#B06A00");
+    private static Color Grey => CarScanner.Services.Localization.ThemeService.Soft("#5D636B");
 
     private readonly ActualMileageService _mileage;
     private readonly CarScanner.Services.Maintenance.MaintenanceTrackerService _maintenance;
@@ -40,6 +50,9 @@ public class MileageViewModel : BaseViewModel
     private readonly UnitSystemService _units;
     private readonly LocalizationService _localization;
     private readonly AppDatabase _database;
+    private readonly OdometerFinderService _finder;
+    private CancellationTokenSource? _finderCts;
+    private CarScanner.Models.VehicleInfo? _vehicleInfo;
     private double? _lastKnownMileageKm;
     private ActualMileageResult? _lastResult;
     private string _dashboardMileage = string.Empty;
@@ -52,7 +65,7 @@ public class MileageViewModel : BaseViewModel
     // Simple result card (title, number, one sentence)
     public string ResultTitle { get; private set; } = string.Empty;
     public Color ResultTitleColor { get; private set; } = Grey;
-    public Color ResultBackground { get; private set; } = Color.FromArgb("#FFFFFF");
+    public Color ResultBackground { get; private set; } = CarScanner.Services.Localization.ThemeService.Soft("#FFFFFF");
 
     // Result card
     public bool HasResult { get; private set; }
@@ -61,8 +74,8 @@ public class MileageViewModel : BaseViewModel
     public string VerdictText { get; private set; } = string.Empty;
     public bool HasVerdict => !string.IsNullOrWhiteSpace(VerdictText);
     public Color VerdictColor { get; private set; } = Grey;
-    public Color VerdictBackground { get; private set; } = Color.FromArgb("#ECEEF0");
-    public Color CardStroke { get; private set; } = Color.FromArgb("#DCDFE3");
+    public Color VerdictBackground { get; private set; } = CarScanner.Services.Localization.ThemeService.Soft("#ECEEF0");
+    public Color CardStroke { get; private set; } = CarScanner.Services.Localization.ThemeService.Soft("#DCDFE3");
     public string VerdictNote { get; private set; } = string.Empty;
 
     // Modules
@@ -109,11 +122,32 @@ public class MileageViewModel : BaseViewModel
     public string IntroHint => L("~30 წამი · ანთება ჩართული", "~30 seconds · ignition on");
     public string DashboardCaption => L("დაფაზე რას აჩვენებს?", "What does the dashboard show?");
     public string DashboardPlaceholder => L("მაგ. 125 690", "e.g. 125 690");
-    public string CheckButtonText => HasResult ? L("თავიდან შემოწმება", "Check again") : L("გარბენის შემოწმება", "Check mileage");
+    public string CheckButtonText => (HasResult ? L("თავიდან შემოწმება", "Check again") : L("გარბენის შემოწმება", "Check mileage")) + ProGate.Suffix;
     public string LogToggleText => ShowLog ? L("ლოგის დამალვა", "Hide technical log") : L("ტექნიკური ლოგი ›", "Technical log ›");
     public string DisclaimerText => L(
         "ეს მინიშნებაა და არა საბოლოო მტკიცებულება: თუ გარბენი ყველა მოდულში შეცვალეს, აპი ამას ვერ დაინახავს. მოდულები, რომლებსაც მანქანა არ აძლევს, არ ჩანს.",
         "This is an indication, not final proof: if the distance was changed in every module, the app cannot see it. Modules the car does not expose are not shown.");
+
+    // Odometer finder (when this model's odometer place is not known yet)
+    public ObservableCollection<OdometerMatchRow> FinderMatches { get; } = new();
+    public bool IsFinding { get; private set; }
+    public double FinderProgress { get; private set; }
+    public string FinderStatus { get; private set; } = string.Empty;
+    public bool HasFinderStatus => !string.IsNullOrWhiteSpace(FinderStatus);
+    public bool HasFinderMatches => FinderMatches.Count > 0;
+    public bool ShowFinder => HasResult && !IsBusy && (_lastResult is null || _lastResult.FinalMileageKm is null ||
+        _lastResult.Evidence.Select(e => e.Ecu).Distinct().Count() < 2);
+    public string FinderTitle => _lastResult?.FinalMileageKm is null
+        ? L("ამ მანქანაზე გარბენის ადგილი ჯერ უცნობია — მოვძებნოთ", "This car's odometer place is not known yet — let's find it")
+        : L("მეტი მოდულის მოძებნა შესადარებლად", "Find more modules to compare");
+    public string FinderText => L(
+        "ჩაწერე ზემოთ დაფაზე ნაჩვენები გარბენი და დააჭირე „ძებნას“. აპი მოდულებში ამ რიცხვს ეძებს (მხოლოდ კითხულობს, 2–6 წუთი, ანთება ჩართული). ნაპოვნი ადგილი ამ მოდელზე ყველასთვის იმუშავებს — იგზავნება მხოლოდ ადგილი, არა შენი გარბენი.",
+        "Type the distance shown on the dashboard above and press Search. The app looks for that number in the modules (read-only, 2–6 minutes, ignition on). The place it finds then works for everyone with this model — only the place is sent, never your distance.");
+    public string FinderButtonText => IsFinding ? L("გაჩერება", "Stop") : L("ძებნა", "Search");
+    public string SaveFoundText => L("შენახვა და გაზიარება", "Save and share");
+
+    public IAsyncRelayCommand SearchOdometerCommand { get; }
+    public IAsyncRelayCommand SaveFoundCommand { get; }
 
     public IAsyncRelayCommand CheckCommand { get; }
     public IAsyncRelayCommand CopyLogCommand { get; }
@@ -126,23 +160,66 @@ public class MileageViewModel : BaseViewModel
         UnitSystemService units,
         LocalizationService localization,
         AppDatabase database,
-        CarScanner.Services.Maintenance.MaintenanceTrackerService maintenance)
+        CarScanner.Services.Maintenance.MaintenanceTrackerService maintenance,
+        OdometerFinderService finder)
     {
         _database = database;
+        _finder = finder;
+        SearchOdometerCommand = new AsyncRelayCommand(SearchOdometerAsync);
+        SaveFoundCommand = new AsyncRelayCommand(SaveFoundAsync);
         _maintenance = maintenance;
         _mileage = mileage;
         _vehicle = vehicle;
         _pro = pro;
         _units = units;
         _localization = localization;
-        _units.UnitSystemChanged += (_, __) => MainThread.BeginInvokeOnMainThread(Present);
-        _localization.LanguageChanged += (_, __) => MainThread.BeginInvokeOnMainThread(Present);
+        Attach();
 
         CheckCommand = new AsyncRelayCommand(CheckAsync);
         CopyLogCommand = new AsyncRelayCommand(CopyLogAsync);
         ToggleLogCommand = new RelayCommand(() => ShowLog = !ShowLog);
         Present();
     }
+
+    // Detached by the page when it goes away (no leak through singleton services).
+    private bool _attached;
+    private bool _refreshOnAttach;
+
+    public void Attach()
+    {
+        if (_attached) return;
+        _attached = true;
+        _pro.ProChanged += HandleProChanged;
+        _units.UnitSystemChanged += HandleUnitSystemChanged;
+        _localization.LanguageChanged += HandleLanguageChanged;
+
+        // Texts may have changed while the page was hidden (e.g. Settings on top).
+        if (_refreshOnAttach)
+        {
+            _refreshOnAttach = false;
+            HandleLanguageChanged(this, EventArgs.Empty);
+            HandleProChanged(this, false);
+        }
+    }
+
+    public void Detach()
+    {
+        if (!_attached) return;
+        _attached = false;
+        _pro.ProChanged -= HandleProChanged;
+        _units.UnitSystemChanged -= HandleUnitSystemChanged;
+        _localization.LanguageChanged -= HandleLanguageChanged;
+        _refreshOnAttach = true;
+    }
+
+    private void HandleProChanged(object? sender, bool isPro) =>
+        MainThread.BeginInvokeOnMainThread(() => OnPropertyChanged(nameof(CheckButtonText)));
+
+    private void HandleUnitSystemChanged(object? sender, EventArgs e) =>
+        MainThread.BeginInvokeOnMainThread(Present);
+
+    private void HandleLanguageChanged(object? sender, EventArgs e) =>
+        MainThread.BeginInvokeOnMainThread(Present);
 
     private string L(string ka, string en) => _localization.IsEnglish ? en : ka;
 
@@ -174,14 +251,9 @@ public class MileageViewModel : BaseViewModel
         if (IsBusy)
             return;
 
-        if (!await _pro.EnsureProAsync())
-        {
-            await Shell.Current.DisplayAlertAsync(
-                "PRO",
-                L("გარბენის გადამოწმება PRO-შია.", "Mileage check is a PRO feature."),
-                "OK");
+        // The page is open for everyone; the check itself is PRO.
+        if (!await ProGate.EnsureOrOpenAsync(_pro))
             return;
-        }
 
         try
         {
@@ -189,6 +261,8 @@ public class MileageViewModel : BaseViewModel
             OnPropertyChanged(nameof(IsIntro));
             StatusMessage = L("მანქანის ამოცნობა…", "Identifying the car…");
             var vehicle = await _vehicle.IdentifyConnectedVehicleAsync();
+            _vehicleInfo = vehicle;
+            FinderMatches.Clear();
             Vin = vehicle.VIN;
             VehicleTitle = Describe(vehicle);
             OnPropertyChanged(nameof(Vin));
@@ -235,7 +309,12 @@ public class MileageViewModel : BaseViewModel
             Kind = "mileage",
             Icon = "⏱",
             Title = L("რეალური გარბენი", "Real mileage"),
-            Status = result.HasMismatch ? CarScanner.Services.Reports.ReportStatus.Bad : CarScanner.Services.Reports.ReportStatus.Ok,
+            // One source cannot be compared with anything: neutral information.
+            Status = result.HasMismatch
+                ? CarScanner.Services.Reports.ReportStatus.Bad
+                : result.SourceCount >= 2
+                    ? CarScanner.Services.Reports.ReportStatus.Ok
+                    : CarScanner.Services.Reports.ReportStatus.Info,
             Summary = string.Join(" · ", new[] { ResultValue, ResultTitle, VerdictText }
                 .Where(part => !string.IsNullOrWhiteSpace(part) && part != "—").Distinct())
         };
@@ -278,11 +357,11 @@ public class MileageViewModel : BaseViewModel
             ResultValue = result is not null && _lastKnownMileageKm is { } known ? _units.FormatDistance(known) : "—";
             ResultTitle = L("გარბენი ვერ წავიკითხე", "No distance came back");
             ResultTitleColor = Grey;
-            ResultBackground = Color.FromArgb("#FFFFFF");
+            ResultBackground = CarScanner.Services.Localization.ThemeService.Soft("#FFFFFF");
             VerdictText = result is null ? string.Empty : ResultTitle;
             VerdictColor = Grey;
-            VerdictBackground = Color.FromArgb("#ECEEF0");
-            CardStroke = Color.FromArgb("#DCDFE3");
+            VerdictBackground = CarScanner.Services.Localization.ThemeService.Soft("#ECEEF0");
+            CardStroke = CarScanner.Services.Localization.ThemeService.Soft("#DCDFE3");
             VerdictNote = result is null
                 ? string.Empty
                 : L("შეამოწმე, რომ ანთება ჩართულია. ზოგი მანქანა გარბენს OBD-ით საერთოდ არ აძლევს." + (_lastKnownMileageKm is not null ? " ნაჩვენებია ბოლოს წაკითხული მნიშვნელობა." : string.Empty),
@@ -342,12 +421,12 @@ public class MileageViewModel : BaseViewModel
                 var gap = Math.Abs(odd.ValueKm - final);
                 ResultCaption = L("ორიგინალი გარბენი, სავარაუდოდ", "Original mileage, likely");
                 ResultTitle = L("⚠ გარბენი არ ემთხვევა", "⚠ The mileage does not match");
-                ResultTitleColor = Color.FromArgb("#B3361F");
-                ResultBackground = Color.FromArgb("#FCEDEA");
+                ResultTitleColor = CarScanner.Services.Localization.ThemeService.Soft("#B3361F");
+                ResultBackground = CarScanner.Services.Localization.ThemeService.Soft("#FCEDEA");
                 ResultValue = $"{_units.FormatDistance(low)} / {_units.FormatDistance(high)}";
                 VerdictText = ResultTitle;
                 VerdictColor = Amber;
-                VerdictBackground = Color.FromArgb("#FDF1D8");
+                VerdictBackground = CarScanner.Services.Localization.ThemeService.Soft("#FDF1D8");
                 CardStroke = Color.FromArgb("#E0A530");
                 VerdictNote = odd.ValueKm > final
                     ? L($"{ModuleName(odd.Ecu)}-ში {_units.FormatDistance(gap)}-ით მეტია. ასეთი სხვაობა გადახვევის ნიშანია — სანამ იყიდი, გადაამოწმე სერვისში.",
@@ -358,27 +437,27 @@ public class MileageViewModel : BaseViewModel
             else if (moduleCount >= 2)
             {
                 ResultCaption = L("ორიგინალი გარბენი", "Original mileage");
-                ResultTitle = L("✓ გარბენი ემთხვევა", "✓ The mileage matches");
+                ResultTitle = L("✓ მოდულები თანხმდება", "✓ Modules agree");
                 ResultTitleColor = Green;
-                ResultBackground = Color.FromArgb("#E8F5EE");
+                ResultBackground = CarScanner.Services.Localization.ThemeService.Soft("#E8F5EE");
                 VerdictText = ResultTitle;
                 VerdictColor = Green;
-                VerdictBackground = Color.FromArgb("#E8F5EE");
+                VerdictBackground = CarScanner.Services.Localization.ThemeService.Soft("#E8F5EE");
                 CardStroke = Color.FromArgb("#22C55E");
                 VerdictNote = L(
-                    $"{moduleCount} ბლოკი აჩვენებს ერთნაირს. გადახვევის ნიშანი არ ჩანს.",
-                    $"{moduleCount} modules show the same distance. No sign of a rollback.");
+                    $"{moduleCount} ბლოკი აჩვენებს ერთნაირს. მოდულები თანხმდება, მაგრამ ეს პროფესიონალურ გადახვევას სრულად არ გამორიცხავს — შეადარე სერვისის ჩანაწერებს / VIN ისტორიას.",
+                    $"{moduleCount} modules show the same distance. Modules agree. This does not fully rule out a professional rollback — compare with service records/VIN history.");
             }
             else
             {
                 ResultCaption = L("გარბენი", "Mileage");
                 ResultTitle = L("გარბენი", "Mileage");
                 ResultTitleColor = Grey;
-                ResultBackground = Color.FromArgb("#FFFFFF");
+                ResultBackground = CarScanner.Services.Localization.ThemeService.Soft("#FFFFFF");
                 VerdictText = L("მხოლოდ 1 წყარო", "Only 1 source");
                 VerdictColor = Grey;
-                VerdictBackground = Color.FromArgb("#ECEEF0");
-                CardStroke = Color.FromArgb("#DCDFE3");
+                VerdictBackground = CarScanner.Services.Localization.ThemeService.Soft("#ECEEF0");
+                CardStroke = CarScanner.Services.Localization.ThemeService.Soft("#DCDFE3");
                 VerdictNote = L(
                     "ამ მანქანაზე გარბენს მხოლოდ ერთი ბლოკი აძლევს, ამიტომ შედარება შეუძლებელია. შეადარე პანელის ციფრს.",
                     "Only one module of this car gives the distance, so nothing can be compared. Compare it with the dashboard.");
@@ -444,6 +523,111 @@ public class MileageViewModel : BaseViewModel
         OnPropertyChanged(nameof(DashboardResult));
         OnPropertyChanged(nameof(DashboardResultColor));
         OnPropertyChanged(nameof(HasDashboardResult));
+    }
+
+    // ------------------------------------------------------------------
+    // Odometer finder
+    // ------------------------------------------------------------------
+
+    private void NotifyFinder()
+    {
+        foreach (var name in new[] { nameof(IsFinding), nameof(FinderProgress), nameof(FinderStatus), nameof(HasFinderStatus),
+                     nameof(HasFinderMatches), nameof(ShowFinder), nameof(FinderButtonText), nameof(FinderTitle), nameof(FinderText), nameof(SaveFoundText) })
+            OnPropertyChanged(name);
+    }
+
+    private async Task SearchOdometerAsync()
+    {
+        if (IsFinding)
+        {
+            _finderCts?.Cancel();
+            return;
+        }
+
+        var dashboardKm = TryGetDashboardMileageKm();
+        if (dashboardKm is null or < 100)
+        {
+            FinderStatus = L("ჯერ ჩაწერე დაფაზე ნაჩვენები გარბენი.", "Type the dashboard distance first.");
+            NotifyFinder();
+            return;
+        }
+
+        if (!await ProGate.EnsureOrOpenAsync(_pro))
+            return;
+
+        try
+        {
+            IsFinding = true;
+            FinderMatches.Clear();
+            FinderStatus = L("ძებნა დაიწყო…", "Search started…");
+            NotifyFinder();
+            _finderCts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+            var vehicle = _vehicleInfo ?? await _vehicle.IdentifyConnectedVehicleAsync();
+            _vehicleInfo = vehicle;
+
+            var progress = new Progress<(double Fraction, string Text)>(p =>
+            {
+                FinderProgress = p.Fraction;
+                if (!string.IsNullOrWhiteSpace(p.Text))
+                    FinderStatus = p.Text;
+                NotifyFinder();
+            });
+            var matches = await _finder.SearchAsync(vehicle, dashboardKm.Value, progress, _finderCts.Token);
+            foreach (var match in matches)
+            {
+                FinderMatches.Add(new OdometerMatchRow
+                {
+                    Match = match,
+                    Title = $"{match.Location.Module} — {_units.FormatDistance(match.ValueKm)}",
+                    Detail = $"{match.Location.RequestText} · {L("ბაიტები", "bytes")} {match.Location.Offset}+{match.Location.Length}" +
+                             (match.Location.Miles ? " · mi" : string.Empty),
+                    IsSelected = Math.Abs(match.ValueKm - dashboardKm.Value) <= Math.Max(2, dashboardKm.Value * 0.002)
+                });
+            }
+
+            FinderStatus = matches.Count == 0
+                ? L("ვერ მოიძებნა: ამ მანქანის მოდულები გარბენს წაკითხვით არ აძლევს, ან სხვა ადგილას ინახავს. ციფრი გამოგონილი არ არის.",
+                    "Not found: this car's modules do not give the distance on reading, or keep it elsewhere. Nothing is guessed.")
+                : L($"ნაპოვნია {matches.Count} ადგილი. მონიშნე, რომლებიც სწორია, და შეინახე.", $"Found {matches.Count} place(s). Tick the correct ones and save.");
+        }
+        catch (OperationCanceledException)
+        {
+            FinderStatus = L("ძებნა გაჩერდა.", "Search stopped.");
+        }
+        catch (Exception ex)
+        {
+            FinderStatus = ex is InvalidOperationException ? ex.Message : L("ძებნა ვერ მოხერხდა.", "The search failed.");
+            CommandErrors.Report(ex, "Mileage.SearchOdometer");
+        }
+        finally
+        {
+            IsFinding = false;
+            FinderProgress = 0;
+            NotifyFinder();
+        }
+    }
+
+    private async Task SaveFoundAsync()
+    {
+        try
+        {
+            var chosen = FinderMatches.Where(row => row.IsSelected).Select(row => row.Match.Location).ToList();
+            if (chosen.Count == 0 || _vehicleInfo is null)
+                return;
+
+            _finder.SaveLocal(_vehicleInfo, chosen);
+            var shared = await _finder.ReportAsync(_vehicleInfo, chosen);
+            FinderMatches.Clear();
+            FinderStatus = shared
+                ? L("შენახულია და გაზიარებულია ✓ ახლა გარბენი თავიდან შემოწმდება.", "Saved and shared ✓ Checking the mileage again now.")
+                : L("შენახულია ამ ტელეფონზე ✓ (სერვერთან კავშირი ვერ მოხერხდა). ახლა გარბენი თავიდან შემოწმდება.", "Saved on this phone ✓ (could not reach the server). Checking the mileage again now.");
+            NotifyFinder();
+            await CheckAsync();
+        }
+        catch (Exception ex)
+        {
+            CommandErrors.Report(ex, "Mileage.SaveFound");
+        }
     }
 
     private async Task CopyLogAsync()

@@ -112,6 +112,146 @@ public sealed class PIDDecoder
         catch { value = 0; return false; }
     }
 
+    /// <summary>Status-type PIDs (no single number) that are shown as text.</summary>
+    private static readonly HashSet<int> DescribablePids = [0x01, 0x03, 0x12, 0x13, 0x1C, 0x1D, 0x1E, 0x51];
+
+    public static bool CanDescribe(int pid) => DescribablePids.Contains(pid);
+
+    private static string L(string ka, string en) => ObdLang.L(ka, en);
+
+    /// <summary>Plain-language text for status-type PIDs (MIL, fuel system, O2 sensors present …).</summary>
+    public bool TryDescribe(int pid, string raw, out string text)
+    {
+        text = string.Empty;
+        try
+        {
+            var d = Read(raw, (byte)pid);
+            text = pid switch
+            {
+                0x01 => ((U8(d) & 0x80) != 0 ? L("შეცდომის ნათურა: ანთია", "Check-engine light: ON") : L("შეცდომის ნათურა: ჩამქრალია", "Check-engine light: OFF"))
+                        + " · " + L($"კოდები: {U8(d) & 0x7F}", $"codes: {U8(d) & 0x7F}"),
+                0x03 => FuelSystemStatus(U8(d)),
+                0x12 => U8(d) switch
+                {
+                    1 => L("ზემოთ (კატალიზატორამდე)", "Upstream"),
+                    2 => L("კატალიზატორის შემდეგ", "Downstream of catalyst"),
+                    4 => L("გარე ჰაერი / გამორთული", "From outside / off"),
+                    8 => L("დიაგნოსტიკისთვის ჩართული", "Pump on for diagnostics"),
+                    _ => L("უცნობი", "Unknown")
+                },
+                0x13 => SensorList(U8(d), twoSensorBanks: false),
+                0x1D => SensorList(U8(d), twoSensorBanks: true),
+                0x1C => ObdStandard(U8(d)),
+                0x1E => (U8(d) & 0x01) != 0 ? L("PTO ჩართულია", "PTO active") : L("PTO გამორთულია", "PTO off"),
+                0x51 => FuelType(U8(d)),
+                _ => string.Empty
+            };
+            return text.Length > 0;
+        }
+        catch
+        {
+            text = string.Empty;
+            return false;
+        }
+    }
+
+    private static string FuelSystemStatus(int value) => value switch
+    {
+        1 => L("ღია ციკლი — ძრავი ჯერ არ გამთბარა", "Open loop — engine not warm yet"),
+        2 => L("დახურული ციკლი — ჟანგბადის სენსორით (ნორმალური)", "Closed loop — using O2 sensor (normal)"),
+        4 => L("ღია ციკლი — დატვირთვა ან დამუხრუჭება", "Open loop — load or deceleration"),
+        8 => L("ღია ციკლი — სისტემის ხარვეზი", "Open loop — system fault"),
+        16 => L("დახურული ციკლი — ხარვეზით", "Closed loop — with a fault"),
+        _ => L("უცნობი", "Unknown")
+    };
+
+    private static string SensorList(int mask, bool twoSensorBanks)
+    {
+        var names = new List<string>();
+        for (var bit = 0; bit < 8; bit++)
+        {
+            if ((mask & (1 << bit)) == 0) continue;
+            var bank = twoSensorBanks ? bit / 2 + 1 : bit / 4 + 1;
+            var sensor = twoSensorBanks ? bit % 2 + 1 : bit % 4 + 1;
+            names.Add($"B{bank}S{sensor}");
+        }
+        return names.Count == 0 ? L("არცერთი", "None") : string.Join(", ", names);
+    }
+
+    private static string ObdStandard(int value) => value switch
+    {
+        1 => "OBD-II (CARB)",
+        2 => "OBD (EPA)",
+        3 => "OBD + OBD-II",
+        4 => "OBD-I",
+        5 => L("არ არის OBD", "Not OBD compliant"),
+        6 => "EOBD (Europe)",
+        7 => "EOBD + OBD-II",
+        8 => "EOBD + OBD",
+        9 => "EOBD + OBD + OBD-II",
+        10 => "JOBD (Japan)",
+        11 => "JOBD + OBD-II",
+        12 => "JOBD + EOBD",
+        13 => "JOBD + EOBD + OBD-II",
+        17 => "EMD",
+        18 => "EMD+",
+        19 => "HD OBD-C",
+        20 => "HD OBD",
+        21 => "WWH OBD",
+        23 => "HD EOBD-I",
+        24 => "HD EOBD-I N",
+        25 => "HD EOBD-II",
+        26 => "HD EOBD-II N",
+        28 => "OBDBr-1",
+        29 => "OBDBr-2",
+        30 => "KOBD (Korea)",
+        31 => "IOBD I (India)",
+        32 => "IOBD II (India)",
+        33 => "HD EOBD-IV",
+        _ => L($"სტანდარტი {value}", $"Standard {value}")
+    };
+
+    private static string FuelType(int code) => code switch
+    {
+        1 => L("ბენზინი", "Gasoline"),
+        2 => L("მეთანოლი", "Methanol"),
+        3 => L("ეთანოლი", "Ethanol"),
+        4 => L("დიზელი", "Diesel"),
+        5 => "LPG",
+        6 => "CNG",
+        7 => L("პროპანი", "Propane"),
+        8 => L("ელექტრო", "Electric"),
+        9 => L("ორსაწვავიანი: ბენზინი", "Bifuel: gasoline"),
+        10 => L("ორსაწვავიანი: მეთანოლი", "Bifuel: methanol"),
+        11 => L("ორსაწვავიანი: ეთანოლი", "Bifuel: ethanol"),
+        12 => L("ორსაწვავიანი: LPG", "Bifuel: LPG"),
+        13 => L("ორსაწვავიანი: CNG", "Bifuel: CNG"),
+        14 => L("ორსაწვავიანი: პროპანი", "Bifuel: propane"),
+        15 => L("ორსაწვავიანი: ელექტრო", "Bifuel: electric"),
+        16 => L("ორსაწვავიანი: ელექტრო + ძრავი", "Bifuel: electric + engine"),
+        17 => L("ჰიბრიდი: ბენზინი", "Hybrid: gasoline"),
+        18 => L("ჰიბრიდი: ეთანოლი", "Hybrid: ethanol"),
+        19 => L("ჰიბრიდი: დიზელი", "Hybrid: diesel"),
+        20 => L("ჰიბრიდი: ელექტრო", "Hybrid: electric"),
+        21 => L("ჰიბრიდი: ელექტრო + ძრავი", "Hybrid: electric + engine"),
+        22 => L("ჰიბრიდი: რეგენერაციით", "Hybrid: regenerative"),
+        23 => L("ორსაწვავიანი: დიზელი", "Bifuel: diesel"),
+        _ => L($"საწვავის კოდი {code}", $"Fuel code {code}")
+    };
+
+    /// <summary>Data bytes of a Mode 01 reply as hex (for PIDs without a decoder).</summary>
+    public static string RawData(int pid, string raw)
+    {
+        try
+        {
+            return string.Join(" ", Read(raw, (byte)pid).Select(b => b.ToString("X2")));
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
     public double DecodeRpm(string raw) => DecodeRequired(0x0C, raw);
     public double DecodeSpeed(string raw) => DecodeRequired(0x0D, raw);
     public double DecodeCoolant(string raw) => DecodeRequired(0x05, raw);
