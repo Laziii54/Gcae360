@@ -306,12 +306,14 @@ namespace CarScanner.Services.OBD
                         token).ConfigureAwait(false);
 
                     var command = string.Concat(payload.ToArray().Select(b => b.ToString("X2")));
-                    return await SendCommandInternalAsync(
+                    var answer = await SendCommandInternalAsync(
                         command,
                         timeout,
                         maxRetries: 1,
                         treatNegativeStatusAsError: false,
                         token).ConfigureAwait(false);
+                    ObserveModule(transmitCanId, receiveCanId, extended29Bit, command, payload.Span[0], answer);
+                    return answer;
                 }
                 finally
                 {
@@ -439,12 +441,16 @@ namespace CarScanner.Services.OBD
                     var command = string.Concat(
                         payload.ToArray().Select(value => value.ToString("X2")));
 
-                    return await SendCommandInternalAsync(
+                    var answer = await SendCommandInternalAsync(
                         command,
                         timeout,
                         maxRetries: 1,
                         treatNegativeStatusAsError: false,
                         token).ConfigureAwait(false);
+                    // A BMW-style extended address cannot be described by a CAN id pair: not reported.
+                    if (!extendedAddress.HasValue)
+                        ObserveModule(transmitCanId, receiveCanId, extended29Bit, command, payload.Span[0], answer);
+                    return answer;
                 }
                 finally
                 {
@@ -800,12 +806,17 @@ namespace CarScanner.Services.OBD
                 ValidateCanIdentifiers(transmitCanId, receiveCanId, extended29Bit);
                 await ConfigureAsync(transmitCanId, receiveCanId, extended29Bit, caf: true, longWait, token, extendedAddress).ConfigureAwait(false);
                 var command = string.Concat(payload.Select(b => b.ToString("X2")));
-                return ApplySoftwareFilter(await _elm.SendCommandInternalAsync(
+                var answer = ApplySoftwareFilter(await _elm.SendCommandInternalAsync(
                     command,
                     TimeSpan.FromSeconds(longWait ? 4 : 2.5),
                     maxRetries: 1,
                     treatNegativeStatusAsError: false,
                     token).ConfigureAwait(false));
+
+                if (ObdExchangeTap.HasSubscribers)
+                    ObdExchangeTap.Publish(new ObdRawExchange(transmitCanId, receiveCanId, extended29Bit, command, answer));
+
+                return answer;
             }
 
             public async Task<string> MonitorBroadcastAsync(int canId, bool extended29Bit, int milliseconds, CancellationToken token)
@@ -1456,16 +1467,124 @@ namespace CarScanner.Services.OBD
             await _sessionGate.WaitAsync(token).ConfigureAwait(false);
             try
             {
-                return await SendCommandInternalAsync(
-                    command.Trim(),
-                    timeout,
-                    retries,
-                    treatNegativeStatusAsError,
-                    token).ConfigureAwait(false);
+                var trimmed = command.Trim();
+                try
+                {
+                    var answer = await SendCommandInternalAsync(
+                        trimmed,
+                        timeout,
+                        retries,
+                        treatNegativeStatusAsError,
+                        token).ConfigureAwait(false);
+                    ObserveStandard(trimmed, answer);
+                    return answer;
+                }
+                catch (Elm327TimeoutException)
+                {
+                    ObserveStandard(trimmed, "TIMEOUT");
+                    throw;
+                }
+                catch (Elm327CommandException ex)
+                {
+                    ObserveStandard(trimmed, ex.RawResponse);
+                    throw;
+                }
             }
             finally
             {
                 _sessionGate.Release();
+            }
+        }
+
+        /// <summary>
+        /// Reports a finished physically addressed module read to the read-only tap. Only the read services
+        /// 0x19, 0x21 and 0x22 are ever reported: sessions, tester-present, writes, routines and security
+        /// requests that pass through the same transport are not. Cheap when nobody listens; never throws.
+        /// </summary>
+        private static void ObserveModule(int transmitCanId, int? receiveCanId, bool extended29Bit, string requestHex, byte service, string response)
+        {
+            try
+            {
+                if (!ObdExchangeTap.HasSubscribers || service is not (0x19 or 0x21 or 0x22))
+                    return;
+
+                var frames = FramesForTap(response, extended29Bit, out var firstHeader);
+                var receive = receiveCanId ?? firstHeader;
+                if (frames is null || receive is null)
+                    return;
+
+                ObdExchangeTap.Publish(new ObdRawExchange(transmitCanId, receive.Value, extended29Bit, requestHex, frames));
+            }
+            catch
+            {
+                // observation must never affect diagnostics
+            }
+        }
+
+        /// <summary>
+        /// The adapter prints spaced bytes in these paths ("7E8 04 62 F4 0C 1A") and CleanResponse joins the
+        /// lines, so frame boundaries are rebuilt from the CAN id tokens (3 hex digits, or 8 for 29-bit). Replies
+        /// the adapter formats over several lines ("0:" / "1:") cannot be rebuilt reliably and are not reported.
+        /// </summary>
+        internal static string? FramesForTap(string? response, bool extended29Bit, out int? firstHeader)
+        {
+            firstHeader = null;
+            if (string.IsNullOrWhiteSpace(response) || response.Contains(':'))
+                return null;
+
+            var width = extended29Bit ? 8 : 3;
+            var parts = new List<string>();
+            System.Text.StringBuilder? frame = null;
+            void Flush()
+            {
+                if (frame is not null)
+                    parts.Add(frame.ToString());
+                frame = null;
+            }
+
+            foreach (var raw in response.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var token = raw.ToUpperInvariant();
+                var hex = token.All(Uri.IsHexDigit);
+                if (hex && token.Length == width)
+                {
+                    Flush();
+                    frame = new System.Text.StringBuilder(token);
+                    firstHeader ??= int.Parse(token, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture);
+                }
+                else if (hex && token.Length == 2 && frame is not null)
+                {
+                    frame.Append(token);
+                }
+                else
+                {
+                    Flush();
+                    parts.Add(token);
+                }
+            }
+
+            Flush();
+            return parts.Count == 0 ? null : string.Join(" ", parts);
+        }
+
+        /// <summary>
+        /// Reports a finished standard OBD2 exchange (Mode 01 PIDs, Modes 03/07/0A only) to the read-only tap.
+        /// Cheap when nobody listens; never throws.
+        /// </summary>
+        private void ObserveStandard(string command, string response)
+        {
+            try
+            {
+                if (!ObdExchangeTap.HasSubscribers || !ObdExchangeTap.IsObservableStandardRequest(command))
+                    return;
+
+                ObdExchangeTap.Publish(new ObdRawExchange(
+                    0x7DF, 0, false, command.Replace(" ", string.Empty).ToUpperInvariant(), response ?? string.Empty,
+                    ObdExchangeOrigin.StandardObd, IsCanProtocol(_currentProtocol)));
+            }
+            catch
+            {
+                // observation must never affect diagnostics
             }
         }
 

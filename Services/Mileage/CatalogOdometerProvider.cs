@@ -15,10 +15,9 @@ namespace CarScanner.Services.Mileage;
 /// bundled OBDb catalog (~240 signals, VW/Audi, BMW, Toyota, Hyundai/Kia,
 /// Ford, Nissan, Mazda, Honda, Subaru, Opel, GM …).
 ///
-/// Each module keeps its own copy of the distance. When the dashboard was
-/// rolled back, other modules usually still show the original value, so the
-/// Mileage page compares them. Read-only (0x22 / 0x21); a value is used only
-/// after an exact positive reply from the car.
+/// Each module may keep its own copy of the distance; the Mileage page shows what each one reports and
+/// compares them without deciding which is right. Only identifiers listed for THIS model are requested.
+/// Read-only (0x22 / 0x21); a value is used only after an exact positive reply from the car.
 /// </summary>
 public sealed class CatalogOdometerProvider : IActualMileageProvider
 {
@@ -36,7 +35,6 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
 
     private readonly DtcCatalogService _catalog;
     private readonly OBDService _obd;
-    private readonly IsoTpReassembler _isoTp = new();
 
     public string Name => "Multi-module odometer";
 
@@ -58,7 +56,7 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
     public async Task<MileageEvidence?> ReadFirstAsync(
         VehicleInfo vehicle,
         CancellationToken cancellationToken = default) =>
-        (await ReadCoreAsync(vehicle, true, cancellationToken).ConfigureAwait(false)).FirstOrDefault();
+        (await ReadCoreAsync(vehicle, true, cancellationToken).ConfigureAwait(false)).FirstOrDefault(e => e.Status == MileageReadStatus.Ok);
 
     private async Task<IReadOnlyList<MileageEvidence>> ReadCoreAsync(
         VehicleInfo vehicle,
@@ -74,11 +72,27 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
         if (!_obd.IsInitialized)
             await _obd.InitializeAsync(cancellationToken).ConfigureAwait(false);
 
-        var signals = await LoadSignalsAsync(vehicle, cancellationToken).ConfigureAwait(false);
+        var allSignals = await LoadSignalsAsync(vehicle, cancellationToken).ConfigureAwait(false);
+
+        // Only identifiers the catalog lists for THIS model are requested. An identifier that another model of the same
+        // brand answers is not evidence that this car supports it, so it is never tried.
+        var signals = allSignals.Where(signal => signal.ExactModel).ToList();
+        var modelKnown = !string.IsNullOrWhiteSpace(vehicle.Model) &&
+                         !vehicle.Model.Equals("Unknown", StringComparison.OrdinalIgnoreCase);
+        var assessment = MileageSourceCompatibility.Evaluate(
+            MileageSourceFamily.CatalogUdsRead,
+            new MileageSourceFacts(true, modelKnown, _obd.IsInitialized, _obd.IsCanProtocol, null,
+                signals.Select(signal => signal.Key).Distinct().Count(), false, 0));
+
+        if (!assessment.ShouldTry)
+        {
+            MileageTrace.Add($"{vehicle.Manufacturer} {vehicle.Model}: module odometer not requested ({assessment.Reason}; {allSignals.Count} brand-level signals ignored)");
+            MileageTrace.Attempt(new MileageAttempt(Name, "UDS 22/21", MileageAttemptOutcome.NotTried, string.Empty, assessment.Status, assessment.Reason));
+            return Array.Empty<MileageEvidence>();
+        }
+
         var evidence = new List<MileageEvidence>();
-        MileageTrace.Add(signals.Count == 0
-            ? $"{vehicle.Manufacturer}: ოდომეტრის ცნობილი მისამართები ბაზაში არ არის"
-            : $"{vehicle.Manufacturer}: {signals.Select(s => s.Key).Distinct().Count()} მოდულის მისამართი");
+        MileageTrace.Add($"{vehicle.Manufacturer} {vehicle.Model}: {signals.Select(s => s.Key).Distinct().Count()} module address(es) listed for this model");
 
         // One request per module/identifier; the first signal that decodes is used.
         foreach (var group in signals
@@ -87,11 +101,12 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
         {
             cancellationToken.ThrowIfCancellationRequested();
             var first = group.First();
+            var method = $"0x{first.ServiceId:X2} 0x{first.Identifier:X4} @ {first.Header}";
 
-            byte[]? data;
+            (byte[]? Data, OdometerDecodeFailure Failure) reply;
             try
             {
-                data = await ReadAsync(first, cancellationToken).ConfigureAwait(false);
+                reply = await ReadAsync(first, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -99,30 +114,50 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
             }
             catch (Exception ex)
             {
-                MileageTrace.Add($"{first.Header} {first.ServiceId:X2} {first.Identifier:X}: შეცდომა ({ex.GetType().Name})");
+                MileageTrace.Add($"{method}: error ({ex.GetType().Name})");
+                MileageTrace.Attempt(new MileageAttempt(Name, method, MileageAttemptOutcome.ModuleNotResponding, ex.GetType().Name, assessment.Status, assessment.Reason));
                 continue;
             }
 
-            if (data is null)
+            if (reply.Data is null)
             {
-                MileageTrace.Add($"{first.Header} {first.ServiceId:X2} {first.Identifier:X}: პასუხი არ არის");
+                MileageTrace.Add($"{method}: {reply.Failure}");
+                MileageTrace.Attempt(new MileageAttempt(Name, method, reply.Failure switch
+                {
+                    OdometerDecodeFailure.Negative => MileageAttemptOutcome.ReadingUnavailable,
+                    OdometerDecodeFailure.NotPositiveForRequest => MileageAttemptOutcome.InvalidReading,
+                    _ => MileageAttemptOutcome.ModuleNotResponding
+                }, reply.Failure.ToString(), assessment.Status, assessment.Reason));
                 continue;
             }
 
             var decodedAny = false;
+            OdometerDecodeResult? lastFailure = null;
 
             foreach (var signal in group.OrderByDescending(item => item.IsMetric))
             {
-                if (!TryDecode(signal, data, out var kilometers))
-                    continue;
+                var decoded = OdometerResponseDecoder.Decode(
+                    new OdometerSignalSpec(signal.BitOffset, signal.BitLength, signal.Mul, signal.Div, signal.Add, signal.Miles, signal.Meters),
+                    reply.Data);
 
-                evidence.Add(new MileageEvidence(
-                    Name,
-                    ModuleName(signal),
-                    kilometers,
-                    signal.ExactModel ? 0.8 : 0.7,
-                    $"0x{signal.ServiceId:X2} 0x{signal.Identifier:X4} · {signal.Address.Detail} · {signal.SignalName}"));
-                MileageTrace.Add($"{first.Header} {first.ServiceId:X2} {first.Identifier:X}: {kilometers:0} km ✓");
+                if (decoded.Failure == OdometerDecodeFailure.Implausible && decoded.Km.HasValue)
+                {
+                    // The module answered with a value nobody should believe: keep it visible for review, never use it.
+                    evidence.Add(Build(signal, decoded, method, MileageReadStatus.Implausible));
+                    MileageTrace.Attempt(new MileageAttempt(Name, method, MileageAttemptOutcome.InvalidReading, "Implausible value.", assessment.Status, assessment.Reason));
+                    decodedAny = true;
+                    break;
+                }
+
+                if (!decoded.IsValue)
+                {
+                    lastFailure = decoded;
+                    continue;
+                }
+
+                evidence.Add(Build(signal, decoded, method, MileageReadStatus.Ok));
+                MileageTrace.Add($"{method}: {decoded.Km:0} km");
+                MileageTrace.Attempt(new MileageAttempt(Name, method, MileageAttemptOutcome.Read, string.Empty, assessment.Status, assessment.Reason));
                 decodedAny = true;
                 break;
             }
@@ -131,11 +166,27 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
                 break;
 
             if (!decodedAny)
-                MileageTrace.Add($"{first.Header} {first.ServiceId:X2} {first.Identifier:X}: პასუხი მოვიდა, მაგრამ ვერ გაიშიფრა ({Convert.ToHexString(data.Take(8).ToArray())})");
+            {
+                MileageTrace.Add($"{method}: reply could not be decoded ({lastFailure?.Failure}) {Convert.ToHexString(reply.Data.Take(8).ToArray())}");
+                MileageTrace.Attempt(new MileageAttempt(Name, method, MileageAttemptOutcome.InvalidReading,
+                    lastFailure?.Failure.ToString() ?? "Undecodable", assessment.Status, assessment.Reason));
+            }
         }
 
         return evidence;
     }
+
+    private MileageEvidence Build(OdometerSignal signal, OdometerDecodeResult decoded, string method, MileageReadStatus status) =>
+        new(Name, ModuleName(signal), decoded.Km ?? double.NaN, signal.ExactModel ? 0.8 : 0.7,
+            $"{signal.Address.Detail} · {signal.SignalName}")
+        {
+            Measurement = MileageMeasurement.TotalOdometer,
+            Status = status,
+            Unit = decoded.Unit,
+            RawValue = decoded.RawValue,
+            SourceKind = MileageSourceKind.PublicDefinition,
+            Method = method
+        };
 
     // ------------------------------------------------------------------
     // Catalog
@@ -309,103 +360,15 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
     // Reading + decoding
     // ------------------------------------------------------------------
 
-    private async Task<byte[]?> ReadAsync(OdometerSignal signal, CancellationToken token)
+    private async Task<(byte[]? Data, OdometerDecodeFailure Failure)> ReadAsync(OdometerSignal signal, CancellationToken token)
     {
         var request = signal.ServiceId == 0x21
             ? new byte[] { 0x21, (byte)signal.Identifier }
             : new byte[] { 0x22, (byte)(signal.Identifier >> 8), (byte)signal.Identifier };
 
         var raw = await _obd.ReadPhysicalCanReadOnlyAsync(signal.Address, request, RequestTimeout, token).ConfigureAwait(false);
-        if (string.IsNullOrWhiteSpace(raw) || ObdResponseParser.IsNegative(raw))
-            return null;
-
-        var positive = (byte)(signal.ServiceId + 0x40);
-        var idBytes = signal.ServiceId == 0x21
-            ? new[] { (byte)signal.Identifier }
-            : new[] { (byte)(signal.Identifier >> 8), (byte)signal.Identifier };
-
-        var candidates = new List<IReadOnlyList<byte[]>>();
-        if (signal.Address.ReceiveCanId.HasValue)
-            candidates.Add(ObdResponseParser.ParseCanFrames(raw, signal.Address.ReceiveCanId.Value));
-        foreach (var id in ObdResponseParser.ExtractCanIdentifiers(raw))
-            candidates.Add(ObdResponseParser.ParseCanFrames(raw, id));
-        candidates.Add(ObdResponseParser.ParseCanFrames(raw));
-
-        foreach (var frames in candidates)
-        {
-            if (frames.Count == 0 || frames[0].Length == 0)
-                continue;
-
-            byte[] message;
-            try
-            {
-                message = (frames[0][0] >> 4) is 0 or 1
-                    ? _isoTp.Reassemble(frames)
-                    : frames.SelectMany(frame => frame).ToArray();
-            }
-            catch
-            {
-                continue;
-            }
-
-            if (Matches(message, positive, idBytes, out var data))
-                return data;
-        }
-
-        // Adapter already removed the framing.
-        return Matches(ObdResponseParser.ParseHex(raw), positive, idBytes, out var plain) ? plain : null;
-    }
-
-    private static bool Matches(byte[] bytes, byte positive, byte[] idBytes, out byte[] data)
-    {
-        data = Array.Empty<byte>();
-        for (var i = 0; i + idBytes.Length < bytes.Length; i++)
-        {
-            if (bytes[i] != positive)
-                continue;
-
-            var ok = true;
-            for (var j = 0; j < idBytes.Length && ok; j++)
-                ok = bytes[i + 1 + j] == idBytes[j];
-
-            if (!ok)
-                continue;
-
-            data = bytes[(i + 1 + idBytes.Length)..];
-            return data.Length > 0;
-        }
-
-        return false;
-    }
-
-    private static bool TryDecode(OdometerSignal signal, byte[] data, out double kilometers)
-    {
-        kilometers = 0;
-        if (signal.BitOffset + signal.BitLength > data.Length * 8 || Math.Abs(signal.Div) < double.Epsilon)
-            return false;
-
-        ulong raw = 0;
-        for (var bit = 0; bit < signal.BitLength; bit++)
-        {
-            var absolute = signal.BitOffset + bit;
-            raw = (raw << 1) | (((ulong)data[absolute / 8] >> (7 - absolute % 8)) & 1UL);
-        }
-
-        // All bits set = "not available" in most ECUs.
-        if (raw == (signal.BitLength >= 64 ? ulong.MaxValue : (1UL << signal.BitLength) - 1))
-            return false;
-
-        var value = raw * signal.Mul / signal.Div + signal.Add;
-        if (signal.Miles)
-            value *= 1.609344d;
-        else if (signal.Meters)
-            value /= 1000d;
-
-        if (!double.IsFinite(value) || value < 1 || value > 2_000_000)
-            return false;
-
-        kilometers = value;
-        return true;
+        var data = OdometerResponseDecoder.ExtractPayload(raw, signal.ServiceId, signal.Identifier, signal.Address.ReceiveCanId, out var failure);
+        return (data, failure);
     }
 
     // ------------------------------------------------------------------

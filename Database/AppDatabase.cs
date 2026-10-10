@@ -281,12 +281,22 @@ public sealed class AppDatabase
         return await query.OrderByDescending(item => item.RefueledAt).ToListAsync();
     }
 
+    /// <summary>
+    /// Saves a trip. A trip with the same VIN that started at the same moment (±2 s) is the same trip and is not stored twice
+    /// (returns 0): this protects against a double tap on Stop and against recovering a trip that was already saved.
+    /// </summary>
     public async Task<int> SaveFuelTripAsync(FuelTripRecord value)
     {
         await Ready();
-        return value.Id == 0
-            ? await _database.InsertAsync(value)
-            : await _database.UpdateAsync(value);
+        if (value.Id != 0)
+            return await _database.UpdateAsync(value);
+
+        var from = value.StartedAt.AddSeconds(-2);
+        var to = value.StartedAt.AddSeconds(2);
+        var existing = await _database.Table<FuelTripRecord>()
+            .Where(item => item.VIN == value.VIN && item.StartedAt >= from && item.StartedAt <= to)
+            .FirstOrDefaultAsync();
+        return existing is not null ? 0 : await _database.InsertAsync(value);
     }
 
     public async Task<List<FuelTripRecord>> GetFuelTripsAsync(string? vin = null)

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": 8,
+  "catalogVersion": 9,
   "procedures": [
     {
       "id": "acura.rdx.2023.maintenance-minder-reset",
@@ -42,7 +42,10 @@
           "textEn": "Press the right selector wheel to reset the selected item."
         }
       ],
-      "source": "Official Acura 2023 RDX Maintenance Minder System"
+      "source": "Official Acura 2023 RDX Maintenance Minder System",
+      "systemName": "Maintenance Minder",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "acura.tlx.2021.maintenance-minder-reset",
@@ -84,7 +87,10 @@
           "textEn": "Press the right selector wheel to reset the selected item."
         }
       ],
-      "source": "Official Acura 2021 TLX Maintenance Minder System guide"
+      "source": "Official Acura 2021 TLX Maintenance Minder System guide",
+      "systemName": "Maintenance Minder",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "buick.enclave.2020.oil-life-reset",
@@ -116,7 +122,9 @@
           "textEn": "Verify that Oil Life changes to 100%."
         }
       ],
-      "source": "2020 Buick Enclave Owner's Manual — Engine Oil Life System"
+      "source": "2020 Buick Enclave Owner's Manual — Engine Oil Life System",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "cadillac.xt5.2020.oil-life-reset",
@@ -148,7 +156,9 @@
           "textEn": "Verify that CHANGE ENGINE OIL SOON clears and Oil Life resets to 100%."
         }
       ],
-      "source": "2020 Cadillac XT5 Owner's Manual — Engine Oil Life System"
+      "source": "2020 Cadillac XT5 Owner's Manual — Engine Oil Life System",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "chevrolet.equinox.2018.oil-life-reset",
@@ -180,7 +190,9 @@
           "textEn": "Verify that REMAINING OIL LIFE 100% is displayed."
         }
       ],
-      "source": "Official Chevrolet 2018 Equinox Owner's Manual — Engine Oil Life System"
+      "source": "Official Chevrolet 2018 Equinox Owner's Manual — Engine Oil Life System",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "chevrolet.silverado-1500.2020.oil-life-reset",
@@ -217,7 +229,9 @@
           "textEn": "Verify that Oil Life changes to 100%."
         }
       ],
-      "source": "2020 Chevrolet Silverado Owner's Manual — Engine Oil Life System"
+      "source": "2020 Chevrolet Silverado Owner's Manual — Engine Oil Life System",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "chevrolet.volt.2012-2013.oil-life-reset",
@@ -254,7 +268,9 @@
           "textEn": "After a successful reset, the display should show 100% OIL LIFE."
         }
       ],
-      "source": "Official Chevrolet 2012 and 2013 Volt Owner's Manuals — Engine Oil Life System"
+      "source": "Official Chevrolet 2012 and 2013 Volt Owner's Manuals — Engine Oil Life System",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "chrysler.300.2020.oil-life-reset",
@@ -291,7 +307,9 @@
           "textEn": "Press and hold OK until Oil Life resets to 100%."
         }
       ],
-      "source": "2020 Chrysler 300 Owner's Manual — Engine Oil Life Reset"
+      "source": "2020 Chrysler 300 Owner's Manual — Engine Oil Life Reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "chrysler.pacifica.2020.oil-life-reset",
@@ -333,7 +351,9 @@
           "textEn": "Press and hold OK until Oil Life resets to 100%."
         }
       ],
-      "source": "2020 Chrysler Pacifica Owner's Manual — Oil Life Reset"
+      "source": "2020 Chrysler Pacifica Owner's Manual — Oil Life Reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "citroen.c5-aircross.2022.service-indicator-reset",
@@ -375,7 +395,9 @@
           "textEn": "Verify that the spanner disappears."
         }
       ],
-      "source": "2022 Citroen C5 Aircross Owner's Manual — Resetting the Service Indicator"
+      "source": "2022 Citroen C5 Aircross Owner's Manual — Resetting the Service Indicator",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "cupra.formentor.2021.service-interval-reset",
@@ -412,7 +434,9 @@
           "textEn": "Confirm the reset using the on-screen instruction."
         }
       ],
-      "source": "Official CUPRA Formentor from June 2021 Owner's Manual — Resetting Service Interval Display"
+      "source": "Official CUPRA Formentor from June 2021 Owner's Manual — Resetting Service Interval Display",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "dodge.challenger.2020.oil-life-reset",
@@ -449,7 +473,9 @@
           "textEn": "Press and hold OK until Oil Life resets to 100%."
         }
       ],
-      "source": "2020 Dodge Challenger Owner's Manual — Engine Oil Life Reset"
+      "source": "2020 Dodge Challenger Owner's Manual — Engine Oil Life Reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "dodge.charger.2020.oil-life-reset",
@@ -486,7 +512,9 @@
           "textEn": "Press and hold OK until the gauge and numeric display return to 100%."
         }
       ],
-      "source": "2020 Dodge Charger Owner's Manual — Engine Oil Life Reset"
+      "source": "2020 Dodge Charger Owner's Manual — Engine Oil Life Reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "dodge.durango.2024.oil-life-reset",
@@ -523,7 +551,9 @@
           "textEn": "On the next start, verify that Oil Change Required no longer appears."
         }
       ],
-      "source": "Official 2024 Dodge Durango Owner's Manual — Engine Oil Life Reset"
+      "source": "Official 2024 Dodge Durango Owner's Manual — Engine Oil Life Reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "ford.bronco.2023.oil-life-reset",
@@ -565,7 +595,10 @@
           "textEn": "Verify Remaining Life shows 100%."
         }
       ],
-      "source": "Official Ford 2023 Bronco Owner's Manual — Intelligent Oil Life Monitor"
+      "source": "Official Ford 2023 Bronco Owner's Manual — Intelligent Oil Life Monitor",
+      "systemName": "Intelligent Oil Life Monitor",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "ford.bronco-sport.2023.oil-life-reset",
@@ -607,7 +640,10 @@
           "textEn": "Verify Remaining Life shows 100%."
         }
       ],
-      "source": "Official Ford 2023 Bronco Sport Owner's Manual — Intelligent Oil Life Monitor"
+      "source": "Official Ford 2023 Bronco Sport Owner's Manual — Intelligent Oil Life Monitor",
+      "systemName": "Intelligent Oil Life Monitor",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "ford.focus.2018.oil-life-reset",
@@ -649,7 +685,10 @@
           "textEn": "Release both pedals and switch the ignition off."
         }
       ],
-      "source": "Official Ford 2018 Focus Owner's Manual — Oil Change Indicator Reset"
+      "source": "Official Ford 2018 Focus Owner's Manual — Oil Change Indicator Reset",
+      "systemName": "Oil Life Monitor",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "ford.maverick.2022.oil-life-reset",
@@ -686,7 +725,10 @@
           "textEn": "Verify that the reset completes."
         }
       ],
-      "source": "Official Ford 2022 Maverick Owner's Manual — Intelligent Oil Life Monitor"
+      "source": "Official Ford 2022 Maverick Owner's Manual — Intelligent Oil Life Monitor",
+      "systemName": "Intelligent Oil Life Monitor",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "genesis.g90.2017.service-interval-reset",
@@ -723,7 +765,9 @@
           "textEn": "Verify that the interval has reset."
         }
       ],
-      "source": "2017 Genesis G90 Owner's Manual — User Settings / Service Interval"
+      "source": "2017 Genesis G90 Owner's Manual — User Settings / Service Interval",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "genesis.g90.2020.service-interval-reset",
@@ -765,7 +809,9 @@
           "textEn": "Verify that the interval has reset."
         }
       ],
-      "source": "Official Genesis 2020 G90 Gen-5 Navigation Manual — Service Interval"
+      "source": "Official Genesis 2020 G90 Gen-5 Navigation Manual — Service Interval",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "gmc.sierra.2020.oil-life-reset",
@@ -802,7 +848,9 @@
           "textEn": "Verify that Oil Life changes to 100%."
         }
       ],
-      "source": "2020 GMC Sierra Owner's Manual — Engine Oil Life System"
+      "source": "2020 GMC Sierra Owner's Manual — Engine Oil Life System",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "honda.accord-hybrid.2023.maintenance-minder-reset",
@@ -844,7 +892,10 @@
           "textEn": "Press the right selector wheel to reset the selected item."
         }
       ],
-      "source": "Official Honda 2023 Accord Hybrid Owner's Manual — Maintenance Minder"
+      "source": "Official Honda 2023 Accord Hybrid Owner's Manual — Maintenance Minder",
+      "systemName": "Maintenance Minder",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "honda.civic.2021.maintenance-minder-reset",
@@ -891,7 +942,10 @@
           "textEn": "Press ENTER to reset the selected item."
         }
       ],
-      "source": "Official Honda 2021 Civic Maintenance Minder System guide"
+      "source": "Official Honda 2021 Civic Maintenance Minder System guide",
+      "systemName": "Maintenance Minder",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "honda.cr-v.2023.maintenance-minder-reset",
@@ -938,7 +992,10 @@
           "textEn": "Select the required item or All due items, then press the selector wheel."
         }
       ],
-      "source": "Official Honda 2023 CR-V Maintenance Minder System"
+      "source": "Official Honda 2023 CR-V Maintenance Minder System",
+      "systemName": "Maintenance Minder",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "honda.hr-v.2022.maintenance-minder-reset",
@@ -980,7 +1037,10 @@
           "textEn": "Verify that the maintenance item clears and Oil Life returns to 100%."
         }
       ],
-      "source": "Official Honda 2022 HR-V Maintenance Minder System"
+      "source": "Official Honda 2022 HR-V Maintenance Minder System",
+      "systemName": "Maintenance Minder",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "hyundai.elantra.2020.service-interval-reset",
@@ -1017,7 +1077,9 @@
           "textEn": "Verify that the interval has reset."
         }
       ],
-      "source": "2020 Hyundai Elantra Owner's Manual — Service Information"
+      "source": "2020 Hyundai Elantra Owner's Manual — Service Information",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "jeep.gladiator.2020.oil-life-reset",
@@ -1054,7 +1116,9 @@
           "textEn": "Press and hold OK for about 2 seconds to reset."
         }
       ],
-      "source": "Official Jeep 2020 Gladiator Owner's Manual — Oil Life Reset"
+      "source": "Official Jeep 2020 Gladiator Owner's Manual — Oil Life Reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "jeep.grand-cherokee.2023.oil-life-reset",
@@ -1096,7 +1160,9 @@
           "textEn": "Use the up/down arrow to exit the submenu."
         }
       ],
-      "source": "Official Jeep 2023 Grand Cherokee FAQ / Owner's Manual — Engine Oil Life Reset"
+      "source": "Official Jeep 2023 Grand Cherokee FAQ / Owner's Manual — Engine Oil Life Reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "kia.forte.2023.oil-change-reminder-reset",
@@ -1133,7 +1199,9 @@
           "textEn": "Verify that the reminder has reset."
         }
       ],
-      "source": "2023 Kia Forte Features & Functions Guide — Oil Change Reminder"
+      "source": "2023 Kia Forte Features & Functions Guide — Oil Change Reminder",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "kia.forte.2023.service-interval-reset",
@@ -1170,7 +1238,9 @@
           "textEn": "Verify that the reminder has reset."
         }
       ],
-      "source": "2023 Kia Forte Features & Functions Guide — Service Interval Mode"
+      "source": "2023 Kia Forte Features & Functions Guide — Service Interval Mode",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "kia.k5.2023.oil-change-reminder-reset",
@@ -1207,7 +1277,9 @@
           "textEn": "Verify that the reminder has reset."
         }
       ],
-      "source": "2023 Kia K5 Features & Functions Guide — Engine Oil Change Reminder"
+      "source": "2023 Kia K5 Features & Functions Guide — Engine Oil Change Reminder",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "kia.k5.2023.service-interval-reset",
@@ -1244,7 +1316,9 @@
           "textEn": "Verify that the reminder has reset."
         }
       ],
-      "source": "2023 Kia K5 Features & Functions Guide — Service Interval Mode"
+      "source": "2023 Kia K5 Features & Functions Guide — Service Interval Mode",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "kia.optima-phev.2020.service-interval-reset",
@@ -1281,7 +1355,9 @@
           "textEn": "Verify that the service interval has reset."
         }
       ],
-      "source": "2020 Kia Optima PHEV Features & Functions Guide — Service Interval Mode"
+      "source": "2020 Kia Optima PHEV Features & Functions Guide — Service Interval Mode",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "kia.rio.2020.service-interval-reset",
@@ -1318,7 +1394,9 @@
           "textEn": "Use OK (Set/Reset) and select Reset."
         }
       ],
-      "source": "Official Kia 2020 Rio Vehicle Feature Tips — User Settings / Service Interval"
+      "source": "Official Kia 2020 Rio Vehicle Feature Tips — User Settings / Service Interval",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "kia.sorento-phev.2023.service-interval-reset",
@@ -1355,7 +1433,9 @@
           "textEn": "Verify that the interval has reset."
         }
       ],
-      "source": "2023 Kia Sorento PHEV Features & Functions Guide — Service Interval Mode"
+      "source": "2023 Kia Sorento PHEV Features & Functions Guide — Service Interval Mode",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "kia.telluride.2020.service-interval-reset",
@@ -1392,7 +1472,9 @@
           "textEn": "Confirm the reset if prompted on screen."
         }
       ],
-      "source": "Official Kia 2020 Telluride Owner's Manual — Service Interval"
+      "source": "Official Kia 2020 Telluride Owner's Manual — Service Interval",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "lexus.nx-250.2023.oil-maintenance-reset",
@@ -1434,7 +1516,9 @@
           "textEn": "Wait for the The data has been reset confirmation."
         }
       ],
-      "source": "2023 Lexus NX 250 Owner's Manual — Oil Maintenance"
+      "source": "2023 Lexus NX 250 Owner's Manual — Oil Maintenance",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "lexus.nx-250.2023.scheduled-maintenance-reset",
@@ -1476,7 +1560,9 @@
           "textEn": "Wait for the The data has been reset confirmation."
         }
       ],
-      "source": "2023 Lexus NX 250 Owner's Manual — Scheduled Maintenance"
+      "source": "2023 Lexus NX 250 Owner's Manual — Scheduled Maintenance",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "lexus.nx-450h-plus.2023.oil-maintenance-reset",
@@ -1518,7 +1604,9 @@
           "textEn": "Wait for the reset confirmation."
         }
       ],
-      "source": "2023 Lexus NX 450h+ Owner's Manual — Oil Maintenance"
+      "source": "2023 Lexus NX 450h+ Owner's Manual — Oil Maintenance",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "lexus.rx-350h.2023.oil-maintenance-reset",
@@ -1555,7 +1643,9 @@
           "textEn": "Select Reset and confirm."
         }
       ],
-      "source": "2023 Lexus RX 350h Owner's Manual — Oil Maintenance"
+      "source": "2023 Lexus RX 350h Owner's Manual — Oil Maintenance",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "lincoln.mkc.2018.oil-life-reset",
@@ -1597,7 +1687,9 @@
           "textEn": "Wait for Reset Successful; Remaining Life should show 100%."
         }
       ],
-      "source": "Official Lincoln 2018 MKC Owner's Manual — Oil Life Reset"
+      "source": "Official Lincoln 2018 MKC Owner's Manual — Oil Life Reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "mazda.cx3.2020.maintenance-monitor-reset",
@@ -1639,7 +1731,10 @@
           "textEn": "Select Reset."
         }
       ],
-      "source": "Official Mazda 2020 CX-3 Owner's Manual — Maintenance Monitor"
+      "source": "Official Mazda 2020 CX-3 Owner's Manual — Maintenance Monitor",
+      "systemName": "Maintenance Monitor",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "mazda.cx5.2020.maintenance-monitor-reset",
@@ -1681,7 +1776,10 @@
           "textEn": "Select Reset and confirm."
         }
       ],
-      "source": "Official Mazda 2020 CX-5 Owner's Manual — Maintenance Monitor"
+      "source": "Official Mazda 2020 CX-5 Owner's Manual — Maintenance Monitor",
+      "systemName": "Maintenance Monitor",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "mazda.mazda3.2018.maintenance-reset",
@@ -1723,7 +1821,10 @@
           "textEn": "The master warning light flashes for a few seconds when the reset completes."
         }
       ],
-      "source": "Official Mazda 2018 Mazda3 Owner's Manual — Maintenance Monitor"
+      "source": "Official Mazda 2018 Mazda3 Owner's Manual — Maintenance Monitor",
+      "systemName": "Maintenance Monitor",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "mitsubishi.mirage.2020.service-reminder-reset",
@@ -1765,7 +1866,9 @@
           "textEn": "The next inspection interval will then be displayed."
         }
       ],
-      "source": "Official Mitsubishi 2020 Mirage Owner's Manual — Service reminder / To reset"
+      "source": "Official Mitsubishi 2020 Mirage Owner's Manual — Service reminder / To reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "mitsubishi.mirage-g4.2020.service-reminder-reset",
@@ -1807,7 +1910,9 @@
           "textEn": "Verify that the next inspection interval is displayed."
         }
       ],
-      "source": "2020 Mitsubishi Mirage G4 Owner's Manual — Service Reminder"
+      "source": "2020 Mitsubishi Mirage G4 Owner's Manual — Service Reminder",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "nissan.altima.2019.oil-control-reset",
@@ -1844,7 +1949,9 @@
           "textEn": "Follow the reset instruction shown at the bottom of the Oil Control System screen."
         }
       ],
-      "source": "Official Nissan 2019 Altima Owner's Manual — Oil Control System"
+      "source": "Official Nissan 2019 Altima Owner's Manual — Oil Control System",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "nissan.titan-xd.2018.oil-control-system-reset",
@@ -1886,7 +1993,9 @@
           "textEn": "Select YES to confirm the reset."
         }
       ],
-      "source": "2018 Nissan TITAN XD Diesel Owner's Manual Supplement — Oil Control System"
+      "source": "2018 Nissan TITAN XD Diesel Owner's Manual Supplement — Oil Control System",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "opel.mokka-x.2018.oil-life-reset",
@@ -1928,7 +2037,9 @@
           "textEn": "Verify that the Oil Life reset completes."
         }
       ],
-      "source": "2018 Opel Mokka X Owner's Manual — Remaining Oil Life"
+      "source": "2018 Opel Mokka X Owner's Manual — Remaining Oil Life",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "peugeot.2008.2023.service-indicator-reset",
@@ -1970,7 +2081,9 @@
           "textEn": "When =0 appears, release the button; the spanner should disappear."
         }
       ],
-      "source": "2023 Peugeot 2008 Owner's Manual — Resetting the Service Indicator"
+      "source": "2023 Peugeot 2008 Owner's Manual — Resetting the Service Indicator",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "peugeot.308.2023.service-indicator-reset",
@@ -2012,7 +2125,9 @@
           "textEn": "When =0 and the confirmation appear, release the button; the spanner should disappear."
         }
       ],
-      "source": "2023 Peugeot 308 Owner's Manual — Resetting the Service Indicator"
+      "source": "2023 Peugeot 308 Owner's Manual — Resetting the Service Indicator",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "ram.1500.2020.oil-life-reset",
@@ -2054,7 +2169,9 @@
           "textEn": "If reset does not complete, verify the engine is off and ignition is in ON/RUN."
         }
       ],
-      "source": "Official Mopar 2020 RAM 1500 Owner's Manual — Oil Life Reset"
+      "source": "Official Mopar 2020 RAM 1500 Owner's Manual — Oil Life Reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "ram.2500.2022.oil-life-reset",
@@ -2101,7 +2218,9 @@
           "textEn": "Verify that Oil Life is 100%."
         }
       ],
-      "source": "Official 2022 RAM 2500/3500 Owner's Manual — Oil Life Reset"
+      "source": "Official 2022 RAM 2500/3500 Owner's Manual — Oil Life Reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "ram.3500.2022.oil-life-reset",
@@ -2148,7 +2267,9 @@
           "textEn": "Verify that Oil Life is 100%."
         }
       ],
-      "source": "Official 2022 RAM 2500/3500 Owner's Manual — Oil Life Reset"
+      "source": "Official 2022 RAM 2500/3500 Owner's Manual — Oil Life Reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "seat.leon.2017.service-interval-reset",
@@ -2185,7 +2306,9 @@
           "textEn": "Release 0.0/SET and press it again within the next 20 seconds."
         }
       ],
-      "source": "2017 SEAT Leon Owner's Manual — Resetting Service Interval Display"
+      "source": "2017 SEAT Leon Owner's Manual — Resetting Service Interval Display",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "subaru.legacy.2020.engine-oil-reminder-reset",
@@ -2227,7 +2350,9 @@
           "textEn": "If the oil filter was also changed, update its reminder separately."
         }
       ],
-      "source": "2020 Subaru Legacy/Outback Owner's Manual — Center Information Display Maintenance Screen"
+      "source": "2020 Subaru Legacy/Outback Owner's Manual — Center Information Display Maintenance Screen",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "subaru.outback.2020.engine-oil-reminder-reset",
@@ -2269,7 +2394,9 @@
           "textEn": "If the oil filter was also changed, update its reminder separately."
         }
       ],
-      "source": "2020 Subaru Legacy/Outback Owner's Manual — Center Information Display Maintenance Screen"
+      "source": "2020 Subaru Legacy/Outback Owner's Manual — Center Information Display Maintenance Screen",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "toyota.highlander.2023.oil-maintenance-reset",
@@ -2311,7 +2438,9 @@
           "textEn": "Wait for the completion message."
         }
       ],
-      "source": "2023 Toyota Highlander Owner's Manual — Oil Maintenance"
+      "source": "2023 Toyota Highlander Owner's Manual — Oil Maintenance",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "toyota.highlander.2023.scheduled-maintenance-reset",
@@ -2353,7 +2482,9 @@
           "textEn": "Wait for the completion message."
         }
       ],
-      "source": "2023 Toyota Highlander Owner's Manual — Scheduled Maintenance"
+      "source": "2023 Toyota Highlander Owner's Manual — Scheduled Maintenance",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "toyota.prius.2024.oil-maintenance-reset",
@@ -2390,7 +2521,9 @@
           "textEn": "Verify that the oil-maintenance reminder is cleared."
         }
       ],
-      "source": "Official Toyota 2024 Prius Owner's Manual — Multi-information Display / Oil Maintenance"
+      "source": "Official Toyota 2024 Prius Owner's Manual — Multi-information Display / Oil Maintenance",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "toyota.prius.2024.scheduled-maintenance-reset",
@@ -2427,7 +2560,9 @@
           "textEn": "Verify that the maintenance reminder is cleared."
         }
       ],
-      "source": "Official Toyota 2024 Prius Owner's Manual — Multi-information Display / Scheduled Maintenance"
+      "source": "Official Toyota 2024 Prius Owner's Manual — Multi-information Display / Scheduled Maintenance",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "toyota.rav4.2023.scheduled-maintenance-reset",
@@ -2469,7 +2604,9 @@
           "textEn": "Wait for the reset-completed message."
         }
       ],
-      "source": "Official Toyota 2023 RAV4 Hybrid Owner's Manual — Maintenance requirements"
+      "source": "Official Toyota 2023 RAV4 Hybrid Owner's Manual — Maintenance requirements",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "toyota.tacoma.2024.scheduled-maintenance-reset",
@@ -2506,7 +2643,9 @@
           "textEn": "Select Yes and confirm the reset."
         }
       ],
-      "source": "Official Toyota 2024 Tacoma Owner's Manual — Maintenance required message reset"
+      "source": "Official Toyota 2024 Tacoma Owner's Manual — Maintenance required message reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "volkswagen.jetta.2021.service-reminder-reset-analog",
@@ -2548,7 +2687,9 @@
           "textEn": "Press 0.0 once to confirm."
         }
       ],
-      "source": "Volkswagen Group of America 2021 Jetta/Jetta GLI Service Reminder Reset bulletin"
+      "source": "Volkswagen Group of America 2021 Jetta/Jetta GLI Service Reminder Reset bulletin",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "volkswagen.jetta-gli.2021.service-reminder-reset-analog",
@@ -2590,7 +2731,9 @@
           "textEn": "Press 0.0 once to confirm."
         }
       ],
-      "source": "Volkswagen Group of America 2021 Jetta/Jetta GLI Service Reminder Reset bulletin"
+      "source": "Volkswagen Group of America 2021 Jetta/Jetta GLI Service Reminder Reset bulletin",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "volkswagen.tiguan.2017.service-reminder-reset",
@@ -2632,7 +2775,9 @@
           "textEn": "Press 0.0 once to confirm."
         }
       ],
-      "source": "Volkswagen Group of America 2017 Tiguan Service Reminder Reset bulletin"
+      "source": "Volkswagen Group of America 2017 Tiguan Service Reminder Reset bulletin",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "wagoneer.wagoneer.2022.oil-life-reset",
@@ -2674,7 +2819,9 @@
           "textEn": "Use the up/down arrow to exit the submenu."
         }
       ],
-      "source": "Official 2022 Wagoneer/Grand Wagoneer Owner's Manual — Engine Oil Life Reset"
+      "source": "Official 2022 Wagoneer/Grand Wagoneer Owner's Manual — Engine Oil Life Reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "infiniti.q50.2021.oil-control-system-reset",
@@ -2711,7 +2858,9 @@
           "textEn": "Verify that the Oil Control System remaining-distance value has reset."
         }
       ],
-      "source": "Official 2021 INFINITI Q50 Owner's Manual and Maintenance Information — Oil Control System"
+      "source": "Official 2021 INFINITI Q50 Owner's Manual and Maintenance Information — Oil Control System",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "infiniti.qx50.2021.oil-control-system-reset",
@@ -2753,7 +2902,9 @@
           "textEn": "Keep holding until the remaining distance changes to “---” miles/km."
         }
       ],
-      "source": "Official 2021 INFINITI QX50 Owner's Manual and Maintenance Information — Oil Control System"
+      "source": "Official 2021 INFINITI QX50 Owner's Manual and Maintenance Information — Oil Control System",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "isuzu.d-max.2017.engine-oil-reminder-reset",
@@ -2795,7 +2946,9 @@
           "textEn": "Selecting the engine-oil reminder distance again clears the current reminder calculation and starts it again."
         }
       ],
-      "source": "Official Isuzu D-Max Owner's Manual 2017 — SERVICE / Engine Oil Reminder Distance Setting"
+      "source": "Official Isuzu D-Max Owner's Manual 2017 — SERVICE / Engine Oil Reminder Distance Setting",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "renault.clio-iii-phase-2.service-interval-reset",
@@ -2832,7 +2985,9 @@
           "textEn": "Only perform the reset after maintenance that complies with the maintenance schedule."
         }
       ],
-      "source": "Official Renault Clio III Phase 2 Driver's Handbook — Resetting the display after service"
+      "source": "Official Renault Clio III Phase 2 Driver's Handbook — Resetting the display after service",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "renault.kangoo-ze.service-interval-reset",
@@ -2869,7 +3024,9 @@
           "textEn": "Only perform the reset after maintenance that complies with the maintenance schedule."
         }
       ],
-      "source": "Official Renault Kangoo Z.E. Driver's Handbook — Resetting the display after service"
+      "source": "Official Renault Kangoo Z.E. Driver's Handbook — Resetting the display after service",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "fiat.ulysse.2007.maintenance-indicator-reset",
@@ -2911,7 +3068,9 @@
           "textEn": "Release button C; the warning lamp switching off confirms a successful reset."
         }
       ],
-      "source": "Official Fiat Ulysse Owner Handbook — Resetting the Maintenance Indicator"
+      "source": "Official Fiat Ulysse Owner Handbook — Resetting the Maintenance Indicator",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.mercedes.1996-2002.zero-button",
@@ -2958,7 +3117,10 @@
           "textEn": "Release the button — the service indicator is reset."
         }
       ],
-      "source": "MB Medic — Mercedes service reminder reset (W210)"
+      "source": "MB Medic — Mercedes service reminder reset (W210)",
+      "systemName": "Mercedes service indicator",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.mercedes.2001-2007.steering-buttons",
@@ -3005,7 +3167,10 @@
           "textEn": "The new service interval is displayed."
         }
       ],
-      "source": "MB Medic — Mercedes service reminder reset (2001–2007)"
+      "source": "MB Medic — Mercedes service reminder reset (2001–2007)",
+      "systemName": "ASSYST",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.mercedes.2003-2007.w203-illumination",
@@ -3057,7 +3222,10 @@
           "textEn": "Hold the illumination button for 3 seconds until \"Service confirmed\" appears."
         }
       ],
-      "source": "MB Medic — W203/W209 service reset"
+      "source": "MB Medic — W203/W209 service reset",
+      "systemName": "Mercedes service indicator",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.mercedes.2008-2015.call-ok",
@@ -3114,7 +3282,10 @@
           "textEn": "\"Full service carried out\" appears. Switch the ignition off."
         }
       ],
-      "source": "aboutthecars.com — Mercedes service light reset (Method 1)"
+      "source": "aboutthecars.com — Mercedes service light reset (Method 1)",
+      "systemName": "ASSYST PLUS",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.mercedes.2014-2021.w205-w213",
@@ -3176,7 +3347,10 @@
           "textEn": "\"FULL SERVICE CARRIED OUT\" appears. Switch the ignition off."
         }
       ],
-      "source": "erwinsalarda.com — Mercedes-Benz C-Class W205 service light reset"
+      "source": "erwinsalarda.com — Mercedes-Benz C-Class W205 service light reset",
+      "systemName": "ASSYST PLUS",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.mercedes.2018-plus.mbux",
@@ -3218,7 +3392,10 @@
           "textEn": "Switch the ignition off and on. If this item is not in the menu, this model needs a workshop tool."
         }
       ],
-      "source": "aboutthecars.com — Mercedes service light reset (Method 3)"
+      "source": "aboutthecars.com — Mercedes service light reset (Method 3)",
+      "systemName": "MBUX / ASSYST PLUS",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.bmw.1997-2006.odometer-button",
@@ -3260,7 +3437,10 @@
           "textEn": "END and the new interval appear. Switch the ignition off."
         }
       ],
-      "source": "Engine Parts Diagram — BMW 3 Series oil service reset (E46); Hilton Garage — BMW pre-2007"
+      "source": "Engine Parts Diagram — BMW 3 Series oil service reset (E46); Hilton Garage — BMW pre-2007",
+      "systemName": "BMW service indicator",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.bmw.2004-plus.cbs-cluster-button",
@@ -3307,7 +3487,10 @@
           "textEn": "If there is no cluster button: iDrive → My Vehicle → Vehicle status → Service requirements → select item → Reset."
         }
       ],
-      "source": "Engine Parts Diagram — BMW E90/F30 reset; Hilton Garage — BMW 2014+"
+      "source": "Engine Parts Diagram — BMW E90/F30 reset; Hilton Garage — BMW 2014+",
+      "systemName": "CBS",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.vw.1998-2004.trip-and-clock",
@@ -3349,7 +3532,9 @@
           "textEn": "Switch the ignition off. Repeat for INSP if needed."
         }
       ],
-      "source": "erwinsalarda.com — Volkswagen service reminder reset (A4 / Passat)"
+      "source": "erwinsalarda.com — Volkswagen service reminder reset (A4 / Passat)",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.vw.2004-2020.zero-button",
@@ -3401,7 +3586,9 @@
           "textEn": "Switch the ignition off for 10 seconds and on again to verify."
         }
       ],
-      "source": "VW Group of America Service Reminder Reset bulletins; aboutthecars.com — Skoda service light reset"
+      "source": "VW Group of America Service Reminder Reset bulletins; aboutthecars.com — Skoda service light reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.vw.2004-plus.menu",
@@ -3448,7 +3635,9 @@
           "textEn": "Switch the ignition off and on to verify."
         }
       ],
-      "source": "erwinsalarda.com — VW (premium display / MFSW); aboutthecars.com — Skoda (steering controls)"
+      "source": "erwinsalarda.com — VW (premium display / MFSW); aboutthecars.com — Skoda (steering controls)",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.audi.1996-2005.trip-and-clock",
@@ -3490,7 +3679,9 @@
           "textEn": "Switch the ignition off."
         }
       ],
-      "source": "erwinsalarda.com — VW/Audi A4-platform procedure"
+      "source": "erwinsalarda.com — VW/Audi A4-platform procedure",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.audi.2004-plus.zero-or-mmi",
@@ -3532,7 +3723,9 @@
           "textEn": "Switch the ignition off and on to verify."
         }
       ],
-      "source": "Audi MMI Service & checks menu; VW group 0.0 procedure"
+      "source": "Audi MMI Service & checks menu; VW group 0.0 procedure",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.audi.2016-plus.virtual-cockpit-mmi",
@@ -3579,7 +3772,9 @@
           "textEn": "Switch the ignition off and on and check the message is gone."
         }
       ],
-      "source": "carista.com — How to reset Audi Q5 inspection due (2018 and 2024 MMI paths); audizine.com service interval thread; Audi owner's manuals (Service intervals)"
+      "source": "carista.com — How to reset Audi Q5 inspection due (2018 and 2024 MMI paths); audizine.com service interval thread; Audi owner's manuals (Service intervals)",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.toyota.older.trip-button",
@@ -3626,7 +3821,9 @@
           "textEn": "Switch the ignition off and on to verify."
         }
       ],
-      "source": "Toyota dealer guide (TV Toyota) — Method 1"
+      "source": "Toyota dealer guide (TV Toyota) — Method 1",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.toyota.newer.mid-settings",
@@ -3668,7 +3865,9 @@
           "textEn": "Switch the ignition off and on to verify."
         }
       ],
-      "source": "Toyota dealer guide (TV Toyota) — Method 2"
+      "source": "Toyota dealer guide (TV Toyota) — Method 2",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.honda.2006-2014.select-reset",
@@ -3705,7 +3904,10 @@
           "textEn": "Release and hold again for ~5 seconds — oil life returns to 100%."
         }
       ],
-      "source": "2CarPros — Honda oil life reset; Honda owner's manuals"
+      "source": "2CarPros — Honda oil life reset; Honda owner's manuals",
+      "systemName": "Maintenance Minder",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.honda.2013-plus.steering-info",
@@ -3747,7 +3949,10 @@
           "textEn": "Or on the screen: Settings → Vehicle → Maintenance Info → Reset."
         }
       ],
-      "source": "Honda/Acura owner's manuals (Maintenance Minder); existing Honda catalog entries"
+      "source": "Honda/Acura owner's manuals (Maintenance Minder); existing Honda catalog entries",
+      "systemName": "Maintenance Minder",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.nissan.settings-maintenance",
@@ -3784,7 +3989,9 @@
           "textEn": "Select Reset (on some models hold Enter over 1 second) and confirm Yes."
         }
       ],
-      "source": "Jim Bass Nissan — oil change light reset; Nissan owner's manuals"
+      "source": "Jim Bass Nissan — oil change light reset; Nissan owner's manuals",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.hyundai-kia.lcd-trip",
@@ -3826,7 +4033,9 @@
           "textEn": "Verify the interval has been reset."
         }
       ],
-      "source": "Hyundai Elantra owner's manual (Service information); existing catalog entry"
+      "source": "Hyundai Elantra owner's manual (Service information); existing catalog entry",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.hyundai-kia.user-settings",
@@ -3868,7 +4077,9 @@
           "textEn": "Switch the ignition off and on to verify."
         }
       ],
-      "source": "Ontario Hyundai — service required light reset"
+      "source": "Ontario Hyundai — service required light reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.ford.pedals",
@@ -3905,7 +4116,9 @@
           "textEn": "At \"Service: oil reset complete\" release the pedals and switch the ignition off."
         }
       ],
-      "source": "2CarPros — Ford Focus oil life reset"
+      "source": "2CarPros — Ford Focus oil life reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.ford.menu-oil-life",
@@ -3942,7 +4155,9 @@
           "textEn": "Exit the menu and switch the ignition off."
         }
       ],
-      "source": "2CarPros — Ford / Ford trucks oil life reset; aboutthecars.com — Ford Escape & Kuga"
+      "source": "2CarPros — Ford / Ford trucks oil life reset; aboutthecars.com — Ford Escape & Kuga",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.gm.accelerator",
@@ -3979,7 +4194,9 @@
           "textEn": "Switch the ignition off. If the light is still on, repeat."
         }
       ],
-      "source": "GM owner's manuals — Engine Oil Life System; 2CarPros"
+      "source": "GM owner's manuals — Engine Oil Life System; 2CarPros",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.gm.dic-menu",
@@ -4021,7 +4238,9 @@
           "textEn": "Verify that 100% is displayed."
         }
       ],
-      "source": "GM owner's manuals (Equinox, Silverado, Volt, Opel Mokka X) — existing catalog entries"
+      "source": "GM owner's manuals (Equinox, Silverado, Volt, Opel Mokka X) — existing catalog entries",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.opel-gm-era.dic-menu",
@@ -4063,7 +4282,9 @@
           "textEn": "Verify that 100% is displayed."
         }
       ],
-      "source": "GM owner's manuals (Equinox, Silverado, Volt, Opel Mokka X) — existing catalog entries"
+      "source": "GM owner's manuals (Equinox, Silverado, Volt, Opel Mokka X) — existing catalog entries",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.chrysler-jeep.accelerator",
@@ -4100,7 +4321,9 @@
           "textEn": "If the message remains: on the EVIC/screen Vehicle Info → Oil Life → hold OK / Reset."
         }
       ],
-      "source": "JeepSpecs — Grand Cherokee WK oil change indicator; 2CarPros — Chrysler/Jeep"
+      "source": "JeepSpecs — Grand Cherokee WK oil change indicator; 2CarPros — Chrysler/Jeep",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.psa.trip-button",
@@ -4142,7 +4365,9 @@
           "textEn": "If you then disconnect the battery, lock the car first and wait 5 minutes."
         }
       ],
-      "source": "Peugeot 3008 Owner's Manual — Service indicator zero reset; Peugeot 2008/308 2023 manuals"
+      "source": "Peugeot 3008 Owner's Manual — Service indicator zero reset; Peugeot 2008/308 2023 manuals",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.opel-2018.trip-button",
@@ -4184,7 +4409,9 @@
           "textEn": "If you then disconnect the battery, lock the car first and wait 5 minutes."
         }
       ],
-      "source": "Peugeot 3008 Owner's Manual — Service indicator zero reset; Peugeot 2008/308 2023 manuals"
+      "source": "Peugeot 3008 Owner's Manual — Service indicator zero reset; Peugeot 2008/308 2023 manuals",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.renault-dacia.trip-hold",
@@ -4226,7 +4453,9 @@
           "textEn": "On newer models with a screen: Settings → Vehicle → Maintenance → Reset."
         }
       ],
-      "source": "Renault Clio III / Kangoo driver's handbooks — Resetting the display after service"
+      "source": "Renault Clio III / Kangoo driver's handbooks — Resetting the display after service",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.mazda.trip-button",
@@ -4268,7 +4497,9 @@
           "textEn": "Release, then switch the ignition off/on to verify."
         }
       ],
-      "source": "Mazda Roseville — Mazda maintenance light reset (Method B)"
+      "source": "Mazda Roseville — Mazda maintenance light reset (Method B)",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.mazda.connect",
@@ -4305,7 +4536,9 @@
           "textEn": "Confirm, then switch the ignition off/on."
         }
       ],
-      "source": "Mazda Roseville — Mazda maintenance light reset (Method A)"
+      "source": "Mazda Roseville — Mazda maintenance light reset (Method A)",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.subaru.maintenance",
@@ -4347,7 +4580,9 @@
           "textEn": "If the filter was changed too, reset its reminder separately."
         }
       ],
-      "source": "2020 Subaru Legacy/Outback Owner's Manual — Maintenance screen"
+      "source": "2020 Subaru Legacy/Outback Owner's Manual — Maintenance screen",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.mitsubishi.info-button",
@@ -4389,7 +4624,9 @@
           "textEn": "The next interval is then shown."
         }
       ],
-      "source": "Mitsubishi Mirage owner's manual (Service reminder); YOUCANIC — Outlander"
+      "source": "Mitsubishi Mirage owner's manual (Service reminder); YOUCANIC — Outlander",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.volvo.2002-2007.trip-button",
@@ -4431,7 +4668,9 @@
           "textEn": "A tone confirms the reset."
         }
       ],
-      "source": "Matthews Volvo Site — Reset Volvo \"Time for Regular Service\" message"
+      "source": "Matthews Volvo Site — Reset Volvo \"Time for Regular Service\" message",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.volvo.2008-2009.push-start",
@@ -4473,7 +4712,9 @@
           "textEn": "When the general warning (i) lamp lights, release. Switch off/on to verify."
         }
       ],
-      "source": "Matthews Volvo Site — 2008–2009 push-button models"
+      "source": "Matthews Volvo Site — 2008–2009 push-button models",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.jlr.pedals",
@@ -4520,7 +4761,9 @@
           "textEn": "Check the display for the reset confirmation and close the bonnet. If it did not work, a workshop tool is required."
         }
       ],
-      "source": "Land Rover Forums — step by step how to reset the service interval (2018 Discovery 5)"
+      "source": "Land Rover Forums — step by step how to reset the service interval (2018 Discovery 5)",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.porsche.1997-plus.diagnostic-tool-only",
@@ -4552,7 +4795,9 @@
           "textEn": "Without a tool, ask the workshop to reset it at the oil change."
         }
       ],
-      "source": "911uk.com and rennlist.com forum threads (PIWIS / Durametric / scan tool)"
+      "source": "911uk.com and rennlist.com forum threads (PIWIS / Durametric / scan tool)",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.smart.1998-2007.display-button",
@@ -4589,7 +4834,9 @@
           "textEn": "Keep holding until the service symbol flashes and disappears."
         }
       ],
-      "source": "fq101.co.uk Smart service reset guide; smartcarofamerica.com"
+      "source": "fq101.co.uk Smart service reset guide; smartcarofamerica.com",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.smart.2007-2014.cluster-button",
@@ -4626,7 +4873,9 @@
           "textEn": "Hold about 10 seconds until the service display resets."
         }
       ],
-      "source": "carhowto / smartcarofamerica.com W451 service reset"
+      "source": "carhowto / smartcarofamerica.com W451 service reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.smart.2014-2021.stalk-menu",
@@ -4658,7 +4907,9 @@
           "textEn": "Hold OK for about 20 seconds until the value resets."
         }
       ],
-      "source": "scegliauto.com Smart fortwo 453 service reset"
+      "source": "scegliauto.com Smart fortwo 453 service reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.volvo.2011-2017.trip-button",
@@ -4695,7 +4946,9 @@
           "textEn": "Release when the symbol flashes red for the third time."
         }
       ],
-      "source": "gunthervolvo.com; ipdusa.com Volvo service reminder reset"
+      "source": "gunthervolvo.com; ipdusa.com Volvo service reminder reset",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.volvo.2016-plus.cruise-minus",
@@ -4732,7 +4985,9 @@
           "textEn": "Release when the \"i\" symbol flashes."
         }
       ],
-      "source": "ipdusa.com Volvo SPA service reminder reset; gunthervolvo.com"
+      "source": "ipdusa.com Volvo SPA service reminder reset; gunthervolvo.com",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.tesla.all.touchscreen-service-menu",
@@ -4764,7 +5019,9 @@
           "textEn": "Tap Reset and confirm."
         }
       ],
-      "source": "tesla.com owner's manuals — Maintenance / Service"
+      "source": "tesla.com owner's manuals — Maintenance / Service",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.rivian.2022-plus.app-vehicle-maintenance",
@@ -4791,7 +5048,9 @@
           "textEn": "Choose Vehicle maintenance and mark the work done or book a service."
         }
       ],
-      "source": "rivian.com support — vehicle maintenance"
+      "source": "rivian.com support — vehicle maintenance",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.lucid.2022-plus.app-service",
@@ -4818,7 +5077,9 @@
           "textEn": "Lucid clears the reminder after the service."
         }
       ],
-      "source": "lucidmotors.com service & support"
+      "source": "lucidmotors.com service & support",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.polestar.2020-plus.service-message-dealer",
@@ -4845,7 +5106,9 @@
           "textEn": "The message clears after the service."
         }
       ],
-      "source": "polestar.com owner's manual — service"
+      "source": "polestar.com owner's manual — service",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.saab.1998-2002.93-clear-button",
@@ -4877,7 +5140,9 @@
           "textEn": "Hold CLEAR ~8 s until two beeps / SERVICE shows."
         }
       ],
-      "source": "resetservicelight.com; saabwisonline"
+      "source": "resetservicelight.com; saabwisonline",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.saab.1998-2009.95-clear-button",
@@ -4909,7 +5174,9 @@
           "textEn": "Hold CLEAR ~8 s until two beeps."
         }
       ],
-      "source": "resetservicelight.com; saabwisonline"
+      "source": "resetservicelight.com; saabwisonline",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.saab.2003-2006.93-profiler-menu",
@@ -4941,7 +5208,9 @@
           "textEn": "Choose Yes."
         }
       ],
-      "source": "saabwisonline; boschservicebrisbane Saab guide"
+      "source": "saabwisonline; boschservicebrisbane Saab guide",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.saab.2007-2012.93-set-button",
@@ -4973,7 +5242,9 @@
           "textEn": "Press SET and choose YES."
         }
       ],
-      "source": "saabwisonline; resetservicelight.com"
+      "source": "saabwisonline; resetservicelight.com",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.alfaromeo.2017-2021.cluster-service-menu",
@@ -5005,7 +5276,9 @@
           "textEn": "Hold OK until the value resets."
         }
       ],
-      "source": "alfaworkshop; resetservicelight.com"
+      "source": "alfaworkshop; resetservicelight.com",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.alfaromeo.2005-2011.159-dealer-only",
@@ -5032,7 +5305,10 @@
           "textEn": "In the tool: Body computer / Cluster → Service reset."
         }
       ],
-      "source": "alfaworkshop; Fiat aftersales"
+      "source": "alfaworkshop; Fiat aftersales",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard",
+      "toolRequired": true
     },
     {
       "id": "general.alfaromeo.2008-2020.giulietta-mito-dealer-only",
@@ -5059,7 +5335,10 @@
           "textEn": "Or ask the workshop to reset it at the oil change."
         }
       ],
-      "source": "alfaworkshop; Fiat aftersales"
+      "source": "alfaworkshop; Fiat aftersales",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard",
+      "toolRequired": true
     },
     {
       "id": "general.lancia.2008-plus.dealer-reset",
@@ -5086,7 +5365,10 @@
           "textEn": "Or ask the workshop to reset it at the oil change."
         }
       ],
-      "source": "Fiat aftersales"
+      "source": "Fiat aftersales",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard",
+      "toolRequired": true
     },
     {
       "id": "general.mg.2017.zs_hs_mg5_nextservice",
@@ -5128,7 +5410,9 @@
           "textEn": "Switch the ignition off and on again and check that the reminder has cleared."
         }
       ],
-      "source": "MG ZS Owner's Manual (MG Motor Australia, Information Centre Colour Display A/B: 'Next Service – Displays and facilitates the reset…; long press OK button to reset') https://s3-ap-southeast-2.amazonaws.com/files.digitaldealer.com.au/mgmotor/files/ZS-Owners-Manual.pdf ; MG HS Owner's Manual p.26 Message Centre https://www.manualslib.com/manual/4045360/Mg-Hs.html?page=26 ; https://www.scegliauto.com/en/video/mg/tutorial/114250/ ; https://www.boschservicebrisbane.com.au/post/quick-fixes-how-to-reset-the-mg-zs-service-light-and-tyre-pressure-alerts"
+      "source": "MG ZS Owner's Manual (MG Motor Australia, Information Centre Colour Display A/B: 'Next Service – Displays and facilitates the reset…; long press OK button to reset') https://s3-ap-southeast-2.amazonaws.com/files.digitaldealer.com.au/mgmotor/files/ZS-Owners-Manual.pdf ; MG HS Owner's Manual p.26 Message Centre https://www.manualslib.com/manual/4045360/Mg-Hs.html?page=26 ; https://www.scegliauto.com/en/video/mg/tutorial/114250/ ; https://www.boschservicebrisbane.com.au/post/quick-fixes-how-to-reset-the-mg-zs-service-light-and-tyre-pressure-alerts",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.mg.2022.mg4_zsev_display",
@@ -5165,7 +5449,9 @@
           "textEn": "Press and hold the right-hand roller switch until the reminder resets."
         }
       ],
-      "source": "MGEVs forum, MG4: 'Service now warning, but car recently serviced' https://www.mgevs.com/threads/service-now-warning-but-car-recently-serviced.18471/ ; MG ZS EV owners resetting via vehicle settings: https://www.mgevs.com/threads/maintain-vehicle-soon.6549/ (note: some Thai-built MG4 variants reportedly lack the option)"
+      "source": "MGEVs forum, MG4: 'Service now warning, but car recently serviced' https://www.mgevs.com/threads/service-now-warning-but-car-recently-serviced.18471/ ; MG ZS EV owners resetting via vehicle settings: https://www.mgevs.com/threads/maintain-vehicle-soon.6549/ (note: some Thai-built MG4 variants reportedly lack the option)",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.geely.2019.coolray_menu",
@@ -5202,7 +5488,9 @@
           "textEn": "Hold the OK button until the service reminder is reset."
         }
       ],
-      "source": "https://www.scegliauto.com/en/video/geely/tutorial/124917/ ; https://www.bitauto.com/wiki/100124535835/"
+      "source": "https://www.scegliauto.com/en/video/geely/tutorial/124917/ ; https://www.bitauto.com/wiki/100124535835/",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.chery.2010.trip_button_ignition",
@@ -5239,7 +5527,9 @@
           "textEn": "Switch the ignition on again and confirm the spanner symbol no longer appears."
         }
       ],
-      "source": "CarsGuide: 'How do you reset the service light on a Chery J3?' https://www.carsguide.com.au/car-advice/q-and-a/how-do-you-reset-the-service-light-on-a-chery-j3-71004"
+      "source": "CarsGuide: 'How do you reset the service light on a Chery J3?' https://www.carsguide.com.au/car-advice/q-and-a/how-do-you-reset-the-service-light-on-a-chery-j3-71004",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.chery.2017.tiggo_menu_hold",
@@ -5276,7 +5566,9 @@
           "textEn": "Press and hold the 'Menu' button for 5 seconds until the reminder resets."
         }
       ],
-      "source": "https://www.scegliauto.com/en/video/vari-altri/tutorial/80545/ (generation not specified; procedure may differ on Tiggo 4/7/8 Pro — some owners report dealer reset)"
+      "source": "https://www.scegliauto.com/en/video/vari-altri/tutorial/80545/ (generation not specified; procedure may differ on Tiggo 4/7/8 Pro — some owners report dealer reset)",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.jac.2013.cluster_knob_ignition",
@@ -5313,7 +5605,9 @@
           "textEn": "After about 5 seconds, when the service indicator goes out, release the knob."
         }
       ],
-      "source": "icauto.com.cn: 江淮瑞风S3保养灯怎么消除 https://www.icauto.com.cn/baike/63/635691.html ; autohome Q&A https://www.autohome.com.cn/ask/8299331.html (sources conflict for push-button-start / later JAC models; low confidence)"
+      "source": "icauto.com.cn: 江淮瑞风S3保养灯怎么消除 https://www.icauto.com.cn/baike/63/635691.html ; autohome Q&A https://www.autohome.com.cn/ask/8299331.html (sources conflict for push-button-start / later JAC models; low confidence)",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.haval.2014.dealer_only",
@@ -5345,7 +5639,9 @@
           "textEn": "Meanwhile, note the next service date and mileage (e.g. on a windscreen sticker)."
         }
       ],
-      "source": "CarsGuide: https://www.carsguide.com.au/car-advice/q-and-a/how-do-i-reset-the-service-reminder-on-my-2019-haval-h2-85021 ; https://www.carsguide.com.au/car-advice/q-and-a/how-do-i-reset-the-service-indicator-on-my-haval-h2-2020-84812 ; Haval Jolion 2024 & H6 2021 owner's manuals (manualslib) contain no owner reset procedure"
+      "source": "CarsGuide: https://www.carsguide.com.au/car-advice/q-and-a/how-do-i-reset-the-service-reminder-on-my-2019-haval-h2-85021 ; https://www.carsguide.com.au/car-advice/q-and-a/how-do-i-reset-the-service-indicator-on-my-haval-h2-2020-84812 ; Haval Jolion 2024 & H6 2021 owner's manuals (manualslib) contain no owner reset procedure",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.byd.2010.dealer_only",
@@ -5377,7 +5673,9 @@
           "textEn": "If the dealer did not reset the reminder, ask them to — there is no official manual method."
         }
       ],
-      "source": "BYD Atto 3 Owner's Manual (bydautomotive.com.au, bydqatar.com.qa – 'Maintenance Information'/'Smart Maintenance System' sections, no owner reset); BYD Seal U Owner's Manual https://www.bydauto.ie/assets/1/owners/owners-manuals/my24q3_byd_sealu-compressed.pdf (unverified YouTube videos claim an Atto 3 procedure)"
+      "source": "BYD Atto 3 Owner's Manual (bydautomotive.com.au, bydqatar.com.qa – 'Maintenance Information'/'Smart Maintenance System' sections, no owner reset); BYD Seal U Owner's Manual https://www.bydauto.ie/assets/1/owners/owners-manuals/my24q3_byd_sealu-compressed.pdf (unverified YouTube videos claim an Atto 3 procedure)",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.hongqi.2018.dealer_only",
@@ -5404,7 +5702,10 @@
           "textEn": "Online 'key + button' methods do not fit push-start models — do not attempt them unverified."
         }
       ],
-      "source": "Hongqi HS5 Owner's Manual (manualslib https://www.manualslib.com/manual/2814768/Hongqi-Hs5.html) – no reset procedure found; conflicting methods: https://www.autohome.com.cn/ask/8862042.html , https://m.pcauto.com.cn/baike/608184/1183362/"
+      "source": "Hongqi HS5 Owner's Manual (manualslib https://www.manualslib.com/manual/2814768/Hongqi-Hs5.html) – no reset procedure found; conflicting methods: https://www.autohome.com.cn/ask/8862042.html , https://m.pcauto.com.cn/baike/608184/1183362/",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard",
+      "toolRequired": true
     },
     {
       "id": "general.dongfeng.2015.dealer_only",
@@ -5431,7 +5732,10 @@
           "textEn": "If no method is described, have a Dongfeng dealer or workshop reset the reminder with a diagnostic tool."
         }
       ],
-      "source": "Conflicting unofficial sources: https://baike.pcauto.com.cn/114794.html , https://www.yiche.com/baike/30182107.htm ; no English owner's manual procedure found"
+      "source": "Conflicting unofficial sources: https://baike.pcauto.com.cn/114794.html , https://www.yiche.com/baike/30182107.htm ; no English owner's manual procedure found",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard",
+      "toolRequired": true
     },
     {
       "id": "general.zeekr.2021.service_center",
@@ -5458,7 +5762,10 @@
           "textEn": "The reminder is reset at the service center during the service."
         }
       ],
-      "source": "Zeekr Owner's Manual – Warranty & Servicing (13 Nov 2025): 'When the service intervals are reached, a message will pop up on the instrument display… contact Zeekr Service Center' https://www.datocms-assets.com/145936/1763093339-zeekr_owner-s-manual_warranty-servicing-updated-13-nov-2025.pdf"
+      "source": "Zeekr Owner's Manual – Warranty & Servicing (13 Nov 2025): 'When the service intervals are reached, a message will pop up on the instrument display… contact Zeekr Service Center' https://www.datocms-assets.com/145936/1763093339-zeekr_owner-s-manual_warranty-servicing-updated-13-nov-2025.pdf",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard",
+      "toolRequired": true
     },
     {
       "id": "general.nio.2018.app_service",
@@ -5485,7 +5792,9 @@
           "textEn": "A NIO service specialist will follow up; they manage the reminder after the service."
         }
       ],
-      "source": "NIO Service: 'Users can initiate maintenance via NIO app or center displays' https://www.nio.com/nio-service ; NIO ES8 User Manual (Vehicle Health Status / Maintenance Instructions, no reset procedure) https://www.nio.com/cdn-static/www/user-instructions/ES8/index.html"
+      "source": "NIO Service: 'Users can initiate maintenance via NIO app or center displays' https://www.nio.com/nio-service ; NIO ES8 User Manual (Vehicle Health Status / Maintenance Instructions, no reset procedure) https://www.nio.com/cdn-static/www/user-instructions/ES8/index.html",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.jaguar.2001-2009.xtype-stype-trip",
@@ -5527,7 +5836,9 @@
           "textEn": "Switch the ignition off, then on again and check that the service message has cleared."
         }
       ],
-      "source": "https://oilreset.com/2008-jaguar-x-type-maintenance-light-reset-instructions/ ; https://www.answers.com/european-cars/How_do_you_reset_jaguar_x_type_service_indicator ; https://www.jaguaranaheimhills.com/service/service-guides/jaguar-s-type-service-light-reset/"
+      "source": "https://oilreset.com/2008-jaguar-x-type-maintenance-light-reset-instructions/ ; https://www.answers.com/european-cars/How_do_you_reset_jaguar_x_type_service_indicator ; https://www.jaguaranaheimhills.com/service/service-guides/jaguar-s-type-service-light-reset/",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.jaguar.2008-2015.xf-foglamp-trip",
@@ -5569,7 +5880,9 @@
           "textEn": "Switch the ignition off, start the engine and check that the message has cleared."
         }
       ],
-      "source": "https://oilreset.com/2010-jaguar-xf-service-interval-reset/ ; https://www.justanswer.com/jaguar/aaef1-reset-service-indicator-2011-xf-fog-light.html ; https://www.jaguarforum.com/threads/jaguar-xf-xfr-service-indicator-reset.53584/"
+      "source": "https://oilreset.com/2010-jaguar-xf-service-interval-reset/ ; https://www.justanswer.com/jaguar/aaef1-reset-service-indicator-2011-xf-fog-light.html ; https://www.jaguarforum.com/threads/jaguar-xf-xfr-service-indicator-reset.53584/",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.landrover.2005-2009.d3-l320-trip",
@@ -5611,7 +5924,9 @@
           "textEn": "Cycle to \"END\" with short presses, press to exit and switch the ignition off."
         }
       ],
-      "source": "https://www.aulro.com/afvb/l319-discovery-3-and-4-a/265067-d3-service-indicator.html ; https://enginepartsdiagram.com/reset-land-rover-discovery-lr3-lr4-oil-service-required-light/"
+      "source": "https://www.aulro.com/afvb/l319-discovery-3-and-4-a/265067-d3-service-indicator.html ; https://enginepartsdiagram.com/reset-land-rover-discovery-lr3-lr4-oil-service-required-light/",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.landrover.2007-2010.freelander2-trip",
@@ -5653,7 +5968,9 @@
           "textEn": "Cycle to \"END\", press to exit, switch off and start the engine to verify."
         }
       ],
-      "source": "https://www.landyzone.co.uk/land-rover/freelander-2-sevice-light.91859/ ; https://enginepartsdiagram.com/land-rover-freelander-2-lr2-oil-service-required-light-reset/ ; https://www.scegliauto.com/en/video/land-rover/tutorial/65052/"
+      "source": "https://www.landyzone.co.uk/land-rover/freelander-2-sevice-light.91859/ ; https://enginepartsdiagram.com/land-rover-freelander-2-lr2-oil-service-required-light-reset/ ; https://www.scegliauto.com/en/video/land-rover/tutorial/65052/",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.landrover.2010-2015.d4-pedals",
@@ -5690,7 +6007,9 @@
           "textEn": "Switch the ignition off, then on again (or start the engine) and check that the message has cleared."
         }
       ],
-      "source": "https://www.expedition-parts.de/en/discovery-hilfreiche-tipps-und-tricks/ ; https://enginepartsdiagram.com/reset-land-rover-discovery-lr3-lr4-oil-service-required-light/"
+      "source": "https://www.expedition-parts.de/en/discovery-hilfreiche-tipps-und-tricks/ ; https://enginepartsdiagram.com/reset-land-rover-discovery-lr3-lr4-oil-service-required-light/",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.rangerover.2014-2015.evoque-pedals",
@@ -5727,7 +6046,9 @@
           "textEn": "Switch the ignition off, close the bonnet and door, start the engine and check that the message has cleared."
         }
       ],
-      "source": "https://irfancartech.com/range-rover-evoque-service-reset/ ; https://rangerovers.net/forum/23-range-rover-evoque-l538/110369-manual-service-reset-my14.html"
+      "source": "https://irfancartech.com/range-rover-evoque-service-reset/ ; https://rangerovers.net/forum/23-range-rover-evoque-l538/110369-manual-service-reset-my14.html",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.bentley.2003-2011.continental-trip",
@@ -5769,7 +6090,9 @@
           "textEn": "Switch the ignition off, start the engine and check that the indicator has cleared."
         }
       ],
-      "source": "https://www.justanswer.com/car/i3h18-service-light-on-solid-2010-bentley.html ; https://resetservicelight.com/reset-service-light-indicator-bentley-continental-gt/ ; https://seventrumpet.com/bentley-continental-gt-service-maintenance-light-reset/ ; https://www.justanswer.com/car/8i9ok-bentley-continental-gt-w12-2013-bentley-continental-gt.html"
+      "source": "https://www.justanswer.com/car/i3h18-service-light-on-solid-2010-bentley.html ; https://resetservicelight.com/reset-service-light-indicator-bentley-continental-gt/ ; https://seventrumpet.com/bentley-continental-gt-service-maintenance-light-reset/ ; https://www.justanswer.com/car/8i9ok-bentley-continental-gt-w12-2013-bentley-continental-gt.html",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.skoda.2004-2013.maxidot_menu",
@@ -5806,7 +6129,9 @@
           "textEn": "Confirm the reset and switch the ignition off; the reminder should no longer appear on the next ignition-on."
         }
       ],
-      "source": "https://www.manualslib.com/manual/375246/Skoda-Octavia-05-2009.html?page=21 ; https://www.briskoda.net/forums/topic/336669-does-anyone-know-how-to-reset-the-service-interval-msg/ (note: manual reset on LongLife/variable-interval cars converts to fixed intervals)"
+      "source": "https://www.manualslib.com/manual/375246/Skoda-Octavia-05-2009.html?page=21 ; https://www.briskoda.net/forums/topic/336669-does-anyone-know-how-to-reset-the-service-interval-msg/ (note: manual reset on LongLife/variable-interval cars converts to fixed intervals)",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.skoda.2004-2013.button_clock_knob",
@@ -5848,7 +6173,9 @@
           "textEn": "Switch the ignition off — the reset is complete."
         }
       ],
-      "source": "https://www.irls.eu/how-to-reset-the-service-interval-display-on-skoda-octavia-ii-2004-2007 ; https://www.briskoda.net/forums/topic/336669-does-anyone-know-how-to-reset-the-service-interval-msg/ (Skoda manual 05/2009 recommends reset by a Skoda partner with a tester: https://www.manualslib.com/manual/375246/Skoda-Octavia-05-2009.html?page=21)"
+      "source": "https://www.irls.eu/how-to-reset-the-service-interval-display-on-skoda-octavia-ii-2004-2007 ; https://www.briskoda.net/forums/topic/336669-does-anyone-know-how-to-reset-the-service-interval-msg/ (Skoda manual 05/2009 recommends reset by a Skoda partner with a tester: https://www.manualslib.com/manual/375246/Skoda-Octavia-05-2009.html?page=21)",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.skoda.2013-2019.button_reset",
@@ -5885,7 +6212,9 @@
           "textEn": "Release the button and press 0.0/SET once more to confirm."
         }
       ],
-      "source": "https://www.skodabook.ru/en/Octavia/5E/main/manual/indikator-mezhservisnyh-intervalov ; https://www.hypermiler.co.uk/skoda/how-to-reset-the-inspection-service-warning-on-the-skoda-octavia-mk3-iii-inc-vrs ; https://www.manualslib.com/manual/829549/Skoda-Octavia.html?page=37 (Skoda: manual reset turns a variable/LongLife interval into a fixed one)"
+      "source": "https://www.skodabook.ru/en/Octavia/5E/main/manual/indikator-mezhservisnyh-intervalov ; https://www.hypermiler.co.uk/skoda/how-to-reset-the-inspection-service-warning-on-the-skoda-octavia-mk3-iii-inc-vrs ; https://www.manualslib.com/manual/829549/Skoda-Octavia.html?page=37 (Skoda: manual reset turns a variable/LongLife interval into a fixed one)",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.suzuki.2015.vitara_menu",
@@ -5922,7 +6251,9 @@
           "textEn": "Select Reset and hold the knob until a confirmation appears on the display."
         }
       ],
-      "source": "https://www.mrautofixer.co.uk/suzuki-vitara-service-light-reset ; owner's manual reference (Setting mode / Oil change request light): https://www.manualslib.com/manual/1527224/Suzuki-Vitara-Series.html"
+      "source": "https://www.mrautofixer.co.uk/suzuki-vitara-service-light-reset ; owner's manual reference (Setting mode / Oil change request light): https://www.manualslib.com/manual/1527224/Suzuki-Vitara-Series.html",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.suzuki.2018.jimny_menu",
@@ -5959,7 +6290,9 @@
           "textEn": "Hold the button until a reset-complete message appears."
         }
       ],
-      "source": "https://www.scegliauto.com/en/video/suzuki/tutorial/53983/"
+      "source": "https://www.scegliauto.com/en/video/suzuki/tutorial/53983/",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.suzuki.2006-2014.gv_ddis_pedals",
@@ -5996,7 +6329,9 @@
           "textEn": "Start the engine; if the indicator is still on, repeat the procedure."
         }
       ],
-      "source": "https://www.irls.eu/reset-oil-service-suzuki-grand-vitara-diesel-2013"
+      "source": "https://www.irls.eu/reset-oil-service-suzuki-grand-vitara-diesel-2013",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.isuzu.2012-2019.dmax_pedal",
@@ -6033,7 +6368,9 @@
           "textEn": "Release the pedal, switch the ignition off and on again — the indicator should stay off."
         }
       ],
-      "source": "https://www.scegliauto.com/en/video/isuzu/tutorial/46575/"
+      "source": "https://www.scegliauto.com/en/video/isuzu/tutorial/46575/",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.exotic.dealer-tool",
@@ -6060,7 +6397,10 @@
           "textEn": "Ask the workshop to reset the reminder when servicing."
         }
       ],
-      "source": "justanswer.com (Maserati Ghibli); obdii365.com OBDSTAR Maserati guide; scan-tool function lists"
+      "source": "justanswer.com (Maserati Ghibli); obdii365.com OBDSTAR Maserati guide; scan-tool function lists",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard",
+      "toolRequired": true
     },
     {
       "id": "general.eastern.no-verified-method",
@@ -6092,7 +6432,9 @@
           "textEn": "If it does not work, a workshop diagnostic tool is needed."
         }
       ],
-      "source": "UAZ Patriot 2021 owner's manual (uaz.ru) has no service-indicator reset; no verified source found for the others"
+      "source": "UAZ Patriot 2021 owner's manual (uaz.ru) has no service-indicator reset; no verified source found for the others",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     },
     {
       "id": "general.any.owners-manual",
@@ -6129,17 +6471,254 @@
           "textEn": "If none works, this model needs a workshop diagnostic tool."
         }
       ],
-      "source": "Common manufacturer procedures (see brand entries)"
+      "source": "Common manufacturer procedures (see brand entries)",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
+    },
+    {
+      "id": "general.toyota.2008-plus.tpms-reset-switch",
+      "brand": "Toyota|Lexus|Scion",
+      "model": "*",
+      "minimumYear": 2008,
+      "maximumYear": 0,
+      "category": "Maintenance",
+      "kind": "TirePressure",
+      "systemName": "TPMS",
+      "nameKa": "საბურავის წნევის სისტემის (TPMS) ინიციალიზაცია — Reset ღილაკით",
+      "nameEn": "Tire pressure monitor (TPMS) initialization — reset switch",
+      "descriptionKa": "მოდელებისთვის, რომლებსაც TPMS Reset ღილაკი აქვთ (ჩვეულებრივ საჭის ქვემოთ). ზოგ მოდელზე ეს ეკრანის მენიუდან კეთდება.",
+      "descriptionEn": "For models that have a TPMS reset switch (usually below the steering wheel). Some models do this from the display menu instead.",
+      "executionType": "Manual",
+      "oemOperationId": "",
+      "preconditions": [
+        {
+          "textKa": "საბურავები ცივია და ოთხივე (სათადარიგოს გარდა) მწარმოებლის წნევამდეა გაბერილი — მაჩვენებელი კარის ან სვეტის ეტიკეტზეა.",
+          "textEn": "Tires are cold and all four (not the spare) are at the pressure on the Tire and Loading Information label."
+        },
+        {
+          "textKa": "მანქანა დგას — მოძრაობისას ინიციალიზაცია არ იწყება.",
+          "textEn": "The car is stationary — initialization does not start while moving."
+        }
+      ],
+      "steps": [
+        {
+          "order": 1,
+          "textKa": "ოთხივე საბურავი (სათადარიგოს გარდა) გააბერე ეტიკეტზე მითითებულ წნევამდე.",
+          "textEn": "Inflate all four tires (not the spare) to the pressure on the label."
+        },
+        {
+          "order": 2,
+          "textKa": "ანთება ჩართე (IG ON).",
+          "textEn": "Turn the ignition ON."
+        },
+        {
+          "order": 3,
+          "textKa": "იპოვე TPMS Reset ღილაკი (ჩვეულებრივ საჭის ქვემოთ, პანელის ქვედა ნაწილში; ზოგ ძველ მოდელზე — საბარგულთან/ხელთათმანების განყოფილებაში) და დააჭირე, სანამ საბურავის წნევის ნათურა 3-ჯერ არ აციმციმდება.",
+          "textEn": "Find the TPMS reset switch (usually low on the dashboard below the steering wheel; on some older models in the glove box) and hold it until the tire pressure light blinks 3 times."
+        },
+        {
+          "order": 4,
+          "textKa": "თუ ნათურამ 3-ჯერ არ აციმციმა, ინიციალიზაცია ვერ მოხერხდა — გაიმეორე.",
+          "textEn": "If the light does not blink 3 times, initialization failed — repeat it."
+        },
+        {
+          "order": 5,
+          "textKa": "ანთება დაახლოებით 5 წუთი დატოვე ჩართული, შემდეგ იარე; სისტემა მნიშვნელობებს მოძრაობისას ითვისებს.",
+          "textEn": "Leave the ignition on for about 5 minutes, then drive; the system learns the values while driving."
+        },
+        {
+          "order": 6,
+          "textKa": "თუ ნათურა შემდეგაც ინთება, ეს სენსორის ან სისტემის ხარვეზია და საჭიროა სერვისი.",
+          "textEn": "If the light stays on afterwards, the sensor or system needs service."
+        }
+      ],
+      "expectedResultKa": "TPMS ნათურა ქრება მოძრაობის შემდეგ. აპი ამას ვერ ამოწმებს.",
+      "expectedResultEn": "The TPMS light goes out after driving. The app cannot check this.",
+      "verificationMethod": "Dashboard",
+      "verificationStatus": "SourceDocumented",
+      "source": "Toyota technical service bulletins on TPMS initialization (NHTSA MC-10134446-9999, MC-10109495-9999, MC-10109441-9999); steps differ slightly by model — see the owner's manual"
+    },
+    {
+      "id": "general.honda.2009-plus.tpms-calibration",
+      "brand": "Honda|Acura",
+      "model": "*",
+      "minimumYear": 2009,
+      "maximumYear": 0,
+      "category": "Maintenance",
+      "kind": "TirePressure",
+      "systemName": "TPMS",
+      "nameKa": "საბურავის წნევის სისტემის (TPMS) კალიბრაცია",
+      "nameEn": "Tire pressure monitor (TPMS) calibration",
+      "descriptionKa": "მენიუდან ან TPMS ღილაკით, მოდელის მიხედვით. კალიბრაცია მოძრაობისას სრულდება.",
+      "descriptionEn": "From the menu or the TPMS button, depending on the model. Calibration finishes while driving.",
+      "executionType": "Manual",
+      "oemOperationId": "",
+      "preconditions": [
+        {
+          "textKa": "ოთხივე საბურავი კარის სვეტის ეტიკეტზე მითითებულ წნევამდეა გაბერილი.",
+          "textEn": "All tires are inflated to the pressure on the door placard."
+        },
+        {
+          "textKa": "კალიბრაცია საჭიროა საბურავების შეცვლის/გადანაცვლების ან წნევის შეცვლის შემდეგ.",
+          "textEn": "Calibrate after a tire change or rotation, or after changing pressures."
+        }
+      ],
+      "steps": [
+        {
+          "order": 1,
+          "textKa": "ანთება ჩართე (Power Mode ON).",
+          "textEn": "Set the power mode to ON."
+        },
+        {
+          "order": 2,
+          "textKa": "სენსორულ ეკრანიანზე: Home → Settings → Vehicle → TPMS Calibration → Calibrate.",
+          "textEn": "Touchscreen models: Home → Settings → Vehicle → TPMS Calibration → Calibrate."
+        },
+        {
+          "order": 3,
+          "textKa": "საჭის ღილაკებითა და ინფორმაციის ეკრანით: Settings/Menu → TPMS Calibration → Calibrate (ან Initialize → Yes).",
+          "textEn": "Steering-wheel display models: Settings/Menu → TPMS Calibration → Calibrate (or Initialize → Yes)."
+        },
+        {
+          "order": 4,
+          "textKa": "მოდელებზე TPMS ღილაკით (საჭის მარცხნივ): დააჭირე, სანამ ინდიკატორი ორჯერ არ აციმციმდება.",
+          "textEn": "Models with a TPMS button (left of the steering wheel): hold it until the indicator blinks twice."
+        },
+        {
+          "order": 5,
+          "textKa": "იარე საშუალო სიჩქარით — სისტემას კალიბრაციის დასასრულებლად მოძრაობა სჭირდება. ზუსტი დრო მოდელის ინსტრუქციაშია.",
+          "textEn": "Drive at moderate speed — the system needs driving time to finish calibrating. The exact time is in your owner's manual."
+        }
+      ],
+      "expectedResultKa": "TPMS ინდიკატორი ქრება კალიბრაციის დასრულების შემდეგ. აპი ამას ვერ ამოწმებს.",
+      "expectedResultEn": "The TPMS indicator goes out once calibration completes. The app cannot check this.",
+      "verificationMethod": "Dashboard",
+      "verificationStatus": "SourceDocumented",
+      "source": "Honda TPMS calibration guidance (NHTSA TSB MC-10099041-5233; Honda dealer TPMS guide); menu names vary by model year — see the owner's manual"
+    },
+    {
+      "id": "general.hyundai.2010-plus.tpms-cluster-menu-reset",
+      "brand": "Hyundai",
+      "model": "*",
+      "minimumYear": 2010,
+      "maximumYear": 0,
+      "category": "Maintenance",
+      "kind": "TirePressure",
+      "systemName": "TPMS",
+      "nameKa": "საბურავის წნევის სისტემის (TPMS) განულება — ხელსაწყოთა პანელის მენიუდან",
+      "nameEn": "Tire pressure monitor (TPMS) reset — instrument cluster menu",
+      "descriptionKa": "მოდელებისთვის, რომლებსაც ხელსაწყოთა პანელში „Tire Pressure“ პუნქტი აქვთ.",
+      "descriptionEn": "For models that have a Tire Pressure item in the instrument cluster menu.",
+      "executionType": "Manual",
+      "oemOperationId": "",
+      "preconditions": [
+        {
+          "textKa": "ყველა საბურავი რეკომენდებულ წნევამდეა გაბერილი.",
+          "textEn": "All tires are at the recommended pressure."
+        },
+        {
+          "textKa": "მანქანა გაჩერებულია.",
+          "textEn": "The car is parked."
+        }
+      ],
+      "steps": [
+        {
+          "order": 1,
+          "textKa": "ყველა საბურავი გააბერე რეკომენდებულ წნევამდე.",
+          "textEn": "Inflate all tires to the recommended pressure."
+        },
+        {
+          "order": 2,
+          "textKa": "გაჩერებულ მანქანაზე დააჭირე საჭის ღილაკს, რომელიც პანელის მენიუს ხსნის.",
+          "textEn": "With the car parked, press the steering-wheel button that opens the cluster menu."
+        },
+        {
+          "order": 3,
+          "textKa": "საჭის ზევით/ქვევით ღილაკით აირჩიე „Tire Pressure“.",
+          "textEn": "Use the up/down switch to select Tire Pressure."
+        },
+        {
+          "order": 4,
+          "textKa": "დააჭირე და გეჭიროს OK, შემდეგ აირჩიე „Set“.",
+          "textEn": "Press and hold OK, then select Set."
+        },
+        {
+          "order": 5,
+          "textKa": "სისტემა დაადასტურებს: ნათურა ~4 წამით აციმციმდება და გამოჩნდება შეტყობინება „Tire pressures stored“. თუ არა — გაიმეორე მე-2 ნაბიჯიდან.",
+          "textEn": "Confirmation: the warning light blinks for about 4 seconds and the message \"Tire pressures stored\" appears. If not, repeat from step 2."
+        }
+      ],
+      "expectedResultKa": "ეკრანზე ჩნდება „Tire pressures stored“.",
+      "expectedResultEn": "The cluster shows \"Tire pressures stored\".",
+      "verificationMethod": "Dashboard",
+      "verificationStatus": "SourceDocumented",
+      "source": "Hyundai Owner's Manual — Resetting TPMS (ownersmanual.hyundai.com); models with a dedicated TPMS button use a different method"
+    },
+    {
+      "id": "general.vwgroup.2004-plus.inspection-reset-menu",
+      "brand": "Volkswagen|VW|SEAT|Cupra|Skoda|Škoda",
+      "model": "*",
+      "minimumYear": 2004,
+      "maximumYear": 0,
+      "category": "Maintenance",
+      "kind": "Inspection",
+      "systemName": "Service interval display",
+      "nameKa": "ინსპექციის შეხსენების განულება (მენიუდან)",
+      "nameEn": "Inspection reminder reset (menu)",
+      "descriptionKa": "ცალკე ინსპექციის ინტერვალი, ზეთის შეცვლის ინტერვალისგან განსხვავებით. მხოლოდ მაშინ, როცა მენიუში ეს პუნქტი არსებობს.",
+      "descriptionEn": "The separate inspection interval, apart from the oil-change interval. Only when the menu has this item.",
+      "executionType": "Manual",
+      "oemOperationId": "",
+      "preconditions": [
+        {
+          "textKa": "ინსპექცია ნამდვილად შესრულებულია — განულება არ ცვლის იმას, რაც სერვისზე უნდა გაკეთდეს.",
+          "textEn": "The inspection has really been done — resetting does not replace the work."
+        }
+      ],
+      "steps": [
+        {
+          "order": 1,
+          "textKa": "ანთება ჩართე (ძრავა არ არის საჭირო).",
+          "textEn": "Switch the ignition on (the engine does not need to run)."
+        },
+        {
+          "order": 2,
+          "textKa": "საჭის ან საწმენდის ღილაკებით გახსენი Settings (Setup), ან ინფორმაციულ ეკრანზე: CAR/Vehicle → Settings → Service.",
+          "textEn": "Open Settings (Setup) with the steering or wiper-stalk buttons, or on the infotainment screen: CAR/Vehicle → Settings → Service."
+        },
+        {
+          "order": 3,
+          "textKa": "აირჩიე „Reset inspection service“ და დაადასტურე OK-ით.",
+          "textEn": "Select Reset inspection service and confirm with OK."
+        },
+        {
+          "order": 4,
+          "textKa": "ანთება გამორთე და ჩართე — შეტყობინება უნდა გაქრეს.",
+          "textEn": "Switch the ignition off and on — the message should be gone."
+        },
+        {
+          "order": 5,
+          "textKa": "თუ მენიუში ინსპექციის განულების პუნქტი არ არის, მოდელს სერვისის ხელსაწყო სჭირდება.",
+          "textEn": "If the menu has no inspection reset item, this model needs a workshop tool."
+        }
+      ],
+      "expectedResultKa": "ინსპექციის შეტყობინება ქრება ან ახალი ინტერვალი ჩნდება დაფაზე. აპი ამას ვერ ამოწმებს.",
+      "expectedResultEn": "The inspection message disappears or a new interval shows on the dashboard. The app cannot check this.",
+      "verificationMethod": "Dashboard",
+      "verificationStatus": "SourceDocumented",
+      "source": "erwinsalarda.com — VW (premium display / MFSW); aboutthecars.com — Skoda (steering controls); same menu source as the existing VW-group menu entry"
     }
   ],
-  "catalogGenerated": "2026-09-23",
+  "catalogGenerated": "2026-10-09",
   "coverageNotes": [
     "Only source-backed Manual/Guided procedures are included.",
     "No guessed ECU write/reset/coding command is included.",
     "Exact model/year matching is required before using this large catalog.",
     "A missing vehicle does not mean the vehicle has no reset procedure; it means no sufficiently specific source-backed entry has been pinned in this catalog yet.",
     "Brand-wide entries (model \"*\", id prefix \"general.\") give dashboard/button reset procedures per brand and generation. They are shown when no exact model entry matches. Brand field may list several brands separated by \"|\". None of them sends an ECU command.",
-    "Catalog 7: brand-wide entries added for Porsche, Smart, Volvo 2011+, Tesla, Rivian, Lucid, Polestar, Saab, Alfa Romeo, Lancia, MG, Geely, Chery, JAC, Haval/GWM, BYD, Hongqi, Dongfeng, Zeekr, NIO, Jaguar/Land Rover pre-2016, Bentley, Skoda, Suzuki, Isuzu, exotic brands and Lada/Daewoo/UAZ/SsangYong. Entries that say \"diagnostic tool\" / \"dealer\" are honest: no verified owner method exists or was found."
+    "Catalog 7: brand-wide entries added for Porsche, Smart, Volvo 2011+, Tesla, Rivian, Lucid, Polestar, Saab, Alfa Romeo, Lancia, MG, Geely, Chery, JAC, Haval/GWM, BYD, Hongqi, Dongfeng, Zeekr, NIO, Jaguar/Land Rover pre-2016, Bentley, Skoda, Suzuki, Isuzu, exotic brands and Lada/Daewoo/UAZ/SsangYong. Entries that say \"diagnostic tool\" / \"dealer\" are honest: no verified owner method exists or was found.",
+    "Catalog 9: optional fields (kind, systemName, verificationStatus, verificationMethod, toolRequired, preconditions, expectedResult) added; all entries stay source-documented guides (none is marked VehicleVerified). New guides: TPMS for Toyota/Lexus/Scion, Honda/Acura and Hyundai, and a separate inspection-reminder reset for the VW group.",
+    "Researched but NOT added: battery registration and electronic-parking-brake service mode — no owner-level method could be established; they are workshop-tool functions and need exact diagnostic commands that must not be guessed."
   ],
   "researchedButNotPinnedInThisCatalog": []
 }

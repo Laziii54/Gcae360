@@ -2291,6 +2291,7 @@ public sealed partial class LocalizationService
     private static readonly (Regex Pattern, string Target)[] UiEnToKaTemplates = BuildTemplates(new (string, string)[]
     {
         ("ARM {0} TEST", "{0} ტესტის დაწყება"),
+        ("Start {0} run", "{0} გაზომვის დაწყება"),
         ("Supported: {0} standard parameters", "მხარდაჭერილი: {0} სტანდარტული პარამეტრი"),
     });
 

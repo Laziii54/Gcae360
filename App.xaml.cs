@@ -128,7 +128,7 @@ public partial class App : Application
             return;
 
         string? route = data.StartsWith("calendar-reminder:", StringComparison.Ordinal)
-            ? nameof(CalendarPage)
+            ? nameof(ServicePage)
             : null;
         if (route is null)
             return;

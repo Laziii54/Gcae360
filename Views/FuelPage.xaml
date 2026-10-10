@@ -43,6 +43,17 @@
                 </Button>
             </Grid>
 
+            <!-- A trip that was cut short (app closed / crashed) can be saved or discarded -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,12" IsVisible="{Binding HasInterruptedTrip}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="{Binding InterruptedTripText}" TextColor="{DynamicResource TextColor}" FontSize="13" LineBreakMode="WordWrap" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <Button Text="შენახვა" Command="{Binding SaveInterruptedTripCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="42" />
+                        <Button Grid.Column="1" Text="გაუქმება" Command="{Binding DiscardInterruptedTripCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.2" CornerRadius="12" HeightRequest="42" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
             <!-- Trip summary after Stop -->
             <Border Style="{StaticResource ListCardStyle}" Padding="14,12" IsVisible="{Binding IsTripSummaryVisible}">
                 <VerticalStackLayout Spacing="8">
@@ -107,6 +118,19 @@
                         <Label AutomationId="DynamicTextFuelAverage" Text="{Binding HeadRightValue}" TextColor="{DynamicResource TextColor}" FontSize="26" FontAttributes="Bold" />
                     </VerticalStackLayout>
                 </Grid>
+            </Border>
+
+            <!-- Fuel: what the number is (reported by the car / estimated / unavailable) -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,10" IsVisible="{Binding ShowFuel}">
+                <VerticalStackLayout Spacing="4">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                        <Label Text="{Binding Instant}" AutomationId="DynamicTextFuelInstantLine" TextColor="{DynamicResource TextColor}" FontSize="17" FontAttributes="Bold" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="{Binding QualityText}" TextColor="{Binding QualityColor}" FontSize="11.5" FontAttributes="Bold" VerticalOptions="Center" HorizontalTextAlignment="End" MaxLines="2" LineBreakMode="TailTruncation" />
+                    </Grid>
+                    <Label Text="{Binding InstantNote}" AutomationId="DynamicTextFuelNote" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" LineBreakMode="WordWrap" />
+                    <Label IsVisible="{Binding HasQualityDetail}" Text="{Binding QualityDetail}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding TripQualityText}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
             </Border>
 
             <!-- Electric / plug-in hero: battery ring + live state -->
@@ -248,6 +272,10 @@
                 </VerticalStackLayout>
             </Border>
 
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,10" IsVisible="{Binding ShowHybridNote}">
+                <Label Text="{Binding HybridNote}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" LineBreakMode="WordWrap" />
+            </Border>
+
             <!-- Battery: SoC, V/A, capacity, price -->
             <Label Text="ბატარეა" Style="{StaticResource SectionCaptionStyle}" IsVisible="{Binding ShowEnergy}" />
             <Border Style="{StaticResource ListCardStyle}" Padding="14,4" IsVisible="{Binding ShowEnergy}">
@@ -342,6 +370,34 @@
                         <Label Grid.Column="1" Text="მაქსიმალური სიჩქარე" Style="{StaticResource RowTitleStyle}" />
                         <Label Grid.Column="2" AutomationId="DynamicTextFuelMaxSpeed" Text="{Binding MaximumSpeed}" TextColor="{DynamicResource TextColor}" FontSize="14" VerticalOptions="Center" />
                     </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Units, fuel type and what this car reports -->
+            <Label Text="{Binding SupportCaption}" Style="{StaticResource SectionCaptionStyle}" />
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,6">
+                <VerticalStackLayout Spacing="0">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,4">
+                        <Label Text="{Binding UnitCaption}" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
+                        <Picker Grid.Column="1" ItemsSource="{Binding FuelUnitOptions}" SelectedIndex="{Binding SelectedFuelUnitIndex}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" MinimumWidthRequest="130" HorizontalTextAlignment="End" FontSize="14" VerticalOptions="Center" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" IsVisible="{Binding ShowFuel}" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,4" IsVisible="{Binding ShowFuel}">
+                        <Label Text="{Binding FuelKindCaption}" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" LineBreakMode="WordWrap" />
+                        <Picker Grid.Column="1" ItemsSource="{Binding FuelKindOptions}" SelectedIndex="{Binding SelectedFuelKindIndex}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" MinimumWidthRequest="130" HorizontalTextAlignment="End" FontSize="14" VerticalOptions="Center" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
+                    <VerticalStackLayout Spacing="0" Padding="0,6" BindableLayout.ItemsSource="{Binding FuelSupportRows}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:EnergyCapabilityRow">
+                                <Grid ColumnDefinitions="18,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" Padding="0,4">
+                                    <Label Text="{Binding Mark}" TextColor="{Binding MarkColor}" FontSize="13" FontAttributes="Bold" VerticalOptions="Start" />
+                                    <Label Grid.Column="1" Text="{Binding Title}" TextColor="{DynamicResource TextColor}" FontSize="12.5" />
+                                    <Label Grid.Row="1" Grid.Column="1" Text="{Binding Detail}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="WordWrap" />
+                                </Grid>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
             </Border>
 

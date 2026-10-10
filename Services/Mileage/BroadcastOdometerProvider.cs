@@ -72,8 +72,15 @@ public sealed class BroadcastOdometerProvider : IActualMileageProvider
         }
 
         var family = DetectFamily(vehicle);
+        var known = !string.IsNullOrWhiteSpace(vehicle.Manufacturer) && !vehicle.Manufacturer.Equals("Unknown", StringComparison.OrdinalIgnoreCase);
+        var assessment = MileageSourceCompatibility.Evaluate(
+            MileageSourceFamily.CanBroadcast,
+            new MileageSourceFacts(known || family is not null, true, true, true, null, 0, family is not null, 0));
         if (family is null)
+        {
+            MileageTrace.Attempt(new MileageAttempt(Name, "CAN listen", MileageAttemptOutcome.NotTried, string.Empty, assessment.Status, assessment.Reason));
             return Array.Empty<MileageEvidence>();
+        }
 
         var isVolt = IsVolt(vehicle);
         var profiles = Profiles
@@ -103,10 +110,17 @@ public sealed class BroadcastOdometerProvider : IActualMileageProvider
 
                     evidence.Add(new MileageEvidence(
                         profile.Source,
-                        "დაფა / CAN",
+                        "CAN broadcast (instrument-cluster message per public definition)",
                         Math.Round(median, 1),
                         0.75,
-                        $"Odometer broadcast by the car on CAN 0x{profile.CanId:X3}; {agreeing} frames agree."));
+                        $"Odometer broadcast by the car on CAN 0x{profile.CanId:X3}; {agreeing} frames agree. Nothing was requested.")
+                    {
+                        Measurement = MileageMeasurement.TotalOdometer,
+                        Unit = "km",
+                        SourceKind = MileageSourceKind.CanBroadcast,
+                        Method = $"CAN 0x{profile.CanId:X3} (listen only)"
+                    });
+                    MileageTrace.Attempt(new MileageAttempt(Name, $"CAN 0x{profile.CanId:X3}", MileageAttemptOutcome.Read, string.Empty, assessment.Status, assessment.Reason));
                     break;
                 }
             }, cancellationToken).ConfigureAwait(false);
@@ -119,6 +133,10 @@ public sealed class BroadcastOdometerProvider : IActualMileageProvider
         {
             System.Diagnostics.Debug.WriteLine($"CAN odometer listen failed: {ex.Message}");
         }
+
+        if (evidence.Count == 0)
+            MileageTrace.Attempt(new MileageAttempt(Name, "CAN listen", MileageAttemptOutcome.ModuleNotResponding,
+                "No two agreeing frames were heard (many cars hide these messages behind a gateway).", assessment.Status, assessment.Reason));
 
         return evidence;
     }

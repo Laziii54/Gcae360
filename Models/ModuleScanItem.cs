@@ -64,6 +64,7 @@ public sealed partial class ModuleFaultItem : ObservableObject
 {
     public string DefinitionId { get; init; } = string.Empty;
     public string EcuName { get; init; } = string.Empty;
+    public bool HasEcuName => !string.IsNullOrWhiteSpace(EcuName);
     public string Code { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
     public string Status { get; init; } = string.Empty;

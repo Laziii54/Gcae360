@@ -287,7 +287,7 @@ public sealed class MaintenanceTrackerService
         try
         {
             var evidence = await _catalogOdometer.ReadFirstAsync(vehicle, token).ConfigureAwait(false);
-            if (evidence is null || evidence.ValueKm is <= 0 or >= 2_000_000)
+            if (evidence is null || evidence.Status != CarScanner.Services.Mileage.MileageReadStatus.Ok || evidence.Measurement != CarScanner.Services.Mileage.MileageMeasurement.TotalOdometer || evidence.ValueKm is <= 0 or >= 2_000_000)
                 return null;
 
             SetCarOdometer(key, evidence.ValueKm);

@@ -45,7 +45,7 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(LiveDataPage), typeof(LiveDataPage));
         Routing.RegisterRoute(nameof(HistoryPage), typeof(HistoryPage));
         Routing.RegisterRoute(nameof(ResetRecorderPage), typeof(ResetRecorderPage));
-        Routing.RegisterRoute(nameof(CustomsCalculatorPage), typeof(CustomsCalculatorPage));
+        Routing.RegisterRoute(nameof(PassiveCanPage), typeof(PassiveCanPage));
         Routing.RegisterRoute(nameof(SettingsPage), typeof(SettingsPage));
         Routing.RegisterRoute(nameof(SensorsPage), typeof(SensorsPage));
         Routing.RegisterRoute(nameof(EmissionsPage), typeof(EmissionsPage));
@@ -68,7 +68,6 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(VehicleReportPage), typeof(VehicleReportPage));
         Routing.RegisterRoute(nameof(GraphChannelsPage), typeof(GraphChannelsPage));
         Routing.RegisterRoute(nameof(ServicePage), typeof(ServicePage));
-        Routing.RegisterRoute(nameof(CalendarPage), typeof(CalendarPage));
         Routing.RegisterRoute(nameof(RepairCostPage), typeof(RepairCostPage));
         Routing.RegisterRoute(nameof(ModuleScanPage), typeof(ModuleScanPage));
         Routing.RegisterRoute(nameof(ModuleLiveDataPage), typeof(ModuleLiveDataPage));
@@ -91,7 +90,6 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(VinScanPage), typeof(VinScanPage));
         Routing.RegisterRoute(nameof(AccountPage), typeof(AccountPage));
         Routing.RegisterRoute(nameof(VehicleJournalPage), typeof(VehicleJournalPage));
-        Routing.RegisterRoute(nameof(AllToolsPage), typeof(AllToolsPage));
         localization.Apply(this);
 
 

@@ -261,21 +261,23 @@ public sealed class PrePurchaseCheckService
 
     private static int AddMileage(PrePurchaseResult result, ActualMileageResult? mileage)
     {
-        if (mileage is null || (mileage.Evidence.Count == 0 && !mileage.FinalMileageKm.HasValue))
+        var analysis = mileage?.Analysis;
+        if (mileage is null || analysis is null || (analysis.Odometer.Count == 0 && analysis.Flagged.Count == 0))
         {
             (result.MileageBadgeKa, result.MileageBadgeEn, result.MileageBadgeColor) = ("მიუწვდომელია", "not available", Grey);
             result.Mileage.Add(new PrePurchaseFinding
             {
                 LabelKa = "გარბენი",
                 LabelEn = "Mileage",
-                ValueKa = "მანქანამ გარბენი არ დააბრუნა",
-                ValueEn = "The car did not report the mileage",
+                ValueKa = "მანქანამ ჯამური ოდომეტრი არ დააბრუნა",
+                ValueEn = "The car did not report a total odometer value",
                 Color = Grey
             });
             return 0;
         }
 
-        foreach (var evidence in mileage.Evidence.OrderByDescending(item => item.Confidence).Take(5))
+        // Only total-odometer readings are listed here; other counters (distance since codes cleared …) are not mileage.
+        foreach (var evidence in analysis.Odometer.Take(5))
         {
             result.Mileage.Add(new PrePurchaseFinding
             {
@@ -287,44 +289,44 @@ public sealed class PrePurchaseCheckService
             });
         }
 
-        if (mileage.Evidence.Count == 0 && mileage.FinalMileageKm is { } odometer)
+        foreach (var flagged in analysis.Flagged.Take(2))
         {
             result.Mileage.Add(new PrePurchaseFinding
             {
-                LabelKa = "ოდომეტრი",
-                LabelEn = "Odometer",
-                ValueKa = $"{odometer.ToString("N0", CultureInfo.InvariantCulture).Replace(',', ' ')} კმ",
-                ValueEn = $"{odometer.ToString("N0", CultureInfo.InvariantCulture)} km",
-                Color = Grey
+                LabelKa = FirstNonEmpty(flagged.Ecu, flagged.Source),
+                LabelEn = FirstNonEmpty(flagged.Ecu, flagged.Source),
+                ValueKa = "არარეალური მნიშვნელობა — არ გამოიყენება",
+                ValueEn = "implausible value — not used",
+                Color = Yellow
             });
         }
 
         if (mileage.HasMismatch)
         {
-            (result.MileageBadgeKa, result.MileageBadgeEn, result.MileageBadgeColor) = ("შეუსაბამობა", "mismatch", Red);
+            // A difference is a reason to look closer, not a finding of tampering.
+            (result.MileageBadgeKa, result.MileageBadgeEn, result.MileageBadgeColor) = ("მაჩვენებლები განსხვავდება", "readings differ", Yellow);
             var difference = mileage.MaximumDifferenceKm is { } km ? km.ToString("N0", CultureInfo.InvariantCulture) : "?";
             result.Mileage.Add(new PrePurchaseFinding
             {
                 LabelKa = "სხვაობა მოდულებს შორის",
-                LabelEn = "Difference between modules",
-                ValueKa = $"{difference} კმ — შესაძლოა გადაგრეხილია",
-                ValueEn = $"{difference} km — may have been rolled back",
-                Color = Red
+                LabelEn = "Difference between readings",
+                ValueKa = $"{difference} კმ — საჭიროა დამატებითი შემოწმება (სერვისის ჩანაწერები)",
+                ValueEn = $"{difference} km — needs further checking (service records)",
+                Color = Yellow
             });
             return 25;
         }
 
-        if (mileage.SourceCount >= 2)
+        if (analysis.Outcome == CarScanner.Services.Mileage.MileageOutcome.Consistent)
         {
-            // Agreement between modules does not rule out a full rollback of
-            // every module, so this is neutral information, not a green light.
-            (result.MileageBadgeKa, result.MileageBadgeEn, result.MileageBadgeColor) = ("მოდულები თანხმდება", "modules agree", Yellow);
+            // Agreement between modules does not prove the mileage is authentic: neutral information, not a green light.
+            (result.MileageBadgeKa, result.MileageBadgeEn, result.MileageBadgeColor) = ("მაჩვენებლები თანხვედრაშია", "readings consistent", Yellow);
             result.Mileage.Add(new PrePurchaseFinding
             {
-                LabelKa = "მოდულები თანხმდება",
-                LabelEn = "Modules agree",
-                ValueKa = "ეს სრულ გადახვევას არ გამორიცხავს — შეადარე სერვისის ისტორიას",
-                ValueEn = "this doesn't rule out a full rollback — compare with service history",
+                LabelKa = "მაჩვენებლები თანხვედრაშია",
+                LabelEn = "Readings are consistent",
+                ValueKa = "ეს გარბენის ნამდვილობას არ ადასტურებს — შეადარე სერვისის ისტორიას",
+                ValueEn = "this does not prove the mileage is authentic — compare with service history",
                 Color = Yellow
             });
         }
@@ -602,8 +604,8 @@ public sealed class PrePurchaseCheckService
 
     /// <summary>
     /// Odometer at the auction(s) vs the car now. A car that shows LESS today
-    /// than at its last auction was very likely rolled back — or its US
-    /// cluster was switched to km while keeping the mile number.
+    /// than at its last auction needs a closer look — it can have many causes, among them a
+    /// US cluster switched to km while keeping the mile number. It is not a finding of tampering.
     /// </summary>
     private static int AddAuctionMileage(PrePurchaseResult result, CarScanner.VinCheck.Models.VinReport history, string vin, double? currentKm)
     {
@@ -667,11 +669,11 @@ public sealed class PrePurchaseCheckService
                 LabelKa = "⚠ გარბენი აუქციონზე მეტი იყო",
                 LabelEn = "⚠ Odometer was higher at the auction",
                 ValueKa = sameDigits
-                    ? $"{shown} ({whereKa}), ახლა {now:N0} კმ — მილები პირდაპირ კმ-ად ჩანს (პანელი გადაყვანილია). რეალური ≈ {now * KmPerMile:N0} კმ"
-                    : $"{shown} ({whereKa}), ახლა {now:N0} კმ — შესაძლოა გადახვეულია",
+                    ? $"{shown} ({whereKa}), ახლა {now:N0} კმ — ციფრები მილებს ჰგავს — თუ პანელი კმ-ზეა გადართული, მილებში ეს ≈ {now * KmPerMile:N0} კმ იქნებოდა"
+                    : $"{shown} ({whereKa}), ახლა {now:N0} კმ — ჩანაწერზე ნაკლებია, საჭიროა შემოწმება (სერვისის ჩანაწერები, ერთეული)",
                 ValueEn = sameDigits
-                    ? $"{shown} ({whereEn}), now {now:N0} km — the miles appear as km (cluster converted). Real ≈ {now * KmPerMile:N0} km"
-                    : $"{shown} ({whereEn}), now {now:N0} km — possibly rolled back",
+                    ? $"{shown} ({whereEn}), now {now:N0} km — the digits look like miles — if the cluster was switched to km, that would be ≈ {now * KmPerMile:N0} km"
+                    : $"{shown} ({whereEn}), now {now:N0} km — lower than that record, needs checking (service records, unit setting)",
                 Color = Red
             });
             return 25;

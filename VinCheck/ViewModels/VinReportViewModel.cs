@@ -285,46 +285,6 @@ public partial class VinReportViewModel(
         }
     }
 
-    public string CustomsText => CarScanner.Services.Localization.LanguageCatalog.UsesEnglishBase
-        ? "🧮 Customs cost in Georgia"
-        : "🧮 განბაჟების გამოთვლა";
-
-    /// <summary>Opens the customs calculator with year, engine size and fuel from this report.</summary>
-    [RelayCommand]
-    private async Task OpenCustomsAsync()
-    {
-        try
-        {
-        if (Report is null)
-            return;
-
-        string? Spec(string key) => Report.Specifications.FirstOrDefault(s => s.Key.Equals(key, StringComparison.OrdinalIgnoreCase))?.Value;
-        var cc = decimal.TryParse(Spec("DisplacementL"), NumberStyles.Number, CultureInfo.InvariantCulture, out var litres) && litres > 0
-            ? litres.ToString("0.0#", CultureInfo.InvariantCulture)
-            : "";
-        var fuelText = $"{Report.FuelType} {Spec("ElectrificationLevel")} {Report.Engine}".ToLowerInvariant();
-        var fuel = fuelText.Contains("plug-in") || fuelText.Contains("plug in") || fuelText.Contains("phev") ? "phev"
-            : fuelText.Contains("hybrid") || fuelText.Contains("hev") ? "hybrid"
-            : fuelText.Contains("electric") && !fuelText.Contains("gasoline") && !fuelText.Contains("petrol") ? "electric"
-            : fuelText.Contains("diesel") ? "diesel"
-            : "petrol";
-        var year = Report.Year?.ToString(CultureInfo.InvariantCulture) ?? "";
-
-        try
-        {
-            await Shell.Current.GoToAsync($"{nameof(CustomsCalculatorPage)}?year={year}&litres={cc}&fuel={fuel}");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Customs navigation failed: {ex.Message}");
-        }
-        }
-        catch (Exception commandException)
-        {
-            CarScanner.Services.CommandErrors.Report(commandException, "VinReportViewModel.OpenCustomsAsync");
-        }
-    }
-
     public string NoAuctionTitleText => VinText.T("NoAuctionTitle");
     public string NoAuctionHintText => VinText.T("NoAuctionHint");
     public string RecallHintText => VinText.T("RecallHint");

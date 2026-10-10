@@ -103,19 +103,8 @@ public sealed class ResetRecorderService(OBDService obd, AccountService account)
     }
 
     /// <summary>"7E8064100BE3FA813" → (0x7E8, "064100BE3FA813"). Status lines are skipped.</summary>
-    public static IEnumerable<(int Id, string Data)> Parse(string raw, bool ext29)
-    {
-        var width = ext29 ? 8 : 3;
-        foreach (var line in raw.Split(new[] { '\r', '\n', '>' }, StringSplitOptions.RemoveEmptyEntries))
-        {
-            var text = line.Replace(" ", string.Empty).Trim().ToUpperInvariant();
-            if (text.Length < width + 2 || text.Length > width + 16 || !text.All(Uri.IsHexDigit))
-                continue;
-            if (!int.TryParse(text[..width], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var id))
-                continue;
-            yield return (id, text[width..]);
-        }
-    }
+    public static IEnumerable<(int Id, string Data)> Parse(string raw, bool ext29) =>
+        CarScanner.Services.Passive.CanFrameParser.Parse(raw, ext29);
 
     /// <summary>Frames seen only while the driver reset (not in the quiet baseline).</summary>
     public static IReadOnlyList<Candidate> AnalyseMenuReset(IReadOnlyList<Frame> frames)

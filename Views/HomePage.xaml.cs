@@ -121,12 +121,6 @@ public partial class HomePage : ContentPage
         }
     }
 
-    private async void OnCustomsTapped(object? sender, TappedEventArgs e)
-    {
-        try { await Shell.Current.GoToAsync(nameof(CustomsCalculatorPage)); }
-        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Customs navigation failed: {ex.Message}"); }
-    }
-
     /// <summary>Shows / hides the rarely used technical tools.</summary>
 
     private async void OnAccountTapped(object? sender, TappedEventArgs e)

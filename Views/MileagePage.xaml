@@ -30,63 +30,134 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- After the check: the answer on top -->
+            <!-- After the check: what the car reported, and whether the readings agree -->
             <Border IsVisible="{Binding HasResult}" Padding="16,14" BackgroundColor="{Binding ResultBackground}" Stroke="{Binding CardStroke}" StrokeThickness="1" StrokeShape="RoundRectangle 14">
                 <VerticalStackLayout Spacing="4">
-                    <Label AutomationId="DynamicTextMileageStatus" Text="{Binding ResultTitle}" FontSize="17" FontAttributes="Bold" TextColor="{Binding ResultTitleColor}" LineBreakMode="WordWrap" />
+                    <Label AutomationId="DynamicTextMileageStatus" Text="{Binding ResultTitle}" FontSize="16" FontAttributes="Bold" TextColor="{Binding ResultTitleColor}" LineBreakMode="WordWrap" />
                     <Label AutomationId="DynamicTextMileageResult" Text="{Binding ResultValue}" FontSize="26" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                    <Label Text="{Binding VerdictNote}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    <Label IsVisible="{Binding HasResultSource}" Text="{Binding ResultSource}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding VerdictNote}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="0,4,0,0" />
+                    <Label IsVisible="{Binding HasPowertrainNote}" Text="{Binding PowertrainNote}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="0,4,0,0" />
                 </VerticalStackLayout>
             </Border>
 
-            <!-- One row per module -->
-            <Border IsVisible="{Binding HasModules}" Style="{StaticResource ListCardStyle}">
-                <VerticalStackLayout BindableLayout.ItemsSource="{Binding Modules}" Spacing="0" Margin="0,-1,0,0">
+            <!-- One card per odometer reading, each with its own module, method and source -->
+            <Label IsVisible="{Binding HasReadings}" Text="{Binding ReadingsCaption}" Style="{StaticResource SectionCaptionStyle}" />
+            <Border IsVisible="{Binding HasReadings}" Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding Readings}" Spacing="0" Margin="0,-1,0,0">
                     <BindableLayout.ItemTemplate>
-                        <DataTemplate x:DataType="vm:MileageModuleRow">
+                        <DataTemplate x:DataType="vm:MileageReadingRow">
                             <VerticalStackLayout Spacing="0" BackgroundColor="{Binding RowBackground}">
                                 <BoxView Style="{StaticResource RowDividerStyle}" />
-                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="14,12">
-                                    <Label Text="{Binding Name}" FontSize="14" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" VerticalOptions="Center" />
-                                    <Label Grid.Column="1" Text="{Binding ValueText}" FontSize="14" FontAttributes="Bold" TextColor="{Binding ValueColor}" HorizontalTextAlignment="End" VerticalOptions="Center" />
-                                </Grid>
+                                <VerticalStackLayout Spacing="3" Padding="14,12">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <Label Text="{Binding Title}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" VerticalOptions="Center" />
+                                        <VerticalStackLayout Grid.Column="1" Spacing="0" HorizontalOptions="End">
+                                            <Label Text="{Binding ValueText}" FontSize="15" FontAttributes="Bold" TextColor="{Binding ValueColor}" HorizontalTextAlignment="End" />
+                                            <Label IsVisible="{Binding HasConverted}" Text="{Binding ConvertedText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="End" />
+                                        </VerticalStackLayout>
+                                    </Grid>
+                                    <Label Text="{Binding MeasurementText}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                    <Label Text="{Binding MethodText}" FontSize="11" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                    <Label Text="{Binding SourceText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                </VerticalStackLayout>
                             </VerticalStackLayout>
                         </DataTemplate>
                     </BindableLayout.ItemTemplate>
                 </VerticalStackLayout>
             </Border>
 
+            <!-- Differences, when readings disagree -->
+            <Label IsVisible="{Binding HasConflicts}" Text="{Binding ConflictsCaption}" Style="{StaticResource SectionCaptionStyle}" />
+            <Border IsVisible="{Binding HasConflicts}" Style="{StaticResource ListCardStyle}" Padding="14,10">
+                <VerticalStackLayout Spacing="8" BindableLayout.ItemsSource="{Binding Conflicts}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:MileageConflictRow">
+                            <Label Text="{Binding Text}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
 
-            <!-- Odometer finder: when this model's odometer place is not known yet -->
-            <Border IsVisible="{Binding ShowFinder}" Style="{StaticResource ListCardStyle}" Padding="14,12">
-                <VerticalStackLayout Spacing="8">
-                    <Label AutomationId="DynamicTextFinderTitle" Text="{Binding FinderTitle}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                    <Label AutomationId="DynamicTextFinderText" Text="{Binding FinderText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                        <Border Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 10" Padding="10,0" BackgroundColor="{DynamicResource PageBg}">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <Entry Text="{Binding DashboardMileage}" Placeholder="{Binding DashboardPlaceholder}" Keyboard="Numeric" FontSize="15" TextColor="{DynamicResource TextColor}" />
-                                <Label Grid.Column="1" AutomationId="DynamicTextFinderUnit" Text="{Binding DashboardUnit}" FontSize="13" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
-                            </Grid>
-                        </Border>
-                        <Button Grid.Column="1" Text="{Binding FinderButtonText}" Command="{Binding SearchOdometerCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="10" HeightRequest="44" Padding="16,0" />
-                    </Grid>
-                    <ProgressBar IsVisible="{Binding IsFinding}" Progress="{Binding FinderProgress}" ProgressColor="{DynamicResource Primary}" />
-                    <Label AutomationId="DynamicTextFinderStatus" Text="{Binding FinderStatus}" IsVisible="{Binding HasFinderStatus}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                    <VerticalStackLayout IsVisible="{Binding HasFinderMatches}" Spacing="0" BindableLayout.ItemsSource="{Binding FinderMatches}">
+            <!-- Values a module returned that are not used -->
+            <Label IsVisible="{Binding HasFlagged}" Text="{Binding FlaggedCaption}" Style="{StaticResource SectionCaptionStyle}" />
+            <Border IsVisible="{Binding HasFlagged}" Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding Flagged}" Spacing="0" Margin="0,-1,0,0">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:MileageReadingRow">
+                            <VerticalStackLayout Spacing="0" BackgroundColor="{Binding RowBackground}">
+                                <BoxView Style="{StaticResource RowDividerStyle}" />
+                                <VerticalStackLayout Spacing="3" Padding="14,12">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <Label Text="{Binding Title}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                                        <Label Grid.Column="1" Text="{Binding ValueText}" FontSize="14" FontAttributes="Bold" TextColor="{Binding ValueColor}" HorizontalTextAlignment="End" />
+                                    </Grid>
+                                    <Label Text="{Binding StatusText}" FontSize="11.5" TextColor="{Binding ValueColor}" LineBreakMode="WordWrap" />
+                                    <Label Text="{Binding MethodText}" FontSize="11" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                </VerticalStackLayout>
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Other distance / time values: shown apart, never compared with the odometer -->
+            <Label IsVisible="{Binding HasContext}" Text="{Binding ContextCaption}" Style="{StaticResource SectionCaptionStyle}" />
+            <Border IsVisible="{Binding HasContext}" Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout Spacing="0" Margin="0,-1,0,0">
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding ContextReadings}" Spacing="0">
                         <BindableLayout.ItemTemplate>
-                            <DataTemplate x:DataType="vm:OdometerMatchRow">
-                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" Padding="0,6">
-                                    <CheckBox IsChecked="{Binding IsSelected}" VerticalOptions="Center" />
-                                    <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                                        <Label AutomationId="DynamicTextFinderMatch" Text="{Binding Title}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                                        <Label AutomationId="DynamicTextFinderMatchDetail" Text="{Binding Detail}" FontSize="11" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" />
+                            <DataTemplate x:DataType="vm:MileageReadingRow">
+                                <VerticalStackLayout Spacing="0">
+                                    <BoxView Style="{StaticResource RowDividerStyle}" />
+                                    <VerticalStackLayout Spacing="3" Padding="14,12">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                            <Label Text="{Binding MeasurementText}" FontSize="13" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                                            <Label Grid.Column="1" Text="{Binding ValueText}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="End" />
+                                        </Grid>
+                                        <Label Text="{Binding MethodText}" FontSize="11" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" />
                                     </VerticalStackLayout>
-                                </Grid>
+                                </VerticalStackLayout>
                             </DataTemplate>
                         </BindableLayout.ItemTemplate>
                     </VerticalStackLayout>
-                    <Button IsVisible="{Binding HasFinderMatches}" Text="{Binding SaveFoundText}" Command="{Binding SaveFoundCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="10" HeightRequest="44" />
+                    <BoxView Style="{StaticResource RowDividerStyle}" />
+                    <Label Text="{Binding ContextNote}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="14,10" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- What was tried, and what came of it -->
+            <Label IsVisible="{Binding HasAttempts}" Text="{Binding AttemptsCaption}" Style="{StaticResource SectionCaptionStyle}" />
+            <Border IsVisible="{Binding HasAttempts}" Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding Attempts}" Spacing="0" Margin="0,-1,0,0">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:MileageAttemptRow">
+                            <VerticalStackLayout Spacing="0">
+                                <BoxView Style="{StaticResource RowDividerStyle}" />
+                                <VerticalStackLayout Spacing="2" Padding="14,10">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <Label Text="{Binding Title}" FontSize="12.5" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                                        <Label Grid.Column="1" Text="{Binding OutcomeText}" FontSize="11.5" FontAttributes="Bold" TextColor="{Binding OutcomeColor}" HorizontalTextAlignment="End" />
+                                    </Grid>
+                                    <Label IsVisible="{Binding HasDetail}" Text="{Binding DetailText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                </VerticalStackLayout>
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Compare with what the dashboard shows (only when there is one unconflicted reading) -->
+            <Border IsVisible="{Binding ShowDashboardCompare}" Style="{StaticResource ListCardStyle}" Padding="14,12">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="{Binding DashboardCaption}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                    <Border Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 10" Padding="10,0" BackgroundColor="{DynamicResource PageBg}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Entry Text="{Binding DashboardMileage}" Placeholder="{Binding DashboardPlaceholder}" Keyboard="Numeric" FontSize="15" TextColor="{DynamicResource TextColor}" />
+                            <Label Grid.Column="1" AutomationId="DynamicTextDashboardUnit" Text="{Binding DashboardUnit}" FontSize="13" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
+                        </Grid>
+                    </Border>
+                    <Label IsVisible="{Binding HasDashboardResult}" Text="{Binding DashboardResult}" FontSize="12" TextColor="{Binding DashboardResultColor}" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
 
@@ -98,9 +169,12 @@
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" />
             <Label AutomationId="DynamicTextMileageProgress" Text="{Binding StatusMessage}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
 
+            <!-- Always visible: what this data can and cannot show -->
+            <Label Text="{Binding DisclaimerText}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" Margin="8,4" />
+
             <!-- Technical log -->
-            <Button IsVisible="False" Text="{Binding LogToggleText}" Command="{Binding ToggleLogCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" HorizontalOptions="Center" HeightRequest="36" />
-            <Border IsVisible="False" Style="{StaticResource ListCardStyle}" Padding="12,10">
+            <Button IsVisible="{Binding HasLog}" Text="{Binding LogToggleText}" Command="{Binding ToggleLogCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" HorizontalOptions="Center" HeightRequest="36" />
+            <Border IsVisible="{Binding ShowLog}" Style="{StaticResource ListCardStyle}" Padding="12,10">
                 <VerticalStackLayout Spacing="6">
                     <Label AutomationId="DynamicTextMileageLog" Text="{Binding Log}" FontSize="11" FontFamily="monospace" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
                     <Button Text="{Binding CopyLogText}" Command="{Binding CopyLogCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" HorizontalOptions="Start" HeightRequest="34" />

@@ -123,6 +123,28 @@ public sealed class ModuleLiveDataService
         public string Key => $"{Tx:X}|{Rx:X}|{Ext29}|{Ext}|{Service:X2}|{Did:X4}";
     }
 
+    /// <summary>What the car did with the discovery requests (shown when nothing answered, to see why).</summary>
+    private sealed class ReadStats
+    {
+        public int Sent { get; set; }
+        public int Positive { get; set; }
+        public int NoReply { get; set; }
+        public int Negative { get; set; }
+        public int Errors { get; set; }
+        public int SkippedSilent { get; set; }
+        public string? FirstError { get; set; }
+        public SortedSet<string> NegativeCodes { get; } = new(StringComparer.Ordinal);
+
+        public string Summary()
+        {
+            var text = $"sent {Sent}, positive {Positive}, no reply {NoReply}, negative {Negative}";
+            if (NegativeCodes.Count > 0) text += $" (NRC {string.Join(",", NegativeCodes)})";
+            if (SkippedSilent > 0) text += $", skipped {SkippedSilent} (module silent)";
+            if (Errors > 0) text += $", errors {Errors}" + (FirstError is null ? string.Empty : $" [{FirstError}]");
+            return text;
+        }
+    }
+
     private sealed class PidRow
     {
         public string? Make { get; set; }
@@ -188,6 +210,7 @@ public sealed class ModuleLiveDataService
             var working = new List<RequestDef>();
             var silent = new HashSet<string>(StringComparer.Ordinal);
             var alive = new HashSet<string>(StringComparer.Ordinal);
+            var stats = new ReadStats();
             for (var i = 0; i < requests.Count; i++)
             {
                 token.ThrowIfCancellationRequested();
@@ -198,9 +221,12 @@ public sealed class ModuleLiveDataService
 
                 // A module that did not answer at all is not asked again.
                 if (silent.Contains(module))
+                {
+                    stats.SkippedSilent++;
                     continue;
+                }
 
-                var (data, anyReply) = await ReadAsync(session, request, token).ConfigureAwait(false);
+                var (data, anyReply) = await ReadAsync(session, request, token, stats).ConfigureAwait(false);
                 if (anyReply)
                     alive.Add(module);
                 else if (!alive.Contains(module))
@@ -222,10 +248,10 @@ public sealed class ModuleLiveDataService
             var groups = BuildGroups(working);
             await onDiscovered(new DiscoveryResult(groups,
                 groups.Count == 0
-                    ? "მოდულებმა ამ მოთხოვნებზე პასუხი არ დააბრუნეს. ჩართე კონტაქტი (ან ძრავი) და სცადე თავიდან."
+                    ? "მოდულებმა ამ მოთხოვნებზე პასუხი არ დააბრუნეს. ჩართე კონტაქტი (ან ძრავი) და სცადე თავიდან. [" + stats.Summary() + "]"
                     : string.Empty,
                 groups.Count == 0
-                    ? "The modules did not answer these requests. Turn the ignition (or engine) on and try again."
+                    ? "The modules did not answer these requests. Turn the ignition (or engine) on and try again. [" + stats.Summary() + "]"
                     : string.Empty)).ConfigureAwait(false);
 
             if (groups.Count == 0)
@@ -283,8 +309,11 @@ public sealed class ModuleLiveDataService
     private static async Task<(byte[]? Data, bool AnyReply)> ReadAsync(
         Elm327Protocol.IDtcModuleSession session,
         RequestDef request,
-        CancellationToken token)
+        CancellationToken token,
+        ReadStats? stats = null)
     {
+        stats ??= new ReadStats();
+        stats.Sent++;
         var payload = request.Service == 0x21
             ? new[] { (byte)0x21, (byte)request.Did }
             : new[] { (byte)0x22, (byte)(request.Did >> 8), (byte)request.Did };
@@ -303,17 +332,31 @@ public sealed class ModuleLiveDataService
                     ModuleDtcScanService.ParseFrames(raw, request.Rx, request.Ext29), request.Ext));
             }
 
+            if (messages.Count == 0)
+                stats.NoReply++;
+            else if (messages.All(message => message.Length >= 3 && message[0] == 0x7F))
+            {
+                stats.Negative++;
+                stats.NegativeCodes.Add(messages[0][2].ToString("X2"));
+            }
+
             foreach (var message in messages)
             {
                 if (request.Service == 0x21)
                 {
                     if (message.Length >= 3 && message[0] == 0x61 && message[1] == (byte)request.Did)
+                    {
+                        stats.Positive++;
                         return (message[2..], true);
+                    }
                 }
                 else if (message.Length >= 4 && message[0] == 0x62 &&
                          message[1] == (byte)(request.Did >> 8) && message[2] == (byte)request.Did)
                 {
+                {
+                    stats.Positive++;
                     return (message[3..], true);
+                }
                 }
             }
 
@@ -325,6 +368,8 @@ public sealed class ModuleLiveDataService
         }
         catch (Exception ex)
         {
+            stats.Errors++;
+            stats.FirstError ??= ex.Message.Length > 80 ? ex.Message[..80] : ex.Message;
             System.Diagnostics.Debug.WriteLine($"Module live data read failed: {ex.Message}");
         }
 
@@ -386,7 +431,7 @@ public sealed class ModuleLiveDataService
             .ToList();
 
         var isGm = makes.Contains("Chevrolet", StringComparer.OrdinalIgnoreCase);
-        var vehicleModel = NormalizeModel(vehicle.Model);
+        var vehicleModel = AliasedModel(vehicle);
 
         // Exact model: equal names first; otherwise names where one starts with the other.
         var exactRows = new List<PidRow>();
@@ -468,6 +513,22 @@ public sealed class ModuleLiveDataService
             .OrderByDescending(item => item.Models);
         foreach (var (row, models) in shared)
             AddRow(row, false, models);
+
+        // Makes where the catalog describes (almost) only one model share nothing between two models. For such a
+        // make the single-model signals of the same make are tried too; they are asked last and, as always, shown
+        // only after a positive, identifier-matching reply with a value inside the valid range.
+        const int EnoughBrandRequests = 40;
+        if (byKey.Values.Count(request => !request.Exact && request.Signals.Count > 0) < EnoughBrandRequests)
+        {
+            var sharedKeys = new HashSet<string>(shared.Select(item => item.Row).Select(row =>
+                $"{row.Header}|{row.Eax}|{row.CommandJson}|{row.BitOffset}|{row.BitLength}|{NormalizeName(row.Name)}"));
+            foreach (var row in rows.Where(row => !exactSet.Contains(row)))
+            {
+                var key = $"{row.Header}|{row.Eax}|{row.CommandJson}|{row.BitOffset}|{row.BitLength}|{NormalizeName(row.Name)}";
+                if (!sharedKeys.Contains(key))
+                    AddRow(row, false, 1);
+            }
+        }
 
         // Remove ambiguous brand-wide signals (same bits, different names).
         foreach (var request in byKey.Values)
@@ -958,6 +1019,24 @@ public sealed class ModuleLiveDataService
 
     private static string NormalizeModel(string? model) =>
         new string((model ?? string.Empty).ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
+
+    /// <summary>
+    /// Model as the catalog names it: a BMW "330i" is a "3-Series" (catalog: 1-Series … 7-Series).
+    /// Other models are compared by their letters and digits only.
+    /// </summary>
+    private static string AliasedModel(VehicleInfo vehicle)
+    {
+        var model = NormalizeModel(vehicle.Model);
+        var make = (vehicle.Manufacturer ?? string.Empty).ToUpperInvariant();
+        if (make.Contains("BMW", StringComparison.Ordinal) || make.Contains("BAYERISCHE", StringComparison.Ordinal))
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(model, @"^([1-8])[0-9]{2}[a-z]{0,3}$");
+            if (match.Success)
+                return match.Groups[1].Value + "series";
+        }
+
+        return model;
+    }
 
     private static string NormalizeName(string? name) =>
         new string((name ?? string.Empty).ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());

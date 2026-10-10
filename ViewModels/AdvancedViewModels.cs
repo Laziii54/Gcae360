@@ -1911,6 +1911,13 @@ public partial class ServiceViewModel : BaseViewModel
     }
 
     [RelayCommand]
+    private async Task OpenPassiveCan()
+    {
+        try { await Shell.Current.GoToAsync(nameof(Views.PassiveCanPage)); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Passive CAN navigation failed: {ex.Message}"); }
+    }
+
+    [RelayCommand]
     private async Task CopyDiscoveryReport()
     {
         try
@@ -2133,6 +2140,7 @@ public partial class ServiceViewModel : BaseViewModel
     {
         OnPropertyChanged(nameof(CanPressOilReset));
         OnPropertyChanged(nameof(ShowOilResetUnavailable));
+        RebuildProcedureRows();
     }
     partial void OnHasOilResetCardChanged(bool value)
     {
@@ -2588,6 +2596,9 @@ public partial class ServiceViewModel : BaseViewModel
 
             try { await AddGuidedServiceResetsAsync(CancellationToken.None); }
             catch { }
+
+            try { await RefreshProcedureListAsync(CancellationToken.None); }
+            catch { }
         }
     }
 
@@ -2976,6 +2987,18 @@ public partial class ServiceViewModel : BaseViewModel
                 catch
                 {
                     // Instructions are optional; never break the page.
+                }
+
+                try
+                {
+                    await RefreshProcedureListAsync(token);
+                }
+                catch (OperationCanceledException)
+                {
+                }
+                catch
+                {
+                    // The list reports its own error; the rest of the page keeps working.
                 }
 
                 try

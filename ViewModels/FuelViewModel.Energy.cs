@@ -23,7 +23,6 @@ public partial class FuelViewModel
     private volatile bool _evResolveFailed;
     private CancellationTokenSource? _evCts;
     private double? _latestSpeedKph;
-    private double _electricMovingSeconds;
     private double? _socStart;
     private double? _socNow;
     private bool _modeOverridden;
@@ -96,7 +95,10 @@ public partial class FuelViewModel
     {
         if (_tripStartedAt is null)
         {
+            LoadUserFuelKind();
             DetectMode();
+            UpdateFuelKind();
+            _ = LoadInterruptedTripAsync();
             if (CurrentVin() is { } vin)
             {
                 var capacity = Preferences.Default.Get($"ev_capacity_{vin}", string.Empty);
@@ -188,6 +190,7 @@ public partial class FuelViewModel
         IsElectricMode = mode == EnergyMode.Electric;
         ShowEnergy = mode != EnergyMode.Fuel;
         ShowFuel = mode != EnergyMode.Electric;
+        UpdateFuelKind();
         RefreshPresentation();
     }
 
@@ -232,7 +235,6 @@ public partial class FuelViewModel
     {
         _ev.Reset();
         ResetDashboard();
-        _electricMovingSeconds = 0;
         _socStart = null;
         _socNow = null;
     }
@@ -444,12 +446,14 @@ public partial class FuelViewModel
                 break;
             }
             case EnergyMode.Hybrid:
-                HeadLeftCaption = L("საწვავი", "Fuel");
                 HeadLeftValue = Average;
                 HeadLeftUnit = "";
-                HeadRightCaption = L("ელექტროთი ნავალი", "Driven on electric");
-                HeadRightValue = _movingSeconds > 30
-                    ? (_electricMovingSeconds / _movingSeconds * 100d).ToString("0", invariant)
+                // Distance with the engine stopped, from rpm and speed — derived, not a number the car reports.
+                HeadLeftCaption = L("საწვავი (მთელ მანძილზე)", "Fuel (whole trip)");
+                HeadRightCaption = L("ძრავის გარეშე ნავალი ≈", "Driven with engine off ≈");
+                var shareKm = (_electricMeters + _engineMeters) / 1000d;
+                HeadRightValue = shareKm >= 0.2
+                    ? (_electricMeters / 1000d / shareKm * 100d).ToString("0", invariant)
                     : "—";
                 HeadRightUnit = "%";
                 HasHeadUnits = true;

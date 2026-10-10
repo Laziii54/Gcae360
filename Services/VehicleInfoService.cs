@@ -1191,54 +1191,60 @@ public sealed class VehicleInfoService
         "JT2" or "JT3" or "JTD" or "JTE" or "JTG" or "JTJ" or "JTK" or "JTL" or
         "JTM" or "JTN" or "4T1" or "4T3" or "4T4" or "5TD" or "5TE" or "5TF" or "5TB" or
         "2T1" or "2T2" or "2T3" => "Toyota",
-        "JTH" or "JTHB" => "Lexus",
+        "JTH" or "JTHB" or "JT8" => "Lexus",
+        // Toyota plants outside Japan / North America
+        "SB1" or "VNK" or "NMT" or "MR0" or "AHT" or "3TM" or "3TY" => "Toyota",
         // Honda / Acura
         "1HG" or "2HG" or "3HG" or "5FN" or "5FR" or "5J6" or "5J8" or "JHM" or "JHL" or
         "JHN" or "SHH" or "SHS" or "19X" or "19U" => "Honda",
         "19UYA" or "JH4" => "Acura",
+        "MRH" or "93H" => "Honda",
         // Nissan / Infiniti
         "JN1" or "JN6" or "JN8" or "JNA" or "SJN" or "1N4" or "1N6" or "3N1" or
-        "5N1" or "5N3" => "Nissan",
+        "5N1" or "5N3" or "VSK" or "MNT" or "3N6" => "Nissan",
         "JNK" or "JNR" or "JNC" => "Infiniti",
         // Mazda
-        "JM1" or "JM3" or "JM7" or "1YV" or "4F2" or "4F4" => "Mazda",
+        "JM1" or "JM3" or "JM7" or "JMZ" or "1YV" or "4F2" or "4F4" => "Mazda",
         // Subaru
         "JF1" or "JF2" or "4S3" or "4S4" => "Subaru",
         // Mitsubishi
-        "JA3" or "JA4" or "JMB" or "4A3" or "4A4" or "6MM" => "Mitsubishi",
+        "JA3" or "JA4" or "JMB" or "JMY" or "MMB" or "MMC" or "4A3" or "4A4" or "6MM" => "Mitsubishi",
         // Suzuki
-        "JS1" or "JS2" or "JS3" or "2S3" => "Suzuki",
+        "JS1" or "JS2" or "JS3" or "2S3" or "TSM" or "MA3" => "Suzuki",
         // Isuzu
         "JAA" or "JAC" => "Isuzu",
         // Daewoo / GM Korea (Chevrolet Korea)
         "KL1" or "KLA" or "KLY" => "Chevrolet",
         // Hyundai / Kia / Genesis
-        "KMH" or "KMY" or "TMA" or "MAL" or "5NP" or "5NM" => "Hyundai",
-        "KNA" or "KND" or "KNM" or "U5Y" or "5XX" or "5XY" => "Kia",
+        "KMH" or "KMY" or "KMF" or "NLH" or "TMA" or "MAL" or "5NP" or "5NM" => "Hyundai",
+        "KNA" or "KND" or "KNE" or "KNM" or "3KP" or "U5Y" or "5XX" or "5XY" => "Kia",
         "KMT" => "Genesis",
         // Volkswagen Group
-        "WVW" or "WV1" or "WV2" or "1VW" or "3VW" or "9BW" => "Volkswagen",
-        "WAU" or "WA1" or "TRU" => "Audi",
+        "WVW" or "WVG" or "WV1" or "WV2" or "1VW" or "3VW" or "9BW" => "Volkswagen",
+        "WAU" or "WA1" or "WUA" or "TRU" => "Audi",
         "TMB" or "TMK" => "Skoda",
-        "VSS" or "VSK" => "SEAT",
+        "VSS" => "SEAT",
         // BMW / Mini
         "WBA" or "WBS" or "WBX" or "WBY" or "4US" or "5UX" or "5YM" => "BMW",
         "WMW" or "WMX" => "Mini",
         // Mercedes-Benz / Smart
-        "WDB" or "WDD" or "WDC" or "WDF" or "4JG" or "55S" => "Mercedes-Benz",
+        "WDB" or "WDD" or "WDC" or "WDF" or "W1K" or "W1N" or "W1V" or "W1Y" or "4JG" or "55S" => "Mercedes-Benz",
         "WME" => "Smart",
         // Porsche
         "WP0" or "WP1" => "Porsche",
         // Ford / Lincoln
-        "1FA" or "1FB" or "1FC" or "1FD" or "1FM" or "1FT" or "2FA" or "3FA" or "MAJ" or "WF0" => "Ford",
+        "1FA" or "1FB" or "1FC" or "1FD" or "1FM" or "1FT" or "2FA" or "3FA" or "3FM" or "3FT" or "MAJ" or "WF0" or "NM0" or "6FP" => "Ford",
         "1LN" or "5LM" => "Lincoln",
         // GM (Chevrolet / GMC / Cadillac / Buick)
-        "1G1" or "1GC" or "1GB" or "2G1" or "3G1" or "6G1" => "Chevrolet",
-        "1GT" or "2GT" or "3GT" => "GMC",
+        "1G1" or "1GC" or "1GB" or "1GN" or "2G1" or "3G1" or "3GN" or "3GC" or "6G1" => "Chevrolet",
+        "1GT" or "1GK" or "2GT" or "3GT" => "GMC",
         "1G6" or "1GY" => "Cadillac",
-        "1G4" or "2G4" => "Buick",
+        "1G4" or "2G4" or "5GA" or "KL4" => "Buick",
         // Chrysler / Jeep / Dodge / RAM
-        "1C3" or "1C4" or "1C6" or "2C3" or "2C4" or "3C4" or "3C6" => "Chrysler/Dodge/Jeep",
+        "1C3" or "1C4" or "1C6" or "1J4" or "1J8" or "1B3" or "1D7" or "2B3" or "3D7" or "2C3" or "2C4" or "3C4" or "3C6" => "Chrysler/Dodge/Jeep",
+        // MG / Haval
+        "LSJ" => "MG",
+        "LGW" => "Haval",
         // Volvo
         "YV1" or "YV4" or "YV2" or "7JR" => "Volvo",
         // Renault / Dacia

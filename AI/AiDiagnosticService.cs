@@ -145,6 +145,7 @@ Do not copy any fault code from examples unless that code exists in the real sca
         prompt.AppendLine("Use stop only for a credible immediate safety, fire, overheating, brake, steering, or restraint risk supported by the code.");
         prompt.AppendLine("Every amount must be an integer GEL range, never a single price. Use 0 only when no part is normally required.");
         prompt.AppendLine("Write problemName and reason in Georgian.");
+        prompt.AppendLine(CarScanner.Services.MarketPartPrices.PromptReference());
         prompt.AppendLine($"Vehicle: {vehicle.Year} {vehicle.Manufacturer} {vehicle.Model}; engine: {vehicle.Engine}; fuel: {vehicle.FuelType}.");
         prompt.AppendLine("DTCs:");
         foreach (var code in codeList)

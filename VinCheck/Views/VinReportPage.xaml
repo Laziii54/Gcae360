@@ -285,11 +285,6 @@
                         IsVisible="{Binding Report,Converter={StaticResource NotNull}}"
                         BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="48" FontSize="14" />
 
-                <!-- Customs cost in Georgia for this car (year / engine / fuel from the report) -->
-                <Button Text="{Binding CustomsText}" Command="{Binding OpenCustomsCommand}"
-                        IsVisible="{Binding Report,Converter={StaticResource NotNull}}"
-                        Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="48" FontSize="14" />
-
                 <!-- ===== Paid full history: offer =====
                      ShowFullOffer is always false on Android / iOS (no outside payment
                      for digital content in the mobile app); kept for a future IAP. -->

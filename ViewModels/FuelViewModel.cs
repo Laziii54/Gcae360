@@ -23,11 +23,8 @@ public partial class FuelViewModel : BaseViewModel
     private double _distanceMeters;
     private double _fuelLiters;
     private double? _instantLitersPer100Km;
-    private double? _latestFuelRateLitersPerHour;
-    private double? _latestMafGramsPerSecond;
     private int? _latestFuelTypeCode;
     private double? _latestFuelLevelPercent;
-    private DateTime? _last;
     private double _movingSeconds;
     private double _idleSeconds;
     private int _maxSpeedKph;
@@ -101,11 +98,13 @@ public partial class FuelViewModel : BaseViewModel
             RebuildTripHistoryPresentation();
             RebuildRefuelSummaries();
         });
+        InitFuelEngine();
         FuelPriceText = Preferences.Default.Get("fuel_price_per_liter", string.Empty);
         RefuelPriceText = FuelPriceText;
         Title = "Fuel Consumption";
         Status = _localization.IsEnglish ? "Stopped" : "გაჩერებულია";
         InitEnergy();
+        UpdateFuelKind();
     }
 
     [RelayCommand]
@@ -124,9 +123,12 @@ public partial class FuelViewModel : BaseViewModel
             ResetCurrentTrip();
             _tripStartedAt = DateTime.Now;
         }
+        UpdateFuelKind();
         await _engine.StartAsync();
         _engine.KeepRunningForTrip = true;
         StartEnergyLoop();
+        BeginTripTracking();
+        HasInterruptedTrip = false;
         Status = RunningStatus();
 
         // Keep recording when the app goes to the background or the screen turns off.
@@ -151,7 +153,7 @@ public partial class FuelViewModel : BaseViewModel
         await _engine.StopAsync(force: true);
         Unsubscribe();
         _engine.SetFuelAnalyticsEnabled(false);
-        _last = null;
+        EndTripTracking(deleteCheckpoint: false);
         Status = _localization.IsEnglish ? "Paused" : "დაპაუზებულია";
         }
         catch (Exception commandException)
@@ -174,6 +176,7 @@ public partial class FuelViewModel : BaseViewModel
         if (_tripStartedAt is not null)
             BuildTripSummary();
         var saveResult = await SaveCurrentTripIfUsableAsync();
+        EndTripTracking(deleteCheckpoint: true);
         Status = _localization.IsEnglish
             ? "Stopped"
             : saveResult ?? "გაჩერებულია";
@@ -206,16 +209,16 @@ public partial class FuelViewModel : BaseViewModel
         _distanceMeters = 0;
         _fuelLiters = 0;
         _instantLitersPer100Km = null;
-        _latestFuelRateLitersPerHour = null;
-        _latestMafGramsPerSecond = null;
         _latestFuelTypeCode = null;
         _latestFuelLevelPercent = null;
-        _last = null;
         _movingSeconds = _idleSeconds = 0;
         _maxSpeedKph = 0;
         _rpmSeconds = _rpmWeightedSum = _loadSeconds = _loadWeightedSum = 0;
         _cityMeters = _cityFuelLiters = _highwayMeters = _highwayFuelLiters = 0;
         _tripStartedAt = null;
+        _fuel.Reset();
+        _lastAverageAt = null;
+        EndTripTracking(deleteCheckpoint: true);
         ResetEnergy();
     }
 
@@ -238,9 +241,13 @@ public partial class FuelViewModel : BaseViewModel
     private void OnData(object? sender, LiveDataModel data) =>
         MainThread.BeginInvokeOnMainThread(() => ApplyData(data));
 
-    private void OnValues(object? sender, IReadOnlyList<SensorValue> values) =>
+    private void OnValues(object? sender, IReadOnlyList<SensorValue> values)
+    {
+        // Stamp the readings with the moment they arrived, not with the moment the UI thread gets to them.
+        var arrived = DateTime.UtcNow;
         MainThread.BeginInvokeOnMainThread(() =>
         {
+            FuelSignalMapper.Apply(_fuel.Signals, values, arrived);
             foreach (var value in values)
             {
                 if (!double.TryParse(value.Value, System.Globalization.NumberStyles.Float,
@@ -248,134 +255,52 @@ public partial class FuelViewModel : BaseViewModel
                     continue;
                 switch (value.Pid)
                 {
-                    case 0x5E: _latestFuelRateLitersPerHour = number; break;
-                    case 0x10: _latestMafGramsPerSecond = number; break;
                     case 0x51:
                         _latestFuelTypeCode = (int)Math.Round(number);
                         OnFuelTypeCodeReceived(_latestFuelTypeCode.Value);
+                        UpdateFuelKind();
                         break;
                     case 0x2F: _latestFuelLevelPercent = number; break;
                 }
             }
         });
+    }
 
     private void ApplyData(LiveDataModel data)
     {
-        if (data.HasMaf)
-            _latestMafGramsPerSecond = data.MafGs;
-        if (data.HasFuelType)
-        {
-            _latestFuelTypeCode = data.FuelTypeCode;
-            OnFuelTypeCodeReceived(data.FuelTypeCode);
-        }
-        if (data.HasFuelLevel)
-            _latestFuelLevelPercent = data.FuelLevel;
-
-        var now = data.Timestamp;
-        // Battery reads share the adapter, so samples can be a few seconds apart.
-        var seconds = _last is null ? 0 : Math.Clamp((now - _last.Value).TotalSeconds, 0, 10);
-        _last = now;
-        var measurement = FuelConsumptionService.ResolveFuelRate(
-            _latestFuelRateLitersPerHour,
-            _latestMafGramsPerSecond,
-            _latestFuelTypeCode ?? (data.HasFuelType ? data.FuelTypeCode : null));
-        _instantLitersPer100Km = FuelConsumptionService.FuelEconomyLPer100Km(
-            measurement?.LitersPerHour, data.Speed);
-        if (measurement is { } fuelMeasurement && seconds > 0)
-            _fuelLiters += fuelMeasurement.LitersPerHour / 3600d * seconds;
-
-        if (data.HasSpeed)
-        {
-            _latestSpeedKph = data.Speed;
-            if (data.Speed > 1)
-            {
-                var travelledMeters = data.Speed / 3.6d * seconds;
-                _distanceMeters += travelledMeters;
-                TrackDrive(data.HasRpm, data.Rpm, true, travelledMeters);
-                _movingSeconds += seconds;
-                if (data.HasRpm && data.Rpm < 100)
-                    _electricMovingSeconds += seconds;
-                _maxSpeedKph = Math.Max(_maxSpeedKph, data.Speed);
-                if (measurement is { } drivingMeasurement)
-                {
-                    if (data.Speed <= 60)
-                    {
-                        _cityMeters += travelledMeters;
-                        _cityFuelLiters += drivingMeasurement.LitersPerHour / 3600d * seconds;
-                    }
-                    else
-                    {
-                        _highwayMeters += travelledMeters;
-                        _highwayFuelLiters += drivingMeasurement.LitersPerHour / 3600d * seconds;
-                    }
-                }
-            }
-            else
-            {
-                _idleSeconds += seconds;
-                TrackDrive(data.HasRpm, data.Rpm, true, 0);
-            }
-        }
-        else if (data.HasRpm)
-        {
-            TrackDrive(true, data.Rpm, false, 0);
-        }
-
-        if (data.HasRpm && seconds > 0)
-        {
-            _rpmSeconds += seconds;
-            _rpmWeightedSum += data.Rpm * seconds;
-        }
-        if (data.HasEngineLoad && seconds > 0)
-        {
-            _loadSeconds += seconds;
-            _loadWeightedSum += data.EngineLoad * seconds;
-        }
-
+        // The engine decides what is fresh enough to combine; everything below only presents its results.
+        var now = DateTime.UtcNow;
+        FuelSignalMapper.Apply(_fuel.Signals, data, now);
+        _fuel.Tick(now);
+        SyncFromEngine(now);
+        TrackAverages(data, now);
         RefreshPresentation();
     }
 
     private void RefreshPresentation()
     {
-        var measurement = FuelConsumptionService.ResolveFuelRate(
-            _latestFuelRateLitersPerHour,
-            _latestMafGramsPerSecond,
-            _latestFuelTypeCode);
-        Instant = _instantLitersPer100Km.HasValue ? _units.FormatFuelEconomy(_instantLitersPer100Km.Value) : "—";
+        RefreshFuelPresentation();
+        RebuildSupportRows();
+
         Distance = _units.FormatDistance(_distanceMeters / 1000d);
-        FuelUsed = _units.Format(_fuelLiters, "L", "0.00");
-        FuelRate = measurement is { } currentRate ? _units.Format(currentRate.LitersPerHour, "L/h", "0.00") : "—";
         FuelLevel = _latestFuelLevelPercent.HasValue
             ? $"{_latestFuelLevelPercent.Value:0}%"
             : _localization.IsEnglish ? "Unavailable from ECU" : "ECU-დან მიუწვდომელია";
-        Driving = measurement is { IsDirect: true }
-            ? "Direct ECU value — Fuel Rate PID 01 5E"
-            : measurement is not null
-                ? "Calculated value — MAF + fuel type"
-                : "Fuel Rate ან MAF ჯერ არ მოსულა ECU-დან.";
-
-        if (_distanceMeters > 100d)
-        {
-            var average = _fuelLiters / (_distanceMeters / 1000d) * 100d;
-            Average = _units.FormatFuelEconomy(average);
-            Trip = Average;
-        }
-        else
-        {
-            Average = Trip = "—";
-        }
 
         TripTime = $"Trip: {(_movingSeconds + _idleSeconds) / 60d:0} min";
         MovingTime = $"{_movingSeconds / 60d:0} min";
         IdleTime = $"{_idleSeconds / 60d:0} min";
         MaximumSpeed = _maxSpeedKph > 0 ? _units.FormatSpeed(_maxSpeedKph) : "—";
-        AverageSpeed = _movingSeconds > 0 ? _units.FormatSpeed((_distanceMeters / 1000d) / (_movingSeconds / 3600d)) : "—";
+        AverageSpeed = _fuel.Snapshot().AverageSpeedKph is { } averageSpeed ? _units.FormatSpeed(averageSpeed) : "—";
         AverageRpm = _rpmSeconds > 0 ? $"{_rpmWeightedSum / _rpmSeconds:0} rpm" : "—";
         EngineLoad = _loadSeconds > 0 ? $"{_loadWeightedSum / _loadSeconds:0}%" : "—";
         CityConsumption = FormatConsumption(_cityFuelLiters, _cityMeters);
         HighwayConsumption = FormatConsumption(_highwayFuelLiters, _highwayMeters);
-        TripCost = TryGetFuelPrice(out var price)
-            ? $"₾{_fuelLiters * price:0.00}"
+
+        // The cost is only as good as the litres: an estimate is shown as one.
+        var estimated = _fuel.Snapshot().Quality is TripFuelQuality.Estimated or TripFuelQuality.Mixed;
+        TripCost = TryGetFuelPrice(out var price) && price > 0 && _fuelLiters > 0
+            ? $"{(estimated ? "≈ " : string.Empty)}₾{_fuelLiters * price:0.00}"
             : "ფასის შეყვანის შემდეგ გამოჩნდება";
         RefreshEnergyPresentation();
 
@@ -498,9 +423,14 @@ public partial class FuelViewModel : BaseViewModel
         RebuildTripHistoryPresentation();
     }
 
-    private string FormatConsumption(double fuelLiters, double distanceMeters) => distanceMeters > 100d
-        ? _units.FormatFuelEconomy(fuelLiters / (distanceMeters / 1000d) * 100d)
-        : "—";
+    private string FormatConsumption(double fuelLiters, double distanceMeters)
+    {
+        if (distanceMeters <= 100d || fuelLiters <= 0)
+            return "—";
+
+        var estimated = _fuel.Snapshot().Quality is TripFuelQuality.Estimated or TripFuelQuality.Mixed;
+        return _units.FormatFuelEconomy(fuelLiters / (distanceMeters / 1000d) * 100d, estimated);
+    }
 
     private bool TryGetFuelPrice(out double price) => double.TryParse(FuelPriceText,
         System.Globalization.NumberStyles.Float,
@@ -539,13 +469,12 @@ public partial class FuelViewModel : BaseViewModel
 
     private async Task<string?> SaveCurrentTripIfUsableAsync()
     {
-        // Battery energy (electric / hybrid): measured kWh, or the
-        // state-of-charge estimate when the current could not be read.
-        double? energyKWh = _mode == EnergyMode.Fuel ? null : _ev.HasSample ? _ev.NetKWh : ApproxKWh();
-        var hasEnergy = energyKWh is > 0;
-        var hasFuel = _fuelLiters > 0 && _mode != EnergyMode.Electric;
+        var trip = _fuel.Snapshot();
+        var electric = ElectricTripCalculator.Compute(_mode, trip, _ev.HasSample, _ev.ConsumedKWh, _ev.RegeneratedKWh, _socStart, _socNow, CapacityKWh());
+        var hasEnergy = electric.Quality != EnergyQuality.Unavailable && electric.NetKWh is > 0;
+        var hasFuel = trip.FuelLiters > 0 && _mode != EnergyMode.Electric;
 
-        if (_tripStartedAt is null || _distanceMeters <= 100d || (!hasFuel && !hasEnergy))
+        if (_tripStartedAt is null || trip.DistanceKm <= 0.1d || (!hasFuel && !hasEnergy))
         {
             _tripStartedAt = null;
             return _mode == EnergyMode.Electric
@@ -560,44 +489,18 @@ public partial class FuelViewModel : BaseViewModel
             return "მოგზაურობა არ შენახულა: რეალური VIN მიუწვდომელია.";
         }
 
-        var measurement = FuelConsumptionService.ResolveFuelRate(
-            _latestFuelRateLitersPerHour,
-            _latestMafGramsPerSecond,
-            _latestFuelTypeCode);
-        var distanceKm = _distanceMeters / 1000d;
-        var priceIsKnown = TryGetFuelPrice(out var price);
-        var record = new FuelTripRecord
-        {
-            VIN = vin!,
-            StartedAt = _tripStartedAt.Value,
-            FinishedAt = DateTime.Now,
-            DistanceKm = distanceKm,
-            FuelLiters = _fuelLiters,
-            MovingSeconds = _movingSeconds,
-            IdleSeconds = _idleSeconds,
-            AverageSpeedKph = _movingSeconds > 0 ? distanceKm / (_movingSeconds / 3600d) : 0,
-            MaximumSpeedKph = _maxSpeedKph,
-            AverageFuelLPer100Km = distanceKm > 0 ? _fuelLiters / distanceKm * 100d : null,
-            FuelPricePerLiter = priceIsKnown && hasFuel ? price : null,
-            FuelDataSource = _mode == EnergyMode.Electric
-                ? (_evSource?.Label ?? "State of charge × battery capacity (estimate)")
-                : measurement is { IsDirect: true } ? "Direct ECU Fuel Rate PID 01 5E" : "Calculated from MAF + fuel type",
-            EnergyKWh = hasEnergy ? energyKWh : null,
-            RegeneratedKWh = hasEnergy && _ev.HasSample ? _ev.RegeneratedKWh : null,
-            EnergyPricePerKWh = hasEnergy && TryParsePositive(ElectricityPriceText, out var kwhPrice) ? kwhPrice : null
-        };
-        if (!hasFuel)
-        {
-            record.FuelLiters = 0;
-            record.AverageFuelLPer100Km = null;
-        }
+        var record = BuildTripRecord(vin!, _tripStartedAt.Value, DateTime.Now, trip, _fuel.Kind, _mode,
+            hasEnergy ? electric.NetKWh : null,
+            electric.Quality == EnergyQuality.Measured ? electric.RegeneratedKWh : null,
+            electric.Quality == EnergyQuality.Estimated, interrupted: false);
 
         await _database.SaveFuelTripAsync(record);
         _tripStartedAt = null;
         await LoadTripHistoryAsync();
+        var estimateMark = record.EstimatedFuelShare > 0 ? "≈ " : string.Empty;
         return hasFuel
-            ? $"მოგზაურობა შენახულია: {_units.FormatDistance(record.DistanceKm)} · {_units.FormatFuelEconomy(record.AverageFuelLPer100Km ?? 0)}."
-            : $"მოგზაურობა შენახულია: {_units.FormatDistance(record.DistanceKm)} · {record.EnergyKWh / distanceKm * 100d:0.0} kWh/100km.";
+            ? $"მოგზაურობა შენახულია: {_units.FormatDistance(record.DistanceKm)} · {estimateMark}{_units.FormatFuelEconomy(record.AverageFuelLPer100Km ?? 0)}."
+            : $"მოგზაურობა შენახულია: {_units.FormatDistance(record.DistanceKm)} · {(record.EnergyIsEstimate ? "≈ " : string.Empty)}{record.EnergyKWh / record.DistanceKm * 100d:0.0} kWh/100km.";
     }
 
     private void RebuildTripHistoryPresentation()
@@ -617,7 +520,12 @@ public partial class FuelViewModel : BaseViewModel
             var cost = record.FuelPricePerLiter.HasValue || record.EnergyPricePerKWh.HasValue
                 ? $" · ₾{costValue:0.00}"
                 : string.Empty;
-            TripHistory.Add($"{record.FinishedAt:dd.MM HH:mm} · {_units.FormatDistance(record.DistanceKm)} · {fuel} · {record.MovingSeconds / 60d:0} min{cost}\n{record.FuelDataSource}");
+            if (record.EstimatedFuelShare > 0 && record.AverageFuelLPer100Km.HasValue)
+                fuel = "≈ " + fuel;
+            else if (record.EnergyIsEstimate && record.EnergyKWh.HasValue && !record.AverageFuelLPer100Km.HasValue)
+                fuel = "≈ " + fuel;
+            var interrupted = record.IsInterrupted ? " · " + L("გაწყვეტილი", "interrupted") : string.Empty;
+            TripHistory.Add($"{record.FinishedAt:dd.MM HH:mm} · {_units.FormatDistance(record.DistanceKm)} · {fuel} · {record.MovingSeconds / 60d:0} min{cost}{interrupted}\n{record.FuelDataSource}");
         }
 
         HasTripHistory = TripHistory.Count > 0;

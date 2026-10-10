@@ -131,6 +131,29 @@
                 </VerticalStackLayout>
             </Border>
 
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,10">
+                <VerticalStackLayout Spacing="6">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <Label Text="{Binding DataCollectionTitle}" Style="{StaticResource RowTitleStyle}" LineBreakMode="WordWrap" />
+                        <CheckBox Grid.Column="1" IsChecked="{Binding DataCollectionEnabled}" VerticalOptions="Center" />
+                    </Grid>
+                    <Label Text="{Binding DataCollectionInfo}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,10">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="{Binding CaptureTitle}" Style="{StaticResource RowTitleStyle}" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding CaptureInfo}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    <Picker Title="{Binding CaptureTitle}" ItemsSource="{Binding CaptureTargetOptions}" SelectedIndex="{Binding SelectedCaptureTargetIndex}" IsEnabled="{Binding CaptureRecording, Converter={StaticResource InverseBoolConverter}}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" FontSize="14" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <Button Text="{Binding CaptureButtonText}" Command="{Binding ToggleCaptureCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="42" />
+                        <Button Grid.Column="1" Text="{Binding CaptureShareText}" Command="{Binding ShareCaptureCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.2" CornerRadius="12" HeightRequest="42" />
+                    </Grid>
+                    <Label Text="{Binding CaptureStatus}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+
             <Label Text="Georgian Car Scanner" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalOptions="Center" Margin="0,8" />
         </VerticalStackLayout>
     </ScrollView>

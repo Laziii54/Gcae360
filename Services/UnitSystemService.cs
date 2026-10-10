@@ -1,5 +1,6 @@
 using System.Globalization;
 using CarScanner.Models;
+using CarScanner.Services.Energy;
 using Microsoft.Maui.Storage;
 
 namespace CarScanner.Services;
@@ -43,6 +44,43 @@ public sealed class UnitSystemService
         }
     }
 
+    private const string FuelUnitKey = "fuel_economy_unit";
+
+    /// <summary>
+    /// How fuel economy is shown: L/100 km, km/L, MPG (US) or MPG (UK). Until the user picks one it follows the unit system
+    /// (and the UK region), so nobody has to choose just to get sensible numbers.
+    /// </summary>
+    public FuelEconomyUnit FuelEconomyUnit
+    {
+        get
+        {
+            if (Preferences.Default.ContainsKey(FuelUnitKey))
+                return FuelUnits.Parse(Preferences.Default.Get(FuelUnitKey, string.Empty), DefaultFuelUnit());
+            return DefaultFuelUnit();
+        }
+    }
+
+    public string FuelEconomyLabel => FuelUnits.Label(FuelEconomyUnit);
+
+    public event EventHandler? FuelEconomyUnitChanged;
+
+    public void SetFuelEconomyUnit(FuelEconomyUnit unit)
+    {
+        if (!Enum.IsDefined(unit) || (Preferences.Default.ContainsKey(FuelUnitKey) && FuelEconomyUnit == unit))
+            return;
+
+        Preferences.Default.Set(FuelUnitKey, unit.ToString());
+        FuelEconomyUnitChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private FuelEconomyUnit DefaultFuelUnit()
+    {
+        string? region = null;
+        try { region = RegionInfo.CurrentRegion.TwoLetterISORegionName; }
+        catch (ArgumentException) { }
+        return FuelUnits.DefaultFor(IsImperial, region);
+    }
+
     public UnitSystem Current => _current;
     public bool IsImperial => _current == UnitSystem.Imperial;
     public string DisplayName => IsImperial ? "Imperial" : "Metric";
@@ -65,6 +103,8 @@ public sealed class UnitSystemService
 
         _current = system;
         UnitSystemChanged?.Invoke(this, EventArgs.Empty);
+        if (!Preferences.Default.ContainsKey(FuelUnitKey))
+            FuelEconomyUnitChanged?.Invoke(this, EventArgs.Empty);   // the default follows the unit system
     }
 
     public UnitValue Convert(double metricValue, string? metricUnit)
@@ -129,7 +169,14 @@ public sealed class UnitSystemService
     public string FormatDistance(double km, string format = "0.0") => Format(km, "km", format);
     public string FormatTemperature(double celsius, string format = "0") => Format(celsius, "°C", format);
     public string FormatPressure(double kpa, string format = "0.0") => Format(kpa, "kPa", format);
-    public string FormatFuelEconomy(double litersPer100Km, string format = "0.0") => Format(litersPer100Km, "L/100km", format);
+    /// <summary>Fuel economy in the unit the user chose. Zero / negative / non-finite input gives "—" (never ∞).</summary>
+    public string FormatFuelEconomy(double litersPer100Km, string format = "0.0") => FuelUnits.Format(litersPer100Km, FuelEconomyUnit);
+
+    public string FormatFuelEconomy(double? litersPer100Km, bool estimate) => FuelUnits.Format(litersPer100Km, FuelEconomyUnit, estimate);
+
+    public string FormatFuelVolume(double liters, bool estimate = false) => FuelUnits.FormatVolume(liters, FuelEconomyUnit, estimate);
+
+    public string FormatFuelRate(double litersPerHour, bool estimate = false) => FuelUnits.FormatRate(litersPerHour, FuelEconomyUnit, estimate);
     public double DistanceToKilometers(double displayedDistance) => IsImperial ? displayedDistance / 0.621371192d : displayedDistance;
 
     private static UnitSystem Parse(string? value) => string.Equals(value, "Imperial", StringComparison.OrdinalIgnoreCase)

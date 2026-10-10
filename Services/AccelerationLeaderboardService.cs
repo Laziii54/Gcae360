@@ -23,8 +23,16 @@ public sealed class AccelerationLeaderboardService
 
     private static bool En => CarScanner.Services.Localization.LanguageCatalog.UsesEnglishBase;
 
-    public Task<IReadOnlyList<AccelerationLeaderboardEntry>> GetAsync(string testId = "0-100", CancellationToken token = default) =>
-        GetRealAsync(testId, token);
+    public async Task<IReadOnlyList<AccelerationLeaderboardEntry>> GetAsync(string testId = "0-100", CancellationToken token = default)
+    {
+        var real = await GetRealAsync(testId, token).ConfigureAwait(false);
+#if DEBUG
+        // Debug builds only: a full sample list to judge the page (see SampleLeaderboardEntries).
+        return real.Concat(SampleLeaderboardEntries.For(testId)).ToList();
+#else
+        return real;
+#endif
+    }
 
     private async Task<IReadOnlyList<AccelerationLeaderboardEntry>> GetRealAsync(string testId, CancellationToken token)
     {

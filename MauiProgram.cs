@@ -216,9 +216,14 @@ public static class MauiProgram
             CarScanner.Services.OemDiagnostics.ResetRecorderService>();
         builder.Services.AddTransient<ResetRecorderViewModel>();
         builder.Services.AddTransient<ResetRecorderPage>();
-        builder.Services.AddSingleton<CarScanner.Services.Customs.CustomsRulesService>();
-        builder.Services.AddTransient<CustomsCalculatorViewModel>();
-        builder.Services.AddTransient<CustomsCalculatorPage>();
+
+        // Optional anonymous data collection (off until the user opts in) and passive, read-only CAN listening.
+        builder.Services.AddSingleton<CarScanner.Services.DataCollection.DataCollectionService>();
+        builder.Services.AddSingleton<CarScanner.Services.DataCollection.LocalCaptureService>();
+        builder.Services.AddSingleton<CarScanner.Services.Passive.IDbcSource, CarScanner.Services.Passive.CatalogDbcSource>();
+        builder.Services.AddSingleton<CarScanner.Services.Passive.PassiveCanService>();
+        builder.Services.AddTransient<PassiveCanViewModel>();
+        builder.Services.AddTransient<PassiveCanPage>();
 
         builder.Services.AddSingleton<
             CarScanner.Services.OemDiagnostics.ServiceResetVerificationService>();
@@ -247,6 +252,10 @@ public static class MauiProgram
         builder.Services.AddSingleton<
             CarScanner.Services.Mileage.IActualMileageProvider,
             CarScanner.Services.Mileage.GenericObdMileageProvider>();
+        // Standard distance / time counters (since codes cleared, MIL on): shown apart from the odometer.
+        builder.Services.AddSingleton<
+            CarScanner.Services.Mileage.IActualMileageProvider,
+            CarScanner.Services.Mileage.GenericObdDistanceContextProvider>();
 
         // Odometer copies kept by several modules (dashboard, engine,
         // transmission …), read from the bundled OBDb catalog.
@@ -264,9 +273,6 @@ public static class MauiProgram
 
         builder.Services.AddSingleton<VehicleHealthService>();
         builder.Services.AddSingleton<HybridHealthService>();
-
-        builder.Services.AddSingleton<
-            FuelConsumptionService>();
 
         // EV / hybrid battery energy (PID 01 9A + brand identifiers from the catalog).
         builder.Services.AddSingleton<CarScanner.Services.Energy.EvEnergyReader>();
@@ -353,7 +359,6 @@ public static class MauiProgram
         builder.Services.AddSingleton<VehicleReportViewModel>();
 
         builder.Services.AddTransient<ServiceViewModel>();
-        builder.Services.AddTransient<CalendarViewModel>();
         builder.Services.AddTransient<RepairCostViewModel>();
 
         builder.Services.AddTransient<ModuleScanViewModel>();
@@ -449,11 +454,9 @@ public static class MauiProgram
         builder.Services.AddTransient<CodingPage>();
         builder.Services.AddTransient<VehicleReportPage>();
         builder.Services.AddTransient<VehicleJournalPage>();
-        builder.Services.AddTransient<AllToolsPage>();
         builder.Services.AddTransient<GraphChannelsPage>();
 
         builder.Services.AddTransient<ServicePage>();
-        builder.Services.AddTransient<CalendarPage>();
         builder.Services.AddTransient<RepairCostPage>();
 
         builder.Services.AddTransient<ModuleScanPage>();
@@ -483,6 +486,12 @@ builder.Services.AddSingleton<
         builder.Logging.AddDebug();
 #endif
 
-        return builder.Build();
+        var app = builder.Build();
+
+        // Start listening for (opted-in) data collection. A failure here must never stop the app.
+        try { app.Services.GetRequiredService<CarScanner.Services.DataCollection.DataCollectionService>(); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Data collection init failed: {ex.Message}"); }
+
+        return app;
     }
 }

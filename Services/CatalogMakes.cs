@@ -10,11 +10,11 @@ public static class CatalogMakes
     // (keys to recognise the manufacturer, catalog make names)
     private static readonly (string[] Keys, string[] Makes)[] Families =
     {
-        (new[] { "mercedes", "benz", "smart" }, new[] { "Mercedes", "smart" }),
+        (new[] { "mercedes", "benz", "smart", "daimler" }, new[] { "Mercedes", "smart" }),
         (new[] { "chevrolet", "chevy", "gmc", "buick", "cadillac", "holden", "generalmotors", "gm" }, new[] { "Chevrolet", "GMC", "Buick", "Cadillac" }),
         (new[] { "ford", "lincoln", "mercury" }, new[] { "Ford" }),
         (new[] { "volkswagen", "vw", "audi", "seat", "cupra", "skoda", "porsche" }, new[] { "Volkswagen", "Audi", "Seat", "Cupra", "Skoda", "Porsche" }),
-        (new[] { "bmw", "mini", "rolls" }, new[] { "BMW", "MINI", "Rolls" }),
+        (new[] { "bmw", "bayerische", "mini", "rolls" }, new[] { "BMW", "MINI", "Rolls" }),
         (new[] { "daihatsu" }, new[] { "Daihatsu", "Toyota" }),
         (new[] { "toyota", "lexus", "scion" }, new[] { "Toyota", "Lexus", "Scion" }),
         (new[] { "hyundai", "kia", "genesis" }, new[] { "Hyundai", "Kia", "Genesis" }),
@@ -23,7 +23,7 @@ public static class CatalogMakes
         (new[] { "mitsubishi" }, new[] { "Mitsubishi" }),
         (new[] { "honda", "acura" }, new[] { "Honda", "Acura" }),
         (new[] { "mazda" }, new[] { "Mazda" }),
-        (new[] { "subaru" }, new[] { "Subaru" }),
+        (new[] { "subaru", "fujiheavy" }, new[] { "Subaru" }),
         (new[] { "suzuki" }, new[] { "Suzuki" }),
         (new[] { "volvo", "polestar" }, new[] { "Volvo", "Polestar" }),
         (new[] { "peugeot", "citroen", "ds", "opel", "vauxhall" }, new[] { "Peugeot", "Citroen", "VauxhallOpel" }),

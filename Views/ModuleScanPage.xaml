@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -10,26 +10,30 @@
     Title="შეცდომების სკანი">
 
     <ScrollView>
-        <VerticalStackLayout Padding="20,14,20,34" Spacing="12">
+        <VerticalStackLayout Padding="16,12,16,32" Spacing="12">
 
-            <!-- Report header: "2 შეცდომა" + one plain sentence -->
-            <Label AutomationId="DynamicTextFaultSummaryTitle" Text="{Binding FaultSummaryTitle}" Style="{StaticResource ReportTitleStyle}" />
-            <Label IsVisible="{Binding IsNotBusy}" AutomationId="DynamicTextModuleScanState"
-                   Text="{Binding ScanStateDetail}" Style="{StaticResource ReportMetaStyle}" FontSize="13" />
+            <!-- "Trouble code scan" before a scan, "2 faults" after it -->
+            <Label AutomationId="DynamicTextFaultSummaryTitle" Text="{Binding FaultSummaryTitle}" Style="{StaticResource PageTitleStyle}" />
 
-            <!-- Scan / clear -->
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,4,0,0">
-                <Button Text="{Binding ScanButtonText}" Command="{Binding ScanCommand}" IsEnabled="{Binding IsNotBusy}"
-                        Style="{StaticResource PrimaryButtonStyle}" CornerRadius="14" FontSize="13" />
-                <Button Grid.Column="1" Text="{Binding ClearDtcButtonText}" Command="{Binding ClearDtcCommand}" IsEnabled="{Binding IsNotBusy}"
-                        BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}"
-                        BorderWidth="1.5" CornerRadius="14" HeightRequest="50" FontSize="13" FontAttributes="Bold" />
-            </Grid>
+            <Button Text="{Binding ScanButtonText}" Command="{Binding ScanCommand}" IsEnabled="{Binding IsNotBusy}"
+                    Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="50" />
+
+            <!-- Progress while scanning / clearing -->
+            <Border IsVisible="{Binding IsBusy}" Style="{StaticResource ListCardStyle}" Padding="14,12">
+                <VerticalStackLayout Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <Label AutomationId="DynamicTextModuleScanStatus" Text="{Binding Status}" TextColor="{DynamicResource TextColor}" FontSize="12" LineBreakMode="TailTruncation" />
+                        <Label Grid.Column="1" AutomationId="DynamicTextModuleScanPercent" Text="{Binding ScanProgress, StringFormat='{0}%'}"
+                               TextColor="{DynamicResource Primary}" FontAttributes="Bold" FontSize="12" />
+                    </Grid>
+                    <ProgressBar Progress="{Binding ScanProgressFraction}" ProgressColor="{DynamicResource Primary}" />
+                </VerticalStackLayout>
+            </Border>
 
             <!-- Result of the last clear: cleared / came back / refused, per module -->
             <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasClearResults}">
                 <VerticalStackLayout Spacing="0" Padding="14,10">
-                    <Label AutomationId="DynamicTextClearResultsTitle" Text="{Binding ClearResultsTitle}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" Margin="0,0,0,4" />
+                    <Label AutomationId="DynamicTextClearResultsTitle" Text="{Binding ClearResultsTitle}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" Margin="0,0,0,4" />
                     <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding ClearResults}">
                         <BindableLayout.ItemTemplate>
                             <DataTemplate x:DataType="vm:ClearResultRow">
@@ -46,70 +50,53 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Progress while scanning / clearing -->
-            <VerticalStackLayout IsVisible="{Binding IsBusy}" Spacing="6">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                    <Label AutomationId="DynamicTextModuleScanStatus" Text="{Binding Status}" Style="{StaticResource ReportMetaStyle}" LineBreakMode="TailTruncation" />
-                    <Label Grid.Column="1" AutomationId="DynamicTextModuleScanPercent" Text="{Binding ScanProgress, StringFormat='{0}%'}"
-                           TextColor="{DynamicResource Primary}" FontAttributes="Bold" FontSize="13" />
-                </Grid>
-                <ProgressBar Progress="{Binding ScanProgressFraction}" ProgressColor="{DynamicResource Primary}" />
-            </VerticalStackLayout>
+            <!-- Trouble codes: one list card, one row per code (empty message / "all clear" when there are none) -->
+            <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding IsNotBusy}">
+                <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding ModuleFaults}">
+                    <BindableLayout.EmptyView>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,14">
+                            <Path Data="M4,12 A8,8 0 1 0 20,12 A8,8 0 1 0 4,12 M8,12.5 L11,15.5 L16,9.5" Style="{StaticResource RowIconStyle}" Stroke="#1F8A4C" VerticalOptions="Start" />
+                            <Label Grid.Column="1" AutomationId="DynamicTextModuleFaultEmpty" Text="{Binding ModuleFaultEmptyMessage}"
+                                   TextColor="{DynamicResource TextColor}" FontSize="14" VerticalOptions="Center" />
+                        </Grid>
+                    </BindableLayout.EmptyView>
 
-            <!-- Trouble codes: plain list, dot + code, description in simple words -->
-            <VerticalStackLayout Spacing="0" Margin="0,6,0,0" BindableLayout.ItemsSource="{Binding ModuleFaults}">
-                <BindableLayout.EmptyView>
-                    <Label AutomationId="DynamicTextModuleFaultEmpty" Text="{Binding ModuleFaultEmptyMessage}"
-                           Style="{StaticResource ReportMetaStyle}" FontSize="13" Margin="0,4,0,0" />
-                </BindableLayout.EmptyView>
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="m:ModuleFaultItem">
+                            <VerticalStackLayout Spacing="0">
+                                <Grid ColumnDefinitions="5,*" ColumnSpacing="0">
+                                    <BoxView Color="{Binding DotColor}" />
+                                    <VerticalStackLayout Grid.Column="1" Spacing="4" Padding="14,12,14,12">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <Label Text="{Binding Code}" Style="{StaticResource ReportCodeStyle}" VerticalOptions="Center" />
+                                            <Border Grid.Column="1" BackgroundColor="{DynamicResource PageBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1"
+                                                    StrokeShape="RoundRectangle 10" Padding="9,3" VerticalOptions="Center">
+                                                <Label Text="{Binding Status}" FontSize="11" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                            </Border>
+                                        </Grid>
+                                        <Label Text="{Binding Description}" TextColor="{DynamicResource TextColor}" FontSize="14" />
+                                        <Label Text="{Binding EcuName}" Style="{StaticResource ReportMetaStyle}" FontSize="11.5" IsVisible="{Binding HasEcuName}" />
 
-                <BindableLayout.ItemTemplate>
-                    <DataTemplate x:DataType="m:ModuleFaultItem">
-                        <VerticalStackLayout Spacing="0">
-                            <VerticalStackLayout Spacing="4" Padding="0,14">
-                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                                    <BoxView WidthRequest="9" HeightRequest="9" CornerRadius="4.5" Color="{Binding DotColor}" VerticalOptions="Center" />
-                                    <Label Grid.Column="1" Text="{Binding Code}" Style="{StaticResource ReportCodeStyle}" />
+                                        <VerticalStackLayout Spacing="1" IsVisible="{Binding HasCauses}" Margin="0,6,0,0">
+                                            <Label AutomationId="DynamicTextFaultCausesHeader" Text="{Binding CausesHeader}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                            <Label AutomationId="DynamicTextFaultCauses" Text="{Binding CausesText}" Style="{StaticResource ReportMetaStyle}" FontSize="12.5" />
+                                        </VerticalStackLayout>
+
+                                        <VerticalStackLayout Spacing="1" IsVisible="{Binding HasChecks}" Margin="0,4,0,0">
+                                            <Label AutomationId="DynamicTextFaultChecksHeader" Text="{Binding ChecksHeader}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                            <Label AutomationId="DynamicTextFaultChecks" Text="{Binding ChecksText}" Style="{StaticResource ReportMetaStyle}" FontSize="12.5" />
+                                        </VerticalStackLayout>
+                                    </VerticalStackLayout>
                                 </Grid>
-                                <Label Text="{Binding Description}" Style="{StaticResource ReportBodyStyle}" />
-                                <Label Text="{Binding MetaText}" Style="{StaticResource ReportMetaStyle}" />
-
-                                <VerticalStackLayout Spacing="1" IsVisible="{Binding HasCauses}" Margin="0,6,0,0">
-                                    <Label AutomationId="DynamicTextFaultCausesHeader" Text="{Binding CausesHeader}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
-                                    <Label AutomationId="DynamicTextFaultCauses" Text="{Binding CausesText}" Style="{StaticResource ReportMetaStyle}" FontSize="13" />
-                                </VerticalStackLayout>
-
-                                <VerticalStackLayout Spacing="1" IsVisible="{Binding HasChecks}" Margin="0,6,0,0">
-                                    <Label AutomationId="DynamicTextFaultChecksHeader" Text="{Binding ChecksHeader}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
-                                    <Label AutomationId="DynamicTextFaultChecks" Text="{Binding ChecksText}" Style="{StaticResource ReportMetaStyle}" FontSize="13" />
-                                </VerticalStackLayout>
-
-                                <HorizontalStackLayout Spacing="8" Margin="0,6,0,0">
-                                    <Button AutomationId="DynamicTextFaultAiButton"
-                                            Text="{Binding AiButtonText}"
-                                            IsEnabled="{Binding IsAiIdle}"
-                                            Command="{Binding x:DataType=vm:ModuleScanViewModel, Source={RelativeSource AncestorType={x:Type vm:ModuleScanViewModel}}, Path=ExplainFaultCommand}"
-                                            CommandParameter="{Binding .}"
-                                            BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderWidth="0"
-                                            Padding="0" HeightRequest="32" MinimumHeightRequest="32" FontSize="13" FontAttributes="Bold" HorizontalOptions="Start" />
-                                    <Border Style="{StaticResource ProBadgeStyle}">
-                                        <Label Text="PRO" Style="{StaticResource ProBadgeTextStyle}" />
-                                    </Border>
-                                </HorizontalStackLayout>
-
-                                <Grid IsVisible="{Binding HasAiExplanation}" ColumnDefinitions="3,*" ColumnSpacing="10" Margin="0,4,0,0">
-                                    <BoxView Color="{DynamicResource Primary}" />
-                                    <Label Grid.Column="1" AutomationId="DynamicTextFaultAiText" Text="{Binding AiExplanation}" Style="{StaticResource ReportBodyStyle}" FontSize="13" />
-                                </Grid>
+                                <BoxView HeightRequest="1" Color="{DynamicResource BorderColor}" />
                             </VerticalStackLayout>
-                            <BoxView HeightRequest="1" Color="{DynamicResource BorderColor}" />
-                        </VerticalStackLayout>
-                    </DataTemplate>
-                </BindableLayout.ItemTemplate>
-            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
 
-            <!-- Repair cost estimate for the found codes -->
-            <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasFaults}" IsEnabled="{Binding IsNotBusy}" Margin="0,6,0,0">
+            <!-- Repair cost estimate for the found codes (same as before) -->
+            <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasFaults}" IsEnabled="{Binding IsNotBusy}">
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Command="{Binding OpenRepairCostsCommand}" />
                 </Border.GestureRecognizers>
@@ -120,77 +107,10 @@
                 </Grid>
             </Border>
 
-            <!-- Coding: backup / compare / verified settings -->
-            <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasModuleRows}" IsEnabled="{Binding IsNotBusy}" Margin="0,6,0,0">
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Command="{Binding OpenCodingCommand}" />
-                </Border.GestureRecognizers>
-                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
-                    <Path Data="M8,7 L3,12 L8,17 M16,7 L21,12 L16,17 M14,5 L10,19" Style="{StaticResource RowIconStyle}" />
-                    <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                        <Label Text="კოდირება და სარეზერვო ასლი" Style="{StaticResource RowTitleStyle}" />
-                        <Label Text="ნაპოვნი მოდულების სრული ასლი — მანქანაზე არაფერი იცვლება" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" />
-                    </VerticalStackLayout>
-                    <Label Grid.Column="2" Text="›" FontSize="22" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
-                </Grid>
-            </Border>
-
-            <!-- Freeze Frame: engine conditions when the fault was stored -->
-            <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasFreezeFrame}" Margin="0,6,0,0">
-                <VerticalStackLayout Spacing="0" Padding="14,12">
-                    <Label AutomationId="DynamicTextFreezeFrameTitle" Text="{Binding FreezeFrameTitleText}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
-                    <Label AutomationId="DynamicTextFreezeFrameHint" Text="{Binding FreezeFrameHintText}" Style="{StaticResource ReportMetaStyle}" FontSize="12" Margin="0,2,0,6" />
-                    <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding FreezeFrameRows}">
-                        <BindableLayout.ItemTemplate>
-                            <DataTemplate x:DataType="m:FreezeFrameValue">
-                                <VerticalStackLayout Spacing="0">
-                                    <BoxView HeightRequest="1" Color="{DynamicResource BorderColor}" />
-                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,9">
-                                        <Label Text="{Binding Label}" FontSize="13" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
-                                        <Label Grid.Column="1" Text="{Binding Value}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
-                                    </Grid>
-                                </VerticalStackLayout>
-                            </DataTemplate>
-                        </BindableLayout.ItemTemplate>
-                    </VerticalStackLayout>
-                </VerticalStackLayout>
-            </Border>
-
-            <!-- Modules: plain rows -->
-            <VerticalStackLayout IsVisible="{Binding HasModuleRows}" Spacing="0" Margin="0,10,0,0">
-                <Label AutomationId="DynamicTextModulesCaption" Text="{Binding ModulesCaptionText}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" Margin="0,0,0,4" />
-                <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding ModuleRows}">
-                    <BindableLayout.ItemTemplate>
-                        <DataTemplate x:DataType="m:ModuleStatusRow">
-                            <VerticalStackLayout Spacing="0">
-                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="10" Padding="0,11">
-                                    <Label AutomationId="DynamicTextModuleRowName" Text="{Binding Name}" FontSize="14"
-                                           TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" VerticalOptions="Center" />
-                                    <Label Grid.Column="1" AutomationId="DynamicTextModuleRowStatus" Text="{Binding StatusText}"
-                                           TextColor="{Binding StatusColor}" FontSize="13" FontAttributes="Bold" VerticalOptions="Center" />
-                                    <Label Grid.Row="1" Grid.ColumnSpan="2" AutomationId="DynamicTextModuleRowDetail" Text="{Binding Detail}"
-                                           IsVisible="{Binding HasDetail}" Style="{StaticResource ReportMetaStyle}" FontSize="11" LineBreakMode="TailTruncation" />
-                                </Grid>
-                                <BoxView HeightRequest="1" Color="{DynamicResource BorderColor}" />
-                            </VerticalStackLayout>
-                        </DataTemplate>
-                    </BindableLayout.ItemTemplate>
-                </VerticalStackLayout>
-            </VerticalStackLayout>
-
-            <!-- Module live data (PRO) -->
-            <Border Style="{StaticResource ListCardStyle}" IsEnabled="{Binding IsNotBusy}" Margin="0,10,0,0">
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Command="{Binding OpenModuleLiveDataCommand}" />
-                </Border.GestureRecognizers>
-                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
-                    <Path Data="M3,12 L7,12 L10,5 L14,19 L17,12 L21,12" Style="{StaticResource RowIconStyle}" />
-                    <Label Grid.Column="1" AutomationId="DynamicTextModuleLiveButton" Text="{Binding ModuleLiveButtonText}" Style="{StaticResource RowTitleStyle}" />
-                    <Border Grid.Column="2" Style="{StaticResource ProBadgeStyle}">
-                        <Label Text="PRO" Style="{StaticResource ProBadgeTextStyle}" />
-                    </Border>
-                </Grid>
-            </Border>
+            <!-- Clear the codes: only offered when there is something to clear -->
+            <Button Text="{Binding ClearDtcButtonText}" Command="{Binding ClearDtcCommand}" IsEnabled="{Binding IsNotBusy}" IsVisible="{Binding HasFaults}"
+                    BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}"
+                    BorderWidth="1" CornerRadius="12" HeightRequest="46" FontSize="13" FontAttributes="Bold" />
 
         </VerticalStackLayout>
     </ScrollView>

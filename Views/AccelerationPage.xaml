@@ -8,7 +8,7 @@
     x:Class="CarScanner.Views.AccelerationPage"
     x:DataType="vm:HomeViewModel"
     BackgroundColor="{DynamicResource PageBg}"
-    Title="Performance Lab">
+    Title="0–100">
 
     <!-- GCar360 title + Performance Video camera (top-right) -->
     <Shell.TitleView>
@@ -32,7 +32,7 @@
 
             <!-- Header -->
             <VerticalStackLayout Spacing="2">
-                <Label Text="PERFORMANCE LAB" Style="{StaticResource PageTitleStyle}" />
+                <Label Text="0–100" Style="{StaticResource PageTitleStyle}" />
                 <Label AutomationId="DynamicTextAccelerationTestLabel" Text="{Binding AccelerationTestLabel}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
                 <!-- Text set in code-behind (bilingual) -->
                 <Label x:Name="SafetyWarningLabel" AutomationId="DynamicTextAccelerationSafetyWarning" TextColor="#F59E0B" FontSize="11" FontAttributes="Bold" LineBreakMode="WordWrap" Margin="0,4,0,0" />
@@ -98,7 +98,7 @@
                 Text="{Binding AccelerationButtonText}"
                 Command="{Binding StartAccelerationCommand}"
                 IsVisible="{Binding IsAccelerationMeasuring, Converter={StaticResource InverseBoolConverter}}"
-                Style="{StaticResource PrimaryButtonStyle}"
+                BackgroundColor="{DynamicResource TextColor}" TextColor="{DynamicResource PageBg}" FontAttributes="Bold"
                 CornerRadius="12"
                 HeightRequest="52" />
             <Button
@@ -127,8 +127,22 @@
             <!-- Share the result card as a picture -->
             <Button AutomationId="DynamicTextAccelerationShare" Text="{Binding AccelerationShareText}" Clicked="OnShareResultClicked" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderColor="{DynamicResource Primary}" BorderWidth="1.5" CornerRadius="12" HeightRequest="44" FontAttributes="Bold" />
 
-            <Button Text="გაზომვების ისტორია" Command="{Binding GoToAccelerationHistoryCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="48" FontAttributes="Bold" />
-            <Button Text="0–100 რეიტინგი" Command="{Binding GoToAccelerationLeaderboardCommand}" Style="{StaticResource PrimaryButtonStyle}" />
+            <Border Style="{StaticResource ListCardStyle}">
+                <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToAccelerationHistoryCommand}" /></Border.GestureRecognizers>
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
+                    <Path Data="M4,12 A8,8 0 1 0 6.3,6.3 M4,5 L4,9 L8,9 M12,8 L12,12 L15,14" Style="{StaticResource RowIconStyle}" />
+                    <Label Grid.Column="1" Text="გაზომვების ისტორია" Style="{StaticResource RowTitleStyle}" FontAttributes="Bold" />
+                    <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource ListCardStyle}">
+                <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToAccelerationLeaderboardCommand}" /></Border.GestureRecognizers>
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
+                    <Path Data="M7,4 L17,4 L17,9 A5,5 0 0 1 7,9 Z M7,6 L4,6 L4,8 A3,3 0 0 0 7,11 M17,6 L20,6 L20,8 A3,3 0 0 1 17,11 M12,14 L12,17 M9,20 L15,20 M10,17 L14,17 L14,20 L10,20 Z" Style="{StaticResource RowIconStyle}" />
+                    <Label Grid.Column="1" Text="0–100 რეიტინგი" Style="{StaticResource RowTitleStyle}" FontAttributes="Bold" />
+                    <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                </Grid>
+            </Border>
 
             <!-- Graph -->
             <Label Text="Speed vs Time" Style="{StaticResource SectionCaptionStyle}" />

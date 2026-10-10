@@ -1,4 +1,5 @@
 using CarScanner.Models;
+using CarScanner.Services.Mileage;
 using CarScanner.Services.OBD;
 using Microsoft.Extensions.Logging;
 
@@ -121,6 +122,15 @@ public sealed class OBDService
     }
 
     public bool IsPidSupported(int pid) => _supported.ContainsKey(pid);
+
+    /// <summary>
+    /// Every PID the ECUs advertised in the supported-PID bitmaps (decodable or not). Null until the bitmaps have been
+    /// read, so callers never request an optional PID on a guess.
+    /// </summary>
+    public IReadOnlySet<int>? AdvertisedPids =>
+        _supported.Count + _advertisedOther.Count == 0
+            ? null
+            : new HashSet<int>(_supported.Keys.Concat(_advertisedOther.Keys));
 
     /// <summary>Returns the ELM327 from a temporary raw-CAN OEM probe to the
     /// normal automatic OBD-II session before the rest of the app resumes.</summary>
@@ -514,22 +524,49 @@ public sealed class OBDService
             _ => null
         };
     }
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> _dtcNoReply = new();
+
+    /// <summary>
+    /// true when the last read of this DTC service (03 / 07 / 0A) got "NO DATA", i.e. no ECU answered at all.
+    /// That is different from a reply that lists zero codes (43 00 …) and must not be shown as "no faults".
+    /// </summary>
+    public bool LastDtcReadGotNoReply(string service) => _dtcNoReply.TryGetValue(service, out var noReply) && noReply;
+
     private async Task<List<DiagnosticCode>> ReadDtcAsync(string cmd, Func<string, List<DiagnosticCode>> decode, CancellationToken token)
     {
         EnsureInitialized();
-        try
+
+        // Standard DTC reads (03 / 07 / 0A). Cheap adapters and slow ECUs sometimes answer late or drop the first
+        // request, and a single timeout used to make the whole service look "unreadable" — so a failed read is
+        // repeated once with a longer wait before it is reported as unavailable.
+        Exception? lastError = null;
+        for (var attempt = 0; attempt < 2; attempt++)
         {
-            // DTC commands are one-shot standard reads. A short bounded wait
-            // prevents an ECU with no response from making a clean scan feel
-            // stuck, while still allowing normal ELM327 response time.
-            var raw = await SendTrackedAsync(cmd, token, TimeSpan.FromMilliseconds(1500), 1, true).ConfigureAwait(false);
-            return raw.Contains("NO DATA", StringComparison.OrdinalIgnoreCase) ? new() : decode(raw);
+            try
+            {
+                var wait = TimeSpan.FromMilliseconds(attempt == 0 ? 3000 : 5000);
+                var raw = await SendTrackedAsync(cmd, token, wait, 2, true).ConfigureAwait(false);
+                var noReply = raw.Contains("NO DATA", StringComparison.OrdinalIgnoreCase);
+                _dtcNoReply[cmd] = noReply;
+                return noReply ? new() : decode(raw);
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Elm327CommandException ex) when (ex.RawResponse.Contains("NO DATA", StringComparison.OrdinalIgnoreCase))
+            {
+                _dtcNoReply[cmd] = true;
+                return new();
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+                await Task.Delay(300, token).ConfigureAwait(false);
+            }
         }
-        catch (Elm327CommandException ex)
-        {
-            if (ex.RawResponse.Contains("NO DATA", StringComparison.OrdinalIgnoreCase)) return new();
-            throw;
-        }
+
+        throw lastError!;
     }
 
     public async Task ClearDtcAsync(CancellationToken token = default)
@@ -1059,14 +1096,23 @@ public sealed class OBDService
 
     public async Task<double?> ReadStandardOdometerAsync(CancellationToken token = default)
     {
+        var result = await ReadDistancePidAsync(StandardMileageDecoder.OdometerPid, token);
+        return result.IsValue ? result.Value : null;
+    }
+
+    /// <summary>
+    /// Read-only request of one documented distance / time PID (A6 odometer; 21, 31, 4D, 4E context values). A short,
+    /// single request avoids holding the Mileage screen when an optional PID is not implemented. The reply is decoded
+    /// strictly (see <see cref="StandardMileageDecoder"/>); callers decide beforehand whether the ECU advertises the PID.
+    /// </summary>
+    public async Task<StandardPidResult> ReadDistancePidAsync(int pid, CancellationToken token = default)
+    {
         EnsureInitialized();
-        // Odometer PID support is optional. A short, single request avoids
-        // holding the Mileage Verification screen for several seconds when a
-        // generic ECU does not implement it.
-        var raw = await SendTrackedAsync("01A6", token, TimeSpan.FromMilliseconds(1200), 1, false);
-        var data = ObdResponseParser.ExtractMode01Pid(raw, 0xA6);
-        if (data.Length < 4) return null;
-        return ((long)data[0] << 24 | (long)data[1] << 16 | (long)data[2] << 8 | data[3]) / 10.0;
+        if (!StandardMileageDecoder.IsSupportedPid(pid))
+            throw new ArgumentOutOfRangeException(nameof(pid), "Not a documented distance / time PID.");
+
+        var raw = await SendTrackedAsync($"01{pid:X2}", token, TimeSpan.FromMilliseconds(1200), 1, false);
+        return StandardMileageDecoder.Decode(pid, raw);
     }
 
     /// <summary>

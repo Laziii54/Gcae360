@@ -41,7 +41,7 @@ public sealed class VehicleJournalPage : ContentPage
         };
         hint.SetDynamicResource(Label.TextColorProperty, "SubTextColor");
 
-        _scan = new Button { Text = "🔍  " + T("სკანირება", "Scan"), HeightRequest = 54, CornerRadius = 16, FontAttributes = FontAttributes.Bold, TextColor = Colors.White };
+        _scan = new Button { Text = T("სკანირება", "Scan"), HeightRequest = 54, CornerRadius = 16, FontAttributes = FontAttributes.Bold, TextColor = Colors.White };
         _scan.SetDynamicResource(Button.BackgroundColorProperty, "Primary");
         _scan.Clicked += async (_, _) => await ScanAsync();
 

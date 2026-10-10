@@ -26,6 +26,7 @@ builder.Services.AddSingleton<AdminService>();
 builder.Services.AddSingleton<UsageStore>();
 builder.Services.AddSingleton<ServiceSearchStore>();
 builder.Services.AddSingleton<ResetRecordingStore>();
+builder.Services.AddSingleton<EcuObservationStore>();
 builder.Services.AddSingleton<OdometerStore>();
 builder.Services.AddSingleton<CustomsRulesService>();
 builder.Services.AddSingleton<PlayStatsService>();
@@ -2054,6 +2055,49 @@ app.MapPost(
         var identity = string.IsNullOrWhiteSpace(authorization) ? null : await accounts.ResolveAsync(authorization, deviceId, ct);
         var id = await store.AddAsync(recording, UsageStore.HashDevice(deviceId), identity?.AccountId, ct);
         return Results.Ok(new { id });
+    });
+
+// Opt-in, anonymous raw ECU answers (no account, no VIN). Nothing is ever marked verified here.
+app.MapPost(
+    "/api/ecu-observations",
+    async (EcuObservationBatch? batch, HttpContext http, EcuObservationStore store, CancellationToken ct) =>
+    {
+        var deviceId = http.Request.Headers["X-GCS-Device-Id"].ToString();
+        if (batch?.Groups is null || deviceId.Length is < 16 or > 64 ||
+            batch.Groups.Count is 0 or > 20 ||
+            batch.Groups.Sum(g => g.Items?.Count ?? 0) is 0 or > EcuObservationStore.MaxItemsPerBatch)
+            return Results.BadRequest();
+
+        var ip = AdminService.ClientIp(http);
+        if (!RateWindow.TryConsume("ecu-obs:" + deviceId, DateTimeOffset.UtcNow, 20, TimeSpan.FromHours(1)) ||
+            !RateWindow.TryConsume("ecu-obs-ip:" + ip, DateTimeOffset.UtcNow, 80, TimeSpan.FromHours(1)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        var (accepted, rejected) = await store.AddAsync(batch, deviceId, ct);
+        return Results.Ok(new { accepted, rejected });
+    });
+
+app.MapDelete(
+    "/api/ecu-observations/mine",
+    async (HttpContext http, EcuObservationStore store, CancellationToken ct) =>
+    {
+        var deviceId = http.Request.Headers["X-GCS-Device-Id"].ToString();
+        if (deviceId.Length is < 16 or > 64)
+            return Results.BadRequest();
+        if (!RateWindow.TryConsume("ecu-obs-del:" + deviceId, DateTimeOffset.UtcNow, 10, TimeSpan.FromHours(1)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        return Results.Ok(new { removed = await store.DeleteBySourceAsync(deviceId, ct) });
+    });
+
+app.MapGet(
+    "/admin/ecu-observations.json",
+    async (HttpContext http, AdminService admin, EcuObservationStore store, CancellationToken ct) =>
+    {
+        AdminService.SecureHeaders(http.Response);
+        if (!AdminService.IpAllowed(http) || admin.ReadSession(http.Request, AdminAccess.IsAdmin) is null)
+            return Results.NotFound();
+        return Results.Ok(await store.LatestAsync(500, ct));
     });
 
 app.MapGet(

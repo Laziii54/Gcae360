@@ -65,19 +65,20 @@
                     </Grid>
                 </Grid>
 
-                <!-- ===== Podium: places 1–3 ===== -->
-                <Grid IsVisible="{Binding HasPodium}" ColumnDefinitions="*,*,*" ColumnSpacing="8" HeightRequest="214">
+                <!-- ===== Podium: places 1–3 (white cards, a small cup on each) ===== -->
+                <Grid IsVisible="{Binding HasPodium}" ColumnDefinitions="*,1.1*,*" ColumnSpacing="8" VerticalOptions="End">
                     <!-- 2nd -->
-                    <Border Grid.Column="0" VerticalOptions="End" HeightRequest="186" Padding="8,12" StrokeThickness="1"
-                            Stroke="{DynamicResource BorderColor}" BackgroundColor="{DynamicResource CardBg}" StrokeShape="RoundRectangle 16">
-                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                            <Grid WidthRequest="48" HeightRequest="48" HorizontalOptions="Center">
-                                <Border StrokeThickness="3" Stroke="#A7B0BA" BackgroundColor="{DynamicResource PageBg}" StrokeShape="RoundRectangle 24">
-                                    <Label Text="{Binding Second.Initial}" FontSize="18" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
-                                           HorizontalOptions="Center" VerticalOptions="Center" />
-                                </Border>
-                            </Grid>
-                            <Label Text="2" FontSize="13" FontAttributes="Bold" TextColor="#8A939D" HorizontalOptions="Center" />
+                    <Border Grid.Column="0" VerticalOptions="End" Padding="6,12,6,12" StrokeThickness="1"
+                            Stroke="{DynamicResource BorderColor}" BackgroundColor="{DynamicResource CardBg}" StrokeShape="RoundRectangle 14">
+                        <VerticalStackLayout Spacing="3" HorizontalOptions="Fill">
+                            <Path Data="M7,4 L17,4 L17,9 A5,5 0 0 1 7,9 Z M7,6 L4,6 L4,8 A3,3 0 0 0 7,11 M17,6 L20,6 L20,8 A3,3 0 0 1 17,11 M12,14 L12,17 M9,20 L15,20 M10,17 L14,17 L14,20 L10,20 Z"
+                                  Stroke="#8A939D" Fill="#DDE2E7" StrokeThickness="1.6" StrokeLineCap="Round" StrokeLineJoin="Round"
+                                  WidthRequest="24" HeightRequest="24" Aspect="Uniform" HorizontalOptions="Center" />
+                            <Border WidthRequest="38" HeightRequest="38" HorizontalOptions="Center" StrokeThickness="0" StrokeShape="RoundRectangle 19"
+                                    BackgroundColor="{DynamicResource PageBg}">
+                                <Label Text="{Binding Second.Initial}" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
+                                       HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
                             <Label Text="{Binding Second.UserName}" FontSize="12.5" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
                                    HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
                             <Label Text="{Binding Second.VehicleModel}" FontSize="10.5" TextColor="{DynamicResource SubTextColor}"
@@ -91,60 +92,68 @@
                                     </FormattedString>
                                 </Label.FormattedText>
                             </Label>
+                            <Label Text="{Binding Second.VerificationText}" IsVisible="{Binding Second.HasVerification}" FontSize="10" FontAttributes="Bold"
+                                   TextColor="{Binding Second.VerificationColor}" HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
                         </VerticalStackLayout>
                     </Border>
 
                     <!-- 1st -->
-                    <Border Grid.Column="1" VerticalOptions="End" HeightRequest="214" Padding="8,12" StrokeThickness="0"
-                            BackgroundColor="#0F1B33" StrokeShape="RoundRectangle 16">
-                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                            <Label Text="👑" FontSize="18" HorizontalOptions="Center" />
-                            <Grid WidthRequest="56" HeightRequest="56" HorizontalOptions="Center">
-                                <Border StrokeThickness="3" Stroke="#E8B323" BackgroundColor="#1C2B4A" StrokeShape="RoundRectangle 28">
-                                    <Label Text="{Binding First.Initial}" FontSize="21" FontAttributes="Bold" TextColor="White"
-                                           HorizontalOptions="Center" VerticalOptions="Center" />
-                                </Border>
-                            </Grid>
-                            <Label Text="{Binding First.UserName}" FontSize="13" FontAttributes="Bold" TextColor="White"
+                    <Border Grid.Column="1" VerticalOptions="End" Padding="6,16,6,14" StrokeThickness="1.5"
+                            Stroke="#E8B323" BackgroundColor="{DynamicResource CardBg}" StrokeShape="RoundRectangle 14">
+                        <VerticalStackLayout Spacing="3" HorizontalOptions="Fill">
+                            <Path Data="M7,4 L17,4 L17,9 A5,5 0 0 1 7,9 Z M7,6 L4,6 L4,8 A3,3 0 0 0 7,11 M17,6 L20,6 L20,8 A3,3 0 0 1 17,11 M12,14 L12,17 M9,20 L15,20 M10,17 L14,17 L14,20 L10,20 Z"
+                                  Stroke="#C99A12" Fill="#F6D86B" StrokeThickness="1.6" StrokeLineCap="Round" StrokeLineJoin="Round"
+                                  WidthRequest="30" HeightRequest="30" Aspect="Uniform" HorizontalOptions="Center" />
+                            <Border WidthRequest="44" HeightRequest="44" HorizontalOptions="Center" StrokeThickness="0" StrokeShape="RoundRectangle 22"
+                                    BackgroundColor="{DynamicResource PageBg}">
+                                <Label Text="{Binding First.Initial}" FontSize="19" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
+                                       HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                            <Label Text="{Binding First.UserName}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
                                    HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
-                            <Label Text="{Binding First.VehicleModel}" FontSize="10.5" TextColor="#9FB3D9"
+                            <Label Text="{Binding First.VehicleModel}" FontSize="10.5" TextColor="{DynamicResource SubTextColor}"
                                    HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="2" />
                             <Label HorizontalOptions="Center">
                                 <Label.FormattedText>
                                     <FormattedString>
-                                        <Span Text="{Binding First.TimeText}" FontSize="23" FontAttributes="Bold" TextColor="#F5C842" />
+                                        <Span Text="{Binding First.TimeText}" FontSize="23" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
                                         <Span Text=" " />
-                                        <Span Text="{Binding First.SecondsUnit}" FontSize="11" TextColor="#9FB3D9" />
+                                        <Span Text="{Binding First.SecondsUnit}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
                                     </FormattedString>
                                 </Label.FormattedText>
                             </Label>
+                            <Label Text="{Binding First.VerificationText}" IsVisible="{Binding First.HasVerification}" FontSize="10" FontAttributes="Bold"
+                                   TextColor="{Binding First.VerificationColor}" HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
                         </VerticalStackLayout>
                     </Border>
 
                     <!-- 3rd -->
-                    <Border Grid.Column="2" VerticalOptions="End" HeightRequest="172" Padding="8,12" StrokeThickness="1"
-                            Stroke="{DynamicResource BorderColor}" BackgroundColor="{DynamicResource CardBg}" StrokeShape="RoundRectangle 16">
-                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                            <Grid WidthRequest="44" HeightRequest="44" HorizontalOptions="Center">
-                                <Border StrokeThickness="3" Stroke="#C7834A" BackgroundColor="{DynamicResource PageBg}" StrokeShape="RoundRectangle 22">
-                                    <Label Text="{Binding Third.Initial}" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
-                                           HorizontalOptions="Center" VerticalOptions="Center" />
-                                </Border>
-                            </Grid>
-                            <Label Text="3" FontSize="13" FontAttributes="Bold" TextColor="#B0703A" HorizontalOptions="Center" />
+                    <Border Grid.Column="2" VerticalOptions="End" Padding="6,12,6,12" StrokeThickness="1"
+                            Stroke="{DynamicResource BorderColor}" BackgroundColor="{DynamicResource CardBg}" StrokeShape="RoundRectangle 14">
+                        <VerticalStackLayout Spacing="3" HorizontalOptions="Fill">
+                            <Path Data="M7,4 L17,4 L17,9 A5,5 0 0 1 7,9 Z M7,6 L4,6 L4,8 A3,3 0 0 0 7,11 M17,6 L20,6 L20,8 A3,3 0 0 1 17,11 M12,14 L12,17 M9,20 L15,20 M10,17 L14,17 L14,20 L10,20 Z"
+                                  Stroke="#A8683A" Fill="#E7B48A" StrokeThickness="1.6" StrokeLineCap="Round" StrokeLineJoin="Round"
+                                  WidthRequest="24" HeightRequest="24" Aspect="Uniform" HorizontalOptions="Center" />
+                            <Border WidthRequest="38" HeightRequest="38" HorizontalOptions="Center" StrokeThickness="0" StrokeShape="RoundRectangle 19"
+                                    BackgroundColor="{DynamicResource PageBg}">
+                                <Label Text="{Binding Third.Initial}" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
+                                       HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
                             <Label Text="{Binding Third.UserName}" FontSize="12.5" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
                                    HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
                             <Label Text="{Binding Third.VehicleModel}" FontSize="10.5" TextColor="{DynamicResource SubTextColor}"
-                                   HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
+                                   HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="2" />
                             <Label HorizontalOptions="Center">
                                 <Label.FormattedText>
                                     <FormattedString>
-                                        <Span Text="{Binding Third.TimeText}" FontSize="18" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                        <Span Text="{Binding Third.TimeText}" FontSize="19" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
                                         <Span Text=" " />
                                         <Span Text="{Binding Third.SecondsUnit}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
                                     </FormattedString>
                                 </Label.FormattedText>
                             </Label>
+                            <Label Text="{Binding Third.VerificationText}" IsVisible="{Binding Third.HasVerification}" FontSize="10" FontAttributes="Bold"
+                                   TextColor="{Binding Third.VerificationColor}" HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
                         </VerticalStackLayout>
                     </Border>
                 </Grid>
@@ -167,7 +176,7 @@
 
                 <Button Text="{Binding PublishText}" Command="{Binding PublishLatestCommand}"
                         IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
-                        Style="{StaticResource PrimaryButtonStyle}" CornerRadius="14" />
+                        BackgroundColor="{DynamicResource TextColor}" TextColor="{DynamicResource PageBg}" FontAttributes="Bold" FontSize="13" HeightRequest="48" CornerRadius="12" />
                 <Button IsVisible="{Binding HasVideoToSend}" Text="{Binding SendVideoText}" Command="{Binding SendVideoCommand}"
                         IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" BackgroundColor="Transparent"
                         TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1.5"
@@ -291,7 +300,7 @@
                         <Switch Grid.Column="1" IsToggled="{Binding VerifiedOnly}" OnColor="{DynamicResource Primary}" VerticalOptions="Center" />
                     </Grid>
 
-                    <Button Text="{Binding ShowResultsText}" Command="{Binding CloseFiltersCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="14" />
+                    <Button Text="{Binding ShowResultsText}" Command="{Binding CloseFiltersCommand}" BackgroundColor="{DynamicResource TextColor}" TextColor="{DynamicResource PageBg}" FontAttributes="Bold" HeightRequest="48" CornerRadius="12" />
                 </VerticalStackLayout>
             </Border>
         </Grid>

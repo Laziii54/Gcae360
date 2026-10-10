@@ -82,4 +82,62 @@
     <Compile Include="../../Services/MoreEvBatteries.cs" Link="MoreEvBatteries.cs" />
     <Compile Include="../../Services/MoreEvBatteries2.cs" Link="MoreEvBatteries2.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Passive CAN, data collection and the ELM327 protocol layer (driven by the simulator). -->
+    <Compile Include="../../Services/Passive/DbcSignalDecoder.cs" Link="Passive/DbcSignalDecoder.cs" />
+    <Compile Include="../../Services/Passive/CanFrameParser.cs" Link="Passive/CanFrameParser.cs" />
+    <Compile Include="../../Services/Passive/PassiveCanAnalyzer.cs" Link="Passive/PassiveCanAnalyzer.cs" />
+    <Compile Include="../../Services/DataCollection/CollectionQueue.cs" Link="DataCollection/CollectionQueue.cs" />
+    <Compile Include="../../Services/DataCollection/CollectionPayload.cs" Link="DataCollection/CollectionPayload.cs" />
+    <Compile Include="../../Services/DataCollection/LocalCaptureSession.cs" Link="DataCollection/LocalCaptureSession.cs" />
+    <Compile Include="../../Services/OemDiagnostics/OemCaptureTargetCatalog.cs" Link="OemDiagnostics/OemCaptureTargetCatalog.cs" />
+    <Compile Include="../../Services/DataCollection/CollectionPipeline.cs" Link="DataCollection/CollectionPipeline.cs" />
+    <Compile Include="../../Services/DataCollection/StandardObdClassifier.cs" Link="DataCollection/StandardObdClassifier.cs" />
+    <Compile Include="../../Services/OBD/Elm327Protocol.cs" Link="Obd/Elm327Protocol.cs" />
+    <Compile Include="../../Services/OBD/ObdMonitorCommand.cs" Link="Obd/ObdMonitorCommand.cs" />
+    <Compile Include="../../Services/OBD/IObdTransport.cs" Link="Obd/IObdTransport.cs" />
+    <Compile Include="../../Services/IBluetoothService.cs" Link="Obd/IBluetoothService.cs" />
+    <Compile Include="../../Models/AdapterDiagnostics.cs" Link="Obd/AdapterDiagnostics.cs" />
+    <Compile Include="../../Models/AdapterCapabilityCheck.cs" Link="Obd/AdapterCapabilityCheck.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Service page engine: matching, compatibility, catalog parsing / validation. -->
+    <Compile Include="../../Services/ServiceProcedures/*.cs" Link="ServiceProcedures/%(Filename)%(Extension)" />
+    <None Include="../../Resources/Raw/service_procedures.json" Link="Resources/Raw/service_procedures.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Mileage: pure model, decoders, comparison and wording (no I/O). -->
+    <Compile Include="../../Services/Mileage/MileageEvidence.cs" Link="Mileage/MileageEvidence.cs" />
+    <Compile Include="../../Services/Mileage/MileageAnalyzer.cs" Link="Mileage/MileageAnalyzer.cs" />
+    <Compile Include="../../Services/Mileage/StandardMileageDecoder.cs" Link="Mileage/StandardMileageDecoder.cs" />
+    <Compile Include="../../Services/Mileage/OdometerResponseDecoder.cs" Link="Mileage/OdometerResponseDecoder.cs" />
+    <Compile Include="../../Services/Mileage/MileageSourceCompatibility.cs" Link="Mileage/MileageSourceCompatibility.cs" />
+    <Compile Include="../../Services/Mileage/MileageWording.cs" Link="Mileage/MileageWording.cs" />
+    <Compile Include="../../Services/Mileage/ActualMileageResult.cs" Link="Mileage/ActualMileageResult.cs" />
+    <Compile Include="../../Services/Mileage/MileageTrace.cs" Link="Mileage/MileageTrace.cs" />
+    <Compile Include="../../Services/Mileage/IActualMileageProvider.cs" Link="Mileage/IActualMileageProvider.cs" />
+    <Compile Include="../../Services/Mileage/GenericObdMileageProvider.cs" Link="Mileage/GenericObdMileageProvider.cs" />
+    <Compile Include="../../Services/Mileage/GenericObdDistanceContextProvider.cs" Link="Mileage/GenericObdDistanceContextProvider.cs" />
+    <Compile Include="../../Services/OBDService.cs" Link="Obd/OBDService.cs" />
+    <Compile Include="../../Services/OBD/PidRegistry.cs" Link="Obd/PidRegistry.cs" />
+    <Compile Include="../../Services/FreezeFrameReaderService.cs" Link="Obd/FreezeFrameReaderService.cs" />
+    <Compile Include="../../Models/SupportedPid.cs" Link="Obd/SupportedPid.cs" />
+    <Compile Include="../../Models/ObdCommandLog.cs" Link="Obd/ObdCommandLog.cs" />
+    <Compile Include="../../Models/FreezeFrame.cs" Link="Obd/FreezeFrame.cs" />
+    <Compile Include="../../Models/PidScanStats.cs" Link="Obd/PidScanStats.cs" />
+    <Compile Include="../../Models/SensorScanProgress.cs" Link="Obd/SensorScanProgress.cs" />
+    <Compile Include="../../Models/LiveDataModel.cs" Link="Obd/LiveDataModel.cs" />
+    <Compile Include="../../Models/ReadinessInfo.cs" Link="Obd/ReadinessInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Fuel / energy consumption: units, fuel kinds, fuel-rate selection, trip integration, compatibility. -->
+    <Compile Include="../../Services/Energy/FuelUnits.cs" Link="Energy/FuelUnits.cs" />
+    <Compile Include="../../Services/Energy/FuelKind.cs" Link="Energy/FuelKind.cs" />
+    <Compile Include="../../Services/Energy/FuelRateResolver.cs" Link="Energy/FuelRateResolver.cs" />
+    <Compile Include="../../Services/Energy/FuelTripEngine.cs" Link="Energy/FuelTripEngine.cs" />
+    <Compile Include="../../Services/Energy/EnergyCompatibility.cs" Link="Energy/EnergyCompatibility.cs" />
+    <Compile Include="../../Services/Energy/FuelSignalMapper.cs" Link="Energy/FuelSignalMapper.cs" />
+    <Compile Include="../../Services/Energy/FuelPresenter.cs" Link="Energy/FuelPresenter.cs" />
+    <Compile Include="../../Services/Energy/ElectricTripCalculator.cs" Link="Energy/ElectricTripCalculator.cs" />
+  </ItemGroup>
 </Project>

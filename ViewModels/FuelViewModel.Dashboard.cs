@@ -22,7 +22,6 @@ public sealed record TripSummaryRow(string Title, string Value);
 public partial class FuelViewModel
 {
     private const int PowerHistoryLength = 150;
-    private const double EngineOnRpm = 300;
     private const double TypicalKWhPer100Km = 17;
     private const double ReferenceLitersPer100Km = 7.5;
 
@@ -103,7 +102,7 @@ public partial class FuelViewModel
     [ObservableProperty] private string summaryPetrolText = "";
     [ObservableProperty] private string summarySavingText = "";
 
-    private bool EngineRunning => _rpmSeen && _latestRpm >= EngineOnRpm;
+    private bool EngineRunning => _rpmSeen && _latestRpm >= FuelLimits.EngineOnRpm;
 
     /// <summary>Called for every OBD sample of the trip (speed / rpm).</summary>
     private void TrackDrive(bool hasRpm, double rpm, bool hasSpeed, double travelledMeters)
@@ -279,8 +278,8 @@ public partial class FuelViewModel
         }
         else if (_mode == EnergyMode.Hybrid && EngineRunning && _instantLitersPer100Km is { } litres)
         {
-            HeroValueText = litres.ToString("0.0", invariant);
-            HeroUnitText = L("ლ/100კმ ახლა", "L/100km now");
+            HeroValueText = (_fuel.Instant.IsEstimate ? "≈ " : string.Empty) + FuelUnits.FormatNumber(litres, _units.FuelEconomyUnit);
+            HeroUnitText = $"{_units.FuelEconomyLabel} · {L("ახლა", "now")}";
             HeroValueColor = OrangeColor;
             HeroHintText = L("ბატარეის დენი ამ მანქანაზე არ იკითხება.", "This car does not report battery current.");
             ShowHeroPowerBar = false;
@@ -334,7 +333,8 @@ public partial class FuelViewModel
         var electricKWh = exact ? _ev.NetKWh : approxKWh;
         ElectricSplitText = $"{(electricKWh is { } ek ? ek.ToString("0.00", invariant) + " kWh · " : string.Empty)}{_units.FormatDistance(_electricMeters / 1000d)}";
         EngineSplitText = $"{_fuelLiters.ToString("0.0", invariant)} {L("ლ", "L")} · {_units.FormatDistance(_engineMeters / 1000d)}";
-        SplitFuelAverageText = km >= 0.1 && _fuelLiters > 0 ? _units.FormatFuelEconomy(_fuelLiters / km * 100d) : "—";
+        // Fuel ÷ the whole distance (electric kilometres included) — and, when known, fuel ÷ engine-on distance.
+        SplitFuelAverageText = Average == "—" ? "—" : ShowEngineOnAverage ? $"{Average} · {EngineOnAverageText} ({L("ძრავის კმ-ზე", "engine km")})" : Average;
         SplitCaption = L("რაზე იარე ამ მოგზაურობაში", "What you drove on this trip");
 
         // ---- Battery card

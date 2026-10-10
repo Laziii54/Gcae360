@@ -25,6 +25,7 @@ public sealed class LiveDataEngine : IAsyncDisposable
     private bool _performanceMode;
     private bool _performanceSpeedOnly;
     private bool _fuelAnalyticsEnabled;
+    private bool _fuelAnalyticsLambda;
     private int[] _graphPids = Array.Empty<int>();
     private CancellationTokenSource? _cts;
     private Task? _task;
@@ -132,6 +133,16 @@ public sealed class LiveDataEngine : IAsyncDisposable
             _performanceMode = enabled;
             _performanceSpeedOnly = enabled && speedOnly;
         }
+    }
+
+    /// <summary>The PIDs the ECU advertised (null until read). The Fuel page uses it to say which calculations are possible.</summary>
+    public IReadOnlySet<int>? AdvertisedPids => _obd.AdvertisedPids;
+
+    /// <summary>Also read the wide-band λ (PID 24) during fuel analytics — only useful for a diesel without a direct fuel rate.</summary>
+    public void SetFuelAnalyticsLambda(bool enabled)
+    {
+        lock (_dashboardGate)
+            _fuelAnalyticsLambda = enabled;
     }
 
     /// <summary>Enables the few standard PIDs needed by Fuel Analytics only while that page is active.</summary>
@@ -328,10 +339,12 @@ public sealed class LiveDataEngine : IAsyncDisposable
 
     private int[] GetFuelAnalyticsPids()
     {
-        // Use the direct fuel-rate PID first. MAF remains a labelled fallback.
-        if (_obd.IsPidSupported(0x5E))
-            return [0x5E, 0x2F, 0x51];
-        return [0x10, 0x2F, 0x51];
+        // The direct fuel-rate PID first. Air flow is only a labelled estimate; a diesel also needs the wide-band λ.
+        bool wantLambda;
+        lock (_dashboardGate)
+            wantLambda = _fuelAnalyticsLambda;
+        return CarScanner.Services.Energy.FuelSignalMapper.AnalyticsPids(
+            _obd.IsPidSupported(0x5E), _obd.IsPidSupported(0x24), wantLambda);
     }
 
     private static IEnumerable<SensorValue> ToSensorValues(LiveDataModel data)

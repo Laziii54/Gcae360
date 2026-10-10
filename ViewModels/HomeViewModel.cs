@@ -174,7 +174,7 @@ public partial class HomeViewModel : BaseViewModel
     private DateTime? _lastAccelerationCompletedAt;
     private double _lastAccelerationSeconds;
     [ObservableProperty] private string accelerationTestLabel = "0–100 km/h";
-    [ObservableProperty] private string accelerationButtonText = "ARM 0–100 TEST";
+    [ObservableProperty] private string accelerationButtonText = "Start 0–100 km/h run";
     [ObservableProperty] private string accelerationScaleCenter = "50";
     [ObservableProperty] private string accelerationScaleMaximum = "100";
 
@@ -419,7 +419,7 @@ public partial class HomeViewModel : BaseViewModel
             : "—";
         AccelerationSpeedUnit = _units.SpeedUnit;
         AccelerationTestLabel = snapshot.CurrentTest.DisplayName;
-        AccelerationButtonText = $"ARM {snapshot.CurrentTest.DisplayName.ToUpperInvariant()} TEST";
+        AccelerationButtonText = $"Start {snapshot.CurrentTest.DisplayName} run";
         var test = snapshot.CurrentTest;
         AccelerationScaleCenter = _units.Convert(test.DisplayTargetSpeedKph / 2d, "km/h").Value.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
         AccelerationScaleMaximum = _units.Convert(test.DisplayTargetSpeedKph, "km/h").Value.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
@@ -786,20 +786,6 @@ public partial class HomeViewModel : BaseViewModel
         catch (Exception commandException)
         {
             CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.ToggleLanguage");
-        }
-    }
-
-    /// <summary>"All tools" page: the less used rows moved off the home page.</summary>
-    [RelayCommand]
-    private async Task GoToAllTools()
-    {
-        try
-        {
-            await Shell.Current.GoToAsync(nameof(Views.AllToolsPage));
-        }
-        catch (Exception commandException)
-        {
-            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToAllTools");
         }
     }
 
@@ -1708,19 +1694,6 @@ public partial class HomeViewModel : BaseViewModel
         catch (Exception commandException)
         {
             CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToService");
-        }
-    }
-
-    [RelayCommand]
-    private async Task GoToCalendar()
-    {
-        try
-        {
-        await Shell.Current.GoToAsync(nameof(Views.CalendarPage));
-        }
-        catch (Exception commandException)
-        {
-            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToCalendar");
         }
     }
 

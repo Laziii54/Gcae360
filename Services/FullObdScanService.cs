@@ -69,12 +69,17 @@ public sealed class FullObdScanService
 
         progress?.Report(new ModuleScanProgress(30, "Stored DTC კოდების წაკითხვა…"));
         var storedResult = await ReadDtcSafelyAsync(() => _obd.ReadStoredDtcAsync(token), "Stored DTC", notes);
+        storedResult = RequireReply(storedResult, _obd.LastDtcReadGotNoReply("03"), "Stored DTC", notes);
 
         progress?.Report(new ModuleScanProgress(40, "Pending DTC კოდების წაკითხვა…"));
         var pendingResult = await ReadDtcSafelyAsync(() => _obd.ReadPendingDtcAsync(token), "Pending DTC", notes);
+        pendingResult = RequireReply(pendingResult, _obd.LastDtcReadGotNoReply("07"), "Pending DTC", notes);
 
         progress?.Report(new ModuleScanProgress(50, "Permanent DTC კოდების წაკითხვა…"));
         var permanentResult = await ReadDtcSafelyAsync(() => _obd.ReadPermanentDtcAsync(token), "Permanent DTC", notes);
+        // Permanent codes (service 0A) do not exist on older vehicles; "no reply" there is not evidence of a problem.
+        if (permanentResult.IsAvailable && _obd.LastDtcReadGotNoReply("0A"))
+            notes.Add("Permanent DTC: the vehicle did not reply to this service (not supported by many vehicles), so it is not reported as 'no codes'.");
         var stored = storedResult.Codes;
         var pending = pendingResult.Codes;
         var permanent = permanentResult.Codes;
@@ -134,22 +139,32 @@ public sealed class FullObdScanService
             notes.Add($"Low adapter/vehicle voltage detected: {vb:0.00} V. Avoid service/write operations until stable power is confirmed.");
         var freezeFrames = new List<FreezeFrame>();
         var freezeTrigger = stored.Concat(pending).Concat(permanent).FirstOrDefault()?.Code;
-        if (!string.IsNullOrWhiteSpace(freezeTrigger))
+
+        // Always ask the ECU for its Freeze Frame (Mode 02): PID 02 names the code that caused the snapshot. Some
+        // ECUs / adapters answer that but not Mode 03/07/0A, which used to leave the code visible only on the
+        // Freeze Frame page and missing from the trouble-code scan.
+        progress?.Report(new ModuleScanProgress(94, "Freeze Frame-ის არსებობის შემოწმება…"));
+        try
         {
-            progress?.Report(new ModuleScanProgress(94, "Freeze Frame-ის არსებობის შემოწმება…"));
-            try
+            var frame = await _obd.ReadFreezeFrameQuickAsync(freezeTrigger, token);
+            if (frame.Values.Count > 0) freezeFrames.Add(frame);
+
+            if (frame.Values.TryGetValue("Freeze-frame DTC", out var frozenCode) &&
+                !string.IsNullOrWhiteSpace(frozenCode) &&
+                !stored.Concat(pending).Concat(permanent).Any(code => code.Code.Equals(frozenCode, StringComparison.OrdinalIgnoreCase)) &&
+                TryDecodeCode(frozenCode, out var decoded))
             {
-                var frame = await _obd.ReadFreezeFrameQuickAsync(freezeTrigger, token);
-                if (frame.Values.Count > 0) freezeFrames.Add(frame);
+                stored.Add(decoded);
+                notes.Add($"{frozenCode} was reported only by the ECU's Freeze Frame.");
             }
-            catch (OperationCanceledException) when (token.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                notes.Add($"Freeze frame: {UserError.Describe(ex)}");
-            }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            notes.Add($"Freeze frame: {UserError.Describe(ex)}");
         }
         string? odo = null;
 
@@ -228,6 +243,33 @@ public sealed class FullObdScanService
         return double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value)
             ? value
             : null;
+    }
+
+    /// <summary>Turns "P0238" back into a DiagnosticCode (description from the standard decoder).</summary>
+    private static bool TryDecodeCode(string code, out DiagnosticCode decoded)
+    {
+        decoded = null!;
+        code = code.Trim().ToUpperInvariant();
+        if (code.Length != 5)
+            return false;
+
+        var family = code[0] switch { 'P' => 0, 'C' => 1, 'B' => 2, 'U' => 3, _ => -1 };
+        if (family < 0 || !int.TryParse(code.AsSpan(1), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out var number))
+            return false;
+
+        var high = (byte)((family << 6) | ((number >> 12) & 0x03) << 4 | ((number >> 8) & 0x0F));
+        var low = (byte)(number & 0xFF);
+        decoded = new DTCDecoder().DecodeSingle(high, low, DiagnosticCodeStatus.Stored);
+        return true;
+    }
+
+    /// <summary>"NO DATA" means no ECU answered; it is not a reply that lists zero codes.</summary>
+    private static (List<DiagnosticCode> Codes, bool IsAvailable) RequireReply(
+        (List<DiagnosticCode> Codes, bool IsAvailable) result, bool noReply, string label, ICollection<string> notes)
+    {
+        if (!result.IsAvailable || !noReply) return result;
+        notes.Add($"{label}: the ECU did not reply (NO DATA) — this is not the same as 'no codes'.");
+        return (new List<DiagnosticCode>(), false);
     }
 
     private static async Task<(List<DiagnosticCode> Codes, bool IsAvailable)> ReadDtcSafelyAsync(
