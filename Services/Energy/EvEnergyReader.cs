@@ -498,6 +498,10 @@ public sealed class EvEnergyReader
         if (string.IsNullOrWhiteSpace(raw) || ObdResponseParser.IsNegative(raw))
             return null;
 
+        // Frames from another module are not this module's reply (a battery value must come from the battery module).
+        if (ObdResponseParser.IsOnlyFromOtherModules(raw, request.Address.ReceiveCanId, out _))
+            return null;
+
         var idBytes = request.ServiceId == 0x21
             ? new[] { (byte)request.Identifier }
             : new[] { (byte)(request.Identifier >> 8), (byte)request.Identifier };

@@ -14,6 +14,7 @@
     <!-- One rule set for what may be collected: the phone and the server use the same sanitizer. -->
     <Compile Include="../../Services/DataCollection/CollectionSanitizer.cs" Link="Shared/CollectionSanitizer.cs" />
     <Compile Include="../../Services/OBD/ObdExchangeTap.cs" Link="Shared/ObdExchangeTap.cs" />
+    <Compile Include="../../Services/EmailAddressRules.cs" Link="Shared/EmailAddressRules.cs" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="CarScanner.Tests" />

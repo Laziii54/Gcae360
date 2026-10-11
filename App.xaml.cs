@@ -1,4 +1,5 @@
 using CarScanner.Services;
+using CarScanner.Services.DataCollection;
 using CarScanner.Services.Localization;
 using CarScanner.Views;
 using Plugin.LocalNotification;
@@ -16,6 +17,7 @@ public partial class App : Application
     private readonly CrashReportingService _crashReporting;
     private readonly UsageReportService _usage;
     private readonly MaintenanceCalendarService _maintenanceCalendar;
+    private readonly ConsentPromptService _consent;
     private CancellationTokenSource? _lifecycleSyncCancellation;
     private string? _pendingNotificationRoute;
 
@@ -27,8 +29,10 @@ public partial class App : Application
         PurchaseService purchase,
         CrashReportingService crashReporting,
         UsageReportService usage,
-        MaintenanceCalendarService maintenanceCalendar)
+        MaintenanceCalendarService maintenanceCalendar,
+        ConsentPromptService consent)
     {
+        _consent = consent;
         _usage = usage;
         _maintenanceCalendar = maintenanceCalendar;
         InitializeComponent();
@@ -81,6 +85,7 @@ public partial class App : Application
         _ = _maintenanceCalendar.RescheduleAllAsync();
 
         _ = _usage.ReportAsync();
+        ScheduleConsentCheck();
         }
         catch (Exception commandException)
         {
@@ -92,6 +97,28 @@ public partial class App : Application
     {
         StartEntitlementSynchronization();
         _ = _usage.ReportAsync();
+        ScheduleConsentCheck();
+    }
+
+    /// <summary>
+    /// Asks the data-collection question when it is due: at launch and when the app returns to the foreground.
+    /// The coordinator makes this a no-op once consent is given, while a decline is less than 24 hours old, and
+    /// while a question is already on screen, so calling it on every resume is safe.
+    /// </summary>
+    private void ScheduleConsentCheck()
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(900));   // let the main page settle first
+                await _consent.CheckAsync();
+            }
+            catch (Exception ex)
+            {
+                CarScanner.Services.CommandErrors.Report(ex, "App.ScheduleConsentCheck");
+            }
+        });
     }
 
     private void OnWindowStopped(object? sender, EventArgs e)

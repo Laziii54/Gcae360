@@ -813,8 +813,11 @@ namespace CarScanner.Services.OBD
                     treatNegativeStatusAsError: false,
                     token).ConfigureAwait(false));
 
-                if (ObdExchangeTap.HasSubscribers)
-                    ObdExchangeTap.Publish(new ObdRawExchange(transmitCanId, receiveCanId, extended29Bit, command, answer));
+                // Only the read services are reported (never clears or anything else that passes through here), and
+                // under the CAN id the reply really came from: when the adapter delivers the engine ECU's frames for
+                // another module's request, that is a finding and must not be filed under the module that was asked.
+                if (ObdExchangeTap.HasSubscribers && payload[0] is 0x19 or 0x21 or 0x22)
+                    ObdExchangeTap.Publish(new ObdRawExchange(transmitCanId, RealSenderHeader(answer, extended29Bit, receiveCanId), extended29Bit, command, answer));
 
                 return answer;
             }
@@ -1509,7 +1512,9 @@ namespace CarScanner.Services.OBD
                     return;
 
                 var frames = FramesForTap(response, extended29Bit, out var firstHeader);
-                var receive = receiveCanId ?? firstHeader;
+                // The id the reply really came from wins over the id that was asked for: when they differ, that is
+                // itself a finding, and it must not be filed under the module that was addressed.
+                var receive = firstHeader ?? receiveCanId;
                 if (frames is null || receive is null)
                     return;
 
@@ -1519,6 +1524,32 @@ namespace CarScanner.Services.OBD
             {
                 // observation must never affect diagnostics
             }
+        }
+
+        /// <summary>
+        /// The CAN id a reply really came from: the asked id when any frame carries it, otherwise the id of the first
+        /// frame that does arrive, otherwise the asked id (no frame at all, e.g. "NO DATA").
+        /// </summary>
+        internal static int RealSenderHeader(string? answer, bool extended29Bit, int expectedReceiveId)
+        {
+            if (string.IsNullOrWhiteSpace(answer))
+                return expectedReceiveId;
+
+            var width = extended29Bit ? 8 : 3;
+            int? first = null;
+            foreach (var raw in answer.Split(new[] { ' ', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var token = raw.Trim();
+                if (token.Length < width || !token.All(Uri.IsHexDigit) || (token.Length != width && (token.Length - width) % 2 != 0))
+                    continue;
+
+                var id = int.Parse(token.AsSpan(0, width), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture);
+                if (id == expectedReceiveId)
+                    return expectedReceiveId;
+                first ??= id;
+            }
+
+            return first ?? expectedReceiveId;
         }
 
         /// <summary>

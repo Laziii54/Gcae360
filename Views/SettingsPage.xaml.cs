@@ -33,5 +33,6 @@ public partial class SettingsPage : ContentPage
     {
         base.OnAppearing();
         ApplyUiLocalization();
+        (BindingContext as SettingsViewModel)?.RefreshConsent();
     }
 }

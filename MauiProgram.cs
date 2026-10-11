@@ -220,6 +220,7 @@ public static class MauiProgram
         // Optional anonymous data collection (off until the user opts in) and passive, read-only CAN listening.
         builder.Services.AddSingleton<CarScanner.Services.DataCollection.DataCollectionService>();
         builder.Services.AddSingleton<CarScanner.Services.DataCollection.LocalCaptureService>();
+        builder.Services.AddSingleton<CarScanner.Services.DataCollection.ConsentPromptService>();
         builder.Services.AddSingleton<CarScanner.Services.Passive.IDbcSource, CarScanner.Services.Passive.CatalogDbcSource>();
         builder.Services.AddSingleton<CarScanner.Services.Passive.PassiveCanService>();
         builder.Services.AddTransient<PassiveCanViewModel>();

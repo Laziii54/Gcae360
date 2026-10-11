@@ -144,6 +144,7 @@ public partial class SettingsViewModel : BaseViewModel
                 if (!string.Equals(LanguageOption, _localization.CurrentLanguage, StringComparison.OrdinalIgnoreCase))
                     LanguageOption = _localization.CurrentLanguage;
                 UpdateStatus();
+                RefreshConsent();
             });
 
         _bluetooth.ConnectionChanged +=
@@ -201,13 +202,30 @@ public partial class SettingsViewModel : BaseViewModel
         _ = _notifications.SetEnabledAsync(value);
     }
 
-    public string DataCollectionTitle =>
-        _localization.IsEnglish ? "Share car compatibility data (optional)" : "მანქანის თავსებადობის მონაცემების გაზიარება (არასავალდებულო)";
+    // The consent words come from ConsentTexts (all nine app languages), the same source as the first-run question.
+    private static ConsentText ConsentWords => ConsentTexts.For(LanguageCatalog.Current.Code);
 
-    public string DataCollectionInfo =>
-        _localization.IsEnglish
-            ? "Off by default. If you turn it on, the app sends which standard OBD2 requests and modules your car answers (supported PIDs, trouble-code lists, module answers) — never your VIN, name, account or location. For standard OBD2 requests no measured values are sent; for individual car modules the raw read-only reply is sent, and it can contain a value the module reported at that moment. A random device code is kept so repeated reports from one phone are not counted twice; that makes the data pseudonymous, not fully anonymous. Nothing is written to your car. Turn it off at any time: queued data is deleted and the server is asked to delete what this device sent."
-            : "ნაგულისხმევად გამორთულია. ჩართვისას აპი გზავნის, რომელ სტანდარტულ OBD2 მოთხოვნებსა და მოდულებს პასუხობს თქვენი მანქანა (მხარდაჭერილი PID-ები, შეცდომის კოდების სია, მოდულების პასუხები) — არასდროს VIN-ს, სახელს, ანგარიშს ან ლოკაციას. სტანდარტულ OBD2 მოთხოვნებზე გაზომილი მნიშვნელობები არ იგზავნება; ცალკეული მოდულებისგან იგზავნება ნედლი მხოლოდ-წაკითხვის პასუხი, რომელიც შეიძლება შეიცავდეს იმ წამს მოდულის მიერ დაბრუნებულ მნიშვნელობას. ინახება შემთხვევითი მოწყობილობის კოდი, რომ ერთი ტელეფონის განმეორებითი გაგზავნა ორჯერ არ დაითვალოს; ამიტომ მონაცემები ფსევდონიმურია და არა სრულად ანონიმური. მანქანაში არაფერი იწერება. ნებისმიერ დროს გამორთე: რიგი წაიშლება და სერვერს მოეთხოვება ამ მოწყობილობის მონაცემების წაშლა.";
+    public string DataCollectionTitle => ConsentWords.SettingsTitle;
+
+    public string DataCollectionInfo => ConsentWords.Body;
+
+    /// <summary>One line: not decided / allowed (date) / declined (asked again after) / turned off (date).</summary>
+    public string DataCollectionStatus => ConsentTexts.Status(ConsentWords, _dataCollection.Consent);
+
+    /// <summary>
+    /// The consent can change outside this page (the first-run question), and this view model is a singleton:
+    /// re-read it whenever the page appears, without writing anything back.
+    /// </summary>
+    public void RefreshConsent()
+    {
+        _syncingConsent = true;
+        try { DataCollectionEnabled = _dataCollection.IsEnabled; }
+        finally { _syncingConsent = false; }
+
+        OnPropertyChanged(nameof(DataCollectionTitle));
+        OnPropertyChanged(nameof(DataCollectionInfo));
+        OnPropertyChanged(nameof(DataCollectionStatus));
+    }
 
     private string OtherVehicleOption =>
         _localization.IsEnglish ? "Other vehicle (no target)" : "სხვა მანქანა (სამიზნის გარეშე)";
@@ -319,13 +337,12 @@ public partial class SettingsViewModel : BaseViewModel
             if (value)
             {
                 var page = Application.Current?.Windows.FirstOrDefault()?.Page;
+                var words = ConsentWords;
                 var agreed = page is not null && await page.DisplayAlertAsync(
-                    _localization.IsEnglish ? "Share compatibility data?" : "თავსებადობის მონაცემების გაზიარება?",
-                    _localization.IsEnglish
-                        ? "The app will send which standard OBD2 requests and modules your car answers: no VIN, no name, no account, no location. Standard OBD2 requests send no measured values; individual car modules send their raw read-only reply, which can contain a value reported at that moment. A random device code is kept so that repeated reports are not double-counted, so the data is pseudonymous, not fully anonymous. You can turn this off at any time; queued data is deleted and the server is asked to delete what this device sent."
-                        : "აპი გააგზავნის, რომელ სტანდარტულ OBD2 მოთხოვნებსა და მოდულებს პასუხობს თქვენი მანქანა: VIN-ის, სახელის, ანგარიშისა და ლოკაციის გარეშე. სტანდარტულ OBD2 მოთხოვნებზე გაზომილი მნიშვნელობები არ იგზავნება; ცალკეული მოდულებისგან იგზავნება ნედლი მხოლოდ-წაკითხვის პასუხი, რომელიც შეიძლება შეიცავდეს იმ წამს დაბრუნებულ მნიშვნელობას. ინახება შემთხვევითი მოწყობილობის კოდი, რომ განმეორებითი გაგზავნა ორჯერ არ დაითვალოს, ამიტომ მონაცემები ფსევდონიმურია და არა სრულად ანონიმური. ნებისმიერ დროს გამორთავ: რიგი წაიშლება და სერვერს მოეთხოვება ამ მოწყობილობის მონაცემების წაშლა.",
-                    _localization.IsEnglish ? "Turn on" : "ჩართვა",
-                    _localization.IsEnglish ? "Cancel" : "გაუქმება");
+                    words.Title,
+                    words.Body,
+                    words.Agree,
+                    words.NotNow);
 
                 if (!agreed)
                 {
@@ -341,6 +358,10 @@ public partial class SettingsViewModel : BaseViewModel
         catch (Exception ex)
         {
             CarScanner.Services.CommandErrors.Report(ex, "SettingsViewModel.ApplyDataCollection");
+        }
+        finally
+        {
+            MainThread.BeginInvokeOnMainThread(() => OnPropertyChanged(nameof(DataCollectionStatus)));
         }
     }
 

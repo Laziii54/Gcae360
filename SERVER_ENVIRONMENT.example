@@ -18,3 +18,19 @@ GCS_APPLE_BUNDLE_ID=com.gcar360.app
 
 # Signed store server notifications/webhooks
 GCS_STORE_WEBHOOK_SECRET=SET_ON_SERVER_ONLY
+
+# Email verification (registration email with a 6-digit code and a link).
+# Nothing is sent until the host and sender address are set; registration works without them.
+GCS_SMTP_HOST=…
+GCS_SMTP_PORT=587
+GCS_SMTP_USER=…
+GCS_SMTP_PASSWORD=…
+GCS_SMTP_SSL=true
+GCS_EMAIL_FROM=…
+GCS_EMAIL_FROM_NAME=GCar360
+# Minutes the code and link stay valid (5-60, default 15)
+GCS_EMAIL_CODE_MINUTES=15
+# https origin used for the logo and the email button (falls back to Payments:PublicBaseUrl)
+GCS_PUBLIC_BASE_URL=…
+# Support address shown in the email footer (defaults to the one on the public support page)
+GCS_SUPPORT_EMAIL=…

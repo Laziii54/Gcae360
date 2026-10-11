@@ -20,6 +20,16 @@ public sealed class CodingModuleBackup
     public int Rx { get; set; }
     public bool Extended29Bit { get; set; }
     public byte? ExtendedAddress { get; set; }
+
+    /// <summary>
+    /// How the read of this module ended: "read" (values stored), "refused" (the module answered every request with a
+    /// refusal), "foreign" (only another module's frames arrived), "silent" (no answer). Empty in older backups.
+    /// </summary>
+    public string Status { get; set; } = string.Empty;
+
+    /// <summary>Plain-language note about the read (e.g. which module actually answered); empty when nothing needs saying.</summary>
+    public string Note { get; set; } = string.Empty;
+
     public string PartNumber { get; set; } = string.Empty;
     public string SoftwareVersion { get; set; } = string.Empty;
     public List<CodingDidValue> Values { get; set; } = new();
@@ -33,6 +43,10 @@ public sealed class CodingBackup
     public string Vin { get; set; } = string.Empty;
     public string Vehicle { get; set; } = string.Empty;
     public string Note { get; set; } = string.Empty;
+
+    /// <summary>Things the person should know about this backup (modules that did not answer, foreign replies …).</summary>
+    public List<string> Warnings { get; set; } = new();
+
     public List<CodingModuleBackup> Modules { get; set; } = new();
     public int ReadCount => Modules.Sum(m => m.Values.Count(v => v.IsRead));
 }

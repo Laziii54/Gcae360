@@ -40,6 +40,7 @@ public sealed class CodingService
     private readonly VehicleInfoService _vehicle;
     private readonly LiveDataEngine _engine;
     private readonly LocalizationService _localization;
+    private readonly VehicleBrandProfileService _brandProfiles;
     private readonly SemaphoreSlim _busy = new(1, 1);
     private readonly IsoTpReassembler _isoTp = new();
 
@@ -50,8 +51,10 @@ public sealed class CodingService
         ModuleDtcScanService modules,
         VehicleInfoService vehicle,
         LiveDataEngine engine,
-        LocalizationService localization)
+        LocalizationService localization,
+        VehicleBrandProfileService brandProfiles)
     {
+        _brandProfiles = brandProfiles;
         _obd = obd;
         _modules = modules;
         _vehicle = vehicle;
@@ -119,6 +122,52 @@ public sealed class CodingService
         if (make.Contains("TOYOTA")) return "TOYOTA";
         if (make.Contains("CHEVROLET") || make.Contains("GMC") || make.Contains("CADILLAC") || make.Contains("BUICK") || make.Contains("OPEL")) return "GM";
         return make.Trim();
+    }
+
+    /// <summary>Tells one car from another (VIN, else make/model/year); empty when nothing identifies the car.</summary>
+    public string CurrentVehicleKey()
+    {
+        var car = _vehicle.CurrentVehicle;
+        return CodingCapabilities.VehicleKey(car?.VIN, car?.Manufacturer, car?.Model, car?.Year);
+    }
+
+    /// <summary>How many verified settings the catalog lists in total (for every vehicle).</summary>
+    public async Task<int> VerifiedOptionCountInCatalogAsync()
+    {
+        var catalog = await CatalogAsync().ConfigureAwait(false);
+        return catalog.Options.Count(o => string.Equals(o.Status, "verified", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>Changes made by this app that can still be put back.</summary>
+    public int RestorableChangeCount() => History().Count(change => !change.Restored);
+
+    public bool IsCanConnection => _obd.IsInitialized && _obd.IsCanProtocol;
+
+    /// <summary>The protocol the adapter reported, e.g. "ISO 15765-4 (CAN 11/500)"; empty when not connected.</summary>
+    public string ProtocolText => _obd.IsInitialized ? _obd.CurrentProtocolDescription : string.Empty;
+
+    /// <summary>
+    /// The facts for the readiness list. Only read-only requests are sent (speed and battery voltage, as the write
+    /// path would check them); nothing is sent when the adapter is not connected or the connection is not CAN.
+    /// </summary>
+    public async Task<CodingReadinessInput> ReadReadinessAsync(CancellationToken token)
+    {
+        var connected = _obd.IsInitialized;
+        var isCan = IsCanConnection;
+        var car = _vehicle.CurrentVehicle;
+        var identified = car is not null &&
+                         !string.IsNullOrWhiteSpace(car.Manufacturer) && !car.Manufacturer.Equals("Unknown", StringComparison.OrdinalIgnoreCase) &&
+                         !string.IsNullOrWhiteSpace(car.Model) && !car.Model.Equals("Unknown", StringComparison.OrdinalIgnoreCase);
+
+        double? speed = null;
+        double? volts = null;
+        if (connected && isCan)
+        {
+            speed = await ReadPidAsync(0x0D, token).ConfigureAwait(false);
+            volts = await ReadVoltageAsync(token).ConfigureAwait(false);
+        }
+
+        return new CodingReadinessInput(connected, isCan, car?.VIN, speed, volts, identified);
     }
 
     /// <summary>Verified options that match the connected car (brand/model/year).</summary>
@@ -225,7 +274,28 @@ public sealed class CodingService
     // Backup (read-only)
     // ------------------------------------------------------------------
 
-    public async Task<CodingBackup> CreateBackupAsync(string note, IProgress<(double Fraction, string Text)>? progress, CancellationToken token)
+    /// <summary>True for GM-family cars (Chevrolet, GMC, Cadillac, Buick, Opel): GMLAN modules, no configuration identifiers in the catalog.</summary>
+    public bool IsGmVehicle
+    {
+        get
+        {
+            var car = _vehicle.CurrentVehicle;
+            if (BrandKey(car) == "GM")
+                return true;
+
+            // Without an identified make (no VIN) the brand the person chose before connecting is a hint — used only to
+            // OFFER the read-only extended read. It is never used to match a setting: that needs the identified vehicle.
+            var identified = !string.IsNullOrWhiteSpace(car?.Manufacturer) &&
+                             !car!.Manufacturer.Equals("Unknown", StringComparison.OrdinalIgnoreCase);
+            return !identified && BrandKey(new VehicleInfo { Manufacturer = _brandProfiles.Current.DisplayName }) == "GM";
+        }
+    }
+
+    /// <param name="extendedGmRead">
+    /// GM only: after the normal identification reads, sweeps the GMLAN $1A identifiers 00–FF of every GMLAN module that
+    /// answered (read-only), so that a before/after comparison can show where a setting lives.
+    /// </param>
+    public async Task<CodingBackup> CreateBackupAsync(string note, IProgress<(double Fraction, string Text)>? progress, CancellationToken token, bool extendedGmRead = false)
     {
         if (!_obd.IsInitialized)
             throw new InvalidOperationException(L("ჯერ OBD ადაპტერს დაუკავშირდით.", "Connect to the OBD adapter first."));
@@ -233,7 +303,12 @@ public sealed class CodingService
         await _busy.WaitAsync(token).ConfigureAwait(false);
         try
         {
-            var modules = _modules.LastModules.Where(m => m.Responded).ToList();
+            // The module list of an earlier scan is reused only for the SAME car: after switching cars it would point at
+            // addresses that do not belong to this one and file their answers under the wrong vehicle.
+            var vehicleKey = CurrentVehicleKey();
+            var modules = vehicleKey.Length > 0 && string.Equals(_modules.LastScanVehicleKey, vehicleKey, StringComparison.Ordinal)
+                ? _modules.LastModules.Where(m => m.Responded).ToList()
+                : new List<ModuleDtcReport>();
             if (modules.Count == 0)
             {
                 var car = _vehicle.CurrentVehicle ?? new VehicleInfo();
@@ -287,18 +362,62 @@ public sealed class CodingService
                 if (string.Equals(module.Protocol, "GMLAN", StringComparison.OrdinalIgnoreCase))
                 {
                     foreach (var did in GmlanDids)
-                        item.Values.Add(await ReadGmlanAsync(module, did, token).ConfigureAwait(false));
+                    {
+                        var read = await ReadGmlanAsync(module, did, token).ConfigureAwait(false);
+                        item.Values.Add(read);
+                        // NRC 11 = service not supported: the remaining requests would only repeat the refusal.
+                        if (read.Error == "NRC 11") break;
+                    }
                 }
                 else
                 {
                     foreach (var did in StandardDids.Concat(brandDids).Distinct())
-                        item.Values.Add(await ReadDidAsync(AddressOf(module), did, token).ConfigureAwait(false));
+                    {
+                        var read = await ReadDidAsync(AddressOf(module), did, token).ConfigureAwait(false);
+                        item.Values.Add(read);
+                        if (read.Error == "NRC 11") break;
+                    }
                 }
 
                 var part = item.Values.FirstOrDefault(v => v.Did is "F187" or "1A:CB" && v.IsRead);
                 item.PartNumber = part is null ? string.Empty : AsciiOrHex(part.Hex);
+                (item.Status, item.Note) = CodingBackupStatus.Classify(item.Values);
+
+                if (extendedGmRead && item.Status == CodingBackupStatus.Read &&
+                    string.Equals(module.Protocol, "GMLAN", StringComparison.OrdinalIgnoreCase))
+                {
+                    progress?.Report((0.4 + 0.6 * i / modules.Count, L($"ვკითხულობ ყველა $1A იდენტიფიკატორს: {name}", $"Reading every $1A identifier: {name}")));
+                    var sweep = await GmlanSweep.RunAsync(
+                        did => ReadGmlanAsync(module, did, token),
+                        GmlanDids.ToHashSet(),
+                        progress: null,
+                        token).ConfigureAwait(false);
+                    item.Values.AddRange(sweep.Values);
+                    item.Note = L($"გაფართოებული წაკითხვა: {sweep.Values.Count} ახალი მნიშვნელობა {sweep.Requests} მოთხოვნიდან",
+                        $"Extended read: {sweep.Values.Count} more value(s) from {sweep.Requests} requests") +
+                        (string.IsNullOrEmpty(sweep.Stopped) ? string.Empty : L($" · შეჩერდა: {sweep.Stopped}", $" · stopped: {sweep.Stopped}"));
+                }
+
                 backup.Modules.Add(item);
             }
+
+            foreach (var module in backup.Modules.Where(m => m.Status != CodingBackupStatus.Read))
+            {
+                backup.Warnings.Add(module.Status switch
+                {
+                    CodingBackupStatus.Foreign => L($"{module.Name}: პასუხი სხვა მოდულიდან მოვიდა ({module.Note}) — მნიშვნელობები არ შენახულა",
+                        $"{module.Name}: the reply came from another module ({module.Note}) — no values were saved"),
+                    CodingBackupStatus.Refused => L($"{module.Name}: მოდულმა წაკითხვაზე უარი თქვა ({module.Note})",
+                        $"{module.Name}: the module refused the read ({module.Note})"),
+                    _ => L($"{module.Name}: პასუხი არ დააბრუნა", $"{module.Name}: did not answer")
+                });
+            }
+
+            // A "backup" with nothing in it would only look like one.
+            if (backup.ReadCount == 0)
+                throw new InvalidOperationException(L(
+                    "ვერც ერთი მოდულიდან მნიშვნელობა ვერ წავიკითხე, ამიტომ ასლი არ შეინახა. " + string.Join(" ", backup.Warnings),
+                    "No value could be read from any module, so no backup was saved. " + string.Join(" ", backup.Warnings)));
 
             progress?.Report((1, L("სარეზერვო ასლი შენახულია", "Backup saved")));
             SaveBackup(backup);
@@ -432,57 +551,12 @@ public sealed class CodingService
         return value;
     }
 
-    private sealed record Reply(byte[]? Data, string Error, byte? Nrc);
-
     /// <summary>
-    /// Finds "service+0x40 id… data" (positive) or "7F service NRC" in an
-    /// ELM327 reply, with or without CAN headers / ISO-TP framing.
+    /// Finds "service+0x40 id… data" (positive) or "7F service NRC" in an ELM327 reply; only frames of the asked module
+    /// count (see <see cref="CodingReplyParser"/>).
     /// </summary>
-    private Reply ParseReply(string raw, int? rx, byte service, byte[] idBytes)
-    {
-        if (string.IsNullOrWhiteSpace(raw) || ObdResponseParser.IsNegative(raw))
-            return new Reply(null, "no answer", null);
-
-        var candidates = new List<IReadOnlyList<byte[]>>();
-        if (rx.HasValue) candidates.Add(ObdResponseParser.ParseCanFrames(raw, rx.Value));
-        candidates.Add(ObdResponseParser.ParseCanFrames(raw));
-
-        var messages = new List<byte[]>();
-        foreach (var frames in candidates)
-        {
-            if (frames.Count == 0 || frames[0].Length == 0) continue;
-            try
-            {
-                messages.Add((frames[0][0] >> 4) is 0 or 1
-                    ? _isoTp.Reassemble(frames)
-                    : frames.SelectMany(f => f).ToArray());
-            }
-            catch
-            {
-                // try the next interpretation
-            }
-            // Single frames each carry their own PCI byte (e.g. 03 7F 22 78 then 05 62 …).
-            foreach (var frame in frames)
-                if (frame.Length > 1 && (frame[0] >> 4) == 0)
-                    messages.Add(frame.Skip(1).Take(frame[0] & 0x0F).ToArray());
-        }
-        messages.Add(ObdResponseParser.ParseHex(raw));
-
-        foreach (var message in messages)
-        {
-            if (message.Length >= 1 + idBytes.Length && message[0] == (byte)(service + 0x40) &&
-                message.Skip(1).Take(idBytes.Length).SequenceEqual(idBytes))
-                return new Reply(message.Skip(1 + idBytes.Length).ToArray(), string.Empty, null);
-        }
-
-        foreach (var message in messages)
-        {
-            if (message.Length >= 3 && message[0] == 0x7F && message[1] == service && message[2] != 0x78)
-                return new Reply(null, $"NRC {message[2]:X2}", message[2]);
-        }
-
-        return new Reply(null, "no answer", null);
-    }
+    private static CodingReply ParseReply(string raw, int? rx, byte service, byte[] idBytes) =>
+        CodingReplyParser.Parse(raw, rx, service, idBytes);
 
     private static string AsciiOrHex(string hex)
     {
@@ -884,7 +958,7 @@ public sealed class CodingService
         }
     }
 
-    private async Task<Reply> WriteRawAsync(ServiceDiagnosticAddress address, int did, byte[] data, CancellationToken token)
+    private async Task<CodingReply> WriteRawAsync(ServiceDiagnosticAddress address, int did, byte[] data, CancellationToken token)
     {
         var payload = new byte[3 + data.Length];
         payload[0] = 0x2E;

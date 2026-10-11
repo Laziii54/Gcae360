@@ -34,10 +34,18 @@ public sealed class ModuleDtcScanService
 
     public DateTime? LastScanAt { get; private set; }
 
+    /// <summary>Which car <see cref="LastModules"/> belongs to (see CodingCapabilities.VehicleKey); empty when unknown.</summary>
+    public string LastScanVehicleKey { get; private set; } = string.Empty;
+
     public sealed record ScanOutcome(
         IReadOnlyList<ModuleDtcReport> Modules,
         int ModulesChecked,
-        string Note);
+        string Note,
+        IReadOnlyList<ModuleProbe>? Probes = null)
+    {
+        /// <summary>One entry per address that was asked: answered, silent, foreign reply only, or failed.</summary>
+        public IReadOnlyList<ModuleProbe> Probes { get; init; } = Probes ?? Array.Empty<ModuleProbe>();
+    }
 
     private sealed record Candidate(
         string Id,
@@ -319,7 +327,9 @@ public sealed class ModuleDtcScanService
             .ToList();
 
         var results = new List<ModuleDtcReport>();
+        var probes = new List<ModuleProbe>();
         var checkedCount = 0;
+        var consecutiveTransportFailures = 0;
         Exception? sessionError = null;
 
         try
@@ -337,7 +347,10 @@ public sealed class ModuleDtcScanService
                     ModuleDtcReport? report = null;
                     try
                     {
-                        report = await ReadModuleAsync(session, candidate, family, token).ConfigureAwait(false);
+                        var (read, probe) = await ReadModuleAsync(session, candidate, family, token).ConfigureAwait(false);
+                        report = read;
+                        probes.Add(probe);
+                        consecutiveTransportFailures = 0;
                     }
                     catch (OperationCanceledException) when (token.IsCancellationRequested)
                     {
@@ -345,7 +358,14 @@ public sealed class ModuleDtcScanService
                     }
                     catch (Exception ex)
                     {
+                        // One failing address must not hide the others, and must not look like "no module".
                         System.Diagnostics.Debug.WriteLine($"Module {candidate.Tx:X} DTC read failed: {ex.Message}");
+                        probes.Add(new ModuleProbe(candidate.Id, candidate.Tx, candidate.Rx, candidate.Ext29, candidate.Ext,
+                            ModuleProbeState.Error, ex.GetType().Name + ": " + ex.Message, null, string.Empty));
+                        consecutiveTransportFailures++;
+                        // A lost connection fails every following address the same way: stop and keep what we have.
+                        if (consecutiveTransportFailures >= 3 && ex is Elm327NotConnectedException or IOException or Elm327TimeoutException)
+                            throw;
                     }
 
                     if (report is not null)
@@ -362,13 +382,14 @@ public sealed class ModuleDtcScanService
             System.Diagnostics.Debug.WriteLine($"Module DTC session failed: {ex}");
             sessionError = ex;
             if (results.Count == 0)
-                return new ScanOutcome(results, checkedCount, SessionFailureNote(ex, partial: false));
+                return new ScanOutcome(results, checkedCount, SessionFailureNote(ex, partial: false), probes);
         }
 
         await DescribeAsync(results, token).ConfigureAwait(false);
         progress?.Report((1d, "მოდულების შემოწმება დასრულდა."));
         LastModules = results.Where(item => item.Responded).ToList();
         LastScanAt = DateTime.Now;
+        LastScanVehicleKey = CarScanner.Services.Coding.CodingCapabilities.VehicleKey(vehicle.VIN, vehicle.Manufacturer, vehicle.Model, vehicle.Year);
 
         var note = sessionError is not null
             ? SessionFailureNote(sessionError, partial: true)
@@ -378,10 +399,45 @@ public sealed class ModuleDtcScanService
                 ? "მარკა ვერ დადგინდა, ამიტომ მხოლოდ სტანდარტული მოდულები შემოწმდა."
                 : string.Empty;
 
-        return new ScanOutcome(results, checkedCount, note);
+        var probeNote = DescribeProbes(probes);
+        if (probeNote.Length > 0)
+            note = note.Length == 0 ? probeNote : note + "\n" + probeNote;
+
+        return new ScanOutcome(results, checkedCount, note, probes);
     }
 
     private static string L(string ka, string en) => ObdLang.IsEnglish ? en : ka;
+
+    /// <summary>
+    /// One plain line about what the addresses that did NOT produce a module actually did. Silence is reported
+    /// as silence (absent, asleep or unreachable look alike); a reply from another CAN id is reported as such.
+    /// </summary>
+    internal static string DescribeProbes(IReadOnlyList<ModuleProbe> probes)
+    {
+        var silent = probes.Count(item => item.State == ModuleProbeState.NoReply);
+        var foreign = probes.Where(item => item.State == ModuleProbeState.ForeignReplyOnly).ToList();
+        var incomplete = probes.Count(item => item.State == ModuleProbeState.AnsweredIncomplete);
+        var failed = probes.Count(item => item.State == ModuleProbeState.Error);
+        var parts = new List<string>();
+
+        if (incomplete > 0)
+            parts.Add(L($"{incomplete} მოდულის პასუხი არასრულად მოვიდა", $"{incomplete} module reply(ies) arrived incomplete"));
+        if (foreign.Count > 0)
+        {
+            var senders = string.Join(", ", foreign.Select(item => item.ForeignSender).Where(item => !string.IsNullOrEmpty(item)).Distinct());
+            parts.Add(L(
+                $"{foreign.Count} მისამართზე პასუხი მხოლოდ სხვა CAN ID-დან ({senders}) მოვიდა და არ ჩაითვალა ამ მოდულებისად" +
+                (foreign.Count >= 3 ? " — ადაპტერმა მისამართებს შორის გაფილტვრა სავარაუდოდ ვერ შეძლო" : string.Empty),
+                $"{foreign.Count} address(es) got a reply only from another CAN id ({senders}); it was not counted for those modules" +
+                (foreign.Count >= 3 ? " — the adapter probably did not separate the addresses" : string.Empty)));
+        }
+        if (silent > 0)
+            parts.Add(L($"{silent} მისამართმა არ უპასუხა (არ ნიშნავს რომ მოდული არ არსებობს)", $"{silent} address(es) gave no reply (this does not prove the module is absent)"));
+        if (failed > 0)
+            parts.Add(L($"{failed} მოთხოვნა ტექნიკური შეცდომით დასრულდა", $"{failed} request(s) failed technically"));
+
+        return string.Join(" · ", parts);
+    }
 
     /// <summary>Short, bilingual hint for a module session that stopped with an error.</summary>
     private static string SessionFailureNote(Exception ex, bool partial)
@@ -490,12 +546,26 @@ public sealed class ModuleDtcScanService
     // Per-module read
     // ------------------------------------------------------------------
 
-    private static async Task<ModuleDtcReport?> ReadModuleAsync(
+    private static async Task<(ModuleDtcReport? Report, ModuleProbe Probe)> ReadModuleAsync(
         Elm327Protocol.IDtcModuleSession session,
         Candidate candidate,
         BrandFamily family,
         CancellationToken token)
     {
+        var probe = await ModuleDtcProbe.ProbeAsync(
+            (payload, longWait) => session.SendAsync(candidate.Tx, candidate.Rx, candidate.Ext29, payload, longWait, token, candidate.Ext),
+            family == BrandFamily.Gm && !candidate.Ext29
+                ? payload => session.SendGmlanDtcRequestAsync(candidate.Tx, 0x500 | (candidate.Rx & 0xFF), payload, token)
+                : null,
+            candidate.Rx,
+            candidate.Ext29,
+            candidate.Ext).ConfigureAwait(false);
+
+        var record = new ModuleProbe(candidate.Id, candidate.Tx, candidate.Rx, candidate.Ext29, candidate.Ext,
+            probe.State, probe.Detail, probe.ForeignSender, probe.Raw);
+        if (!probe.Responded && probe.State != ModuleProbeState.Answered)
+            return (null, record);
+
         var report = new ModuleDtcReport
         {
             ModuleId = candidate.Id,
@@ -504,77 +574,37 @@ public sealed class ModuleDtcScanService
             TransmitCanId = candidate.Tx,
             ReceiveCanId = candidate.Rx,
             Extended29Bit = candidate.Ext29,
-            ExtendedAddress = candidate.Ext
+            ExtendedAddress = candidate.Ext,
+            Responded = true,
+            Protocol = probe.Protocol,
+            CodeListComplete = !probe.Incomplete,
+            Diagnostics = probe.Detail,
+            RawResponse = probe.Raw,
+            NameBasis = candidate.Id is "ECM" or "TCM" or "OBD" && candidate.Rx is >= 0x7E8 and <= 0x7EF ? "standard" : "address-table",
+            Codes = new List<ModuleDtc>()
         };
 
-        // 1) UDS ReadDTCInformation — reportDTCByStatusMask (all bits).
-        var uds = await SendIsoTpAsync(session, candidate, new byte[] { 0x19, 0x02, 0xFF }, token).ConfigureAwait(false);
-        if (uds.Positive is { } udsMessage && udsMessage.Length >= 3 && udsMessage[0] == 0x59 && udsMessage[1] == 0x02)
+        switch (probe.Protocol)
         {
-            report.Protocol = "UDS";
-            report.Responded = true;
-            report.Codes = ParseUds(udsMessage);
-            await IdentifyUdsAsync(session, candidate, report, token).ConfigureAwait(false);
-            await ReadUdsSnapshotsAsync(session, candidate, report, family, token).ConfigureAwait(false);
-            return report;
-        }
-
-        // GMLAN modules (GM / Chevrolet Volt …) often ignore UDS $19
-        // completely: still try $A9 for GM 11-bit candidates.
-        var tryGmlan = family == BrandFamily.Gm && !candidate.Ext29;
-        if (!uds.AnyReply && !tryGmlan)
-            return null;
-
-        if (uds.AnyReply)
-        {
-            // 2) KWP2000 ReadDTCByStatus (older Hyundai/Kia, Toyota …).
-            var kwp = await SendIsoTpAsync(session, candidate, new byte[] { 0x18, 0x02, 0xFF, 0x00 }, token).ConfigureAwait(false);
-            if (kwp.Positive is { } kwpMessage && kwpMessage.Length >= 2 && kwpMessage[0] == 0x58)
-            {
-                report.Protocol = "KWP";
-                report.Responded = true;
-                report.Codes = ParseKwp(kwpMessage);
-                return report;
-            }
-        }
-
-        // 3) GM (GMLAN) $A9 — reply comes as unsegmented frames on 0x5xx.
-        if (tryGmlan)
-        {
-            try
-            {
-                var uudt = 0x500 | (candidate.Rx & 0xFF);
-                var raw = await session.SendGmlanDtcRequestAsync(candidate.Tx, uudt, new byte[] { 0xA9, 0x81, 0x12 }, token).ConfigureAwait(false);
-                var frames = ParseFrames(raw, uudt, ext29: false);
-                if (frames.Count > 0)
+            case "UDS" when probe.Message is { } udsMessage:
+                // An incomplete list keeps only the records that arrived whole.
+                report.Codes = ParseUds(udsMessage);
+                if (!probe.Incomplete)
                 {
-                    report.Protocol = "GMLAN";
-                    report.Responded = true;
-                    report.Codes = ParseGmlan(frames);
-                    await IdentifyGmlanAsync(session, candidate, report, token).ConfigureAwait(false);
-                    return report;
+                    await IdentifyUdsAsync(session, candidate, report, token).ConfigureAwait(false);
+                    await ReadUdsSnapshotsAsync(session, candidate, report, family, token).ConfigureAwait(false);
                 }
-            }
-            catch (OperationCanceledException) when (token.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                // Some adapters cannot send raw (unformatted) CAN frames.
-                System.Diagnostics.Debug.WriteLine($"GMLAN A9 {candidate.Tx:X} failed: {ex.Message}");
-            }
-
-            // Neither $19 nor $A9 got any answer: no module at this address.
-            if (!uds.AnyReply)
-                return null;
+                break;
+            case "KWP" when probe.Message is { } kwpMessage:
+                report.Codes = ParseKwp(kwpMessage);
+                break;
+            case "GMLAN":
+                report.Codes = ParseGmlan(probe.GmlanFrames);
+                await IdentifyGmlanAsync(session, candidate, report, token).ConfigureAwait(false);
+                break;
         }
 
-        // The module answers but does not report trouble codes this way.
-        report.Protocol = "—";
-        report.Responded = true;
-        report.Codes = new List<ModuleDtc>();
-        return report;
+        return (report, record);
     }
 
     private sealed record IsoTpReply(byte[]? Positive, bool AnyReply, byte? Nrc = null);
@@ -585,26 +615,11 @@ public sealed class ModuleDtcScanService
         byte[] request,
         CancellationToken token)
     {
-        var raw = await session.SendAsync(candidate.Tx, candidate.Rx, candidate.Ext29, request, longWait: false, token, candidate.Ext).ConfigureAwait(false);
-        var messages = Reassemble(StripExtended(ParseFrames(raw, candidate.Rx, candidate.Ext29), candidate.Ext));
-        var service = request[0];
-
-        // 7F xx 78 = "response pending": listen once more with a longer window.
-        if (messages.Count > 0 &&
-            messages.All(message => IsPending(message, service)))
-        {
-            raw = await session.SendAsync(candidate.Tx, candidate.Rx, candidate.Ext29, request, longWait: true, token, candidate.Ext).ConfigureAwait(false);
-            messages = Reassemble(StripExtended(ParseFrames(raw, candidate.Rx, candidate.Ext29), candidate.Ext));
-        }
-
-        var positive = messages.LastOrDefault(message => message.Length > 0 && message[0] == (byte)(service + 0x40));
-        var negative = messages.LastOrDefault(message =>
-            message.Length >= 3 && message[0] == 0x7F && message[1] == service && message[2] != 0x78);
-        return new IsoTpReply(positive, messages.Count > 0, positive is null ? negative?[2] : null);
+        var exchange = await ModuleReplyAnalysis.ExchangeAsync(
+            longWait => session.SendAsync(candidate.Tx, candidate.Rx, candidate.Ext29, request, longWait, token, candidate.Ext),
+            candidate.Rx, candidate.Ext29, candidate.Ext, request[0]).ConfigureAwait(false);
+        return new IsoTpReply(exchange.Positive, exchange.AnyReply, exchange.Nrc);
     }
-
-    private static bool IsPending(byte[] message, byte service) =>
-        message.Length >= 3 && message[0] == 0x7F && message[1] == service && message[2] == 0x78;
 
     // ------------------------------------------------------------------
     // Identification (module name / software version)
@@ -907,7 +922,10 @@ public sealed class ModuleDtcScanService
             0xF442 => (2, "ძაბვა", "Voltage", (d, o) => $"{((d[o] << 8) | d[o + 1]) / 1000.0:0.0} V"),
             0xF446 => (1, "გარე ტემპერატურა", "Ambient temp", (d, o) => $"{d[o] - 40} °C"),
             0xF45C => (1, "ზეთის ტემპერატურა", "Oil temp", (d, o) => $"{d[o] - 40} °C"),
-            0xDD01 when fordStyle => (3, "გარბენი", "Odometer", (d, o) => $"{(d[o] << 16) | (d[o + 1] << 8) | d[o + 2]} km"),
+            // Not verified: the unit (km or miles) and the meaning are not established for any model in this repo, so the
+            // number is shown as the raw value and is never treated as an odometer reading anywhere else.
+            0xDD01 when fordStyle => (3, "DD01 მნიშვნელობა (Ford, ერთეული დაუდასტურებელია)", "DD01 value (Ford, unit not verified)",
+                (d, o) => $"{(d[o] << 16) | (d[o + 1] << 8) | d[o + 2]}"),
             0xDD02 when fordStyle => (1, "ძაბვა", "Voltage", (d, o) => $"{d[o] / 10.0:0.0} V"),
             0xDD05 when fordStyle => (1, "გარე ტემპერატურა", "Ambient temp", (d, o) => $"{d[o] - 40} °C"),
             0xDD00 when fordStyle => (4, string.Empty, string.Empty, (_, _) => string.Empty),
@@ -934,202 +952,30 @@ public sealed class ModuleDtcScanService
         return true;
     }
 
-    internal static List<byte[]> StripExtended(List<byte[]> frames, byte? extendedAddress)
-    {
-        if (!extendedAddress.HasValue)
-            return frames;
-
-        // Replies of BMW-style modules start with the tester address (0xF1).
-        return frames
-            .Select(frame => frame.Length > 1 && frame[0] == 0xF1 ? frame[1..] : frame)
-            .ToList();
-    }
+    // Shared with the live-data, odometer and broadcast readers; the logic lives in ModuleReplyAnalysis.
+    internal static List<byte[]> StripExtended(List<byte[]> frames, byte? extendedAddress) =>
+        ModuleReplyAnalysis.StripExtended(frames, extendedAddress);
 
     // ------------------------------------------------------------------
     // Parsing
     // ------------------------------------------------------------------
 
-    /// <summary>Frames of one CAN ID from the adapter output ("7E8037F1911" tokens with spaces off).</summary>
-    internal static List<byte[]> ParseFrames(string? raw, int receiveId, bool ext29)
-    {
-        var frames = new List<byte[]>();
-        if (string.IsNullOrWhiteSpace(raw))
-            return frames;
+    /// <summary>Frames of ONE CAN id from the adapter output; frames of any other id are not returned.</summary>
+    internal static List<byte[]> ParseFrames(string? raw, int receiveId, bool ext29) =>
+        ModuleReplyAnalysis.Split(raw, receiveId, ext29).Own;
 
-        var headerLength = ext29 ? 8 : 3;
-        var header = receiveId.ToString(ext29 ? "X8" : "X3");
-        foreach (var token in raw.Split(new[] { ' ', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries))
-        {
-            var text = token.Trim().ToUpperInvariant();
-            if (text.Length <= headerLength || (text.Length - headerLength) % 2 != 0)
-                continue;
-            if (!text.StartsWith(header, StringComparison.Ordinal))
-                continue;
-            if (!text.All(Uri.IsHexDigit))
-                continue;
+    /// <summary>Complete ISO-TP messages from frames (single, first + consecutive); incomplete ones are dropped here.</summary>
+    internal static List<byte[]> Reassemble(IReadOnlyList<byte[]> frames) =>
+        ModuleReplyAnalysis.Assemble(frames).Messages;
 
-            var data = new byte[(text.Length - headerLength) / 2];
-            for (var i = 0; i < data.Length; i++)
-                data[i] = byte.Parse(text.AsSpan(headerLength + i * 2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-            frames.Add(data);
-        }
+    // The decoding lives in ModuleDtcParsers (pure, unit-tested); these stay for the existing callers.
+    internal static List<ModuleDtc> ParseUds(byte[] message) => ModuleDtcParsers.ParseUds(message);
 
-        return frames;
-    }
+    internal static List<ModuleDtc> ParseKwp(byte[] message) => ModuleDtcParsers.ParseKwp(message);
 
-    /// <summary>ISO-TP messages from frames (single, first + consecutive).</summary>
-    internal static List<byte[]> Reassemble(IReadOnlyList<byte[]> frames)
-    {
-        var messages = new List<byte[]>();
-        List<byte>? buffer = null;
-        var expected = 0;
-        var sequence = 0;
+    internal static List<ModuleDtc> ParseGmlan(IReadOnlyList<byte[]> frames) => ModuleDtcParsers.ParseGmlan(frames);
 
-        foreach (var frame in frames)
-        {
-            if (frame.Length == 0)
-                continue;
-
-            var type = frame[0] >> 4;
-            switch (type)
-            {
-                case 0:
-                {
-                    var length = frame[0] & 0x0F;
-                    if (length > 0 && length <= frame.Length - 1)
-                        messages.Add(frame.Skip(1).Take(length).ToArray());
-                    buffer = null;
-                    break;
-                }
-                case 1 when frame.Length >= 2:
-                {
-                    expected = ((frame[0] & 0x0F) << 8) | frame[1];
-                    buffer = new List<byte>(expected);
-                    buffer.AddRange(frame.Skip(2));
-                    sequence = 1;
-                    break;
-                }
-                case 2 when buffer is not null:
-                {
-                    if ((frame[0] & 0x0F) != (sequence & 0x0F))
-                    {
-                        buffer = null;
-                        break;
-                    }
-
-                    buffer.AddRange(frame.Skip(1));
-                    sequence++;
-                    break;
-                }
-            }
-
-            if (buffer is not null && expected > 0 && buffer.Count >= expected)
-            {
-                messages.Add(buffer.Take(expected).ToArray());
-                buffer = null;
-            }
-        }
-
-        return messages;
-    }
-
-    internal static List<ModuleDtc> ParseUds(byte[] message)
-    {
-        // 59 02 <availability mask> [DTC high, DTC middle, failure type, status] …
-        var codes = new List<ModuleDtc>();
-        for (var i = 3; i + 3 < message.Length; i += 4)
-        {
-            var high = message[i];
-            var middle = message[i + 1];
-            var failureType = message[i + 2];
-            var status = message[i + 3];
-            if (high == 0 && middle == 0 && failureType == 0)
-                continue;
-
-            // testFailed / pending / confirmed. Codes that only "have not run yet" are skipped.
-            if ((status & 0x0D) == 0)
-                continue;
-
-            codes.Add(new ModuleDtc
-            {
-                Code = FormatCode(high, middle),
-                FailureType = failureType,
-                StatusByte = status,
-                Active = (status & 0x01) != 0,
-                Pending = (status & 0x04) != 0,
-                Confirmed = (status & 0x08) != 0
-            });
-        }
-
-        return Distinct(codes);
-    }
-
-    internal static List<ModuleDtc> ParseKwp(byte[] message)
-    {
-        // 58 <count> [DTC high, DTC low, status] …
-        var codes = new List<ModuleDtc>();
-        for (var i = 2; i + 2 < message.Length; i += 3)
-        {
-            var high = message[i];
-            var low = message[i + 1];
-            var status = message[i + 2];
-            if (high == 0 && low == 0)
-                continue;
-
-            codes.Add(new ModuleDtc
-            {
-                Code = FormatCode(high, low),
-                StatusByte = status,
-                // KWP: bit 6 = currently present, bit 5 = stored.
-                Active = (status & 0x40) != 0,
-                Confirmed = (status & 0x20) != 0 || (status & 0x40) == 0,
-                Pending = false
-            });
-        }
-
-        return Distinct(codes);
-    }
-
-    internal static List<ModuleDtc> ParseGmlan(IReadOnlyList<byte[]> frames)
-    {
-        // Each frame: 81 <DTC high> <DTC low> <failure type> <status> …; 00 00 ends the list.
-        var codes = new List<ModuleDtc>();
-        foreach (var frame in frames)
-        {
-            if (frame.Length < 5 || frame[0] != 0x81)
-                continue;
-
-            var high = frame[1];
-            var low = frame[2];
-            if (high == 0 && low == 0)
-                continue;
-
-            var status = frame[4];
-            codes.Add(new ModuleDtc
-            {
-                Code = FormatCode(high, low),
-                FailureType = frame[3],
-                StatusByte = status,
-                Active = (status & 0x01) != 0 || (status & 0x02) != 0,
-                Confirmed = (status & 0x08) != 0 || (status & 0x01) == 0,
-                Pending = false
-            });
-        }
-
-        return Distinct(codes);
-    }
-
-    internal static string FormatCode(byte high, byte low)
-    {
-        var letter = (high >> 6) switch { 0 => 'P', 1 => 'C', 2 => 'B', _ => 'U' };
-        return $"{letter}{(high >> 4) & 0x03}{high & 0x0F:X}{low >> 4:X}{low & 0x0F:X}";
-    }
-
-    private static List<ModuleDtc> Distinct(List<ModuleDtc> codes) =>
-        codes
-            .GroupBy(code => (code.Code, code.FailureType))
-            .Select(group => group.First())
-            .ToList();
+    internal static string FormatCode(byte high, byte low) => ModuleDtcParsers.FormatCode(high, low);
 
     // ------------------------------------------------------------------
     // Descriptions from the offline catalog

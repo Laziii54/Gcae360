@@ -22,7 +22,10 @@ public enum OdometerDecodeFailure
     TooShort,
     BadScaling,
     NotAvailable,
-    Implausible
+    Implausible,
+
+    /// <summary>Frames came back, but only from another module's reply id: not this module's answer.</summary>
+    ForeignReply
 }
 
 public sealed record OdometerDecodeResult(
@@ -43,9 +46,18 @@ public static class OdometerResponseDecoder
     private static readonly IsoTpReassembler IsoTp = new();
 
     /// <summary>The data bytes that follow "(service+0x40) identifier", or null when the reply is not that positive reply.</summary>
-    public static byte[]? ExtractPayload(string? raw, int serviceId, int identifier, int? receiveCanId, out OdometerDecodeFailure failure)
+    public static byte[]? ExtractPayload(string? raw, int serviceId, int identifier, int? receiveCanId, out OdometerDecodeFailure failure) =>
+        ExtractPayload(raw, serviceId, identifier, receiveCanId, out failure, out _);
+
+    /// <param name="responderCanId">
+    /// The CAN id the accepted frames came from, when the adapter printed ids. With a known <paramref name="receiveCanId"/>
+    /// only that id is accepted; without one, any responder that echoes the identifier is accepted and named here so the
+    /// caller does not attribute the value to the module that was merely addressed.
+    /// </param>
+    public static byte[]? ExtractPayload(string? raw, int serviceId, int identifier, int? receiveCanId, out OdometerDecodeFailure failure, out int? responderCanId)
     {
         failure = OdometerDecodeFailure.None;
+        responderCanId = null;
         if (string.IsNullOrWhiteSpace(raw))
         {
             failure = OdometerDecodeFailure.NoReply;
@@ -58,19 +70,32 @@ public static class OdometerResponseDecoder
             return null;
         }
 
+        // A reply that carries ids, none of them the asked module's, belongs to somebody else.
+        if (ObdResponseParser.IsOnlyFromOtherModules(raw, receiveCanId, out var senders))
+        {
+            failure = OdometerDecodeFailure.ForeignReply;
+            responderCanId = senders[0];
+            return null;
+        }
+
         var positive = (byte)(serviceId + 0x40);
         var idBytes = serviceId == 0x21
             ? new[] { (byte)identifier }
             : new[] { (byte)(identifier >> 8), (byte)identifier };
 
-        var candidates = new List<IReadOnlyList<byte[]>>();
+        var candidates = new List<(int? Id, IReadOnlyList<byte[]> Frames)>();
         if (receiveCanId.HasValue)
-            candidates.Add(ObdResponseParser.ParseCanFrames(raw, receiveCanId.Value));
-        foreach (var id in ObdResponseParser.ExtractCanIdentifiers(raw))
-            candidates.Add(ObdResponseParser.ParseCanFrames(raw, id));
-        candidates.Add(ObdResponseParser.ParseCanFrames(raw));
+        {
+            candidates.Add((receiveCanId.Value, ObdResponseParser.ParseCanFrames(raw, receiveCanId.Value)));
+        }
+        else
+        {
+            foreach (var id in ObdResponseParser.ExtractCanIdentifiers(raw))
+                candidates.Add((id, ObdResponseParser.ParseCanFrames(raw, id)));
+            candidates.Add((null, ObdResponseParser.ParseCanFrames(raw)));
+        }
 
-        foreach (var frames in candidates)
+        foreach (var (candidateId, frames) in candidates)
         {
             if (frames.Count == 0 || frames[0].Length == 0)
                 continue;
@@ -88,10 +113,13 @@ public static class OdometerResponseDecoder
             }
 
             if (Matches(message, positive, idBytes, out var data))
+            {
+                responderCanId = candidateId;
                 return data;
+            }
         }
 
-        // Adapter already removed the framing.
+        // Adapter already removed the framing (no ids printed at all).
         if (Matches(ObdResponseParser.ParseHex(raw), positive, idBytes, out var plain))
             return plain;
 
@@ -108,6 +136,25 @@ public static class OdometerResponseDecoder
 
         failure = OdometerDecodeFailure.NotPositiveForRequest;
         return null;
+    }
+
+    /// <summary>
+    /// true when the CAN id that answered cannot be the module that was addressed. With a known reply id that is any other id.
+    /// Without one, ISO 15765-4 still fixes the pairs 0x7E0–0x7E7 → +8, and the ids 0x7E8–0x7EF belong to those OBD ECUs: a
+    /// request to any other address (e.g. an instrument cluster at 0x7C0) answered from 0x7E8 came from the engine/OBD ECU.
+    /// Functional requests (0x7DF) and 29-bit ids are not judged.
+    /// </summary>
+    public static bool IsResponderForeign(int transmitCanId, int? expectedReceiveCanId, int? responderCanId)
+    {
+        if (responderCanId is not { } responder || responder > 0x7FF || transmitCanId > 0x7FF)
+            return false;
+        if (expectedReceiveCanId is { } expected)
+            return responder != expected;
+        if (transmitCanId == 0x7DF)
+            return false;
+        if (transmitCanId is >= 0x7E0 and <= 0x7E7)
+            return responder != transmitCanId + 8;
+        return responder is >= 0x7E8 and <= 0x7EF;
     }
 
     private static bool Matches(byte[] bytes, byte positive, byte[] idBytes, out byte[] data)

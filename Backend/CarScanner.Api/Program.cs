@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using CarScanner.Api.Services;
+using CarScanner.Api.Services.Email;
 using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
@@ -17,6 +18,11 @@ builder.Services.AddSingleton<EntitlementStore>();
 builder.Services.AddSingleton<AccountStore>();
 builder.Services.AddSingleton<WebhookEventStore>();
 builder.Services.AddSingleton<StoreVerificationService>();
+// Email verification: server settings only (SMTP host/user/password, sender address). Nothing is sent until they are set.
+builder.Services.AddSingleton<EmailVerificationStore>();
+builder.Services.AddSingleton(sp => EmailOptions.From(sp.GetRequiredService<IConfiguration>()));
+builder.Services.AddSingleton<IEmailSender>(sp => new SmtpEmailSender(sp.GetRequiredService<EmailOptions>()));
+builder.Services.AddSingleton<EmailVerificationService>();
 builder.Services.AddSingleton<CrashReportStore>();
 builder.Services.AddSingleton<VinDataService>();
 builder.Services.AddSingleton<WebImageSearchService>();
@@ -398,7 +404,8 @@ app.MapPost(
     async (
         AccountRequest request,
         HttpContext http,
-        AccountStore accounts) =>
+        AccountStore accounts,
+        EmailVerificationService emailVerification) =>
     {
         var rateKey =
             "account-register:" +
@@ -414,6 +421,17 @@ app.MapPost(
                 StatusCodes.Status429TooManyRequests);
         }
 
+        // A malformed address never creates an account (the app checks too, but the server decides).
+        if (!CarScanner.Services.EmailAddressRules.IsValidForRegistration(request.Email))
+        {
+            return Results.BadRequest(
+                new
+                {
+                    success = false,
+                    message = "A valid email address is required."
+                });
+        }
+
         try
         {
             var deviceId =
@@ -427,17 +445,51 @@ app.MapPost(
                     deviceId,
                     http.RequestAborted);
 
-            // Same 409 the app already handles, but the text does not
-            // confirm that the e-mail is registered.
-            return result is null
-                ? Results.Conflict(
+            if (result is null)
+            {
+                // Same 409 the app already handles, but the text does not
+                // confirm that the e-mail is registered. No email is sent.
+                return Results.Conflict(
                     new
                     {
                         success = false,
                         message =
                             "Could not create the account. If you already have one, sign in."
-                    })
-                : Results.Ok(result);
+                    });
+            }
+
+            // The account exists and signing in works as before; the verification email is sent in the background
+            // and its failure never affects registration. "emailVerification" tells the app what to expect.
+            var verificationState = "unavailable";
+            if (emailVerification.Enabled)
+            {
+                var language = http.Request.Headers["X-GCS-Language"].ToString();
+                try
+                {
+                    // Wait for the mail server's answer (at most 10 s) so the app can say "sent" only when it was.
+                    using var sendTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    var outcome = await emailVerification.SendAsync(result.AccountId, result.Email, language, sendTimeout.Token);
+                    verificationState = outcome.Status == VerificationSendStatus.Sent ? "sent" : "failed";
+                }
+                catch (OperationCanceledException)
+                {
+                    verificationState = "failed";
+                }
+                catch
+                {
+                    verificationState = "failed";
+                }
+            }
+
+            return Results.Ok(
+                new
+                {
+                    result.AccountId,
+                    result.Email,
+                    result.AccessToken,
+                    result.ExpiresAt,
+                    emailVerification = verificationState
+                });
         }
         catch (ArgumentException ex)
         {
@@ -448,6 +500,132 @@ app.MapPost(
                     message = ex.Message
                 });
         }
+    });
+
+// ---- email verification (signed-in account, same headers as the other account calls) ----
+
+app.MapGet(
+    "/api/accounts/email/status",
+    async (HttpContext http, AccountStore accounts, EmailVerificationService emailVerification, IConfiguration config) =>
+    {
+        var account = await accounts.ResolveAsync(
+            http.Request.Headers.Authorization.ToString(),
+            http.Request.Headers["X-GCS-Device-Id"].ToString(),
+            http.RequestAborted);
+        if (account is null)
+            return Results.Unauthorized();
+
+        return Results.Ok(new
+        {
+            verified = await emailVerification.Store.IsVerifiedAsync(account.AccountId, http.RequestAborted),
+            canSend = emailVerification.Enabled,
+            required = EmailVerificationGate.IsEnforced(emailVerification, config)
+        });
+    });
+
+// Sends a new code (replaces the old one). One per minute and five per hour per account.
+app.MapPost(
+    "/api/accounts/email/send-code",
+    async (HttpContext http, AccountStore accounts, EmailVerificationService emailVerification) =>
+    {
+        var account = await accounts.ResolveAsync(
+            http.Request.Headers.Authorization.ToString(),
+            http.Request.Headers["X-GCS-Device-Id"].ToString(),
+            http.RequestAborted);
+        if (account is null)
+            return Results.Unauthorized();
+
+        if (!RateWindow.TryConsume("email-send-ip:" + AdminService.ClientIp(http), DateTimeOffset.UtcNow, 20, TimeSpan.FromHours(1)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        var outcome = await emailVerification.SendAsync(
+            account.AccountId,
+            account.Email,
+            http.Request.Headers["X-GCS-Language"].ToString(),
+            http.RequestAborted);
+
+        return outcome.Status switch
+        {
+            VerificationSendStatus.Sent => Results.Ok(new { status = "sent" }),
+            VerificationSendStatus.AlreadyVerified => Results.Ok(new { status = "already_verified" }),
+            VerificationSendStatus.NotConfigured => Results.Json(new { status = "unavailable" }, statusCode: StatusCodes.Status503ServiceUnavailable),
+            VerificationSendStatus.Cooldown or VerificationSendStatus.HourlyLimit => Results.Json(
+                new
+                {
+                    status = outcome.Status == VerificationSendStatus.Cooldown ? "cooldown" : "hourly_limit",
+                    retryAfterSeconds = outcome.RetryAfter is { } at ? Math.Max(1, (int)Math.Ceiling((at - DateTimeOffset.UtcNow).TotalSeconds)) : 60
+                },
+                statusCode: StatusCodes.Status429TooManyRequests),
+            _ => Results.Json(new { status = "send_failed" }, statusCode: StatusCodes.Status502BadGateway)
+        };
+    });
+
+// Body {"code":"123456"}. The code is the one in the email; five wrong tries burn it.
+app.MapPost(
+    "/api/accounts/email/verify",
+    async (EmailCodeRequest? request, HttpContext http, AccountStore accounts, EmailVerificationService emailVerification) =>
+    {
+        var account = await accounts.ResolveAsync(
+            http.Request.Headers.Authorization.ToString(),
+            http.Request.Headers["X-GCS-Device-Id"].ToString(),
+            http.RequestAborted);
+        if (account is null)
+            return Results.Unauthorized();
+
+        if (!RateWindow.TryConsume("email-verify:" + account.AccountId, DateTimeOffset.UtcNow, 30, TimeSpan.FromHours(1)) ||
+            !RateWindow.TryConsume("email-verify-ip:" + AdminService.ClientIp(http), DateTimeOffset.UtcNow, 60, TimeSpan.FromHours(1)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        var result = await emailVerification.Store.VerifyCodeAsync(account.AccountId, request?.Code, http.RequestAborted);
+        return result is VerifyResult.Verified or VerifyResult.AlreadyVerified
+            ? Results.Ok(new { verified = true })
+            : Results.BadRequest(new
+            {
+                verified = false,
+                reason = result switch
+                {
+                    VerifyResult.Expired => "expired",
+                    VerifyResult.TooManyAttempts => "too_many_attempts",
+                    VerifyResult.NoPendingCode => "no_code",
+                    _ => "invalid"
+                }
+            });
+    });
+
+// The button in the email. Opening the link only shows a confirmation button; the POST below verifies, so a mail
+// scanner that pre-fetches the link cannot use up the one-time token.
+app.MapGet(
+    "/verify-email",
+    (HttpContext http) =>
+    {
+        http.Response.Headers.CacheControl = "no-store";
+        var token = http.Request.Query["t"].ToString();
+        var lang = http.Request.Query["l"].ToString();
+        return Results.Content(
+            VerificationEmailTemplate.RenderLinkPage(lang, string.IsNullOrWhiteSpace(token) ? VerificationEmailTemplate.LinkPageKind.Failed : VerificationEmailTemplate.LinkPageKind.Confirm, token),
+            "text/html; charset=utf-8");
+    });
+
+app.MapPost(
+    "/verify-email",
+    async (HttpContext http, EmailVerificationService emailVerification) =>
+    {
+        http.Response.Headers.CacheControl = "no-store";
+        if (!RateWindow.TryConsume("email-link:" + AdminService.ClientIp(http), DateTimeOffset.UtcNow, 30, TimeSpan.FromHours(1)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        string token = string.Empty, lang = string.Empty;
+        if (http.Request.HasFormContentType)
+        {
+            var form = await http.Request.ReadFormAsync(http.RequestAborted);
+            token = form["t"].ToString();
+            lang = form["l"].ToString();
+        }
+
+        var result = await emailVerification.Store.VerifyLinkAsync(token, http.RequestAborted);
+        return Results.Content(
+            VerificationEmailTemplate.RenderLinkPage(lang, result == VerifyResult.Verified ? VerificationEmailTemplate.LinkPageKind.Done : VerificationEmailTemplate.LinkPageKind.Failed, null),
+            "text/html; charset=utf-8");
     });
 
 app.MapPost(
@@ -1532,6 +1710,7 @@ app.MapPost(
         AccountStore accounts,
         EntitlementStore store,
         WebPaymentService payments,
+        EmailVerificationService emailVerification,
         CancellationToken ct) =>
     {
         var ip = AdminService.ClientIp(http);
@@ -1555,6 +1734,11 @@ app.MapPost(
             EmailThrottle.Failed(request.Email);
             return Results.Json(new { success = false, code = "INVALID_LOGIN" }, statusCode: StatusCodes.Status401Unauthorized);
         }
+
+        // Starting a new payment needs a verified email. Existing subscriptions, their renewals and store purchases
+        // are not affected (they do not go through this route).
+        if (!await EmailVerificationGate.IsSatisfiedAsync(emailVerification, config, account.AccountId, ct))
+            return EmailVerificationGate.Refusal();
 
         if (ProductCatalog.RequiresVinSubscription(request.ProductId))
         {
@@ -2522,6 +2706,7 @@ app.MapPost(
         AccountStore accounts,
         FullHistoryService full,
         WebPaymentService payments,
+        EmailVerificationService emailVerification,
         CancellationToken ct) =>
     {
         vin = (vin ?? string.Empty).Trim().ToUpperInvariant();
@@ -2535,8 +2720,14 @@ app.MapPost(
         if (!RateWindow.TryConsume("full-checkout:" + account.AccountId, DateTimeOffset.UtcNow, 10, TimeSpan.FromMinutes(15)))
             return Results.Json(new { success = false, code = "TOO_MANY" }, statusCode: StatusCodes.Status429TooManyRequests);
 
+        // A report that was already bought opens as before, verified or not.
         if (await full.GetSavedAsync(account.AccountId, vin, ct) is not null)
             return Results.Ok(new { success = true, purchased = true });
+
+        // Buying a new one needs a verified email (the owner account's own perks are not a purchase).
+        if (!AdminAccess.HasPerks(account.AccountId, account.Email) &&
+            !await EmailVerificationGate.IsSatisfiedAsync(emailVerification, config, account.AccountId, ct))
+            return EmailVerificationGate.Refusal();
 
         var check = await full.CheckAsync(vin, ct);
         if (!check.Available)
@@ -3428,6 +3619,8 @@ static async Task DeleteAccountDataAsync(
     await services.GetRequiredService<UsageStore>().ForgetAccountAsync(accountId, ct);
     await services.GetRequiredService<AdminService>().ForgetAccountAsync(accountId, ct);
 
+    await services.GetRequiredService<EmailVerificationStore>().DeleteAsync(accountId, ct);
+
     await services.GetRequiredService<AccountStore>().DeleteAsync(accountId, ct);
 }
 
@@ -3499,6 +3692,8 @@ record StoreVerifyRequest(
     string? OriginalTransactionId = null);
 
 record AccountRequest(string? Email, string? Password, bool? MoveDevice = null);
+
+record EmailCodeRequest(string? Code);
 
 record WebAccountDeleteRequest(string? Email, string? Password, string? Token);
 

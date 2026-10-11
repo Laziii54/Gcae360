@@ -103,7 +103,7 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
             var first = group.First();
             var method = $"0x{first.ServiceId:X2} 0x{first.Identifier:X4} @ {first.Header}";
 
-            (byte[]? Data, OdometerDecodeFailure Failure) reply;
+            (byte[]? Data, OdometerDecodeFailure Failure, int? Responder) reply;
             try
             {
                 reply = await ReadAsync(first, cancellationToken).ConfigureAwait(false);
@@ -127,7 +127,10 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
                     OdometerDecodeFailure.Negative => MileageAttemptOutcome.ReadingUnavailable,
                     OdometerDecodeFailure.NotPositiveForRequest => MileageAttemptOutcome.InvalidReading,
                     _ => MileageAttemptOutcome.ModuleNotResponding
-                }, reply.Failure.ToString(), assessment.Status, assessment.Reason));
+                }, reply.Failure == OdometerDecodeFailure.ForeignReply
+                    // Frames came back, but from another module: not an answer from the one that was asked.
+                    ? $"Reply came from 0x{reply.Responder:X3}, not from this module; not used."
+                    : reply.Failure.ToString(), assessment.Status, assessment.Reason));
                 continue;
             }
 
@@ -143,7 +146,7 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
                 if (decoded.Failure == OdometerDecodeFailure.Implausible && decoded.Km.HasValue)
                 {
                     // The module answered with a value nobody should believe: keep it visible for review, never use it.
-                    evidence.Add(Build(signal, decoded, method, MileageReadStatus.Implausible));
+                    evidence.Add(Build(signal, decoded, method, MileageReadStatus.Implausible, reply.Responder));
                     MileageTrace.Attempt(new MileageAttempt(Name, method, MileageAttemptOutcome.InvalidReading, "Implausible value.", assessment.Status, assessment.Reason));
                     decodedAny = true;
                     break;
@@ -155,7 +158,7 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
                     continue;
                 }
 
-                evidence.Add(Build(signal, decoded, method, MileageReadStatus.Ok));
+                evidence.Add(Build(signal, decoded, method, MileageReadStatus.Ok, reply.Responder));
                 MileageTrace.Add($"{method}: {decoded.Km:0} km");
                 MileageTrace.Attempt(new MileageAttempt(Name, method, MileageAttemptOutcome.Read, string.Empty, assessment.Status, assessment.Reason));
                 decodedAny = true;
@@ -176,9 +179,17 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
         return evidence;
     }
 
-    private MileageEvidence Build(OdometerSignal signal, OdometerDecodeResult decoded, string method, MileageReadStatus status) =>
-        new(Name, ModuleName(signal), decoded.Km ?? double.NaN, signal.ExactModel ? 0.8 : 0.7,
-            $"{signal.Address.Detail} · {signal.SignalName}")
+    private MileageEvidence Build(OdometerSignal signal, OdometerDecodeResult decoded, string method, MileageReadStatus status, int? responder)
+    {
+        // With a known reply id only that module is accepted (see OdometerResponseDecoder). Without one, the responder
+        // is whoever echoed the identifier: it is named, and the value is not credited to the module that was merely
+        // addressed when the standard ISO 15765-4 pair (request 0x7E0–0x7E7, reply +8) says it was somebody else.
+        var otherResponder = OdometerResponseDecoder.IsResponderForeign(
+            signal.Address.TransmitCanId, signal.Address.ReceiveCanId, responder);
+        var ecu = otherResponder ? $"ECU 0x{responder:X3} (request was addressed to {signal.Header})" : ModuleName(signal);
+        var detail = $"{signal.Address.Detail} · {signal.SignalName}" +
+                     (responder is { } from ? $" · reply from 0x{from:X3}" : string.Empty);
+        return new MileageEvidence(Name, ecu, decoded.Km ?? double.NaN, signal.ExactModel ? 0.8 : 0.7, detail)
         {
             Measurement = MileageMeasurement.TotalOdometer,
             Status = status,
@@ -187,6 +198,7 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
             SourceKind = MileageSourceKind.PublicDefinition,
             Method = method
         };
+    }
 
     // ------------------------------------------------------------------
     // Catalog
@@ -360,15 +372,15 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
     // Reading + decoding
     // ------------------------------------------------------------------
 
-    private async Task<(byte[]? Data, OdometerDecodeFailure Failure)> ReadAsync(OdometerSignal signal, CancellationToken token)
+    private async Task<(byte[]? Data, OdometerDecodeFailure Failure, int? Responder)> ReadAsync(OdometerSignal signal, CancellationToken token)
     {
         var request = signal.ServiceId == 0x21
             ? new byte[] { 0x21, (byte)signal.Identifier }
             : new byte[] { 0x22, (byte)(signal.Identifier >> 8), (byte)signal.Identifier };
 
         var raw = await _obd.ReadPhysicalCanReadOnlyAsync(signal.Address, request, RequestTimeout, token).ConfigureAwait(false);
-        var data = OdometerResponseDecoder.ExtractPayload(raw, signal.ServiceId, signal.Identifier, signal.Address.ReceiveCanId, out var failure);
-        return (data, failure);
+        var data = OdometerResponseDecoder.ExtractPayload(raw, signal.ServiceId, signal.Identifier, signal.Address.ReceiveCanId, out var failure, out var responder);
+        return (data, failure, responder);
     }
 
     // ------------------------------------------------------------------

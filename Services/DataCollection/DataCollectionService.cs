@@ -17,7 +17,8 @@ namespace CarScanner.Services.DataCollection;
 /// </summary>
 public sealed class DataCollectionService : IDisposable
 {
-    public const string ConsentKey = "data_collection_consent_v1";
+    /// <summary>The one consent switch (also the "granted" flag of <see cref="Consent"/>).</summary>
+    public const string ConsentKey = ConsentPolicy.GrantedKey;
 
     private readonly VehicleInfoService _vehicle;
     private readonly AccountService _account;
@@ -29,6 +30,7 @@ public sealed class DataCollectionService : IDisposable
     {
         _vehicle = vehicle;
         _account = account;
+        Consent = new ConsentPolicy(new PreferencesConsentStorage());
         _queue = new CollectionQueue(Path.Combine(FileSystem.AppDataDirectory, "ecu_collection_queue.json"));
         _pipeline = new CollectionPipeline(
             _queue,
@@ -49,7 +51,10 @@ public sealed class DataCollectionService : IDisposable
         }
     }
 
-    public bool IsEnabled => Preferences.Default.Get(ConsentKey, false);
+    /// <summary>The consent decision and its timestamps (granted, declined, withdrawn).</summary>
+    public ConsentPolicy Consent { get; }
+
+    public bool IsEnabled => Consent.IsGranted;
 
     public int PendingCount => _queue.Count;
 
@@ -62,13 +67,15 @@ public sealed class DataCollectionService : IDisposable
     /// <summary>Turns collection on or off. Turning it off always removes the queued data and the server copy.</summary>
     public async Task<bool> SetEnabledAsync(bool enabled, CancellationToken token = default)
     {
-        Preferences.Default.Set(ConsentKey, enabled);
         if (enabled)
         {
+            Consent.Grant();
             Subscribe();
             return true;
         }
 
+        // Withdrawal stops observing first, then clears the queue and asks the server to delete this device's data.
+        Consent.Revoke();
         Unsubscribe();
         return await _pipeline.DisableAsync(token).ConfigureAwait(false);
     }

@@ -1366,7 +1366,8 @@ public partial class HomeViewModel : BaseViewModel
     {
         try
         {
-            if (!_bluetooth.IsConnected) return;
+            // Opens without an adapter on purpose (saved backups, history, what is available and why); the page itself
+            // says "connect the adapter" and offers the button. Returning silently here left the tile looking broken.
             await Shell.Current.GoToAsync(nameof(Views.CodingPage));
         }
         catch (Exception commandException)

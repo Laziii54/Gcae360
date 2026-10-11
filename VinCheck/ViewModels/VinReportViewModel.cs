@@ -118,6 +118,17 @@ public partial class VinReportViewModel(
         try
         {
             var result = await service.StartFullCheckoutAsync(Report.Vin, CancellationToken.None);
+
+            // The server wants a verified email before a new purchase: walk the user through it, then try once more.
+            if (result.Code == "EMAIL_NOT_VERIFIED")
+            {
+                FullStatusText = "";
+                if (!await CarScanner.Services.EmailVerificationFlow.RunAsync(account, CarScanner.Services.EmailVerificationEntry.Restricted))
+                    return;
+                FullStatusText = VinText.T("FullOpening");
+                result = await service.StartFullCheckoutAsync(Report.Vin, CancellationToken.None);
+            }
+
             if (result.Purchased)
             {
                 FullStatusText = "";

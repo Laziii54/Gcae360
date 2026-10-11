@@ -6,36 +6,45 @@
     x:Class="CarScanner.Views.CodingPage"
     x:DataType="vm:CodingViewModel"
     BackgroundColor="{DynamicResource PageBg}"
-    Title="კოდირება">
+    Title="{Binding Title}">
 
     <ScrollView>
-        <VerticalStackLayout Padding="14,10,14,34" Spacing="8">
+        <!-- One centred column: full width on phones, a readable width on tablets. -->
+        <VerticalStackLayout Padding="16,12,16,34" Spacing="12" MaximumWidthRequest="720" HorizontalOptions="Fill">
             <Label Text="კოდირება" Style="{StaticResource PageTitleStyle}" />
-            <Label AutomationId="DynamicTextCodingVehicle" Text="{Binding VehicleText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
 
-            <!-- Safety -->
-            <Border Style="{StaticResource ListCardStyle}" Padding="14,12" BackgroundColor="{DynamicResource WarnBg}" Stroke="{DynamicResource WarnStroke}">
-                <VerticalStackLayout Spacing="4">
-                    <Label Text="⚠ როგორ ვიცავთ მანქანას" TextColor="{DynamicResource WarnTitle}" FontSize="14" FontAttributes="Bold" />
-                    <Label Text="• ჯერ ყოველთვის სრული სარეზერვო ასლი იქმნება." TextColor="{DynamicResource WarnText}" FontSize="12" />
-                    <Label Text="• იცვლება მხოლოდ ის, რაც ზუსტად ამ მოდელზე, წელზე და მოდულზეა შემოწმებული." TextColor="{DynamicResource WarnText}" FontSize="12" />
-                    <Label Text="• მანქანა უნდა იდგეს, ძრავი გამორთული, აკუმულატორი 12.2 V-ზე მეტი." TextColor="{DynamicResource WarnText}" FontSize="12" />
-                    <Label Text="• ჩაწერის შემდეგ მნიშვნელობა მოწმდება; შეუსაბამობისას ძველი ავტომატურად ბრუნდება." TextColor="{DynamicResource WarnText}" FontSize="12" />
-                    <Label Text="• ნებისმიერი ცვლილება ისტორიიდან ერთი შეხებით ბრუნდება." TextColor="{DynamicResource WarnText}" FontSize="12" />
-                </VerticalStackLayout>
-            </Border>
-
-            <!-- Progress -->
-            <Border Style="{StaticResource ListCardStyle}" Padding="14,10" IsVisible="{Binding IsBusy}">
-                <VerticalStackLayout Spacing="6">
-                    <ProgressBar Progress="{Binding Progress}" ProgressColor="{DynamicResource Primary}" />
-                    <Grid ColumnDefinitions="*,Auto">
-                        <Label AutomationId="DynamicTextCodingProgress" Text="{Binding ProgressText}" TextColor="{DynamicResource TextColor}" FontSize="12" VerticalOptions="Center" />
-                        <Button Grid.Column="1" Text="გაჩერება" Command="{Binding CancelCommand}" BackgroundColor="Transparent" TextColor="#C2372B" FontAttributes="Bold" FontSize="12" Padding="4,0" HeightRequest="44" MinimumHeightRequest="44" />
+            <!-- The car and the connection -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,12">
+                <VerticalStackLayout Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                        <VerticalStackLayout Spacing="2">
+                            <Label AutomationId="DynamicTextCodingVehicle" Text="{Binding VehicleText}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                            <Label Text="{Binding VinText}" FontSize="11.5" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                            <Label Text="{Binding ProtocolText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                        <Border Grid.Column="1" VerticalOptions="Start" Padding="9,4" StrokeThickness="0" StrokeShape="RoundRectangle 11" BackgroundColor="{Binding ConnectionBackground}">
+                            <Label Text="{Binding ConnectionChipText}" FontSize="11" FontAttributes="Bold" TextColor="{Binding ConnectionColor}" LineBreakMode="NoWrap" />
+                        </Border>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <Button Text="{Binding ConnectText}" Command="{Binding ConnectCommand}" IsVisible="{Binding IsConnected, Converter={StaticResource InverseBoolConverter}}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="44" MinimumHeightRequest="44" Grid.ColumnSpan="2" />
+                        <Button Text="{Binding RecheckText}" Command="{Binding RecheckCommand}" IsEnabled="{Binding IsNotBusy}" IsVisible="{Binding IsConnected}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="12" FontSize="13" HeightRequest="44" MinimumHeightRequest="44" Grid.ColumnSpan="2" />
                     </Grid>
                 </VerticalStackLayout>
             </Border>
-            <Label AutomationId="DynamicTextCodingResult" Text="{Binding ProgressText}" TextColor="{DynamicResource SubTextColor}" FontSize="12">
+
+            <!-- Progress: stays visible while something is running, can be stopped -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,10" IsVisible="{Binding IsBusy}">
+                <VerticalStackLayout Spacing="6">
+                    <ProgressBar Progress="{Binding Progress}" ProgressColor="{DynamicResource Primary}" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                        <ActivityIndicator IsRunning="{Binding IsBusy}" Color="{DynamicResource Primary}" WidthRequest="18" HeightRequest="18" VerticalOptions="Center" />
+                        <Label Grid.Column="1" AutomationId="DynamicTextCodingProgress" Text="{Binding ProgressText}" TextColor="{DynamicResource TextColor}" FontSize="12" VerticalOptions="Center" LineBreakMode="WordWrap" />
+                        <Button Grid.Column="2" Text="გაჩერება" Command="{Binding CancelCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource ErrText}" FontAttributes="Bold" FontSize="12" Padding="4,0" HeightRequest="44" MinimumHeightRequest="44" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+            <Label AutomationId="DynamicTextCodingResult" Text="{Binding ProgressText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap">
                 <Label.Triggers>
                     <DataTrigger TargetType="Label" Binding="{Binding IsBusy}" Value="True">
                         <Setter Property="IsVisible" Value="False" />
@@ -43,16 +52,75 @@
                 </Label.Triggers>
             </Label>
 
+            <!-- A failure, with the way to try again -->
+            <Border IsVisible="{Binding HasError}" Padding="14,12" BackgroundColor="{DynamicResource ErrBg}" Stroke="{DynamicResource ErrStroke}" StrokeThickness="1" StrokeShape="RoundRectangle 14">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="{Binding ErrorText}" TextColor="{DynamicResource ErrText}" FontSize="13" LineBreakMode="WordWrap" />
+                    <Button Text="{Binding RetryText}" Command="{Binding RetryCommand}" IsEnabled="{Binding IsNotBusy}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="44" MinimumHeightRequest="44" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Is the car ready? (read-only checks) -->
+            <Label Text="{Binding ReadinessCaption}" Style="{StaticResource SectionCaptionStyle}" />
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,10">
+                <VerticalStackLayout Spacing="6" BindableLayout.ItemsSource="{Binding ReadinessRows}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CodingCheckRow">
+                            <Grid ColumnDefinitions="22,*" ColumnSpacing="4">
+                                <Label Text="{Binding Mark}" FontSize="14" FontAttributes="Bold" TextColor="{Binding MarkColor}" HorizontalTextAlignment="Center" VerticalOptions="Start" />
+                                <Label Grid.Column="1" Text="{Binding Text}" FontSize="12.5" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                            </Grid>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- What works for THIS car, and why -->
+            <Label Text="{Binding FeaturesCaption}" Style="{StaticResource SectionCaptionStyle}" />
+            <Border Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding FeatureRows}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CodingFeatureRow">
+                            <VerticalStackLayout Spacing="0">
+                                <VerticalStackLayout Spacing="5" Padding="14,11">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <Label Text="{Binding Title}" FontSize="13.5" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" VerticalOptions="Center" />
+                                        <Border Grid.Column="1" Padding="8,3" StrokeThickness="0" StrokeShape="RoundRectangle 10" BackgroundColor="{Binding StateBackground}" VerticalOptions="Start">
+                                            <Label Text="{Binding StateText}" FontSize="10.5" FontAttributes="Bold" TextColor="{Binding StateColor}" LineBreakMode="WordWrap" HorizontalTextAlignment="Center" />
+                                        </Border>
+                                    </Grid>
+                                    <Label Text="{Binding Reason}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                </VerticalStackLayout>
+                                <BoxView Style="{StaticResource RowDividerStyle}" />
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Safety -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,12" BackgroundColor="{DynamicResource WarnBg}" Stroke="{DynamicResource WarnStroke}">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="⚠ როგორ ვიცავთ მანქანას" TextColor="{DynamicResource WarnTitle}" FontSize="14" FontAttributes="Bold" />
+                    <Label Text="• ჯერ ყოველთვის სრული სარეზერვო ასლი იქმნება." TextColor="{DynamicResource WarnText}" FontSize="12" LineBreakMode="WordWrap" />
+                    <Label Text="• იცვლება მხოლოდ ის, რაც ზუსტად ამ მოდელზე, წელზე და მოდულზეა შემოწმებული." TextColor="{DynamicResource WarnText}" FontSize="12" LineBreakMode="WordWrap" />
+                    <Label Text="• მანქანა უნდა იდგეს, ძრავი გამორთული, აკუმულატორი 12.2 V-ზე მეტი." TextColor="{DynamicResource WarnText}" FontSize="12" LineBreakMode="WordWrap" />
+                    <Label Text="• ჩაწერის შემდეგ მნიშვნელობა მოწმდება; შეუსაბამობისას ძველი ავტომატურად ბრუნდება." TextColor="{DynamicResource WarnText}" FontSize="12" LineBreakMode="WordWrap" />
+                    <Label Text="• ნებისმიერი ცვლილება ისტორიიდან ერთი შეხებით ბრუნდება." TextColor="{DynamicResource WarnText}" FontSize="12" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+
             <!-- Settings for this car -->
             <Label Text="ამ მანქანის პარამეტრები" Style="{StaticResource SectionCaptionStyle}" />
             <Border Style="{StaticResource ListCardStyle}" Padding="14,12" IsVisible="{Binding HasNoOptions}">
                 <VerticalStackLayout Spacing="5">
-                    <Label Text="ამ მანქანისთვის შემოწმებული პარამეტრი ჯერ არ არის." TextColor="{DynamicResource TextColor}" FontSize="13.5" FontAttributes="Bold" />
-                    <Label Text="ჩვენ არ ვწერთ არაფერს, რაც ზუსტად თქვენს მოდელზე არ არის გამოცდილი — ეს იცავს მოდულებს დაზიანებისგან. ასე დაგვეხმარებით დამატებაში:" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
-                    <Label Text="1. შექმენით სარეზერვო ასლი ქვემოთ." TextColor="{DynamicResource TextColor}" FontSize="12" />
-                    <Label Text="2. შეცვალეთ პარამეტრი მანქანის მენიუდან ან სერვისში." TextColor="{DynamicResource TextColor}" FontSize="12" />
-                    <Label Text="3. შექმენით მეორე ასლი და მონიშნეთ ორივე — ნახავთ, ზუსტად რა შეიცვალა." TextColor="{DynamicResource TextColor}" FontSize="12" />
-                    <Label Text="4. გაგვიზიარეთ ორივე ასლი — შემოწმების შემდეგ პარამეტრი აქ გამოჩნდება." TextColor="{DynamicResource TextColor}" FontSize="12" />
+                    <Label Text="ამ მანქანისთვის შემოწმებული პარამეტრი ჯერ არ არის." TextColor="{DynamicResource TextColor}" FontSize="13.5" FontAttributes="Bold" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding NoOptionsText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                    <Label Text="ჩვენ არ ვწერთ არაფერს, რაც ზუსტად თქვენს მოდელზე არ არის გამოცდილი — ეს იცავს მოდულებს დაზიანებისგან. ასე დაგვეხმარებით დამატებაში:" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                    <Label Text="1. შექმენით სარეზერვო ასლი ქვემოთ." TextColor="{DynamicResource TextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                    <Label Text="2. შეცვალეთ პარამეტრი მანქანის მენიუდან ან სერვისში." TextColor="{DynamicResource TextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                    <Label Text="3. შექმენით მეორე ასლი და მონიშნეთ ორივე — ნახავთ, ზუსტად რა შეიცვალა." TextColor="{DynamicResource TextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                    <Label Text="4. გაგვიზიარეთ ორივე ასლი — შემოწმების შემდეგ პარამეტრი აქ გამოჩნდება." TextColor="{DynamicResource TextColor}" FontSize="12" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
             <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasOptions}">
@@ -60,15 +128,17 @@
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="vm:CodingOptionRow">
                             <VerticalStackLayout Spacing="0">
-                                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6" Padding="12,10">
+                                <VerticalStackLayout Spacing="8" Padding="14,11">
                                     <VerticalStackLayout Spacing="2">
-                                        <Label AutomationId="DynamicTextCodingOptionTitle" Text="{Binding Title}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" />
-                                        <Label AutomationId="DynamicTextCodingOptionDescription" Text="{Binding Description}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" />
-                                        <Label AutomationId="DynamicTextCodingOptionCurrent" Text="{Binding CurrentText}" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" />
+                                        <Label AutomationId="DynamicTextCodingOptionTitle" Text="{Binding Title}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" LineBreakMode="WordWrap" />
+                                        <Label AutomationId="DynamicTextCodingOptionDescription" Text="{Binding Description}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" LineBreakMode="WordWrap" />
+                                        <Label AutomationId="DynamicTextCodingOptionCurrent" Text="{Binding CurrentText}" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" LineBreakMode="WordWrap" />
                                     </VerticalStackLayout>
-                                    <Button Grid.Column="1" Text="წაკითხვა" Command="{Binding ReadOptionCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" Padding="4,0" HeightRequest="44" MinimumHeightRequest="44" VerticalOptions="Center" />
-                                    <Button Grid.Column="2" Text="{Binding ChangeButtonText, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" Command="{Binding ChangeOptionCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="10" FontSize="12" Padding="10,0" HeightRequest="44" MinimumHeightRequest="44" VerticalOptions="Center" />
-                                </Grid>
+                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                        <Button Text="წაკითხვა" Command="{Binding ReadOptionCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" IsEnabled="{Binding IsNotBusy, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="10" FontSize="12" FontAttributes="Bold" HeightRequest="44" MinimumHeightRequest="44" />
+                                        <Button Grid.Column="1" Text="{Binding ChangeButtonText, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" Command="{Binding ChangeOptionCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" IsEnabled="{Binding IsNotBusy, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="10" FontSize="12" HeightRequest="44" MinimumHeightRequest="44" />
+                                    </Grid>
+                                </VerticalStackLayout>
                                 <BoxView Style="{StaticResource RowDividerStyle}" />
                             </VerticalStackLayout>
                         </DataTemplate>
@@ -78,18 +148,29 @@
 
             <!-- Backups -->
             <Label Text="სარეზერვო ასლები" Style="{StaticResource SectionCaptionStyle}" />
-            <Button Text="სრული სარეზერვო ასლის შექმნა" Command="{Binding CreateBackupCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="46" />
-            <Label Text="მხოლოდ კითხულობს ყველა მოდულს — მანქანაზე არაფერი იცვლება. შედარებისთვის შეეხეთ ორ ასლს." TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+            <Button Text="სრული სარეზერვო ასლის შექმნა" Command="{Binding CreateBackupCommand}" IsEnabled="{Binding IsNotBusy}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="46" MinimumHeightRequest="46" />
+            <Label Text="მხოლოდ კითხულობს ყველა მოდულს — მანქანაზე არაფერი იცვლება. შედარებისთვის შეეხეთ ორ ასლს." TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="WordWrap" />
+            <Button IsVisible="{Binding IsGmCar}" Text="{Binding ExtendedReadText}" Command="{Binding CreateExtendedBackupCommand}" IsEnabled="{Binding IsNotBusy}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="12" FontSize="13" HeightRequest="44" MinimumHeightRequest="44" />
+            <Label IsVisible="{Binding IsGmCar}" Text="{Binding ExtendedReadHelp}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="WordWrap" />
+
+            <!-- What the last backup actually got from the modules -->
+            <Border IsVisible="{Binding HasLastBackupSummary}" Style="{StaticResource ListCardStyle}" Padding="14,10">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="{Binding LastBackupCaption}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                    <Label Text="{Binding LastBackupSummary}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+
             <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasBackups}">
                 <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding Backups}">
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="vm:CodingBackupRow">
                             <VerticalStackLayout Spacing="0">
-                                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" Padding="12,9">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" Padding="14,10" RowDefinitions="Auto,Auto" RowSpacing="2">
                                     <Grid.GestureRecognizers>
                                         <TapGestureRecognizer Command="{Binding ToggleCompareCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" />
                                     </Grid.GestureRecognizers>
-                                    <Label Text="○" TextColor="{DynamicResource SubTextColor}" FontSize="18" VerticalOptions="Center">
+                                    <Label Text="○" TextColor="{DynamicResource SubTextColor}" FontSize="18" VerticalOptions="Start" Grid.RowSpan="2">
                                         <Label.Triggers>
                                             <DataTrigger TargetType="Label" Binding="{Binding IsSelected}" Value="True">
                                                 <Setter Property="Text" Value="●" />
@@ -97,12 +178,12 @@
                                             </DataTrigger>
                                         </Label.Triggers>
                                     </Label>
-                                    <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                                        <Label AutomationId="DynamicTextCodingBackupTitle" Text="{Binding Title}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" />
-                                        <Label AutomationId="DynamicTextCodingBackupDetail" Text="{Binding Detail}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
-                                    </VerticalStackLayout>
-                                    <Button Grid.Column="2" Text="გაზიარება" Command="{Binding ShareBackupCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" Padding="4,0" HeightRequest="44" MinimumHeightRequest="44" VerticalOptions="Center" />
-                                    <Button Grid.Column="3" Text="✕" Command="{Binding DeleteBackupCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="#C2372B" FontSize="13" Padding="4,0" HeightRequest="44" MinimumHeightRequest="44" WidthRequest="44" VerticalOptions="Center" />
+                                    <Label Grid.Column="1" AutomationId="DynamicTextCodingBackupTitle" Text="{Binding Title}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" LineBreakMode="WordWrap" />
+                                    <Label Grid.Column="1" Grid.Row="1" AutomationId="DynamicTextCodingBackupDetail" Text="{Binding Detail}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="WordWrap" />
+                                </Grid>
+                                <Grid ColumnDefinitions="*,Auto,Auto" Padding="14,0,10,6">
+                                    <Button Grid.Column="1" Text="გაზიარება" Command="{Binding ShareBackupCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" Padding="8,0" HeightRequest="44" MinimumHeightRequest="44" />
+                                    <Button Grid.Column="2" Text="✕" Command="{Binding DeleteBackupCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource ErrText}" FontSize="14" Padding="4,0" HeightRequest="44" MinimumHeightRequest="44" WidthRequest="44" />
                                 </Grid>
                                 <BoxView Style="{StaticResource RowDividerStyle}" />
                             </VerticalStackLayout>
@@ -110,18 +191,19 @@
                     </BindableLayout.ItemTemplate>
                 </VerticalStackLayout>
             </Border>
+            <Label IsVisible="{Binding HasBackups}" Text="{Binding ShareNoticeText}" TextColor="{DynamicResource SubTextColor}" FontSize="10.5" LineBreakMode="WordWrap" />
 
             <!-- Compare -->
-            <Label AutomationId="DynamicTextCodingCompare" Text="{Binding CompareText}" IsVisible="{Binding HasCompareText}" TextColor="{DynamicResource TextColor}" FontSize="12.5" FontAttributes="Bold" />
+            <Label AutomationId="DynamicTextCodingCompare" Text="{Binding CompareText}" IsVisible="{Binding HasCompareText}" TextColor="{DynamicResource TextColor}" FontSize="12.5" FontAttributes="Bold" LineBreakMode="WordWrap" />
             <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasDifferences}">
                 <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding Differences}">
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="vm:CodingDiffRow">
                             <VerticalStackLayout Spacing="0">
-                                <Grid ColumnDefinitions="*,Auto" Padding="12,8">
+                                <Grid ColumnDefinitions="*,Auto" Padding="14,8" ColumnSpacing="8">
                                     <VerticalStackLayout Spacing="1">
-                                        <Label AutomationId="DynamicTextCodingDiffModule" Text="{Binding Module}" TextColor="{DynamicResource TextColor}" FontSize="12.5" FontAttributes="Bold" />
-                                        <Label AutomationId="DynamicTextCodingDiffLocation" Text="{Binding Location}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                                        <Label AutomationId="DynamicTextCodingDiffModule" Text="{Binding Module}" TextColor="{DynamicResource TextColor}" FontSize="12.5" FontAttributes="Bold" LineBreakMode="WordWrap" />
+                                        <Label AutomationId="DynamicTextCodingDiffLocation" Text="{Binding Location}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="WordWrap" />
                                     </VerticalStackLayout>
                                     <Label Grid.Column="1" AutomationId="DynamicTextCodingDiffChange" Text="{Binding Change}" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" FontFamily="monospace" VerticalOptions="Center" />
                                 </Grid>
@@ -139,12 +221,12 @@
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="vm:CodingHistoryRow">
                             <VerticalStackLayout Spacing="0">
-                                <Grid ColumnDefinitions="*,Auto" Padding="12,9" ColumnSpacing="8">
+                                <Grid ColumnDefinitions="*,Auto" Padding="14,9" ColumnSpacing="8">
                                     <VerticalStackLayout Spacing="1">
-                                        <Label AutomationId="DynamicTextCodingHistoryTitle" Text="{Binding Title}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" />
-                                        <Label AutomationId="DynamicTextCodingHistoryDetail" Text="{Binding Detail}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                                        <Label AutomationId="DynamicTextCodingHistoryTitle" Text="{Binding Title}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" LineBreakMode="WordWrap" />
+                                        <Label AutomationId="DynamicTextCodingHistoryDetail" Text="{Binding Detail}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="WordWrap" />
                                     </VerticalStackLayout>
-                                    <Button Grid.Column="1" Text="აღდგენა" IsVisible="{Binding CanRestore}" Command="{Binding RestoreCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="#C2372B" FontSize="12" FontAttributes="Bold" Padding="4,0" HeightRequest="44" MinimumHeightRequest="44" VerticalOptions="Center" />
+                                    <Button Grid.Column="1" Text="აღდგენა" IsVisible="{Binding CanRestore}" Command="{Binding RestoreCommand, x:DataType=vm:CodingViewModel, Source={RelativeSource AncestorType={x:Type vm:CodingViewModel}}}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource ErrText}" FontSize="12" FontAttributes="Bold" Padding="4,0" HeightRequest="44" MinimumHeightRequest="44" VerticalOptions="Center" />
                                 </Grid>
                                 <BoxView Style="{StaticResource RowDividerStyle}" />
                             </VerticalStackLayout>

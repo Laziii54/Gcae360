@@ -104,6 +104,21 @@ public sealed class AdapterPathCollectionTests : IDisposable
     }
 
     [Fact]
+    public async Task AReplyFromADifferentModuleThanAsked_IsRecordedUnderTheRealSender()
+    {
+        var rig = await SetupAsync();
+        // asked 7E1 (expects 7E9) but the frames carry 7E8
+        rig.Sim.ModuleAnswers["7E1|221940"] = "7E8 04 62 19 40 44";
+
+        await rig.Obd.ReadPhysicalCanReadOnlyAsync(new ServiceDiagnosticAddress(0x7E1, 0x7E9, false, null, "11-bit CAN", "t"),
+            new byte[] { 0x22, 0x19, 0x40 }, TimeSpan.FromSeconds(1));
+
+        var item = Assert.Single(await CollectedAsync(rig));
+        Assert.Equal(0x7E1, item.TxCanId);
+        Assert.Equal(0x7E8, item.RxCanId);      // not 0x7E9: the answer did not come from the module that was addressed
+    }
+
+    [Fact]
     public async Task ReadServices19And21_AreCollectedToo()
     {
         var rig = await SetupAsync();

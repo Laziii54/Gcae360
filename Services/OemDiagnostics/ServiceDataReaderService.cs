@@ -1726,6 +1726,10 @@ public sealed partial class ServiceDataReaderService
         if (string.IsNullOrWhiteSpace(raw) || ObdResponseParser.IsNegative(raw))
             return false;
 
+        // Frames from another module (e.g. the engine ECU answering for a different address) are not this module's reply.
+        if (ObdResponseParser.IsOnlyFromOtherModules(raw, expectedReceiveCanId, out _))
+            return false;
+
         if (expectedReceiveCanId.HasValue)
         {
             var frames = ObdResponseParser.ParseCanFrames(raw, expectedReceiveCanId.Value);

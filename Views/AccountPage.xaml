@@ -56,6 +56,15 @@
                 </VerticalStackLayout>
             </Border>
 
+            <!-- Email verification: status and "verify" for the signed-in account (shown only when the server can send email) -->
+            <Border x:Name="VerifyCard" Style="{StaticResource ListCardStyle}" Padding="14,12" IsVisible="False">
+                <VerticalStackLayout Spacing="8">
+                    <Label x:Name="VerifyStatusLabel" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                    <Button x:Name="VerifyEmailButton" Clicked="OnVerifyEmailClicked"
+                            Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="44" FontSize="14" />
+                </VerticalStackLayout>
+            </Border>
+
             <!-- Delete account (App Store 5.1.1(v)): only when signed in -->
             <Border x:Name="DeleteCard" Style="{StaticResource ListCardStyle}" Padding="14,12">
                 <VerticalStackLayout Spacing="6">

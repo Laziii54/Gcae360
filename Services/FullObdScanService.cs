@@ -224,6 +224,7 @@ public sealed class FullObdScanService
             FreezeFrames = freezeFrames,
             Modules = modules.Modules.ToList(),
             ModulesChecked = modules.ModulesChecked,
+            ModuleProbes = modules.Probes,
             ModuleScanNote = modules.Note,
             Notes = "Generic OBD-II scan. Manufacturer-specific modules require supported OEM profiles. " + adapter.OverallStatus + (voltage == null ? " Battery voltage: unavailable." : $" Battery voltage: {voltage.Value} {voltage.Unit}.") + (notes.Count == 0 ? string.Empty : " | " + string.Join(" | ", notes))
         };

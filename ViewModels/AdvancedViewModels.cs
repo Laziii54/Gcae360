@@ -4963,6 +4963,12 @@ public partial class ModuleScanViewModel : BaseViewModel
                         ? "No description in the database (manufacturer-specific code)."
                         : "ამ კოდის აღწერა ბაზაში ვერ მოიძებნა (მწარმოებლის სპეციფიკური კოდი).";
 
+                // The letter code is the module's bytes written in SAE style; keep the bytes themselves visible.
+                if (!string.IsNullOrWhiteSpace(code.RawBytesHex))
+                    title += english
+                        ? $"\nModule bytes: {code.RawBytesHex} · status 0x{code.StatusByte:X2}"
+                        : $"\nმოდულის ბაიტები: {code.RawBytesHex} · სტატუსი 0x{code.StatusByte:X2}";
+
                 if (code.Snapshot.Count > 0)
                 {
                     var snapshot = string.Join(" · ", code.Snapshot.Select(value =>
@@ -4990,12 +4996,19 @@ public partial class ModuleScanViewModel : BaseViewModel
             ModuleRows.Add(new ModuleStatusRow
             {
                 Name = name,
-                StatusText = module.Protocol == "—"
+                StatusText = !module.CodeListComplete
+                    // A cut-off reply is neither "no faults" nor a full list.
+                    ? (english
+                        ? $"answered, code list incomplete{(total == 0 ? string.Empty : $" · {total} fault(s) received")}"
+                        : $"პასუხი არასრულია{(total == 0 ? string.Empty : $" · მიღებულია {total} შეცდომა")}")
+                    : module.Protocol == "—"
                     ? (english ? "answers, no code list" : "პასუხობს, კოდებს არ აჩვენებს")
                     : total == 0
                         ? (english ? "no faults" : "შეცდომა არ არის")
                         : (english ? $"{total} fault(s)" : $"{total} შეცდომა"),
-                StatusColor = module.Protocol == "—"
+                StatusColor = !module.CodeListComplete
+                    ? Color.FromArgb("#F59E0B")
+                    : module.Protocol == "—"
                     ? Color.FromArgb("#94A3B8")
                     : total == 0 ? Color.FromArgb("#16A34A") : Color.FromArgb("#EF4444"),
                 Detail = string.Join(" · ", new[]
@@ -5006,7 +5019,12 @@ public partial class ModuleScanViewModel : BaseViewModel
                         : null,
                     string.IsNullOrWhiteSpace(module.SoftwareVersion)
                         ? null
-                        : (english ? "Software " : "პროგრამა ") + module.SoftwareVersion
+                        : (english ? "Software " : "პროგრამა ") + module.SoftwareVersion,
+                    // The name comes from our address table, not from the module itself.
+                    module.NameBasis == "address-table" && string.IsNullOrWhiteSpace(module.EcuName)
+                        ? (english ? "name from address table (not confirmed by the module)" : "სახელი მისამართების ცხრილიდანაა (მოდულს არ დაუდასტურებია)")
+                        : null,
+                    string.IsNullOrWhiteSpace(module.Diagnostics) ? null : module.Diagnostics
                 }.Where(item => !string.IsNullOrWhiteSpace(item)))
             });
         }

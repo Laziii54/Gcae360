@@ -124,6 +124,18 @@ public static class ObdResponseParser
         return headerless.Length == 0 ? Array.Empty<byte[]>() : new[] { headerless };
     }
 
+    /// <summary>
+    /// True when a physically addressed request got frames, all of them from other CAN ids than the module's reply id
+    /// (typically the engine ECU's 0x7E8 delivered for another module's request, as seen in real captures). Such a reply
+    /// is not that module's answer: a positive reply echoing the same identifier proves nothing about who sent it.
+    /// Always false when no reply id is expected or when the adapter printed no ids (headers off).
+    /// </summary>
+    public static bool IsOnlyFromOtherModules(string? raw, int? expectedCanId, out IReadOnlyList<int> senders)
+    {
+        senders = string.IsNullOrWhiteSpace(raw) ? Array.Empty<int>() : ExtractCanIdentifiers(raw);
+        return expectedCanId.HasValue && senders.Count > 0 && !senders.Contains(expectedCanId.Value);
+    }
+
     /// <summary>Returns only the CAN identifiers printed by ATH1. Data bytes
     /// are two digits and therefore cannot be confused with 3/8-digit IDs.</summary>
     public static IReadOnlyList<int> ExtractCanIdentifiers(string raw)

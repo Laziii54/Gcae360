@@ -167,6 +167,7 @@ const renew=document.getElementById('renew'),bank=document.getElementById('bank'
 const intl=document.documentElement.classList.contains('is-intl');
 const tr=(ka,en)=>intl?en:ka;
 const errors={INVALID_LOGIN:tr('ელ-ფოსტა ან პაროლი არასწორია.','Wrong e-mail or password.'),
+EMAIL_NOT_VERIFIED:tr('ჯერ დაადასტურე ელფოსტა GCar360 აპლიკაციაში (ანგარიში), შემდეგ სცადე ხელახლა.','Verify your email in the GCar360 app (Account) first, then try again.'),
 VIN_PLAN_REQUIRED:tr('+5 და +10 პაკეტი მხოლოდ VIN PRO ან სრული PRO გეგმითაა.','Packs need VIN PRO or Full PRO.'),
 AUTO_RENEW_UNAVAILABLE:tr('ყოველთვიური გადახდა ახლა ვერ ჩაირთო. აირჩიე „ერთჯერადი“.','Monthly payment is unavailable right now. Choose one-time.'),
 NOT_AVAILABLE:tr('გადახდა დროებით მიუწვდომელია.','Payments are temporarily unavailable.'),

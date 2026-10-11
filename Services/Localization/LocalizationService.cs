@@ -2660,11 +2660,26 @@ public sealed partial class LocalizationService
 
     private static LocalizationService? _current;
 
+    private static bool _displayTranslationRegistered;
+
     public static void RegisterDisplayTranslation()
     {
         // OBD definitions/records (platform-independent) ask the language through this hook.
         // Every language except Georgian uses the English texts as its base.
         CarScanner.Services.OBD.ObdLang.IsEnglishProvider = static () => LanguageCatalog.UsesEnglishBase;
+
+        if (_displayTranslationRegistered)
+            return;
+        _displayTranslationRegistered = true;
+
+        // ROOT CAUSE of "only some texts follow the language": MAUI's Label has a static constructor that runs
+        // RemapForControls(), which REPLACES the handler's Text mapping (ReplaceMapping(nameof(Text), MapText)). That
+        // constructor runs the first time Label is used, i.e. after this method when it is called from MauiProgram, and
+        // it silently discarded the action appended below, so Label text was never translated (Entry placeholders and
+        // view-model L(...) texts were, because they do not depend on this hook). Running the type initializers first
+        // makes the append land on top of the final mapping. Button gets the same treatment.
+        System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(Label).TypeHandle);
+        System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(Button).TypeHandle);
 
 #if ANDROID
         Microsoft.Maui.Handlers.LabelHandler.Mapper.AppendToMapping(nameof(Label.Text), (handler, view) =>

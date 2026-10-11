@@ -137,6 +137,7 @@
                         <Label Text="{Binding DataCollectionTitle}" Style="{StaticResource RowTitleStyle}" LineBreakMode="WordWrap" />
                         <CheckBox Grid.Column="1" IsChecked="{Binding DataCollectionEnabled}" VerticalOptions="Center" />
                     </Grid>
+                    <Label Text="{Binding DataCollectionStatus}" FontSize="12.5" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
                     <Label Text="{Binding DataCollectionInfo}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>

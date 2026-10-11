@@ -79,6 +79,106 @@ public sealed class AccountService
 
     public event EventHandler? AccountChanged;
 
+    /// <summary>
+    /// What the server said about the verification email right after a registration: "sent" (the mail server accepted
+    /// it), "failed" (it could not be sent) or "unavailable" (the server cannot send email). Null for a sign-in.
+    /// </summary>
+    public string? EmailVerificationState { get; private set; }
+
+    /// <summary>Whether this account's email is verified, whether a code can be sent, and whether the server asks for it.</summary>
+    public async Task<EmailVerificationStatus?> GetEmailStatusAsync(CancellationToken token = default)
+    {
+        try
+        {
+            using var request = await CreateAuthorizedRequestAsync(HttpMethod.Get, "/api/accounts/email/status");
+            using var response = await _http.SendAsync(request, token);
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var body = await response.Content.ReadFromJsonAsync<EmailStatusResponse>(cancellationToken: token);
+            return body is null ? null : new EmailVerificationStatus(body.Verified == true, body.CanSend == true, body.Required == true);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Asks the server to send a (new) verification code. The server limits this to one per minute.</summary>
+    public async Task<AccountActionResult> SendEmailCodeAsync(CancellationToken token = default)
+    {
+        try
+        {
+            using var request = await CreateAuthorizedRequestAsync(HttpMethod.Post, "/api/accounts/email/send-code");
+            using var response = await _http.SendAsync(request, token);
+            var body = await ReadEmailStatusAsync(response, token);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return body?.Status == "already_verified"
+                    ? new(true, L("ეს ელფოსტა უკვე დადასტურებულია.", "This email address is already verified."), "already_verified")
+                    : new(true, L("ახალი კოდი გაიგზავნა ელფოსტაზე.", "A new code was sent to your email."));
+            }
+
+            return response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.TooManyRequests => new(false, L("ცოტა ხანს დაიცადე და სცადე თავიდან.", "Please wait a moment and try again.")),
+                System.Net.HttpStatusCode.ServiceUnavailable => new(false, L("ელფოსტის გაგზავნა ამჟამად მიუწვდომელია.", "Sending email is not available right now.")),
+                System.Net.HttpStatusCode.BadGateway => new(false, L("დამადასტურებელი წერილი ვერ გაიგზავნა. სცადე ცოტა ხანში.", "We couldn't send the verification email. Please try again in a moment.")),
+                System.Net.HttpStatusCode.Unauthorized => new(false, ServerUnavailableMessage()),
+                _ => new(false, ServerUnavailableMessage())
+            };
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            return new(false, L("შეჩერდა.", "Stopped."));
+        }
+        catch
+        {
+            return new(false, ServerUnavailableMessage());
+        }
+    }
+
+    /// <summary>Checks the 6-digit code from the email. Only the server decides whether it is right.</summary>
+    public async Task<AccountActionResult> VerifyEmailCodeAsync(string code, CancellationToken token = default)
+    {
+        try
+        {
+            using var request = await CreateAuthorizedRequestAsync(HttpMethod.Post, "/api/accounts/email/verify");
+            request.Content = JsonContent.Create(new { code = (code ?? string.Empty).Trim() });
+            using var response = await _http.SendAsync(request, token);
+            var body = await ReadEmailStatusAsync(response, token);
+
+            if (response.IsSuccessStatusCode && body?.Verified == true)
+                return new(true, L("ელფოსტა დადასტურებულია.", "Email verified."));
+
+            return body?.Reason switch
+            {
+                "expired" => new(false, L("კოდს ვადა გაუვიდა. მოითხოვე ახალი.", "The code has expired. Request a new one."), "expired"),
+                "too_many_attempts" => new(false, L("ძალიან ბევრი მცდელობა. მოითხოვე ახალი კოდი.", "Too many attempts. Request a new code."), "too_many_attempts"),
+                "no_code" => new(false, L("აქტიური კოდი არ არის. მოითხოვე ახალი.", "There is no active code. Request a new one."), "no_code"),
+                "invalid" => new(false, L("კოდი არასწორია. სცადე თავიდან.", "That code is not correct. Try again."), "invalid"),
+                _ => response.StatusCode == System.Net.HttpStatusCode.TooManyRequests
+                    ? new(false, L("ცოტა ხანს დაიცადე და სცადე თავიდან.", "Please wait a moment and try again."))
+                    : new(false, ServerUnavailableMessage())
+            };
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            return new(false, L("შეჩერდა.", "Stopped."));
+        }
+        catch
+        {
+            return new(false, ServerUnavailableMessage());
+        }
+    }
+
+    private static async Task<EmailStatusResponse?> ReadEmailStatusAsync(HttpResponseMessage response, CancellationToken token)
+    {
+        try { return await response.Content.ReadFromJsonAsync<EmailStatusResponse>(cancellationToken: token); }
+        catch { return null; }
+    }
+
     public Task<AccountActionResult> RegisterAsync(
         string email,
         string password,
@@ -439,6 +539,10 @@ public sealed class AccountService
             "X-GCS-Device-Id",
             deviceId);
 
+        request.Headers.TryAddWithoutValidation(
+            "X-GCS-Language",
+            CarScanner.Services.Localization.LanguageCatalog.Current.Code);
+
         return request;
     }
 
@@ -460,6 +564,8 @@ public sealed class AccountService
         var isRegister =
             path.Contains("register",
                 StringComparison.OrdinalIgnoreCase);
+
+        EmailVerificationState = null;
 
         try
         {
@@ -543,6 +649,8 @@ public sealed class AccountService
             Preferences.Default.Set(
                 MustChangePasswordKey,
                 payload.MustChangePassword == true);
+
+            EmailVerificationState = isRegister ? payload.EmailVerification?.Trim().ToLowerInvariant() : null;
 
             AccountChanged?.Invoke(
                 this,
@@ -763,6 +871,22 @@ public sealed class AccountService
         public string? AccessToken { get; set; }
 
         public bool? MustChangePassword { get; set; }
+
+        /// <summary>"queued" when the server started a verification email, "unavailable" when it cannot send one.</summary>
+        public string? EmailVerification { get; set; }   // "sent", "failed" or "unavailable"
+    }
+
+    private sealed class EmailStatusResponse
+    {
+        public string? Status { get; set; }
+
+        public bool? Verified { get; set; }
+
+        public string? Reason { get; set; }
+
+        public bool? CanSend { get; set; }
+
+        public bool? Required { get; set; }
     }
 
     private sealed class ChangePasswordResponse
@@ -770,6 +894,8 @@ public sealed class AccountService
         public string? AccessToken { get; set; }
     }
 }
+
+public sealed record EmailVerificationStatus(bool Verified, bool CanSend, bool Required);
 
 public sealed record AccountActionResult(
     bool Success,

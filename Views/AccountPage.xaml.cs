@@ -65,6 +65,10 @@ public partial class AccountPage : ContentPage
         ChangePasswordCard.IsVisible = signedIn;
         FormCard.IsVisible = !signedIn;
         EmailValueLabel.Text = _account.Email;
+        if (signedIn)
+            _ = RefreshEmailStatusAsync();
+        else
+            VerifyCard.IsVisible = false;
 
         var mustChange = signedIn && _account.MustChangePassword;
         ChangePasswordHintLabel.IsVisible = mustChange;
@@ -212,6 +216,77 @@ public partial class AccountPage : ContentPage
         }
     }
 
+    /// <summary>One English text translated into the app language; Georgian is written out.</summary>
+    private string LT(string ka, string en) => _localization.IsEnglish ? LocalizationService.T(en) : ka;
+
+    private async Task HandleRegistrationEmailAsync()
+    {
+        switch (_account.EmailVerificationState)
+        {
+            case "sent":
+                await RunVerificationAsync(EmailVerificationEntry.CodeAlreadySent);
+                break;
+            case "failed":
+                // The mail server did not accept the message: say so and offer to try again.
+                await RunVerificationAsync(EmailVerificationEntry.FirstSendFailed);
+                break;
+            default:
+                // "unavailable" (the server cannot send email) or an older server: nothing to ask for.
+                break;
+        }
+    }
+
+    private async Task RunVerificationAsync(EmailVerificationEntry entry)
+    {
+        var verified = await EmailVerificationFlow.RunAsync(_account, entry);
+        if (verified)
+            ShowStatus("✓ " + LT("ელფოსტა დადასტურებულია.", "Email verified."), error: false);
+        await RefreshEmailStatusAsync();
+    }
+
+    private async void OnVerifyEmailClicked(object? sender, EventArgs e)
+    {
+        try { await RunVerificationAsync(EmailVerificationEntry.SendFirst); }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AccountPage.OnVerifyEmailClicked");
+        }
+    }
+
+    /// <summary>Shows whether the signed-in account's email is verified. Hidden when the server cannot be asked.</summary>
+    private async Task RefreshEmailStatusAsync()
+    {
+        try
+        {
+            if (!_account.IsSignedIn)
+            {
+                VerifyCard.IsVisible = false;
+                return;
+            }
+
+            var status = await _account.GetEmailStatusAsync();
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                if (status is null || (!status.Verified && !status.CanSend))
+                {
+                    VerifyCard.IsVisible = false;      // unknown, or this server cannot send email: nothing to offer
+                    return;
+                }
+
+                VerifyCard.IsVisible = true;
+                VerifyStatusLabel.Text = status.Verified
+                    ? "✓ " + LT("ელფოსტა დადასტურებულია.", "Email verified.")
+                    : LT("ელფოსტა ჯერ არ არის დადასტურებული.", "Email not verified yet.");
+                VerifyEmailButton.Text = LT("დაადასტურე ელფოსტა", "Verify your email");
+                VerifyEmailButton.IsVisible = !status.Verified;
+            });
+        }
+        catch
+        {
+            VerifyCard.IsVisible = false;
+        }
+    }
+
     private async Task AuthenticateAsync(bool register)
     {
         if (_busy)
@@ -219,6 +294,12 @@ public partial class AccountPage : ContentPage
 
         var email = (EmailEntry.Text ?? "").Trim();
         var password = PasswordEntry.Text ?? "";
+        if (register && !EmailAddressRules.IsValidForRegistration(email))
+        {
+            ShowStatus(LT("შეიყვანე სწორი ელფოსტის მისამართი.", "Enter a valid email address."), error: true);
+            return;
+        }
+
         if (register && password.Length < 10)
         {
             ShowStatus(L("პაროლი მინიმუმ 10 სიმბოლო უნდა იყოს.", "The password must have at least 10 characters."), error: true);
@@ -282,6 +363,11 @@ public partial class AccountPage : ContentPage
                 NewPasswordEntry.Focus();
                 return;
             }
+
+            // Registration: what the server said about the verification email decides what happens next. Skipping
+            // it ("Later") is fine: scanning and every local feature work without a verified email.
+            if (register)
+                await HandleRegistrationEmailAsync();
 
             await Task.Delay(700);
             try { await Shell.Current.GoToAsync(".."); } catch { }

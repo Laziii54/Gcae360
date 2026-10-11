@@ -28,6 +28,19 @@ public enum ServiceMethod
     ExternalTool
 }
 
+/// <summary>
+/// What GCar360 itself sends to the vehicle for a procedure. This is about the app's traffic, not about what the driver
+/// does at the dashboard: a manual guide changes the car only through the driver's own button presses.
+/// </summary>
+public enum ServiceEffect
+{
+    /// <summary>The app only shows documented steps; it sends nothing to the vehicle for this procedure.</summary>
+    ShowsStepsOnly,
+
+    /// <summary>The app would send state-changing diagnostic requests (reset, adaptation, actuator test …). Reviewed paths only.</summary>
+    ChangesVehicleState
+}
+
 public enum ServiceCompatibilityStatus
 {
     Supported,
@@ -112,10 +125,24 @@ public sealed record ServiceProcedureEntry(
     ServiceProcedureDefinition Definition,
     ServiceKind Kind,
     ServiceCompatibility Compatibility,
-    ServiceVerification Verification);
+    ServiceVerification Verification)
+{
+    /// <summary>What the app sends to the vehicle for this procedure (see <see cref="ServiceEffect"/>).</summary>
+    public ServiceEffect Effect => ServiceKindClassifier.EffectOf(Definition);
+}
 
 public static class ServiceKindClassifier
 {
+    /// <summary>
+    /// A procedure changes vehicle state through the app only when it is an OEM diagnostic operation. Every manual
+    /// guide and every tool-only note is information: nothing is sent. Whether an OEM operation may actually run on a
+    /// given car is a separate decision (<see cref="ServiceCompatibilityEvaluator"/>), never made from the brand alone.
+    /// </summary>
+    public static ServiceEffect EffectOf(ServiceProcedureDefinition procedure) =>
+        procedure.ExecutionType == ServiceProcedureExecutionType.OemDiagnostic
+            ? ServiceEffect.ChangesVehicleState
+            : ServiceEffect.ShowsStepsOnly;
+
     private static readonly string[] ToolPhrases =
     {
         "diagnostic tool", "scan tool", "dealer", "service centre", "service center", "workshop", "authorised", "authorized"

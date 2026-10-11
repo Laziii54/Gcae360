@@ -51,6 +51,14 @@
     <Compile Include="../../Services/VehicleProfileResolutionEngine.cs" Link="VehicleProfileResolutionEngine.cs" />
     <Compile Include="../../Services/VehicleHealthScoreCalculator.cs" Link="VehicleHealthScoreCalculator.cs" />
     <Compile Include="../../Services/OemDiagnostics/OemAddressRegistry.cs" Link="OemAddressRegistry.cs" />
+    <Compile Include="../../Services/OemDiagnostics/ModuleReplyAnalysis.cs" Link="ModuleReplyAnalysis.cs" />
+    <Compile Include="../../Services/OemDiagnostics/ModuleDtcProbe.cs" Link="ModuleDtcProbe.cs" />
+    <Compile Include="../../Services/Coding/CodingModels.cs" Link="CodingModels.cs" />
+    <Compile Include="../../Services/Coding/CodingReplyParser.cs" Link="CodingReplyParser.cs" />
+    <Compile Include="../../Services/Coding/CodingCapabilities.cs" Link="CodingCapabilities.cs" />
+    <Compile Include="../../Services/Coding/GmlanSweep.cs" Link="GmlanSweep.cs" />
+    <Compile Include="../../Services/OemDiagnostics/ModuleDtcParsers.cs" Link="ModuleDtcParsers.cs" />
+    <Compile Include="../../Models/ModuleDtcReportModels.cs" Link="ModuleDtcReportModels.cs" />
     <Compile Include="../../Services/OemDiagnostics/ManufacturerDefinitionCatalogParser.cs" Link="ManufacturerDefinitionCatalogParser.cs" />
     <Compile Include="../../Services/OemDiagnostics/ManufacturerDefinitionResolutionEngine.cs" Link="ManufacturerDefinitionResolutionEngine.cs" />
     <Compile Include="../../Services/OemDiagnostics/OemDefinitionPackageParser.cs" Link="OemDefinitionPackageParser.cs" />
@@ -89,6 +97,8 @@
     <Compile Include="../../Services/Passive/PassiveCanAnalyzer.cs" Link="Passive/PassiveCanAnalyzer.cs" />
     <Compile Include="../../Services/DataCollection/CollectionQueue.cs" Link="DataCollection/CollectionQueue.cs" />
     <Compile Include="../../Services/DataCollection/CollectionPayload.cs" Link="DataCollection/CollectionPayload.cs" />
+    <Compile Include="../../Services/DataCollection/ConsentPolicy.cs" Link="DataCollection/ConsentPolicy.cs" />
+    <Compile Include="../../Services/DataCollection/ConsentTexts.cs" Link="DataCollection/ConsentTexts.cs" />
     <Compile Include="../../Services/DataCollection/LocalCaptureSession.cs" Link="DataCollection/LocalCaptureSession.cs" />
     <Compile Include="../../Services/OemDiagnostics/OemCaptureTargetCatalog.cs" Link="OemDiagnostics/OemCaptureTargetCatalog.cs" />
     <Compile Include="../../Services/DataCollection/CollectionPipeline.cs" Link="DataCollection/CollectionPipeline.cs" />
