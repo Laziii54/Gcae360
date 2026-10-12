@@ -1,4 +1,4 @@
-# GCar360 — მაღაზიის აღწერები სხვა ქვეყნებისთვის
+# OBD360 — მაღაზიის აღწერები სხვა ქვეყნებისთვის
 
 აპის ID: `com.gcar360.app`. ქართული და ძირითადი ინგლისური ტექსტი არის `STORE_LISTING.md`-ში.
 ლიმიტები შემოწმებულია: სახელი ≤30, Apple subtitle ≤30, Google მოკლე აღწერა ≤80, Apple keywords ≤100, სრული ≤4000.
@@ -35,7 +35,7 @@
 
 ## საფრანგეთი — `fr-FR`
 
-**სახელი (Play + App Store):** GCar360 : Diagnostic OBD2
+**სახელი (Play + App Store):** OBD360 : Diagnostic OBD2
 
 **Apple subtitle:** Codes défaut et état du moteur
 
@@ -48,7 +48,7 @@ obd2,eobd,elm327,diagnostic,valise,voyant moteur,code defaut,dtc,abs,airbag,vin,
 
 **სრული აღწერა:**
 ```
-GCar360 transforme votre téléphone et un adaptateur OBD2 (ELM327 Bluetooth, BLE ou Wi-Fi) en valise de diagnostic. L'application affiche uniquement ce que la voiture et l'adaptateur renvoient réellement : une valeur non prise en charge est indiquée comme indisponible, jamais inventée.
+OBD360 transforme votre téléphone et un adaptateur OBD2 (ELM327 Bluetooth, BLE ou Wi-Fi) en valise de diagnostic. L'application affiche uniquement ce que la voiture et l'adaptateur renvoient réellement : une valeur non prise en charge est indiquée comme indisponible, jamais inventée.
 
 DIAGNOSTIC
 • Lire et effacer les codes défaut (voyant moteur) avec une explication claire
@@ -78,7 +78,7 @@ Gratuit : codes défaut, données en direct, consommation, entretien, 0–100 et
 
 ## კანადა (ინგლისური) — `en-CA`
 
-**სახელი (Play + App Store):** GCar360: OBD2 Car Scanner
+**სახელი (Play + App Store):** OBD360: OBD2 Car Scanner
 
 **Apple subtitle:** Check engine codes, car health
 
@@ -91,7 +91,7 @@ obd2,obd,elm327,check engine,diagnostic,scanner,code reader,dtc,abs,srs,vin,carf
 
 **სრული აღწერა:**
 ```
-GCar360 turns your phone and an OBD2 adapter (ELM327, Bluetooth, BLE or Wi-Fi) into a car scanner. It shows only what your car and adapter really report — anything unsupported is marked as unavailable, never invented.
+OBD360 turns your phone and an OBD2 adapter (ELM327, Bluetooth, BLE or Wi-Fi) into a car scanner. It shows only what your car and adapter really report — anything unsupported is marked as unavailable, never invented.
 
 DIAGNOSTICS
 • Read and clear check engine codes (DTC) with plain-language explanations
@@ -121,7 +121,7 @@ Free: fault codes, live data, fuel, service, 0–100 and VIN basics. PRO is a mo
 
 ## კანადა (ფრანგული, კვებეკი) — `fr-CA`
 
-**სახელი (Play + App Store):** GCar360 : Diagnostic OBD2
+**სახელი (Play + App Store):** OBD360 : Diagnostic OBD2
 
 **Apple subtitle:** Codes moteur et état de l'auto
 
@@ -134,7 +134,7 @@ obd2,elm327,diagnostic,lecteur,temoin moteur,check engine,code,dtc,abs,coussin,v
 
 **სრული აღწერა:**
 ```
-GCar360 transforme votre téléphone et un adaptateur OBD2 (ELM327 Bluetooth, BLE ou Wi-Fi) en lecteur de diagnostic. L'application affiche uniquement ce que le véhicule et l'adaptateur renvoient réellement : une valeur non prise en charge est indiquée comme indisponible, jamais inventée.
+OBD360 transforme votre téléphone et un adaptateur OBD2 (ELM327 Bluetooth, BLE ou Wi-Fi) en lecteur de diagnostic. L'application affiche uniquement ce que le véhicule et l'adaptateur renvoient réellement : une valeur non prise en charge est indiquée comme indisponible, jamais inventée.
 
 DIAGNOSTIC
 • Lire et effacer les codes du témoin moteur avec une explication claire
@@ -164,7 +164,7 @@ Gratuit : codes moteur, données en direct, consommation, entretien, 0–100 et 
 
 ## იაპონია — `ja`
 
-**სახელი (Play + App Store):** GCar360：OBD2 車両診断
+**სახელი (Play + App Store):** OBD360：OBD2 車両診断
 
 **Apple subtitle:** 故障コードと車の状態をチェック
 
@@ -177,7 +177,7 @@ obd2,elm327,故障診断,スキャナー,故障コード,エンジン警告灯,d
 
 **სრული აღწერა:**
 ```
-GCar360は、スマートフォンとOBD2アダプター（ELM327 Bluetooth／BLE／Wi-Fi）で車両診断ができるアプリです。車とアダプターが実際に返す値だけを表示し、対応していない項目は「利用不可」と表示します。
+OBD360は、スマートフォンとOBD2アダプター（ELM327 Bluetooth／BLE／Wi-Fi）で車両診断ができるアプリです。車とアダプターが実際に返す値だけを表示し、対応していない項目は「利用不可」と表示します。
 
 診断
 • 故障コード（DTC）の読み取りと消去、わかりやすい説明付き
@@ -206,7 +206,7 @@ GCar360は、スマートフォンとOBD2アダプター（ELM327 Bluetooth／BL
 
 ## ჩინეთი — `zh-Hans`
 
-**სახელი (Play + App Store):** GCar360：OBD2汽车诊断
+**სახელი (Play + App Store):** OBD360：OBD2汽车诊断
 
 **Apple subtitle:** 读取故障码，了解车况
 
@@ -219,7 +219,7 @@ obd2,elm327,汽车诊断,故障码,发动机故障灯,解码器,dtc,abs,安全�
 
 **სრული აღწერა:**
 ```
-GCar360 让你的手机配合 OBD2 适配器（ELM327 蓝牙、BLE 或 Wi-Fi）成为汽车诊断工具。应用只显示车辆和适配器真实返回的数据；不支持的项目会标记为“不可用”，绝不编造。
+OBD360 让你的手机配合 OBD2 适配器（ELM327 蓝牙、BLE 或 Wi-Fi）成为汽车诊断工具。应用只显示车辆和适配器真实返回的数据；不支持的项目会标记为“不可用”，绝不编造。
 
 诊断
 • 读取和清除故障码（DTC），并提供通俗解释
@@ -248,7 +248,7 @@ GCar360 让你的手机配合 OBD2 适配器（ELM327 蓝牙、BLE 或 Wi-Fi）�
 
 ## ინდოეთი (ინგლისური) — `en-IN`
 
-**სახელი (Play + App Store):** GCar360: OBD2 Car Scanner
+**სახელი (Play + App Store):** OBD360: OBD2 Car Scanner
 
 **Apple subtitle:** Engine codes, service, mileage
 
@@ -261,7 +261,7 @@ obd2,obd,elm327,engine,diagnostic,scanner,fault code,dtc,abs,airbag,service,mile
 
 **სრული აღწერა:**
 ```
-GCar360 turns your phone and an OBD2 adapter (ELM327, Bluetooth, BLE or Wi-Fi) into a car scanner. It shows only what your car and adapter really report — anything unsupported is marked as unavailable, never invented.
+OBD360 turns your phone and an OBD2 adapter (ELM327, Bluetooth, BLE or Wi-Fi) into a car scanner. It shows only what your car and adapter really report — anything unsupported is marked as unavailable, never invented.
 
 DIAGNOSTICS
 • Read and clear engine fault codes (DTC) with plain-language explanations
@@ -291,7 +291,7 @@ Free: fault codes, live data, fuel, service, 0–100 and VIN basics. PRO is a mo
 
 ## ინდოეთი (ჰინდი) — `hi`
 
-**სახელი (Play + App Store):** GCar360: OBD2 कार स्कैनर
+**სახელი (Play + App Store):** OBD360: OBD2 कार स्कैनर
 
 **Apple subtitle:** इंजन कोड, सर्विस और माइलेज
 
@@ -304,7 +304,7 @@ obd2,elm327,कार स्कैनर,इंजन लाइट,फॉल्�
 
 **სრული აღწერა:**
 ```
-GCar360 आपके फ़ोन और OBD2 एडैप्टर (ELM327 ब्लूटूथ, BLE या Wi-Fi) को कार स्कैनर बना देता है। ऐप वही दिखाता है जो आपकी कार और एडैप्टर सच में भेजते हैं — जो उपलब्ध नहीं है उसे "उपलब्ध नहीं" लिखा जाता है, कभी गढ़ा नहीं जाता।
+OBD360 आपके फ़ोन और OBD2 एडैप्टर (ELM327 ब्लूटूथ, BLE या Wi-Fi) को कार स्कैनर बना देता है। ऐप वही दिखाता है जो आपकी कार और एडैप्टर सच में भेजते हैं — जो उपलब्ध नहीं है उसे "उपलब्ध नहीं" लिखा जाता है, कभी गढ़ा नहीं जाता।
 
 डायग्नोस्टिक
 • इंजन फॉल्ट कोड (DTC) पढ़ें और मिटाएँ, आसान भाषा में मतलब के साथ
@@ -333,7 +333,7 @@ GCar360 आपके फ़ोन और OBD2 एडैप्टर (ELM327 ब�
 
 ## აშშ — `en-US`
 
-**სახელი (Play + App Store):** GCar360: OBD2 Car Scanner
+**სახელი (Play + App Store):** OBD360: OBD2 Car Scanner
 
 **Apple subtitle:** Check engine codes, car health
 
@@ -346,7 +346,7 @@ obd2,obd,elm327,check engine,diagnostic,scanner,code reader,dtc,abs,srs,vin,ev,h
 
 **სრული აღწერა:**
 ```
-GCar360 turns your phone and an OBD2 adapter (ELM327, Bluetooth, BLE or Wi-Fi) into a car scanner. It shows only what your car and adapter really report — anything unsupported is marked as unavailable, never invented.
+OBD360 turns your phone and an OBD2 adapter (ELM327, Bluetooth, BLE or Wi-Fi) into a car scanner. It shows only what your car and adapter really report — anything unsupported is marked as unavailable, never invented.
 
 DIAGNOSTICS
 • Read and clear check engine codes (DTC) with plain-language explanations
@@ -376,7 +376,7 @@ Free: fault codes, live data, fuel, service, 0–60 and VIN basics. PRO is a mon
 
 ## დიდი ბრიტანეთი — `en-GB`
 
-**სახელი (Play + App Store):** GCar360: OBD2 Car Scanner
+**სახელი (Play + App Store):** OBD360: OBD2 Car Scanner
 
 **Apple subtitle:** Engine fault codes, car health
 
@@ -389,7 +389,7 @@ obd2,eobd,elm327,engine light,diagnostic,scanner,fault code,dtc,abs,airbag,vin,e
 
 **სრული აღწერა:**
 ```
-GCar360 turns your phone and an OBD2 adapter (ELM327, Bluetooth, BLE or Wi-Fi) into a car scanner. It shows only what your car and adapter really report — anything unsupported is marked as unavailable, never invented.
+OBD360 turns your phone and an OBD2 adapter (ELM327, Bluetooth, BLE or Wi-Fi) into a car scanner. It shows only what your car and adapter really report — anything unsupported is marked as unavailable, never invented.
 
 DIAGNOSTICS
 • Read and clear engine fault codes (DTC) with plain-language explanations
@@ -419,7 +419,7 @@ Free: fault codes, live data, fuel, service, 0–100 and VIN basics. PRO is a mo
 
 ## გერმანია — `de-DE`
 
-**სახელი (Play + App Store):** GCar360: OBD2 Auto Diagnose
+**სახელი (Play + App Store):** OBD360: OBD2 Auto Diagnose
 
 **Apple subtitle:** Fehlercodes & Fahrzeugzustand
 
@@ -432,7 +432,7 @@ obd2,eobd,elm327,diagnose,fehlerspeicher,fehlercode,motorleuchte,abs,airbag,vin,
 
 **სრული აღწერა:**
 ```
-GCar360 macht aus Ihrem Smartphone und einem OBD2-Adapter (ELM327 Bluetooth, BLE oder WLAN) ein Diagnosegerät. Die App zeigt nur, was Fahrzeug und Adapter wirklich liefern – nicht unterstützte Werte werden als nicht verfügbar markiert, nie erfunden.
+OBD360 macht aus Ihrem Smartphone und einem OBD2-Adapter (ELM327 Bluetooth, BLE oder WLAN) ein Diagnosegerät. Die App zeigt nur, was Fahrzeug und Adapter wirklich liefern – nicht unterstützte Werte werden als nicht verfügbar markiert, nie erfunden.
 
 DIAGNOSE
 • Fehlerspeicher lesen und löschen, mit verständlicher Erklärung
@@ -462,7 +462,7 @@ Kostenlos: Fehlercodes, Live-Daten, Verbrauch, Service, 0–100 und VIN-Basisdat
 
 ## ესპანეთი — `es-ES`
 
-**სახელი (Play + App Store):** GCar360: Diagnosis OBD2
+**სახელი (Play + App Store):** OBD360: Diagnosis OBD2
 
 **Apple subtitle:** Códigos de avería y estado
 
@@ -475,7 +475,7 @@ obd2,eobd,elm327,diagnosis,escaner,codigo averia,testigo motor,dtc,abs,airbag,vi
 
 **სრული აღწერა:**
 ```
-GCar360 convierte tu móvil y un adaptador OBD2 (ELM327 Bluetooth, BLE o Wi-Fi) en una máquina de diagnosis. Solo muestra lo que el coche y el adaptador devuelven de verdad: lo que no está disponible se indica así, nunca se inventa.
+OBD360 convierte tu móvil y un adaptador OBD2 (ELM327 Bluetooth, BLE o Wi-Fi) en una máquina de diagnosis. Solo muestra lo que el coche y el adaptador devuelven de verdad: lo que no está disponible se indica así, nunca se inventa.
 
 DIAGNOSIS
 • Leer y borrar códigos de avería con explicación clara
@@ -504,7 +504,7 @@ Gratis: códigos de avería, datos en vivo, consumo, mantenimiento y 0–100. PR
 
 ## რუსულენოვანი — `ru`
 
-**სახელი (Play + App Store):** GCar360: OBD2 диагностика
+**სახელი (Play + App Store):** OBD360: OBD2 диагностика
 
 **Apple subtitle:** Коды ошибок и состояние авто
 
@@ -517,7 +517,7 @@ obd2,elm327,диагностика,сканер,ошибки,чек,dtc,abs,airb
 
 **სრული აღწერა:**
 ```
-GCar360 превращает телефон и адаптер OBD2 (ELM327 Bluetooth, BLE или Wi-Fi) в автосканер. Приложение показывает только то, что реально передают автомобиль и адаптер: неподдерживаемое помечается как недоступное и никогда не выдумывается.
+OBD360 превращает телефон и адаптер OBD2 (ELM327 Bluetooth, BLE или Wi-Fi) в автосканер. Приложение показывает только то, что реально передают автомобиль и адаптер: неподдерживаемое помечается как недоступное и никогда не выдумывается.
 
 ДИАГНОСТИКА
 • Чтение и сброс кодов ошибок с понятным объяснением
@@ -547,7 +547,7 @@ GCar360 превращает телефон и адаптер OBD2 (ELM327 Bluet
 
 ## თურქეთი — `tr`
 
-**სახელი (Play + App Store):** GCar360: OBD2 Arıza Tespit
+**სახელი (Play + App Store):** OBD360: OBD2 Arıza Tespit
 
 **Apple subtitle:** Arıza kodları ve araç durumu
 
@@ -560,7 +560,7 @@ obd2,elm327,arıza tespit,arıza kodu,motor lambası,dtc,abs,airbag,vin,bakım,y
 
 **სრული აღწერა:**
 ```
-GCar360, telefonunuzu ve bir OBD2 adaptörünü (ELM327 Bluetooth, BLE veya Wi-Fi) araç arıza tespit cihazına dönüştürür. Uygulama yalnızca aracın ve adaptörün gerçekten gönderdiği verileri gösterir; desteklenmeyenler "kullanılamıyor" olarak işaretlenir, asla uydurulmaz.
+OBD360, telefonunuzu ve bir OBD2 adaptörünü (ELM327 Bluetooth, BLE veya Wi-Fi) araç arıza tespit cihazına dönüştürür. Uygulama yalnızca aracın ve adaptörün gerçekten gönderdiği verileri gösterir; desteklenmeyenler "kullanılamıyor" olarak işaretlenir, asla uydurulmaz.
 
 ARIZA TESPİT
 • Arıza kodlarını (DTC) okuma ve silme, anlaşılır açıklamayla

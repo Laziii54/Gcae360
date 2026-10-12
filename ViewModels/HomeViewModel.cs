@@ -352,8 +352,10 @@ public partial class HomeViewModel : BaseViewModel
 
                 UpdateHomeLanguageTexts();
 
-                if (_vehicle.CurrentVehicle is not null)
+                if (_bluetooth.IsConnected && _vehicle.CurrentVehicle is not null)
                     ApplyVehicleInfo(_vehicle.CurrentVehicle);
+                else if (!_bluetooth.IsConnected)
+                    ShowDisconnectedIdentity();
             });
 
         _units.UnitSystemChanged += (_, __) =>
@@ -377,6 +379,10 @@ public partial class HomeViewModel : BaseViewModel
         // მხოლოდ ავტომობილი
         ApplyVehicleContext(VehicleKind.Car);
         ApplyBrandProfile(_brand.Current);
+
+        // A saved brand choice is a preference, not a connected vehicle: until this session identifies a car, say so.
+        if (!_bluetooth.IsConnected)
+            ShowDisconnectedIdentity();
 
         UpdateStatus(_bluetooth.IsConnected);
 
@@ -819,23 +825,7 @@ public partial class HomeViewModel : BaseViewModel
                 _servicePreviewCache = null;
                 _servicePreviewCacheVin = null;
                 _vehicle.ClearConnectedVehicleState();
-                ConnectedBrandImage = string.Empty;
-
-                VinNumber = _localization.IsEnglish
-                     ? "VIN unknown"
-                     : "VIN უცნობია";
-
-                VehicleName = _localization.IsEnglish
-                    ? "Vehicle unknown"
-                    : "მანქანა უცნობია";
-
-                VehicleTrim = _localization.IsEnglish
-                    ? "Trim unavailable"
-                    : "კომპლექტაცია მიუწვდომელია";
-
-                FuelType = _localization.IsEnglish
-                    ? "Fuel unavailable"
-                    : "საწვავი მიუწვდომელია";
+                ShowDisconnectedIdentity();
             }
 
             UpdateStatus(connected);
@@ -1062,9 +1052,6 @@ public partial class HomeViewModel : BaseViewModel
 
         BrandSupportNote = profile.GenericSupportNote;
         BrandVerificationText = _brand.GetVerificationMessage(null);
-
-        if (VehicleName is "მანქანა უცნობია" or "მანქანის ინფორმაცია მიუწვდომელია")
-            VehicleName = profile.DisplayName;
 
         // The selected brand is known before the ECU replies.  Show that
         // immediately, but keep VIN/year explicitly marked as pending so the
@@ -1528,7 +1515,9 @@ public partial class HomeViewModel : BaseViewModel
     }
     [RelayCommand] private async Task GoToAdapterCenter() {
         try
-        { if (!await RequireObdConnectionAsync()) return; await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.AdapterCenterPage));
+        {
+            // The adapter page is where the connection is made, so it must open without one.
+            await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.AdapterCenterPage));
         }
         catch (Exception commandException)
         {
@@ -1726,11 +1715,45 @@ public partial class HomeViewModel : BaseViewModel
         }
     }
 
+    private bool _connectPromptOpen;
+
+    /// <summary>For tiles handled in code-behind: true when connected, otherwise the "connect an adapter" explanation is shown.</summary>
+    public Task<bool> EnsureObdConnectionAsync() => RequireObdConnectionAsync();
+
     /// <summary>
-    /// Car features are dimmed and disabled on the home page until the
-    /// adapter is connected; a tap that still gets here simply does nothing.
+    /// Every tile stays visible and tappable. Features that need the car are muted until the adapter is connected, and a tap
+    /// on one explains what to do (once at a time) instead of silently doing nothing.
     /// </summary>
-    private Task<bool> RequireObdConnectionAsync() => Task.FromResult(_bluetooth.IsConnected);
+    private async Task<bool> RequireObdConnectionAsync()
+    {
+        if (_bluetooth.IsConnected)
+            return true;
+
+        if (_connectPromptOpen)
+            return false;
+
+        _connectPromptOpen = true;
+        try
+        {
+            if (Shell.Current is { } shell)
+                await CarScanner.Services.PageDialogExtensions.DisplayAlertLocalizedAsync(
+                    shell,
+                    L("OBD ადაპტერი საჭიროა", "OBD adapter needed"),
+                    L("ეს ფუნქცია მუშაობს დაკავშირებულ OBD ადაპტერთან. გახსენი „ადაპტერი“, დააკავშირე და სცადე თავიდან.",
+                      "This feature needs a connected OBD adapter. Open Adapter, connect it, and try again."),
+                    "OK");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Connect prompt failed: {ex.Message}");
+        }
+        finally
+        {
+            _connectPromptOpen = false;
+        }
+
+        return false;
+    }
 
     // ============================================================
     // OBD PROTOCOL EXPLANATION
@@ -1864,6 +1887,17 @@ public partial class HomeViewModel : BaseViewModel
         }
     }
 
+    /// <summary>The vehicle card while no adapter is connected: nothing is claimed about a vehicle.</summary>
+    private void ShowDisconnectedIdentity()
+    {
+        var lines = VehicleIdentityText.Disconnected(_localization.IsEnglish);
+        ConnectedBrandImage = string.Empty;
+        VinNumber = lines.Vin;
+        VehicleName = lines.Name;
+        VehicleTrim = lines.Trim;
+        FuelType = lines.Fuel;
+    }
+
     private void ShowIdentityLoading()
     {
         var loading = _localization.IsEnglish ? "Reading…" : "იკითხება…";
@@ -1933,13 +1967,10 @@ public partial class HomeViewModel : BaseViewModel
                     "Unknown",
                     StringComparison.OrdinalIgnoreCase)));
 
+        // Nothing obtained in this session: "Reading…" while the read runs, otherwise "unknown". The brand the person picked
+        // earlier (resolved.DisplayName) is a preference and is deliberately not shown as the vehicle.
         if (string.IsNullOrWhiteSpace(VehicleName))
-        {
-            VehicleName = resolved.DisplayName;
-        }
-
-        if (string.IsNullOrWhiteSpace(VehicleName) && reading)
-            VehicleName = loadingText;
+            VehicleName = reading ? loadingText : VehicleIdentityText.Name(null, _localization.IsEnglish);
 
         // კომპლექტაცია
         VehicleTrim = reading && IsMissing(vehicle.Trim)

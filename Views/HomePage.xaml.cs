@@ -65,7 +65,13 @@ public partial class HomePage : ContentPage
 
     private async void OnPrePurchaseClicked(object? sender, EventArgs e)
     {
-        try { await CarScanner.Services.SafeNavigation.GoToAsync(nameof(PrePurchasePage)); }
+        try
+        {
+            // Needs the car: without an adapter the tile explains what to do instead of opening an empty check.
+            if (BindingContext is HomeViewModel home && !await home.EnsureObdConnectionAsync())
+                return;
+            await CarScanner.Services.SafeNavigation.GoToAsync(nameof(PrePurchasePage));
+        }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Pre-purchase navigation failed: {ex.Message}"); }
     }
 

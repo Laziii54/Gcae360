@@ -12,21 +12,13 @@
 
             <!-- Header -->
             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Margin="0,0,0,20">
-                <Border
-                    BackgroundColor="{DynamicResource Primary}"
-                    StrokeThickness="0"
-                    StrokeShape="RoundRectangle 12"
-                    WidthRequest="46"
+                <Image
+                    Source="obd360_mark.png"
+                    WidthRequest="63"
                     HeightRequest="46"
-                    VerticalOptions="Center">
-                    <Label
-                        Text="360°"
-                        TextColor="White"
-                        FontSize="14"
-                        FontAttributes="Bold"
-                        HorizontalOptions="Center"
-                        VerticalOptions="Center" />
-                </Border>
+                    Aspect="AspectFit"
+                    VerticalOptions="Center"
+                    SemanticProperties.Description="OBD360" />
 
                 <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
                     <Label Text="OBD360" FontSize="21" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />

@@ -17,7 +17,7 @@ related repositories), licensed under the Creative Commons Attribution-ShareAlik
 licence (https://creativecommons.org/licenses/by-sa/4.0/).
 
 Changes: the definitions were re-expressed as C# decoders with plausibility
-checks; the assessment limits and scoring are GCar360's own.
+checks; the assessment limits and scoring are OBD360's own.
 
 ## PriusChat community
 

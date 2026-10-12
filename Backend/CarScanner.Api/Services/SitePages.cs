@@ -195,11 +195,12 @@ footer nav a:hover{
     }
 }footer nav a:hover{color:var(--ink)}
 #boot{position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-items:center;transition:opacity .4s ease,visibility .4s ease}
-#boot img{width:min(180px,44vw);height:auto;display:block}
+#boot img{width:min(180px,44vw);height:auto;display:block;animation:bootpulse 1.6s ease-in-out infinite}
+@keyframes bootpulse{0%,100%{opacity:.75;transform:scale(.97)}50%{opacity:1;transform:scale(1)}}
 #boot.done{opacity:0;visibility:hidden}
 html.booting,html.booting body{overflow:hidden}
 a:focus-visible,summary:focus-visible,.btn:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
-@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}#boot{transition:none}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}#boot{transition:none}#boot img{animation:none}}
 </style>
 """;
 
@@ -261,14 +262,14 @@ document.addEventListener("DOMContentLoaded",function(){var btn=document.getElem
 <meta name="description" content="{{T("OBD2 დიაგნოსტიკა ტელეფონით, შეცდომის კოდები ქართულად, ყიდვისწინა შემოწმება და VIN ისტორია აუქციონის ფოტოებით.", "OBD2 diagnostics on your phone, fault codes explained, pre-purchase checks and VIN history with auction photos.")}}">
 <meta name="theme-color" content="#f4f5f3">{{VerificationMeta()}}
 <link rel="alternate" hreflang="ka" href="/"><link rel="alternate" hreflang="en" href="/en">
-<link rel="icon" type="image/png" href="/assets/logo.png"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/assets/favicon.png"><link rel="icon" type="image/png" sizes="512x512" href="/assets/icon-512.png"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 {{BootHead}}<noscript><style>#boot{display:none}</style></noscript>
 {{Style}}</head><body>
-<div id="boot" aria-hidden="true"><picture><source srcset="/assets/loader.webp" type="image/webp"><img src="/assets/loader.gif" alt="" width="180" height="180"></picture></div>
+<div id="boot" aria-hidden="true"><img src="/assets/logo.png" alt="" width="180" height="132"></div>
 {{BootScript}}
 
 <header class="nav"><div class="c">
-<a class="logo" href="{{home}}"><img src="/assets/logo.png" alt="" width="37" height="34"><span>OBD360</span></a>
+<a class="logo" href="{{home}}"><img src="/assets/logo.png" alt="" width="46" height="34"><span>OBD360</span></a>
 <nav><a href="#obd">{{T("დიაგნოსტიკა", "Diagnostics")}}</a><a href="#vin">{{T("VIN შემოწმება", "VIN check")}}</a><a href="#prices">{{T("ფასები", "Pricing")}}</a><a href="#faq">{{T("კითხვები", "FAQ")}}</a></nav>
 <div class="lang" aria-label="Language"><a href="/" class="{{(english ? "" : "on")}}" hreflang="ka">KA</a><a href="/en" class="{{(english ? "on" : "")}}" hreflang="en">EN</a></div>
 <button class="theme" id="theme" type="button" aria-label="{{T("ღია / მუქი", "Light / dark")}}" title="{{T("ღია / მუქი", "Light / dark")}}"><svg class="sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
@@ -367,12 +368,12 @@ document.addEventListener("DOMContentLoaded",function(){var btn=document.getElem
 </div></div></section>
 
 <section><div class="c"><div class="final">
-<div class="fl"><img src="/assets/logo.png" alt="OBD360" width="104" height="95"><div><h2>{{T("სცადე უფასოდ", "Try it free")}}</h2><p>{{T("შეცდომები, სენსორები და VIN-ის მონაცემები გადახდის გარეშე.", "Fault codes, live data and VIN specs at no cost.")}}</p></div></div>
+<div class="fl"><img src="/assets/logo.png" alt="OBD360" width="130" height="95"><div><h2>{{T("სცადე უფასოდ", "Try it free")}}</h2><p>{{T("შეცდომები, სენსორები და VIN-ის მონაცემები გადახდის გარეშე.", "Fault codes, live data and VIN specs at no cost.")}}</p></div></div>
 <a class="btn btn-p" href="{{PlayStoreUrl}}">{{I("play", 15)}} Google Play</a>
 </div></div></section>
 
 <footer><div class="c">
-<a class="logo" href="{{home}}" style="font-size:15px"><img src="/assets/logo.png" alt="" width="31" height="28" style="height:28px"><span>OBD360</span></a>
+<a class="logo" href="{{home}}" style="font-size:15px"><img src="/assets/logo.png" alt="" width="38" height="28" style="height:28px"><span>OBD360</span></a>
 <nav><a href="/pro">PRO</a><a href="/support">{{T("დახმარება", "Support")}}</a><a href="/privacy-policy">{{T("კონფიდენციალურობა", "Privacy")}}</a><a href="/terms-of-use">{{T("წესები", "Terms")}}</a></nav>
 <span>© {{DateTime.UtcNow.Year}} OBD360</span>
 </div></footer>

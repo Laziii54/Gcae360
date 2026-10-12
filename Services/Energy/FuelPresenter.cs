@@ -140,6 +140,7 @@ public static class FuelPresenter
         EnergyReason.ListNotRead => english ? "the car's PID list has not been read yet" : "მანქანის PID სია ჯერ არ წაკითხულა",
         EnergyReason.NoFuelRatePid => english ? "no fuel-rate or air-flow PID" : "საწვავის ან ჰაერის ხარჯის PID არ არის",
         EnergyReason.FuelRatePid => "PID 01 5E",
+        EnergyReason.FuelMassRatePid => english ? "PID 01 9D (g/s) ÷ density of the selected fuel" : "PID 01 9D (გ/წმ) ÷ არჩეული საწვავის სიმკვრივე",
         EnergyReason.AirFlowEstimate => english ? "air flow ÷ air-fuel ratio, assumed density" : "ჰაერის ხარჯი ÷ ჰაერ-საწვავის თანაფარდობა, დაშვებული სიმკვრივე",
         EnergyReason.FuelTypeUnknown => english ? "fuel type unknown" : "საწვავის ტიპი უცნობია",
         EnergyReason.DieselNeedsLambda => english ? "diesel needs a λ reading" : "დიზელს λ მონაცემი სჭირდება",

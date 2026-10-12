@@ -310,7 +310,7 @@ public static class VerificationEmailTemplate
     private static string BuildHtml(VerificationEmailModel m, string lang, Words w, string expiry, string preheader, string? supportEmail)
     {
         var logo = string.IsNullOrWhiteSpace(m.LogoUrl)
-            ? $"<span style=\"font-family:Arial,Helvetica,sans-serif;font-size:30px;font-weight:700;letter-spacing:1px;color:#FFFFFF;\">GCar<span style=\"color:#4C8DFF;\">360</span></span>"
+            ? $"<span style=\"font-family:Arial,Helvetica,sans-serif;font-size:30px;font-weight:700;letter-spacing:1px;color:#FFFFFF;\">OBD<span style=\"color:#4C8DFF;\">360</span></span>"
             : $"<img src=\"{E(m.LogoUrl)}\" width=\"128\" alt=\"OBD360\" style=\"display:block;width:128px;max-width:60%;height:auto;border:0;outline:none;text-decoration:none;margin:0 auto;\">";
 
         var button = string.IsNullOrWhiteSpace(m.VerifyUrl) ? string.Empty : $"""

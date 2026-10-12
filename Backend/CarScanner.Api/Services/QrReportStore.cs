@@ -163,7 +163,7 @@ FROM QrReports WHERE TokenHash=$t LIMIT 1";
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
 .wrap{max-width:680px;margin:0 auto;padding:20px 18px 44px}
 header{display:flex;align-items:center;gap:10px;padding-bottom:14px;border-bottom:1px solid var(--line)}
-header img{width:30px;height:30px;border-radius:7px}
+header img{height:26px;width:auto}
 header b{font-size:17px}
 h1{font-size:26px;line-height:1.25;margin:22px 0 6px;font-weight:650}
 .sub{color:var(--muted);font-size:14px;line-height:1.6}
@@ -213,7 +213,7 @@ __SERVICE__
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .wrap{max-width:560px;margin:0 auto;padding:20px 18px 44px}
 header{display:flex;align-items:center;gap:10px;padding-bottom:14px;border-bottom:1px solid var(--line)}
-header img{width:30px;height:30px;border-radius:7px}header b{font-size:17px}
+header img{height:26px;width:auto}header b{font-size:17px}
 h1{font-size:22px;margin:24px 0 6px}p{margin:0;color:var(--muted)}h1+p{margin-bottom:22px}
 </style></head>
 <body><div class="wrap"><header><img src="/assets/mark.png" alt=""><b>OBD360</b></header>

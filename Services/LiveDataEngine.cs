@@ -379,7 +379,7 @@ public sealed class LiveDataEngine : IAsyncDisposable
         lock (_dashboardGate)
             wantLambda = _fuelAnalyticsLambda;
         return CarScanner.Services.Energy.FuelSignalMapper.AnalyticsPids(
-            _obd.IsPidSupported(0x5E), _obd.IsPidSupported(0x24), wantLambda);
+            _obd.IsPidSupported(0x5E), _obd.IsPidSupported(0x24), wantLambda, _obd.IsPidSupported(0x9D));
     }
 
     private static IEnumerable<SensorValue> ToSensorValues(LiveDataModel data)

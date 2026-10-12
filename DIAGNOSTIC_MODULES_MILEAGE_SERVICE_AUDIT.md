@@ -163,7 +163,7 @@ requested unless the ECU advertises it.
 
 Verified decoders (standard, from the specification): SAE J1979 PID A6 (0.1 km/bit), 21/31 (1 km), 4D/4E (1 min).
 Everything else is a *public definition* applied as published (OBDb signal, DBC profile) — documented, never verified on a
-vehicle by GCar360. No capture contains a mileage value from a standard or catalog source. **Nothing in the four captures
+vehicle by OBD360. No capture contains a mileage value from a standard or catalog source. **Nothing in the four captures
 shows a decoded odometer reading.**
 
 ## 4. Service pages and procedures

@@ -142,7 +142,8 @@ public sealed class VerificationEmailTemplateTests
     {
         var html = VerificationEmailTemplate.Render(Model(logo: null)).Html;
         Assert.DoesNotContain("<img", html);
-        Assert.Contains("GCar", html);
+        Assert.Contains("OBD", html);
+        Assert.DoesNotContain("GCar", html);
         Assert.Contains("360", html);
     }
 

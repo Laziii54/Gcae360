@@ -88,7 +88,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
         if (!AdminService.TwoStepEnabled)
             return Page("შესვლა", $$"""
 <div class="login"><div class="panel">
-<div style="font-weight:800;font-size:20px;margin-bottom:4px">GCar<span style="color:var(--accent)">360</span> · ადმინი</div>
+<div style="font-weight:800;font-size:20px;margin-bottom:4px">OBD<span style="color:var(--accent)">360</span> · ადმინი</div>
 <div class="msg err">შესვლა გამორთულია: ორსაფეხურიანი დაცვა სავალდებულოა. Set GCS_ADMIN_TOTP_SECRET.<br><span class="muted">Admin sign-in is disabled until GCS_ADMIN_TOTP_SECRET is set on the server.</span></div>
 <ol class="muted" style="padding-left:18px">
 <li>ტელეფონზე დააყენე Google Authenticator → „+“ → „Enter a setup key“, გასაღები:<div class="mono" style="font-size:15px;margin:8px 0;padding:10px;border:1px dashed var(--line);border-radius:10px">{{H(AdminService.NewTotpSecret())}}</div></li>
@@ -102,7 +102,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
 
     private static string LoginForm(string? error) => Page("შესვლა", $$"""
 <div class="login"><div class="panel">
-<div style="font-weight:800;font-size:20px;margin-bottom:4px">GCar<span style="color:var(--accent)">360</span> · ადმინი</div>
+<div style="font-weight:800;font-size:20px;margin-bottom:4px">OBD<span style="color:var(--accent)">360</span> · ადმინი</div>
 <p class="muted" style="margin:0 0 18px">მხოლოდ მფლობელისთვის</p>
 {{(error is null ? "" : $"<div class=\"msg err\">{H(error)}</div>")}}
 <form method="post" action="/admin/login" autocomplete="on">
@@ -142,7 +142,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
             : "<div class=\"warnbox\">ორსაფეხურიანი დაცვა ჯერ ჩართული არ არის. გადადი <a href=\"/admin?tab=security\">„უსაფრთხოება“</a>-ზე და ჩართე — 2 წუთი სჭირდება.</div>";
 
         return Page(title, $$"""
-<div class="shell"><aside><div class="brand">GCar<span>360</span></div>{{nav}}
+<div class="shell"><aside><div class="brand">OBD<span>360</span></div>{{nav}}
 <div class="who">{{H(s.Email)}}<form method="post" action="/admin/logout"><input type="hidden" name="csrf" value="{{H(s.Csrf)}}"><button class="ghost">გასვლა</button></form></div></aside>
 <main><h1>{{H(title)}}</h1><p class="sub">{{subtitle}}</p>{{twoStep}}{{note}}{{content}}</main></div>
 """);

@@ -3,16 +3,15 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     x:Class="CarScanner.Views.LoadingPage"
-    BackgroundColor="#000817"
+    BackgroundColor="#000000"
     Shell.NavBarIsVisible="False"
     NavigationPage.HasNavigationBar="False">
 
     <!-- Same colour as the splash screen, so the start is one smooth picture. -->
-    <Grid x:Name="Root" BackgroundColor="#000817">
+    <Grid x:Name="Root" BackgroundColor="#000000">
         <Image
             x:Name="Logo"
-            Source="gcar_loading.gif"
-            IsAnimationPlaying="True"
+            Source="obd360_loading.png"
             Aspect="AspectFit"
             WidthRequest="240"
             HeightRequest="240"

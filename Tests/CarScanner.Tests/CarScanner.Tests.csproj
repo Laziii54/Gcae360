@@ -56,6 +56,7 @@
     <Compile Include="../../Services/OemDiagnostics/OemAddressRegistry.cs" Link="OemAddressRegistry.cs" />
     <Compile Include="../../Services/OemDiagnostics/ModuleReplyAnalysis.cs" Link="ModuleReplyAnalysis.cs" />
     <Compile Include="../../Services/OemDiagnostics/ModuleDtcProbe.cs" Link="ModuleDtcProbe.cs" />
+    <Compile Include="../../Services/OemDiagnostics/CoreModuleStatus.cs" Link="CoreModuleStatus.cs" />
     <Compile Include="../../Services/Coding/CodingModels.cs" Link="CodingModels.cs" />
     <Compile Include="../../Services/Coding/CodingReplyParser.cs" Link="CodingReplyParser.cs" />
     <Compile Include="../../Services/Coding/CodingCapabilities.cs" Link="CodingCapabilities.cs" />
@@ -157,6 +158,8 @@
     <Compile Include="../../Services/Energy/FuelPresenter.cs" Link="Energy/FuelPresenter.cs" />
     <Compile Include="../../Controls/IconCatalog.cs" Link="Controls/IconCatalog.cs" />
     <Compile Include="../../Controls/FlowPlacement.cs" Link="Controls/FlowPlacement.cs" />
+    <Compile Include="../../Services/VehicleSessionIdentity.cs" Link="VehicleSessionIdentity.cs" />
+    <Compile Include="../../Services/VehicleIdentityText.cs" Link="VehicleIdentityText.cs" />
     <Compile Include="../../Services/Energy/ElectricTripCalculator.cs" Link="Energy/ElectricTripCalculator.cs" />
   </ItemGroup>
 </Project>

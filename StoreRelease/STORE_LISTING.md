@@ -1,12 +1,12 @@
-# Store listing — GCar360
+# Store listing — OBD360
 
 App ID (Android package and iOS bundle): `com.gcar360.app`
 
 ## Name
 
-GCar360 — OBD2 car scanner
+OBD360 — OBD2 car scanner
 
-(Apple allows 30 characters: `GCar360: OBD2 Car Scanner`.)
+(Apple allows 30 characters: `OBD360: OBD2 Car Scanner`.)
 
 ## Short description — English (max 80)
 
@@ -18,7 +18,7 @@ OBD2 დიაგნოსტიკა, შეცდომის კოდებ
 
 ## Full description — English
 
-GCar360 turns your phone and an OBD2 adapter into a car scanner. It shows
+OBD360 turns your phone and an OBD2 adapter into a car scanner. It shows
 only what your car and adapter actually report — unsupported values are
 marked as unavailable, never invented.
 
@@ -53,7 +53,7 @@ informational and do not replace a qualified mechanic.
 
 ## სრული აღწერა — ქართული
 
-GCar360 ტელეფონს და OBD2 ადაპტერს მანქანის სკანერად აქცევს. აპი აჩვენებს
+OBD360 ტელეფონს და OBD2 ადაპტერს მანქანის სკანერად აქცევს. აპი აჩვენებს
 მხოლოდ იმას, რასაც მანქანა და ადაპტერი რეალურად აბრუნებს. რაც მიუწვდომელია,
 ასეც მოინიშნება და გამოგონილი ციფრი არასდროს ჩანს.
 

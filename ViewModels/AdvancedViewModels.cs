@@ -5053,6 +5053,22 @@ public partial class ModuleScanViewModel : BaseViewModel
             });
         }
 
+        // Core modules that did not answer (or were not asked) get their own honest line: silence is never shown as "no faults".
+        foreach (var core in report.CoreModules.Where(item => !item.Reached))
+        {
+            ModuleRows.Add(new ModuleStatusRow
+            {
+                Name = english ? core.NameEn : core.NameKa,
+                StatusText = english ? core.TextEn : core.TextKa,
+                StatusColor = core.Reach is CarScanner.Services.OemDiagnostics.CoreModuleReach.NotAskedCarMoving
+                    or CarScanner.Services.OemDiagnostics.CoreModuleReach.NotAskedNoKnownAddress
+                    or CarScanner.Services.OemDiagnostics.CoreModuleReach.NotAskedUnsupportedConnection
+                    ? Color.FromArgb("#94A3B8")
+                    : Color.FromArgb("#F59E0B"),
+                Detail = string.IsNullOrWhiteSpace(core.AddressText) ? string.Empty : (english ? "address " : "მისამართი ") + core.AddressText
+            });
+        }
+
         HasModuleRows = ModuleRows.Count > 0;
         var summary = english
             ? $"Modules checked: {report.ModulesChecked} · answered: {responded.Count} · faults in modules: {responded.Sum(module => module.Codes.Count)}"

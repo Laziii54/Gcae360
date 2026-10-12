@@ -42,6 +42,7 @@ public enum EnergyReason
     ListNotRead,
     NoFuelRatePid,
     FuelRatePid,
+    FuelMassRatePid,
     AirFlowEstimate,
     FuelTypeUnknown,
     DieselNeedsLambda,
@@ -75,6 +76,7 @@ public sealed record EnergyFacts(
 public static class EnergyCompatibility
 {
     public const int PidFuelRate = 0x5E;
+    public const int PidEngineFuelRate = 0x9D;
     public const int PidMaf = 0x10;
     public const int PidSpeed = 0x0D;
     public const int PidRpm = 0x0C;
@@ -189,6 +191,15 @@ public static class EnergyCompatibility
 
         if (pids.Contains(PidFuelRate))
             return (EnergySupport.DirectlySupported, EnergyReason.FuelRatePid);
+
+        // PID 9D is a mass flow (g/s): it needs the density of a known liquid fuel to become litres.
+        if (pids.Contains(PidEngineFuelRate))
+        {
+            if (FuelKinds.TryGetMafConstants(facts.Kind, out _))
+                return (EnergySupport.CalculatedFromAvailableData, EnergyReason.FuelMassRatePid);
+            if (!pids.Contains(PidMaf))
+                return (EnergySupport.InsufficientData, facts.Kind == FuelKind.Cng ? EnergyReason.FuelTypeUnsupported : EnergyReason.FuelTypeUnknown);
+        }
 
         if (!pids.Contains(PidMaf))
             return (EnergySupport.Unsupported, EnergyReason.NoFuelRatePid);
