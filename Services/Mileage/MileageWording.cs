@@ -38,8 +38,8 @@ public static class MileageWording
             ? "Standard OBD-II PID (SAE J1979). Which ECU answered is not identified."
             : "სტანდარტული OBD-II PID (SAE J1979). რომელმა ECU-მ უპასუხა, ცნობილი არ არის.",
         MileageSourceKind.PublicDefinition => en
-            ? "Public community definition (OBDb catalog) for this model — not tested by GCar360 on a real vehicle."
-            : "საჯარო საზოგადოებრივი აღწერა (OBDb) ამ მოდელისთვის — GCar360-ს რეალურ მანქანაზე არ შეუმოწმებია.",
+            ? "Public community definition (OBDb catalog) for this model — not tested by OBD360 on a real vehicle."
+            : "საჯარო საზოგადოებრივი აღწერა (OBDb) ამ მოდელისთვის — OBD360-ს რეალურ მანქანაზე არ შეუმოწმებია.",
         MileageSourceKind.CanBroadcast => en
             ? "Message the car broadcasts, decoded with a public definition (opendbc / OVMS) — nothing was requested."
             : "მანქანის თვითნაკადი შეტყობინება, საჯარო აღწერით (opendbc / OVMS) — არაფერი მოუთხოვიათ.",
@@ -72,7 +72,7 @@ public static class MileageWording
         MileageSourceReason.NotCanProtocol => en ? "Needs a CAN connection; this car uses another protocol." : "საჭიროა CAN კავშირი; ეს მანქანა სხვა პროტოკოლს იყენებს.",
         MileageSourceReason.ManufacturerUnknown => en ? "The manufacturer is not identified — nothing was requested." : "მწარმოებელი ამოცნობილი არ არის — არაფერი მოუთხოვიათ.",
         MileageSourceReason.ModelUnknown => en ? "The model is not identified, so no model-specific request can be chosen — nothing was requested." : "მოდელი ამოცნობილი არ არის, ამიტომ მოდელის მოთხოვნა ვერ შეირჩევა — არაფერი მოუთხოვიათ.",
-        MileageSourceReason.ExactModelDefinition => en ? "A public definition exists for this exact model; it has not been verified on a real vehicle by GCar360." : "ამ ზუსტი მოდელისთვის საჯარო აღწერა არსებობს; GCar360-ს რეალურ მანქანაზე არ შეუმოწმებია.",
+        MileageSourceReason.ExactModelDefinition => en ? "A public definition exists for this exact model; it has not been verified on a real vehicle by OBD360." : "ამ ზუსტი მოდელისთვის საჯარო აღწერა არსებობს; OBD360-ს რეალურ მანქანაზე არ შეუმოწმებია.",
         MileageSourceReason.NoExactModelDefinition => en ? "No definition for this exact model — requests from other models are not used." : "ამ ზუსტი მოდელისთვის აღწერა არ არის — სხვა მოდელების მოთხოვნები არ გამოიყენება.",
         MileageSourceReason.BrandLevelDefinition => en ? "A brand-level message definition exists; your exact model is not confirmed." : "მარკის დონის შეტყობინების აღწერა არსებობს; შენი ზუსტი მოდელი დადასტურებული არ არის.",
         MileageSourceReason.NoDefinitionForBrand => en ? "No broadcast definition for this brand." : "ამ მარკისთვის თვითნაკადი შეტყობინების აღწერა არ არის.",

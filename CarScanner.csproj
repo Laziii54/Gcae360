@@ -18,14 +18,14 @@
 		<Nullable>enable</Nullable>
 		<GenerateDocumentationFile>false</GenerateDocumentationFile>
 
-		<ApplicationTitle>GCar360</ApplicationTitle>
+		<ApplicationTitle>OBD360</ApplicationTitle>
 		<ApplicationId>com.gcar360.app</ApplicationId>
 		<!-- Android and iOS share the same identifier, which must match the
 		     purchase-verification backend (GCS_ANDROID_PACKAGE_NAME / GCS_APPLE_BUNDLE_ID). -->
 		<ApplicationId Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">com.gcar360.app</ApplicationId>
 
 		<ApplicationDisplayVersion>1.0.0</ApplicationDisplayVersion>
-		<ApplicationVersion>57</ApplicationVersion>
+		<ApplicationVersion>59</ApplicationVersion>
 
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
 

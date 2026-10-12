@@ -1,3 +1,4 @@
+using CarScanner.Services;
 using CarScanner.ViewModels;
 
 namespace CarScanner.Views;
@@ -26,7 +27,7 @@ public partial class ServicePage : ContentPage
                 }
                 catch (Exception)
                 {
-                    await DisplayAlertAsync("Service log", "Log export failed / ლოგის ექსპორტი ვერ შესრულდა", "OK");
+                    await this.DisplayAlertLocalizedAsync("Service log", "Log export failed / ლოგის ექსპორტი ვერ შესრულდა", "OK");
                 }
             })
         });
@@ -70,7 +71,7 @@ public partial class ServicePage : ContentPage
 
         var english = Application.Current?.Handler?.MauiContext?.Services
             .GetService<CarScanner.Services.Localization.LocalizationService>()?.IsEnglish == true;
-        var yes = await DisplayAlertAsync(
+        var yes = await this.DisplayAlertLocalizedAsync(
             row.Title,
             english ? "Does the car's dashboard show the same value?" : "მანქანის პანელზეც იგივე მნიშვნელობა ჩანს?",
             english ? "Yes, correct" : "კი, სწორია",

@@ -1,7 +1,7 @@
 namespace CarScanner.Views;
 
 /// <summary>
-/// Opening screen: the animated GCar360 logo in the middle of the screen.
+/// Opening screen: the animated OBD360 logo in the middle of the screen.
 /// The full GIF loop is played only on the very first launch; later cold
 /// starts show it briefly (about one second) so the app opens quickly.
 /// </summary>

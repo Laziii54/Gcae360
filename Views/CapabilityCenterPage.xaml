@@ -32,7 +32,7 @@
                             <Label Grid.Column="2" Text="{Binding DetectionPercent, StringFormat='{0}%'}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
                         </Grid>
                         <ProgressBar HeightRequest="5" Progress="{Binding DetectionProgress}" ProgressColor="{Binding DetectionColor}" BackgroundColor="{DynamicResource DividerColor}" />
-                        <Label Text="{Binding DetectionStage}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                        <Label Text="{Binding DetectionStage}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                     </VerticalStackLayout>
                     <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" />
 
@@ -40,9 +40,9 @@
                     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,13">
                         <Path Data="M3,17 L3,12 L5.5,6.5 L18.5,6.5 L21,12 L21,17 Z M3,12 L21,12 M7,17 L7,20 M17,17 L17,20" Style="{StaticResource RowIconStyle}" VerticalOptions="Start" />
                         <VerticalStackLayout Grid.Column="1" Spacing="1">
-                            <Label Text="VEHICLE" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                            <Label Text="VEHICLE" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                             <Label Text="{Binding VehicleSummary}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                            <Label Text="{Binding VehicleProfileStatus}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                            <Label Text="{Binding VehicleProfileStatus}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                         </VerticalStackLayout>
                     </Grid>
                     <BoxView Style="{StaticResource RowDividerStyle}" />
@@ -73,7 +73,7 @@
                     <ActivityIndicator IsRunning="{Binding IsBusy}" Color="{Binding DetectionColor}" WidthRequest="22" HeightRequest="22" VerticalOptions="Center" />
                     <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
                         <Label Text="Vehicle capabilities მოწმდება..." FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
-                        <Label Text="{Binding DetectionStage}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                        <Label Text="{Binding DetectionStage}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                     </VerticalStackLayout>
                 </Grid>
             </Border>
@@ -81,7 +81,7 @@
             <!-- Universal OBD-II -->
             <VerticalStackLayout Spacing="2" Margin="0,6,0,0">
                 <Label Text="Universal OBD-II" Style="{StaticResource SectionCaptionStyle}" />
-                <Label IsVisible="False" Text="სტანდარტული OBD-II შესაძლებლობები, რომლებიც ECU-მ რეალურად დაადასტურა" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0,0,0" />
+                <Label IsVisible="False" Text="სტანდარტული OBD-II შესაძლებლობები, რომლებიც ECU-მ რეალურად დაადასტურა" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0,0,0" />
             </VerticalStackLayout>
 
             <Border Style="{StaticResource ListCardStyle}">
@@ -95,7 +95,7 @@
                                     <VerticalStackLayout Spacing="2" VerticalOptions="Center">
                                         <Label Text="{Binding Title}" FontSize="14" TextColor="{DynamicResource TextColor}" />
                                         <Label Text="{Binding Description}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                                        <Label IsVisible="False" Text="{Binding Evidence}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                        <Label IsVisible="False" Text="{Binding Evidence}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                                     </VerticalStackLayout>
                                     <Label Grid.Column="1" Text="{Binding StateText}" FontSize="12" FontAttributes="Bold" TextColor="{Binding StateColor}"
                                            HorizontalTextAlignment="End" VerticalOptions="Center" LineBreakMode="WordWrap" MaximumWidthRequest="105" />
@@ -109,7 +109,7 @@
             <!-- PRO Analytics -->
             <VerticalStackLayout Spacing="2" Margin="0,6,0,0">
                 <Label Text="PRO Analytics" Style="{StaticResource SectionCaptionStyle}" />
-                <Label IsVisible="False" Text="ფუნქციები ხელმისაწვდომია მხოლოდ მაშინ, როცა საჭირო რეალური telemetry არსებობს" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0,0,0" />
+                <Label IsVisible="False" Text="ფუნქციები ხელმისაწვდომია მხოლოდ მაშინ, როცა საჭირო რეალური telemetry არსებობს" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0,0,0" />
             </VerticalStackLayout>
 
             <Border Style="{StaticResource ListCardStyle}">
@@ -123,7 +123,7 @@
                                     <VerticalStackLayout Spacing="2" VerticalOptions="Center">
                                         <Label Text="{Binding Title}" FontSize="14" TextColor="{DynamicResource TextColor}" />
                                         <Label Text="{Binding Description}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                                        <Label IsVisible="False" Text="{Binding Evidence}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                        <Label IsVisible="False" Text="{Binding Evidence}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                                     </VerticalStackLayout>
                                     <Label Grid.Column="1" Text="{Binding StateText}" FontSize="12" FontAttributes="Bold" TextColor="{Binding StateColor}"
                                            HorizontalTextAlignment="End" VerticalOptions="Center" LineBreakMode="WordWrap" MaximumWidthRequest="105" />
@@ -137,7 +137,7 @@
             <!-- Manufacturer Specific -->
             <VerticalStackLayout Spacing="2" Margin="0,6,0,0">
                 <Label Text="Manufacturer Specific" Style="{StaticResource SectionCaptionStyle}" />
-                <Label IsVisible="False" Text="ABS, SRS, BCM, Coding და სხვა OEM ფუნქციები მხოლოდ დადასტურებული ECU კავშირისას" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0,0,0" />
+                <Label IsVisible="False" Text="ABS, SRS, BCM, Coding და სხვა OEM ფუნქციები მხოლოდ დადასტურებული ECU კავშირისას" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0,0,0" />
             </VerticalStackLayout>
 
             <Border Style="{StaticResource ListCardStyle}">
@@ -151,7 +151,7 @@
                                     <VerticalStackLayout Spacing="2" VerticalOptions="Center">
                                         <Label Text="{Binding Title}" FontSize="14" TextColor="{DynamicResource TextColor}" />
                                         <Label Text="{Binding Description}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                                        <Label IsVisible="False" Text="{Binding Evidence}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                        <Label IsVisible="False" Text="{Binding Evidence}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                                     </VerticalStackLayout>
                                     <Label Grid.Column="1" Text="{Binding StateText}" FontSize="12" FontAttributes="Bold" TextColor="{Binding StateColor}"
                                            HorizontalTextAlignment="End" VerticalOptions="Center" LineBreakMode="WordWrap" MaximumWidthRequest="105" />

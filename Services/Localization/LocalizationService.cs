@@ -338,8 +338,8 @@ public sealed partial class LocalizationService
             ["მოპედი"] = "Moped",
             ["სკუტერი"] = "Scooter",
             ["₾ / ლიტრი"] = "GEL / liter",
-            ["☆ Favorite"] = "☆ Favorite",
-            ["✦ Car Scanner PRO"] = "✦ Car Scanner PRO",
+            ["Favorite"] = "Favorite",
+            ["OBD360 PRO"] = "OBD360 PRO",
             ["12V სისტემის მდგომარეობა"] = "12V system status",
             ["2. PRO ანალიტიკა"] = "2. PRO analytics",
             ["AI დიაგნოსტიკა · PRO"] = "AI diagnostics · PRO",
@@ -718,7 +718,7 @@ public sealed partial class LocalizationService
             ["BATTERY / CHARGING"] = "ბატარეა / დამუხტვა",
             ["Before / After"] = "მანამდე / შემდეგ",
             ["Bluetooth / OBD2"] = "Bluetooth / OBD2",
-            ["Car Scanner PRO"] = "Car Scanner PRO",
+            ["OBD360 PRO"] = "OBD360 PRO",
             ["Connection Diagnostics"] = "კავშირის დიაგნოსტიკა",
             ["Continuous Monitors"] = "უწყვეტი მონიტორები",
             ["Current Drive Cycle"] = "მიმდინარე მოძრაობის ციკლი",
@@ -738,7 +738,7 @@ public sealed partial class LocalizationService
             ["Freeze Frame"] = "Freeze Frame",
             ["Fuel Rate"] = "საწვავის სიჩქარე",
             ["FULL HEALTH SCAN"] = "სრული მდგომარეობის სკანირება",
-            ["Georgian Car Scanner"] = "Georgian Car Scanner",
+            ["OBD360"] = "OBD360",
             ["Graph Studio"] = "გრაფიკი",
             ["High Voltage Battery"] = "მაღალი ძაბვის ბატარეა",
             ["Inspection Readiness"] = "ინსპექტირების მზადყოფნა",
@@ -877,8 +877,8 @@ public sealed partial class LocalizationService
             // Fuel page — battery energy (EV / hybrid)
             ["მოგზაურობების ისტორია"] = "Trip history",
             ["ბატარეის ენერგია"] = "Battery energy",
-            ["◀ რეკუპერაცია"] = "◀ Regeneration",
-            ["ხარჯი ▶"] = "Use ▶",
+            ["რეკუპერაცია"] = "Regeneration",
+            ["ხარჯი"] = "Use",
             ["ბატარეის ძაბვა"] = "Battery voltage",
             ["დენი"] = "Current",
             ["დამუხტვა (SoC)"] = "State of charge (SoC)",
@@ -1424,7 +1424,7 @@ public sealed partial class LocalizationService
             ["ფუნქციები ხელმისაწვდომია მხოლოდ მაშინ, როცა საჭირო რეალური telemetry არსებობს"] = "Functions are available only when the required real telemetry exists",
             ["ABS, SRS, BCM, Coding და სხვა OEM ფუნქციები მხოლოდ დადასტურებული ECU კავშირისას"] = "ABS, SRS, BCM, Coding and other OEM functions only with a confirmed ECU connection",
             ["Vehicle capabilities მოწმდება..."] = "Checking vehicle capabilities...",
-            ["↻ განახლება"] = "↻ Refresh",
+            ["განახლება"] = "Refresh",
             // --- phase 2: services, models, dialogs ---
             ["ეს შესაძლებლობა ხელმისაწვდომია მხოლოდ აქტიური PRO ვერსიით."] = "This feature is available only with an active PRO version.",
             ["რა პრობლემა აქვს მანქანას?"] = "What is wrong with the car?",
@@ -1605,7 +1605,7 @@ public sealed partial class LocalizationService
             ["ქვემოთ არის შენი მანქანის სერვისის განულების ინსტრუქციები. დააჭირე „ინსტრუქცია“-ს."] = "Below are the service reset instructions for your car. Press “Instructions”.",
             ["ჯერ მანქანის ინფორმაცია უნდა ჩაიტვირთოს."] = "Vehicle information must be loaded first.",
             ["OEM მონაცემები იკითხება…"] = "Reading OEM data…",
-            ["✓ OEM მონაცემები შენახულია:"] = "✓ OEM data saved:",
+            ["OEM მონაცემები შენახულია:"] = "OEM data saved:",
             ["OEM მონაცემები შენახულია:"] = "OEM data saved:",
             ["OBD adapter მზად არ არის. ჯერ დაუკავშირდი adapter-ს."] = "The OBD adapter is not ready. Connect to the adapter first.",
             ["Adapter დაკავშირებულია, მაგრამ მანქანის Generic OBD-II ECU პასუხი ვერ დადასტურდა."] = "The adapter is connected, but the car's Generic OBD-II ECU reply could not be confirmed.",
@@ -1924,7 +1924,7 @@ public sealed partial class LocalizationService
             ["Calculated from MAF + fuel type"] = "გამოთვლილია MAF-ით და საწვავის ტიპით",
             ["Calculated value — MAF + fuel type"] = "გამოთვლილი მნიშვნელობა — MAF + საწვავის ტიპი",
             ["Capability benchmark: not tested"] = "შესაძლებლობების ტესტი: არ შემოწმებულა",
-            ["Car Scanner History"] = "სკანერის ისტორია",
+            ["OBD360 History"] = "სკანერის ისტორია",
             ["Clear Failed"] = "წაშლა ვერ მოხერხდა",
             ["Clearing DTC codes..."] = "DTC კოდები იშლება...",
             ["Comprehensive Components"] = "ძირითადი კომპონენტები",
@@ -2002,8 +2002,8 @@ public sealed partial class LocalizationService
             ["Vehicle Speed"] = "ავტომობილის სიჩქარე",
             ["Verifying DTC clear..."] = "მოწმდება DTC კოდების წაშლა...",
             ["Warning indicator requested"] = "გამაფრთხილებელი ინდიკატორი ჩართულია",
-            ["● Connected"] = "● დაკავშირებულია",
-            ["● Disconnected"] = "● გათიშულია",
+            ["Connected"] = "დაკავშირებულია",
+            ["Disconnected"] = "გათიშულია",
             ["Freeze Frame: Error"] = "Freeze Frame: შეცდომა",
             ["Freeze Frame: Invalid Response"] = "Freeze Frame: არასწორი პასუხი",
             ["OEM DTC: Error"] = "OEM DTC: შეცდომა",
@@ -2141,7 +2141,7 @@ public sealed partial class LocalizationService
         ("ECU მონაცემი: {0} · Direct Reset: {1} · დამატებითი: {2}", "ECU data: {0} · Direct Reset: {1} · Extra: {2}"),
         ("ECU-დან განახლდა {0} სერვისის მნიშვნელობა. ხელმისაწვდომია {1} დადასტურებული reset.", "{0} service values updated from the ECU. {1} confirmed resets available."),
         ("ECU-დან განახლდა {0} სერვისის მნიშვნელობა.", "{0} service values updated from the ECU."),
-        ("✓ OEM მონაცემები შენახულია:\n{0}", "✓ OEM data saved:\n{0}"),
+        ("OEM მონაცემები შენახულია:\n{0}", "OEM data saved:\n{0}"),
         ("OEM Capture ვერ შესრულდა: {0}", "OEM Capture failed: {0}"),
         ("ზეთის შეცვლისას დააჭირე „ზეთი შევცვალე“ — აპი თავად დაითვლის დარჩენილ კილომეტრს და დღეებს ({0} კმ / 12 თვე).", "When you change the oil, press “Oil changed” — the app will count the remaining km and days itself ({0} km / 12 months)."),
         ("ზეთი შეიცვალა: {0} · ინტერვალი {1} კმ / 12 თვე", "Oil changed: {0} · interval {1} km / 12 months"),
@@ -2151,11 +2151,11 @@ public sealed partial class LocalizationService
         ("ინსტრუქციის ჩვენება ვერ მოხერხდა: {0}", "Could not show the instructions: {0}"),
         ("{0}\n\nაპი გაშვებამდე თავიდან შეამოწმებს ძაბვას, სიჩქარეს, ძრავის მდგომარეობას და exact ECU definition-ს. გაგრძელდეს?", "{0}\n\nBefore running, the app will re-check voltage, speed, engine state and the exact ECU definition. Continue?"),
         ("{0} იწყება…", "{0} is starting…"),
-        ("✓ RESET დადასტურდა ECU readback-ით. {0}", "✓ RESET confirmed by ECU readback. {0}"),
         ("RESET დადასტურდა ECU readback-ით. {0}", "RESET confirmed by ECU readback. {0}"),
-        ("✓ ECU-მ reviewed reset command დაადასტურა, მაგრამ წაკითხვადი Service მნიშვნელობა ჯერ არ შეცვლილა. აპი 100%-ს არ გააყალბებს. Ignition cycle-ის შემდეგ ხელახლა დააჭირე Check-ს. {0}", "✓ The ECU confirmed the reviewed reset command, but the readable Service value has not changed yet. The app will not fake 100%. Press Check again after an ignition cycle. {0}"),
+        ("RESET დადასტურდა ECU readback-ით. {0}", "RESET confirmed by ECU readback. {0}"),
         ("ECU-მ reviewed reset command დაადასტურა, მაგრამ წაკითხვადი Service მნიშვნელობა ჯერ არ შეცვლილა. აპი 100%-ს არ გააყალბებს. Ignition cycle-ის შემდეგ ხელახლა დააჭირე Check-ს. {0}", "The ECU confirmed the reviewed reset command, but the readable Service value has not changed yet. The app will not fake 100%. Press Check again after an ignition cycle. {0}"),
-        ("✓ ECU-მ reviewed reset command დაადასტურა. დამოუკიდებელი Service-value readback ამ მანქანაზე მიუწვდომელია, ამიტომ დაფაზე/შემდეგ Check-ზე გადაამოწმე ახალი interval. {0}", "✓ The ECU confirmed the reviewed reset command. An independent Service-value readback is not available on this car, so check the new interval on the dashboard/next Check. {0}"),
+        ("ECU-მ reviewed reset command დაადასტურა, მაგრამ წაკითხვადი Service მნიშვნელობა ჯერ არ შეცვლილა. აპი 100%-ს არ გააყალბებს. Ignition cycle-ის შემდეგ ხელახლა დააჭირე Check-ს. {0}", "The ECU confirmed the reviewed reset command, but the readable Service value has not changed yet. The app will not fake 100%. Press Check again after an ignition cycle. {0}"),
+        ("ECU-მ reviewed reset command დაადასტურა. დამოუკიდებელი Service-value readback ამ მანქანაზე მიუწვდომელია, ამიტომ დაფაზე/შემდეგ Check-ზე გადაამოწმე ახალი interval. {0}", "The ECU confirmed the reviewed reset command. An independent Service-value readback is not available on this car, so check the new interval on the dashboard/next Check. {0}"),
         ("ECU-მ reviewed reset command დაადასტურა. დამოუკიდებელი Service-value readback ამ მანქანაზე მიუწვდომელია, ამიტომ დაფაზე/შემდეგ Check-ზე გადაამოწმე ახალი interval. {0}", "The ECU confirmed the reviewed reset command. An independent Service-value readback is not available on this car, so check the new interval on the dashboard/next Check. {0}"),
         ("მოქმედება არ დასრულდა: {0}", "Action not finished: {0}"),
         ("მოქმედება ვერ შესრულდა: {0}", "Action failed: {0}"),
@@ -2353,7 +2353,7 @@ public sealed partial class LocalizationService
 
     public string CurrentLanguageCode => Language.Code;
 
-    public string CurrentFlag => Language.Flag;
+    public string CurrentBadge => Language.Badge;
 
 
     // =========================================================
@@ -2501,7 +2501,7 @@ public sealed partial class LocalizationService
         if (LanguagePacks.TryTranslate(language, line, out var exact))
             return exact;
 
-        // "⚠ Text", "• Text", "1. Text" …
+        // "Text", "• Text", "1. Text" …
         var prefix = LeadingSymbols.Match(line);
         if (prefix.Success && prefix.Length < line.Length &&
             LanguagePacks.TryTranslate(language, line.Substring(prefix.Length), out var rest))
@@ -2775,7 +2775,7 @@ public sealed partial class LocalizationService
             Apply(page);
         }
 
-        // The header (GCar360 + car type / OBD status) lives in the Shell title view,
+        // The header (OBD360 + car type / OBD status) lives in the Shell title view,
         // outside the page tree, so it is redrawn separately.
         if (Shell.Current is { } shell)
         {

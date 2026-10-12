@@ -1,4 +1,5 @@
 using Android.Content;
+using Android.Runtime;
 using AMatrix = Android.Graphics.Matrix;
 using ASurfaceTexture = Android.Graphics.SurfaceTexture;
 using Android.Hardware.Camera2;
@@ -46,11 +47,20 @@ internal sealed class AndroidPerformanceCameraController : Java.Lang.Object, IPe
     private volatile bool _recorderAutoStopped;
     private Xamarin.Google.MLKit.Vision.Text.ITextRecognizer? _textRecognizer;
 
+    // The listener the native TextureView holds. It is a separate small object on purpose: Android keeps this Java peer
+    // alive on its own, and if the managed object behind it is collected the runtime re-creates it through the activation
+    // constructor (Java.Interop TypeManager.CreateInstance). A controller without that constructor made the runtime throw
+    // NotSupportedException from a draw call (crash report: TextureView.ISurfaceTextureListenerInvoker ← ShellFlyoutRenderer
+    // .DrawChild). The listener below has the constructor, holds the controller weakly, and ignores callbacks after the
+    // controller is gone. The controller keeps a strong reference to it while it is attached.
+    private SurfaceListener? _listener;
+
     public AndroidPerformanceCameraController(Context context, TextureView view)
     {
         _context = context;
         _view = view;
-        _view.SurfaceTextureListener = this;
+        _listener = new SurfaceListener(this);
+        _view.SurfaceTextureListener = _listener;
         if (_view.IsAvailable)
             _surfaceReady.TrySetResult(true);
     }
@@ -498,6 +508,32 @@ internal sealed class AndroidPerformanceCameraController : Java.Lang.Object, IPe
     {
     }
 
+    private sealed class SurfaceListener : Java.Lang.Object, TextureView.ISurfaceTextureListener
+    {
+        private readonly WeakReference<AndroidPerformanceCameraController>? _owner;
+
+        public SurfaceListener(AndroidPerformanceCameraController owner) => _owner = new WeakReference<AndroidPerformanceCameraController>(owner);
+
+        /// <summary>Activation constructor: used by the runtime when it has to re-create this peer. Such an instance has no owner.</summary>
+        public SurfaceListener(IntPtr handle, JniHandleOwnership transfer) : base(handle, transfer)
+        {
+        }
+
+        private AndroidPerformanceCameraController? Owner =>
+            _owner is not null && _owner.TryGetTarget(out var owner) ? owner : null;
+
+        public void OnSurfaceTextureAvailable(ASurfaceTexture surface, int width, int height) =>
+            Owner?.OnSurfaceTextureAvailable(surface, width, height);
+
+        // true = the system may release the surface itself (what the controller always answered).
+        public bool OnSurfaceTextureDestroyed(ASurfaceTexture surface) => Owner?.OnSurfaceTextureDestroyed(surface) ?? true;
+
+        public void OnSurfaceTextureSizeChanged(ASurfaceTexture surface, int width, int height) =>
+            Owner?.OnSurfaceTextureSizeChanged(surface, width, height);
+
+        public void OnSurfaceTextureUpdated(ASurfaceTexture surface) => Owner?.OnSurfaceTextureUpdated(surface);
+    }
+
     // ------------------------------------------------------------------
     // Cleanup
     // ------------------------------------------------------------------
@@ -511,10 +547,20 @@ internal sealed class AndroidPerformanceCameraController : Java.Lang.Object, IPe
 
         try
         {
+            // The listener object stays referenced until the native view has really let go of it.
+            var listener = _listener;
             if (MainThread.IsMainThread)
+            {
                 _view.SurfaceTextureListener = null;
+                _listener = null;
+            }
             else
-                MainThread.BeginInvokeOnMainThread(() => { try { _view.SurfaceTextureListener = null; } catch { } });
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    try { _view.SurfaceTextureListener = null; } catch { }
+                    GC.KeepAlive(listener);
+                    _listener = null;
+                });
         }
         catch
         {

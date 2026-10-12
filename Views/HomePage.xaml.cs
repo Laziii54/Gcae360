@@ -65,7 +65,7 @@ public partial class HomePage : ContentPage
 
     private async void OnPrePurchaseClicked(object? sender, EventArgs e)
     {
-        try { await Shell.Current.GoToAsync(nameof(PrePurchasePage)); }
+        try { await CarScanner.Services.SafeNavigation.GoToAsync(nameof(PrePurchasePage)); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Pre-purchase navigation failed: {ex.Message}"); }
     }
 
@@ -75,7 +75,7 @@ public partial class HomePage : ContentPage
     /// <summary>Back to the start screen (choose OBD2 diagnostics or VIN check).</summary>
     private async void OnBackToStartTapped(object? sender, TappedEventArgs e)
     {
-        try { await Shell.Current.GoToAsync("//StartPage"); }
+        try { await CarScanner.Services.SafeNavigation.GoToAsync("//StartPage"); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Start navigation failed: {ex.Message}"); }
     }
 
@@ -125,12 +125,12 @@ public partial class HomePage : ContentPage
 
     private async void OnAccountTapped(object? sender, TappedEventArgs e)
     {
-        try { await Shell.Current.GoToAsync(nameof(AccountPage)); }
+        try { await CarScanner.Services.SafeNavigation.GoToAsync(nameof(AccountPage)); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Account navigation failed: {ex.Message}"); }
     }
 
     private void UpdateLanguageToggle() =>
-        LanguageToggleButton.Text = _localization.CurrentFlag;
+        LanguageToggleButton.Text = _localization.CurrentBadge;
 
     private void ApplyUiLocalization()
     {

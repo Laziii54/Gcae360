@@ -45,7 +45,7 @@ public partial class VehicleBrandSelectionViewModel : BaseViewModel
             return;
 
         _brands.Select(brand.Id);
-        await Shell.Current.GoToAsync(nameof(Views.BluetoothPage));
+        await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.BluetoothPage));
         }
         catch (Exception commandException)
         {

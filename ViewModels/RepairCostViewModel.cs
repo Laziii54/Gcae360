@@ -34,7 +34,6 @@ public partial class RepairCostViewModel : BaseViewModel
         var section = new CarScanner.Services.Reports.ReportSectionItem
         {
             Kind = "repair",
-            Icon = "₾",
             Title = english ? "Repair cost" : "შეკეთების ფასი",
             Status = Estimates.Any(item => item.Urgency == RepairUrgency.StopNow)
                 ? CarScanner.Services.Reports.ReportStatus.Bad

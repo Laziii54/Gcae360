@@ -146,7 +146,7 @@ app.MapGet(
             {
                 status = "ok",
                 ok = true,
-                service = "Georgian Car Scanner API",
+                service = "OBD360 API",
                 // Informational version carries "+<git commit>" when built from the repository.
                 version = System.Reflection.Assembly.GetExecutingAssembly()
                     .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
@@ -220,7 +220,7 @@ app.MapGet("/privacy-policy", () =>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>GCar360 — Privacy Policy / კონფიდენციალურობის პოლიტიკა</title>
+    <title>OBD360 — Privacy Policy / კონფიდენციალურობის პოლიტიკა</title>
     <style>
         body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.7;max-width:900px;margin:0 auto;padding:30px 20px;color:#222;background:#fff}
         h1{font-size:30px;margin-bottom:8px}
@@ -235,11 +235,11 @@ app.MapGet("/privacy-policy", () =>
 </head>
 <body>
 
-<h1>Privacy Policy — GCar360</h1>
+<h1>Privacy Policy — OBD360</h1>
 <p class="updated">Last updated: October 8, 2026 · ბოლო განახლება: 2026 წლის 8 ოქტომბერი</p>
 
-<p>GCar360 ("we", "the App") is a vehicle diagnostic application that connects to OBD adapters and offers diagnostics, AI explanations, VIN history, QR reports, a public acceleration leaderboard and a website for card payments. This policy describes what the App and our server process, who else receives it and how long it is kept. Each section is given in English and in Georgian.</p>
-<p class="ka">GCar360 („ჩვენ“, „აპი“) არის ავტომობილის დიაგნოსტიკის აპი, რომელიც უკავშირდება OBD ადაპტერს და გთავაზობთ დიაგნოსტიკას, AI ახსნებს, VIN ისტორიას, QR ანგარიშებს, აჩქარების საჯარო რეიტინგს და ვებგვერდს ბარათით გადახდისთვის. ეს პოლიტიკა აღწერს, რას ამუშავებს აპი და ჩვენი სერვერი, ვის გადაეცემა მონაცემები და რამდენ ხანს ინახება. ყოველი ნაწილი მოცემულია ინგლისურად და ქართულად.</p>
+<p>OBD360 ("we", "the App") is a vehicle diagnostic application that connects to OBD adapters and offers diagnostics, AI explanations, VIN history, QR reports, a public acceleration leaderboard and a website for card payments. This policy describes what the App and our server process, who else receives it and how long it is kept. Each section is given in English and in Georgian.</p>
+<p class="ka">OBD360 („ჩვენ“, „აპი“) არის ავტომობილის დიაგნოსტიკის აპი, რომელიც უკავშირდება OBD ადაპტერს და გთავაზობთ დიაგნოსტიკას, AI ახსნებს, VIN ისტორიას, QR ანგარიშებს, აჩქარების საჯარო რეიტინგს და ვებგვერდს ბარათით გადახდისთვის. ეს პოლიტიკა აღწერს, რას ამუშავებს აპი და ჩვენი სერვერი, ვის გადაეცემა მონაცემები და რამდენ ხანს ინახება. ყოველი ნაწილი მოცემულია ინგლისურად და ქართულად.</p>
 
 <h2>1. Data on your device · მონაცემები შენს ტელეფონზე</h2>
 <p>Vehicle data read over Bluetooth (VIN, trouble codes, live sensor values), your display name, language, settings, service records, fuel and electric trips and reminders are stored on your phone. They leave the phone only when you use one of the features below.</p>
@@ -258,8 +258,8 @@ app.MapGet("/privacy-policy", () =>
 <p class="ka">VIN-ის შემოწმებისას VIN იგზავნება შემდეგ მომწოდებლებთან: NHTSA vPIC და NHTSA recalls (აშშ-ის სახელმწიფო სერვისი; გამოწვევებისთვის — მარკა, მოდელი და წელი), Apibara, API-Auctions და VehicleDatabases (აუქციონების ისტორია და ფოტოები), VinAudit (ფასიანი სრული ისტორია, NMVTIS) და ამავე VIN-ის ფოტოებისთვის — Brave Search და Serper (Google-ის ძებნის შედეგები). მომწოდებლების პასუხები სერვერზე ინახება VIN-ის მიხედვით; შენ მიერ გახსნილი ან ნაყიდი ანგარიშები ანგარიშზეა მიბმული მის წაშლამდე.</p>
 
 <h2>5. QR reports · QR ანგარიშები</h2>
-<p>A QR report stores a summary of the scan you selected: vehicle name, the last six VIN characters, scan summary, trouble codes, readiness and, if present, the service history you entered. Anyone with the link or QR code can open it. The page states that it was created by the vehicle owner with GCar360 and is not independently verified. The link stops working after 30 days and expired reports are deleted from the server.</p>
-<p class="ka">QR ანგარიში ინახავს არჩეული სკანის შეჯამებას: ავტომობილის სახელს, VIN-ის ბოლო ექვს სიმბოლოს, სკანის შეჯამებას, შეცდომის კოდებს, მზადყოფნას და, თუ არის, შენ მიერ შეყვანილ სერვისის ისტორიას. ბმულის ან QR კოდის მქონე ნებისმიერ ადამიანს შეუძლია მისი ნახვა. გვერდზე მითითებულია, რომ ანგარიში შექმნა ავტომობილის მფლობელმა GCar360-ით და დამოუკიდებლად გადამოწმებული არ არის. ბმული 30 დღის შემდეგ აღარ მუშაობს და ვადაგასული ანგარიშები სერვერიდან იშლება.</p>
+<p>A QR report stores a summary of the scan you selected: vehicle name, the last six VIN characters, scan summary, trouble codes, readiness and, if present, the service history you entered. Anyone with the link or QR code can open it. The page states that it was created by the vehicle owner with OBD360 and is not independently verified. The link stops working after 30 days and expired reports are deleted from the server.</p>
+<p class="ka">QR ანგარიში ინახავს არჩეული სკანის შეჯამებას: ავტომობილის სახელს, VIN-ის ბოლო ექვს სიმბოლოს, სკანის შეჯამებას, შეცდომის კოდებს, მზადყოფნას და, თუ არის, შენ მიერ შეყვანილ სერვისის ისტორიას. ბმულის ან QR კოდის მქონე ნებისმიერ ადამიანს შეუძლია მისი ნახვა. გვერდზე მითითებულია, რომ ანგარიში შექმნა ავტომობილის მფლობელმა OBD360-ით და დამოუკიდებლად გადამოწმებული არ არის. ბმული 30 დღის შემდეგ აღარ მუშაობს და ვადაგასული ანგარიშები სერვერიდან იშლება.</p>
 
 <h2>6. Acceleration leaderboard · აჩქარების რეიტინგი</h2>
 <p>If you publish a 0–100 km/h, 0–60 mph or ¼ mile result, your display name, vehicle model and time are shown publicly. The VIN is used to confirm the model and only a one-way hash of it is stored. While measuring, the App uses the phone's GPS (foreground only); when you publish, ECU and GPS speed traces are sent. GPS coordinates are kept only for results that need a review (top places or unusually fast results), and for those we may ask for the video you recorded in the App. Coordinates and videos are seen only by the administrator and are deleted 30 days after the review. If you delete your account, results waiting for review are deleted and public results stay anonymised ("Deleted").</p>
@@ -307,8 +307,8 @@ app.MapGet("/privacy-policy", () =>
 <p class="ka">ანგარიშის სამუდამოდ წაშლა შეგიძლია აპში (ანგარიშის / PRO ეკრანი → ანგარიშის წაშლა) ან ვებგვერდზე <a href="/account/delete">/account/delete</a> ელ-ფოსტით და პაროლით. წაშლა აჩერებს ვებგვერდის ავტომატურ გადახდას, შლის ანგარიშს, სესიებს, გამოწერებს, კრედიტებს, ნაყიდ ანგარიშებს, QR ანგარიშებს და შესამოწმებელ შედეგებს, ზემოთ ჩამოთვლილ ჩანაწერებს კი ანონიმურს ხდის. მაღაზიის გამოწერა ცალკე უნდა გააუქმო Google Play-ში ან App Store-ში.</p>
 
 <h2>13. Security, children, rights · უსაფრთხოება, ბავშვები, უფლებები</h2>
-<p>All traffic uses HTTPS and we use reasonable technical measures, but no system is completely secure. GCar360 is not directed to children. Depending on your law you may request access, correction or deletion of your data.</p>
-<p class="ka">ყველა კავშირი HTTPS-ით ხდება და ვიყენებთ გონივრულ ტექნიკურ ზომებს, თუმცა არცერთი სისტემა არ არის სრულად დაცული. GCar360 ბავშვებისთვის არ არის განკუთვნილი. კანონის შესაბამისად შეგიძლია მოითხოვო მონაცემებზე წვდომა, შესწორება ან წაშლა.</p>
+<p>All traffic uses HTTPS and we use reasonable technical measures, but no system is completely secure. OBD360 is not directed to children. Depending on your law you may request access, correction or deletion of your data.</p>
+<p class="ka">ყველა კავშირი HTTPS-ით ხდება და ვიყენებთ გონივრულ ტექნიკურ ზომებს, თუმცა არცერთი სისტემა არ არის სრულად დაცული. OBD360 ბავშვებისთვის არ არის განკუთვნილი. კანონის შესაბამისად შეგიძლია მოითხოვო მონაცემებზე წვდომა, შესწორება ან წაშლა.</p>
 
 <h2>14. Changes and contact · ცვლილებები და კონტაქტი</h2>
 <p>We will publish changes on this page with a new date. Questions and privacy requests: <a href="mailto:gcar360support@gmail.com">gcar360support@gmail.com</a></p>
@@ -331,11 +331,11 @@ app.MapGet("/support", () =>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>GCar360 — Support</title>
+    <title>OBD360 — Support</title>
     <style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.65;max-width:900px;margin:auto;padding:30px 20px;color:#222}h1{font-size:32px}h2{margin-top:28px}</style>
 </head>
 <body>
-<h1>GCar360 Support</h1>
+<h1>OBD360 Support</h1>
 <p>For help, purchase questions or a data-deletion request, email <a href="mailto:gcar360support@gmail.com">gcar360support@gmail.com</a>.</p>
 <h2>Before contacting support</h2>
 <ol>
@@ -363,11 +363,11 @@ app.MapGet("/terms-of-use", () =>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>GCar360 — Terms of Use</title>
+    <title>OBD360 — Terms of Use</title>
     <style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.65;max-width:900px;margin:auto;padding:30px 20px;color:#222}h1{font-size:32px}h2{margin-top:28px}</style>
 </head>
 <body>
-<h1>Terms of Use — GCar360</h1>
+<h1>Terms of Use — OBD360</h1>
 <p>Last updated: October 1, 2026</p>
 <h2>1. Diagnostic information</h2>
 <p>The App provides informational vehicle diagnostics. Results, code explanations and AI responses are not guaranteed repair conclusions. Safety-critical work must be confirmed by a qualified professional.</p>
@@ -1687,7 +1687,7 @@ app.MapGet(
     });
 
 // ============================================================
-// WEB PAYMENTS (GCar360 PRO page, Georgian bank cards)
+// WEB PAYMENTS (OBD360 PRO page, Georgian bank cards)
 //   GET  /pro                               – plans + payment form
 //   POST /api/web/checkout                  – starts a bank payment
 //   GET  /pro/result?order=…                – result page
@@ -2320,7 +2320,7 @@ app.MapGet(
 
 // ============================================================
 // PUBLIC WEBSITE
-//   GET /  – what GCar360 is and what every part does
+//   GET /  – what OBD360 is and what every part does
 // ============================================================
 
 app.MapGet(
@@ -2398,7 +2398,7 @@ app.MapGet(
             var overviewOk = ok;
             if (budget > 0 && used * 100 > budget * 80)
             {
-                overviewNote = $"⚠ VIN პროვაიდერის თვიური ბიუჯეტი: გამოყენებულია {used} / {budget} ({used * 100 / budget}%). / VIN provider monthly budget {used}/{budget} used." +
+                overviewNote = $"VIN პროვაიდერის თვიური ბიუჯეტი: გამოყენებულია {used} / {budget} ({used * 100 / budget}%). / VIN provider monthly budget {used}/{budget} used." +
                                (note is null ? "" : " · " + note);
                 overviewOk = false;
             }

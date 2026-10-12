@@ -355,7 +355,7 @@ public partial class PerformanceVideoViewModel : BaseViewModel
                 mic = await Permissions.RequestAsync<Permissions.Microphone>();
 
             DeletePendingVideo();
-            var path = Path.Combine(FileSystem.CacheDirectory, $"gcar360_perf_{DateTime.Now:yyyyMMdd_HHmmss}.mp4");
+            var path = Path.Combine(FileSystem.CacheDirectory, $"obd360_perf_{DateTime.Now:yyyyMMdd_HHmmss}.mp4");
 
             var telemetry = new PerformanceVideoTelemetry
             {
@@ -507,7 +507,7 @@ public partial class PerformanceVideoViewModel : BaseViewModel
         _saveCancellation?.Dispose();
         _saveCancellation = new CancellationTokenSource();
         var token = _saveCancellation.Token;
-        var baseName = $"GCar360_{DateTime.Now:yyyyMMdd_HHmmss}";
+        var baseName = $"OBD360_{DateTime.Now:yyyyMMdd_HHmmss}";
         string? composed = null;
 
         try
@@ -626,7 +626,7 @@ public partial class PerformanceVideoViewModel : BaseViewModel
 
         try
         {
-            await Shell.Current.GoToAsync("..");
+            await CarScanner.Services.SafeNavigation.GoToAsync("..");
         }
         catch
         {

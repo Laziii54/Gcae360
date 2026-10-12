@@ -312,7 +312,7 @@ public partial class SettingsViewModel : BaseViewModel
 
             await Share.Default.RequestAsync(new ShareFileRequest
             {
-                Title = "GCar360 capture",
+                Title = "OBD360 capture",
                 File = new ShareFile(path)
             });
         }
@@ -338,7 +338,7 @@ public partial class SettingsViewModel : BaseViewModel
             {
                 var page = Application.Current?.Windows.FirstOrDefault()?.Page;
                 var words = ConsentWords;
-                var agreed = page is not null && await page.DisplayAlertAsync(
+                var agreed = page is not null && await page.DisplayAlertLocalizedAsync(
                     words.Title,
                     words.Body,
                     words.Agree,
@@ -437,7 +437,7 @@ public partial class SettingsViewModel : BaseViewModel
                 : "არა";
 
         var confirmed =
-            await Shell.Current.DisplayAlertAsync(
+            await Shell.Current.DisplayAlertLocalizedAsync(
                 _localization.IsEnglish
                     ? "Confirmation"
                     : "დადასტურება",
@@ -452,7 +452,7 @@ public partial class SettingsViewModel : BaseViewModel
 
         await _db.ClearHistoryAsync();
 
-        await Shell.Current.DisplayAlertAsync(
+        await Shell.Current.DisplayAlertLocalizedAsync(
             _localization.IsEnglish
                 ? "Done"
                 : "შესრულდა",
@@ -470,21 +470,21 @@ public partial class SettingsViewModel : BaseViewModel
     [RelayCommand]
     private Task OpenHistory()
     {
-        return Shell.Current.GoToAsync(
+        return CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.HistoryPage));
     }
 
     [RelayCommand]
     private Task OpenPro()
     {
-        return Shell.Current.GoToAsync(
+        return CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.ProPage));
     }
 
     [RelayCommand]
     private Task OpenContact()
     {
-        return Shell.Current.GoToAsync(
+        return CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.ContactPage));
     }
 
@@ -497,7 +497,7 @@ public partial class SettingsViewModel : BaseViewModel
         }
         catch
         {
-            await Shell.Current.DisplayAlertAsync(
+            await Shell.Current.DisplayAlertLocalizedAsync(
                 _localization.IsEnglish
                     ? "Error"
                     : "შეცდომა",
@@ -540,7 +540,7 @@ public partial class SettingsViewModel : BaseViewModel
                 : "ადგილობრივი მანქანის მონაცემები, სკანები, ისტორია და გარბენის ჩანაწერები წაიშლება.";
 
         var confirmed =
-            await Shell.Current.DisplayAlertAsync(
+            await Shell.Current.DisplayAlertLocalizedAsync(
                 title,
                 message,
                 yes,
@@ -551,7 +551,7 @@ public partial class SettingsViewModel : BaseViewModel
 
         await _db.DeleteAllVehicleDataAsync();
 
-        await Shell.Current.DisplayAlertAsync(
+        await Shell.Current.DisplayAlertLocalizedAsync(
             _localization.IsEnglish
                 ? "Done"
                 : "შესრულდა",
@@ -585,13 +585,13 @@ public partial class SettingsViewModel : BaseViewModel
             await Share.Default.RequestAsync(
                 new ShareFileRequest
                 {
-                    Title = LocalizationService.T("Georgian Car Scanner data"),
+                    Title = LocalizationService.T("OBD360 data"),
                     File = new ShareFile(path)
                 });
         }
         catch
         {
-            await Shell.Current.DisplayAlertAsync(
+            await Shell.Current.DisplayAlertLocalizedAsync(
                 _localization.IsEnglish
                     ? "Export error"
                     : "ექსპორტის შეცდომა",
@@ -607,8 +607,8 @@ public partial class SettingsViewModel : BaseViewModel
     {
         try
         {
-        await Shell.Current.DisplayAlertAsync(
-            "Georgian Car Scanner",
+        await Shell.Current.DisplayAlertLocalizedAsync(
+            "OBD360",
             LocalizationService.T("Safe & Reliable OBD-II Diagnostics"),
             "OK");
         }

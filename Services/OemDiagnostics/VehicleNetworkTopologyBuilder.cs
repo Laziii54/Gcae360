@@ -74,7 +74,7 @@ public static class VehicleNetworkTopologyBuilder
     private static string BuildTree(IReadOnlyList<VehicleNetworkNode> nodes)
     {
         var root = nodes.First(node => node.Kind == VehicleNetworkNodeKind.DiagnosticConnector);
-        var builder = new StringBuilder($"{Icon(root.State)} {root.Name}");
+        var builder = new StringBuilder(root.Name);
         AppendChildren(builder, nodes, root.Id, string.Empty);
         return builder.ToString();
     }
@@ -91,7 +91,7 @@ public static class VehicleNetworkTopologyBuilder
             var child = children[index];
             var last = index == children.Length - 1;
             builder.Append('\n').Append(indent).Append(last ? "└── " : "├── ")
-                .Append(Icon(child.State)).Append(' ').Append(child.Name)
+                .Append(child.Name)
                 .Append(" — ").Append(child.StateText);
             AppendChildren(builder, nodes, child.Id, indent + (last ? "    " : "│   "));
         }
@@ -118,15 +118,6 @@ public static class VehicleNetworkTopologyBuilder
             return VehicleNetworkNodeState.Unsupported;
         return VehicleNetworkNodeState.Error;
     }
-
-    private static string Icon(VehicleNetworkNodeState state) => state switch
-    {
-        VehicleNetworkNodeState.Available => "●",
-        VehicleNetworkNodeState.Limited => "◐",
-        VehicleNetworkNodeState.NoResponse => "○",
-        VehicleNetworkNodeState.Unsupported => "○",
-        _ => "×"
-    };
 
     private static string Known(string? value) =>
         string.IsNullOrWhiteSpace(value) ? "Protocol unavailable" : value;

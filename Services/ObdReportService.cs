@@ -10,7 +10,7 @@ public sealed class ObdReportService
     public string BuildText(ObdScanReport report)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("GEORGIAN CAR SCANNER");
+        sb.AppendLine("OBD360");
         sb.AppendLine(new string('=', 64));
         sb.AppendLine($"Scan: {report.StartedAt:yyyy-MM-dd HH:mm:ss} - {report.FinishedAt:yyyy-MM-dd HH:mm:ss}");
         sb.AppendLine($"Vehicle: {report.Vehicle.Manufacturer} {report.Vehicle.Model} {report.Vehicle.Year}");
@@ -73,8 +73,8 @@ public sealed class ObdReportService
     {
         static string H(string? x) => System.Net.WebUtility.HtmlEncode(x ?? string.Empty);
         var sb = new StringBuilder();
-        sb.Append("<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Georgian Car Scanner Report</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#111827}h1{margin-bottom:4px}.meta{color:#475569}.card{border:1px solid #d1d5db;border-radius:10px;padding:14px;margin:12px 0}table{border-collapse:collapse;width:100%}th,td{border:1px solid #d1d5db;padding:7px;text-align:left;font-size:13px}th{background:#f1f5f9}.danger{color:#b91c1c}.ok{color:#15803d}</style></head><body>");
-        sb.Append($"<h1>Georgian Car Scanner</h1><div class='meta'>{H(report.StartedAt.ToString("yyyy-MM-dd HH:mm:ss"))} — {H(report.FinishedAt.ToString("yyyy-MM-dd HH:mm:ss"))}</div>");
+        sb.Append("<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>OBD360 Report</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#111827}h1{margin-bottom:4px}.meta{color:#475569}.card{border:1px solid #d1d5db;border-radius:10px;padding:14px;margin:12px 0}table{border-collapse:collapse;width:100%}th,td{border:1px solid #d1d5db;padding:7px;text-align:left;font-size:13px}th{background:#f1f5f9}.danger{color:#b91c1c}.ok{color:#15803d}</style></head><body>");
+        sb.Append($"<h1>OBD360</h1><div class='meta'>{H(report.StartedAt.ToString("yyyy-MM-dd HH:mm:ss"))} — {H(report.FinishedAt.ToString("yyyy-MM-dd HH:mm:ss"))}</div>");
         sb.Append($"<div class='card'><b>Vehicle:</b> {H(report.Vehicle.Manufacturer)} {H(report.Vehicle.Model)} {H(report.Vehicle.Year)}<br><b>VIN:</b> {H(report.Vehicle.VIN)}<br><b>Protocol:</b> {H(report.Protocol)}<br><b>Adapter:</b> {H(report.AdapterName)}<br><b>Voltage:</b> {H(report.AdapterVoltage)}</div>");
         sb.Append("<div class='card'><h2>DTC</h2><table><tr><th>Status</th><th>Code</th><th>Description</th></tr>");
         foreach(var tuple in report.StoredCodes.Select(x=>("Stored",x)).Concat(report.PendingCodes.Select(x=>("Pending",x))).Concat(report.PermanentCodes.Select(x=>("Permanent",x)))) sb.Append($"<tr><td>{H(tuple.Item1)}</td><td class='danger'><b>{H(tuple.Item2.Code)}</b></td><td>{H(tuple.Item2.Description)}</td></tr>");

@@ -76,7 +76,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
 
     private static string Page(string title, string body) => $$"""
 <!doctype html><html lang="ka"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
-<title>{{H(title)}} · GCar360 ადმინი</title>{{Style}}</head><body>{{body}}<script>{{ConfirmScript}}</script></body></html>
+<title>{{H(title)}} · OBD360 ადმინი</title>{{Style}}</head><body>{{body}}<script>{{ConfirmScript}}</script></body></html>
 """;
 
     // ============================================================
@@ -117,29 +117,29 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
     // LAYOUT
     // ============================================================
 
-    private static readonly (string Key, string Icon, string Name)[] Tabs =
+    private static readonly (string Key, string Name)[] Tabs =
     {
-        ("overview", "📊", "მიმოხილვა"),
-        ("users", "👤", "მომხმარებლები"),
-        ("subs", "⭐", "გამოწერები"),
-        ("payments", "💳", "გადახდები"),
-        ("devices", "📱", "მოწყობილობები"),
-        ("acceleration", "🏁", "აჩქარების რეიტინგი"),
-        ("service", "🛠", "სერვისის სწავლება"),
-        ("odometer", "⏱", "გარბენის ადგილები"),
-        ("crashes", "🐞", "აპის შეცდომები"),
-        ("log", "🧾", "ჟურნალი"),
-        ("security", "🔒", "უსაფრთხოება"),
+        ("overview", "მიმოხილვა"),
+        ("users", "მომხმარებლები"),
+        ("subs", "გამოწერები"),
+        ("payments", "გადახდები"),
+        ("devices", "მოწყობილობები"),
+        ("acceleration", "აჩქარების რეიტინგი"),
+        ("service", "სერვისის სწავლება"),
+        ("odometer", "გარბენის ადგილები"),
+        ("crashes", "აპის შეცდომები"),
+        ("log", "ჟურნალი"),
+        ("security", "უსაფრთხოება"),
     };
 
     private static string Layout(AdminService.Session s, string tab, string title, string subtitle, string content, string? message, bool ok)
     {
         var nav = string.Concat(Tabs.Select(t =>
-            $"<a class=\"{(t.Key == tab ? "on" : "")}\" href=\"/admin?tab={t.Key}\"><span>{t.Icon}</span>{t.Name}</a>"));
+            $"<a class=\"{(t.Key == tab ? "on" : "")}\" href=\"/admin?tab={t.Key}\">{t.Name}</a>"));
         var note = message is null ? "" : $"<div class=\"msg {(ok ? "ok" : "err")}\">{H(message)}</div>";
         var twoStep = AdminService.TwoStepEnabled
             ? ""
-            : "<div class=\"warnbox\">⚠️ ორსაფეხურიანი დაცვა ჯერ ჩართული არ არის. გადადი <a href=\"/admin?tab=security\">„უსაფრთხოება“</a>-ზე და ჩართე — 2 წუთი სჭირდება.</div>";
+            : "<div class=\"warnbox\">ორსაფეხურიანი დაცვა ჯერ ჩართული არ არის. გადადი <a href=\"/admin?tab=security\">„უსაფრთხოება“</a>-ზე და ჩართე — 2 წუთი სჭირდება.</div>";
 
         return Page(title, $$"""
 <div class="shell"><aside><div class="brand">GCar<span>360</span></div>{{nav}}
@@ -186,7 +186,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
         {
             var lat = start[2].ToString("0.00000", System.Globalization.CultureInfo.InvariantCulture);
             var lon = start[3].ToString("0.00000", System.Globalization.CultureInfo.InvariantCulture);
-            html.Append($"<div><a href=\"https://www.google.com/maps?q={lat},{lon}\" target=\"_blank\" rel=\"noopener\">📍 სტარტის ადგილი რუკაზე</a></div>");
+            html.Append($"<div><a href=\"https://www.google.com/maps?q={lat},{lon}\" target=\"_blank\" rel=\"noopener\">სტარტის ადგილი რუკაზე</a></div>");
         }
 
         if (item.HasVideo)
@@ -213,7 +213,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
             var status = item.Status switch
             {
                 "Approved" => "<span class=\"pill p-ok\">რეიტინგშია</span>",
-                "Verified" => "<span class=\"pill p-ok\">✓ Verified</span>",
+                "Verified" => "<span class=\"pill p-ok\">Verified</span>",
                 "Rejected" => "<span class=\"pill p-err\">უარყოფილი</span>",
                 _ => item.HasVideo
                     ? "<span class=\"pill p-warn\">მოწმდება · ვიდეო მოვიდა</span>"
@@ -244,7 +244,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
 <div class="tbl"><table><thead><tr><th>მომხმარებელი</th><th>მანქანა</th><th>დრო</th><th>ECU ნიმუში</th><th>მტკიცებულება (ECU / GPS / ვიდეო)</th><th>სტატუსი</th><th>თარიღი</th><th>მართვა</th></tr></thead>
 <tbody>{rows}</tbody></table></div>
 """;
-        return Layout(s, "acceleration", "აჩქარების რეიტინგი", "ყველა შედეგი GPS-ით მოწმდება · ტოპ-10 და საეჭვო შედეგები „მოწმდება“ სტატუსით ჩნდება და ვიდეოს ელოდება · „დამოწმება“ ვიდეოთი = ✓ Verified · ვიდეო და GPS კოორდინატები განხილვიდან 30 დღეში იშლება", content, message, ok);
+        return Layout(s, "acceleration", "აჩქარების რეიტინგი", "ყველა შედეგი GPS-ით მოწმდება · ტოპ-10 და საეჭვო შედეგები „მოწმდება“ სტატუსით ჩნდება და ვიდეოს ელოდება · „დამოწმება“ ვიდეოთი = Verified · ვიდეო და GPS კოორდინატები განხილვიდან 30 დღეში იშლება", content, message, ok);
     }
 
     private static string Bars(IEnumerable<(string Label, int Count)> items)
@@ -381,7 +381,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
 <td>{Tbilisi(u.CreatedAt)}</td>
 <td>{(u.LastSeen is { } ls ? Tbilisi(ls) : "<span class=\"muted\">—</span>")}</td>
 <td>{(string.IsNullOrEmpty(u.Plans) ? "<span class=\"muted\">უფასო</span>" : H(u.Plans))}{(u.Credits > 0 ? $"<div class=\"muted\">+{u.Credits} VIN კრედიტი</div>" : "")}</td>
-<td>{u.Devices}{(u.NotificationsAllowed ? " · 🔔" : "")}</td>
+<td>{u.Devices}{(u.NotificationsAllowed ? " ·" : "")}</td>
 <td>{actions}</td>
 </tr>
 """);
@@ -594,7 +594,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
             "<details class=\"panel\" style=\"margin-bottom:8px\"><summary>" +
             $"<span class=\"pill {(r.Candidates.Count > 0 ? "p-acc" : "p-err")}\">{N(r.Candidates.Count)} კანდიდატი</span> " +
             $"<b>{H(r.Make)} {H(r.Model)} {H(r.Year)}</b> · {H(r.Item)} · {(r.Mode == "ToolSession" ? "აპარატით" : "მენიუდან")}" +
-            $"<div class=\"muted\" style=\"margin-top:4px\">{At(r.CreatedAt)} · VIN {H(r.VinPrefix)}… · ზეთი {Pct(r.ValueBefore)} → {Pct(r.ValueAfter)} · {N(r.FrameCount)} შეტყობინება{(r.Overflow ? " · ⚠ ადაპტერი ვერ ასწრებდა" : "")}</div></summary>" +
+            $"<div class=\"muted\" style=\"margin-top:4px\">{At(r.CreatedAt)} · VIN {H(r.VinPrefix)}… · ზეთი {Pct(r.ValueBefore)} → {Pct(r.ValueAfter)} · {N(r.FrameCount)} შეტყობინება{(r.Overflow ? " · ადაპტერი ვერ ასწრებდა" : "")}</div></summary>" +
             "<div class=\"tbl\" style=\"margin-top:8px\"><table><tr><th>ID</th><th>მონაცემი</th><th>ტიპი</th><th>შენიშვნა</th></tr>" +
             string.Concat(r.Candidates.Select(c => $"<tr><td class=\"mono\">{H(c.Id)}</td><td class=\"mono\">{H(c.Data)}</td><td>{H(c.Kind)}</td><td class=\"muted\">{H(c.Note)}</td></tr>")) +
             $"</table></div><p><a href=\"/admin/reset-recordings/{r.Id}.txt\">სრული ჩანაწერი (.txt)</a></p></details>"));
@@ -605,7 +605,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
             try { matched = System.Text.Json.JsonSerializer.Deserialize<string[]>(r.MatchedKeys)?.Length ?? 0; }
             catch (System.Text.Json.JsonException) { matched = 0; }
             return $"<tr><td>{At(r.CreatedAt)}</td><td>{H(r.Make)} {H(r.Model)} {H(r.Year)}</td><td class=\"mono\">{H(r.VinPrefix)}</td><td>{Pct(r.DashboardPercent)}</td><td>{N(r.Answered)}/{N(r.Tried)}</td>" +
-                   $"<td><span class=\"pill {(matched > 0 ? "p-acc" : "p-err")}\">{(matched > 0 ? "✓ " + N(matched) : "—")}</span>{(r.Trusted ? " <span class=\"pill p-acc\">ადმინი</span>" : "")}</td></tr>";
+                   $"<td><span class=\"pill {(matched > 0 ? "p-acc" : "p-err")}\">{(matched > 0 ? "" + N(matched) : "—")}</span>{(r.Trusted ? " <span class=\"pill p-acc\">ადმინი</span>" : "")}</td></tr>";
         }));
 
         var content =
@@ -648,15 +648,15 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
 
     public static string Security(AdminService.Session s, string newSecret, string? message, bool ok)
     {
-        var uri = $"otpauth://totp/GCar360:{Uri.EscapeDataString(s.Email)}?secret={newSecret}&issuer=GCar360&digits=6&period=30";
+        var uri = $"otpauth://totp/OBD360:{Uri.EscapeDataString(s.Email)}?secret={newSecret}&issuer=OBD360&digits=6&period=30";
         var twoStep = AdminService.TwoStepEnabled
-            ? "<div class=\"msg ok\">✓ ორსაფეხურიანი დაცვა ჩართულია. შესვლისას Google Authenticator-ის კოდი სჭირდება.</div>"
+            ? "<div class=\"msg ok\">ორსაფეხურიანი დაცვა ჩართულია. შესვლისას Google Authenticator-ის კოდი სჭირდება.</div>"
             : $$"""
 <div class="panel">
 <b>ორსაფეხურიანი დაცვის ჩართვა (2 წუთი)</b>
 <ol>
 <li>ტელეფონზე დააყენე <b>Google Authenticator</b> (ან Microsoft Authenticator).</li>
-<li>აპში: „+“ → „Enter a setup key“ → სახელი <b>GCar360</b>, გასაღები:<div class="mono" style="font-size:16px;margin:8px 0;padding:10px;border:1px dashed var(--line);border-radius:10px">{{H(newSecret)}}</div>ტიპი: Time based.</li>
+<li>აპში: „+“ → „Enter a setup key“ → სახელი <b>OBD360</b>, გასაღები:<div class="mono" style="font-size:16px;margin:8px 0;padding:10px;border:1px dashed var(--line);border-radius:10px">{{H(newSecret)}}</div>ტიპი: Time based.</li>
 <li>Azure → App Service → Environment variables → <b>Add</b>: სახელი <span class="mono">GCS_ADMIN_TOTP_SECRET</span>, მნიშვნელობა — იგივე გასაღები. Apply → Confirm.</li>
 <li>აპლიკაცია თავიდან ჩაიტვირთება. შემდეგი შესვლიდან მეილს და პაროლს დაემატება 6-ნიშნა კოდი.</li>
 </ol>

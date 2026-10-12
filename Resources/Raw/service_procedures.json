@@ -113,8 +113,8 @@
         },
         {
           "order": 2,
-          "textKa": "Oil Life ეკრანის აქტიურ მდგომარეობაში ✓ ღილაკს გეჭიროს.",
-          "textEn": "While the Oil Life display is active, press and hold ✓."
+          "textKa": "Oil Life ეკრანის აქტიურ მდგომარეობაში check-mark ღილაკს გეჭიროს.",
+          "textEn": "While the Oil Life display is active, press and hold the check-mark button."
         },
         {
           "order": 3,
@@ -181,8 +181,8 @@
         },
         {
           "order": 2,
-          "textKa": "Oil Life ეკრანზე ყოფნისას ✓ ღილაკს რამდენიმე წამი გეჭიროს.",
-          "textEn": "While the Oil Life display is active, press and hold the ✓ button for several seconds."
+          "textKa": "Oil Life ეკრანზე ყოფნისას check-mark ღილაკს რამდენიმე წამი გეჭიროს.",
+          "textEn": "While the Oil Life display is active, press and hold the check-mark button for several seconds."
         },
         {
           "order": 3,
@@ -1018,8 +1018,8 @@
         },
         {
           "order": 2,
-          "textKa": "▲/▼ ღილაკებით აირჩიე Maintenance Info.",
-          "textEn": "Use ▲/▼ to select Maintenance Info."
+          "textKa": "ზევით/ქვევით ღილაკებით აირჩიე Maintenance Info.",
+          "textEn": "Use the up/down buttons to select Maintenance Info."
         },
         {
           "order": 3,
@@ -3131,8 +3131,8 @@
       "category": "Maintenance",
       "nameKa": "სერვისის განულება (ASSYST, საჭის ღილაკები + R ღილაკი)",
       "nameEn": "Service reset (ASSYST, steering buttons + R button)",
-      "descriptionKa": "W203 C, W209 CLK, W211 E, W220 S, W163/W164 ML და მსგავსი, საჭეზე ◀ ▶ ▲ ▼ ღილაკებით.",
-      "descriptionEn": "W203 C, W209 CLK, W211 E, W220 S, W163/W164 ML and similar with ◀ ▶ ▲ ▼ steering buttons.",
+      "descriptionKa": "W203 C, W209 CLK, W211 E, W220 S, W163/W164 ML და მსგავსი, საჭეზე მარცხნივ, მარჯვნივ, ზევით და ქვევით ღილაკებით.",
+      "descriptionEn": "W203 C, W209 CLK, W211 E, W220 S, W163/W164 ML and similar with left, right, up and down steering buttons.",
       "executionType": "Manual",
       "oemOperationId": "",
       "steps": [
@@ -3143,13 +3143,13 @@
         },
         {
           "order": 2,
-          "textKa": "საჭის ◀ ▶ ღილაკებით გადადი ოდომეტრის/Trip ეკრანზე.",
-          "textEn": "Use ◀ ▶ on the steering wheel to show the odometer/trip screen."
+          "textKa": "საჭის მარცხნივ და მარჯვნივ ღილაკებით გადადი ოდომეტრის/Trip ეკრანზე.",
+          "textEn": "Use the left and right buttons on the steering wheel to show the odometer/trip screen."
         },
         {
           "order": 3,
-          "textKa": "▲ ▼ ღილაკებით გადადი სერვისის ეკრანზე (ქანჩის სიმბოლო).",
-          "textEn": "Use ▲ ▼ to reach the service display (spanner symbol)."
+          "textKa": "ზევით და ქვევით ღილაკებით გადადი სერვისის ეკრანზე (ქანჩის სიმბოლო).",
+          "textEn": "Use the up and down buttons to reach the service display (spanner symbol)."
         },
         {
           "order": 4,
@@ -3208,8 +3208,8 @@
         },
         {
           "order": 5,
-          "textKa": "საჭის ▲ ▼ ღილაკებით გადადი სერვისის მენიუზე.",
-          "textEn": "Use ▲ ▼ on the steering wheel to reach the service menu."
+          "textKa": "საჭის ზევით და ქვევით ღილაკებით გადადი სერვისის მენიუზე.",
+          "textEn": "Use the up and down buttons on the steering wheel to reach the service menu."
         },
         {
           "order": 6,
@@ -3234,8 +3234,8 @@
       "minimumYear": 2007,
       "maximumYear": 2015,
       "category": "Maintenance",
-      "nameKa": "სერვისის განულება ASSYST PLUS (📞 + OK ღილაკები)",
-      "nameEn": "Service reset ASSYST PLUS (📞 + OK buttons)",
+      "nameKa": "სერვისის განულება ASSYST PLUS (ზარის ღილაკი + OK)",
+      "nameEn": "Service reset ASSYST PLUS (call button + OK)",
       "descriptionKa": "W204 C, W212 E, W207 E-Coupe, W221 S, W166 ML, X204 GLK, W176 A, W246 B და მსგავსი.",
       "descriptionEn": "W204 C, W212 E, W207 E-Coupe, W221 S, W166 ML, X204 GLK, W176 A, W246 B and similar.",
       "executionType": "Manual",
@@ -3253,8 +3253,8 @@
         },
         {
           "order": 3,
-          "textKa": "ერთდროულად დააჭირე 📞 (ზარის მიღება) და OK ღილაკებს ~4 წამი, სანამ სერვისის მენიუ არ გაიხსნება (ზოგ მოდელზე დამატებით ზარის გათიშვის ღილაკიც).",
-          "textEn": "Press and hold 📞 (answer call) and OK together for ~4 seconds until the service menu opens (on some models also the end-call button)."
+          "textKa": "ერთდროულად დააჭირე ზარის მიღების ღილაკს და OK ღილაკს ~4 წამი, სანამ სერვისის მენიუ არ გაიხსნება (ზოგ მოდელზე დამატებით ზარის გათიშვის ღილაკიც).",
+          "textEn": "Press and hold the answer-call button and OK together for ~4 seconds until the service menu opens (on some models also the end-call button)."
         },
         {
           "order": 4,
@@ -3294,7 +3294,7 @@
       "minimumYear": 2014,
       "maximumYear": 2021,
       "category": "Maintenance",
-      "nameKa": "სერვისის განულება ASSYST PLUS (📞 + ☎ + OK)",
+      "nameKa": "სერვისის განულება ASSYST PLUS (ზარი + გათიშვა + OK)",
       "nameEn": "Service reset ASSYST PLUS (call + end call + OK)",
       "descriptionKa": "W205 C, W213 E, X253 GLC, W222 S, C117 CLA, X156 GLA და მსგავსი (MBUX-მდე).",
       "descriptionEn": "W205 C, W213 E, X253 GLC, W222 S, C117 CLA, X156 GLA and similar (pre-MBUX).",
@@ -3318,7 +3318,7 @@
         },
         {
           "order": 4,
-          "textKa": "როცა KM Trip ჩანს, ერთდროულად გეჭიროს 📞 Call, ☎ End call და OK, სანამ VEHICLE DATA არ გამოჩნდება.",
+          "textKa": "როცა KM Trip ჩანს, ერთდროულად გეჭიროს Call, End call და OK, სანამ VEHICLE DATA არ გამოჩნდება.",
           "textEn": "While KM Trip is shown, hold Call, End call and OK together until VEHICLE DATA appears."
         },
         {
@@ -3846,8 +3846,8 @@
         },
         {
           "order": 2,
-          "textKa": "საჭის ისრებით აირჩიე ⚙ (Settings).",
-          "textEn": "Use the steering arrows to select ⚙ (Settings)."
+          "textKa": "საჭის ისრებით აირჩიე Settings.",
+          "textEn": "Use the steering arrows to select Settings."
         },
         {
           "order": 3,
@@ -3930,8 +3930,8 @@
         },
         {
           "order": 2,
-          "textKa": "საჭის ღილაკით (i / ◀ ▶ / selector wheel) გამოაჩინე ზეთის რესურსი ან Maintenance ეკრანი.",
-          "textEn": "Use the steering button (i / ◀ ▶ / selector wheel) to show oil life or the Maintenance screen."
+          "textKa": "საჭის ღილაკით (i / მარცხნივ-მარჯვნივ / selector wheel) გამოაჩინე ზეთის რესურსი ან Maintenance ეკრანი.",
+          "textEn": "Use the steering button (i / left-right / selector wheel) to show oil life or the Maintenance screen."
         },
         {
           "order": 3,
@@ -3975,8 +3975,8 @@
         },
         {
           "order": 2,
-          "textKa": "საჭის ◀ ▶ / Menu ღილაკებით გახსენი Settings.",
-          "textEn": "Use the ◀ ▶ / Menu steering buttons to open Settings."
+          "textKa": "საჭის მარცხნივ-მარჯვნივ / Menu ღილაკებით გახსენი Settings.",
+          "textEn": "Use the left-right / Menu steering buttons to open Settings."
         },
         {
           "order": 3,
@@ -4224,8 +4224,8 @@
         },
         {
           "order": 3,
-          "textKa": "ზეთის რესურსის ეკრანზე ყოფნისას რამდენიმე წამი გეჭიროს SELECT / ✓ / thumbwheel / SET/CLR.",
-          "textEn": "While Oil Life is shown, hold SELECT / ✓ / thumbwheel / SET/CLR for several seconds."
+          "textKa": "ზეთის რესურსის ეკრანზე ყოფნისას რამდენიმე წამი გეჭიროს SELECT / check-mark / thumbwheel / SET/CLR.",
+          "textEn": "While Oil Life is shown, hold SELECT / check-mark / thumbwheel / SET/CLR for several seconds."
         },
         {
           "order": 4,
@@ -4268,8 +4268,8 @@
         },
         {
           "order": 3,
-          "textKa": "ზეთის რესურსის ეკრანზე ყოფნისას რამდენიმე წამი გეჭიროს SELECT / ✓ / thumbwheel / SET/CLR.",
-          "textEn": "While Oil Life is shown, hold SELECT / ✓ / thumbwheel / SET/CLR for several seconds."
+          "textKa": "ზეთის რესურსის ეკრანზე ყოფნისას რამდენიმე წამი გეჭიროს SELECT / check-mark / thumbwheel / SET/CLR.",
+          "textEn": "While Oil Life is shown, hold SELECT / check-mark / thumbwheel / SET/CLR for several seconds."
         },
         {
           "order": 4,

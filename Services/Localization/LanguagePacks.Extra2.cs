@@ -35,7 +35,7 @@ internal static partial class LanguagePacks
         R("AI diagnostics", "Yapay zekâ teşhisi", "KI-Diagnose", "Diagnostyka AI", "Diagnóstico con IA", "Diagnóstico com IA", "Diagnostic IA", "Diagnosi IA"),
         R("High-voltage battery", "Yüksek voltaj bataryası", "Hochvoltbatterie", "Akumulator wysokiego napięcia", "Batería de alto voltaje", "Bateria de alta tensão", "Batterie haute tension", "Batteria ad alta tensione"),
         R("Battery energy", "Batarya enerjisi", "Batterieenergie", "Energia baterii", "Energía de la batería", "Energia da bateria", "Énergie de la batterie", "Energia della batteria"),
-        R("◀ Regeneration", "◀ Rejenerasyon", "◀ Rekuperation", "◀ Rekuperacja", "◀ Regeneración", "◀ Regeneração", "◀ Récupération", "◀ Rigenerazione"),
+        R("Regeneration", "Rejenerasyon", "Rekuperation", "Rekuperacja", "Regeneración", "Regeneração", "Récupération", "Rigenerazione"),
         R("Battery voltage", "Akü voltajı", "Batteriespannung", "Napięcie akumulatora", "Voltaje de la batería", "Tensão da bateria", "Tension de la batterie", "Tensione della batteria"),
         R("Current", "Akım", "Strom", "Prąd", "Corriente", "Corrente", "Courant", "Corrente"),
         R("State of charge (SoC)", "Şarj durumu (SoC)", "Ladezustand (SoC)", "Stan naładowania (SoC)", "Estado de carga (SoC)", "Estado de carga (SoC)", "État de charge (SoC)", "Stato di carica (SoC)"),

@@ -4,7 +4,7 @@ using CarScanner.Models;
 namespace CarScanner.Services.OemDiagnostics;
 
 /// <summary>
-/// Shares Service "Search" results with the GCar360 server and asks which
+/// Shares Service "Search" results with the OBD360 server and asks which
 /// sources other drivers already confirmed for the same make/model/year.
 /// Sent: make, model, year, the first 11 VIN characters (no serial number),
 /// the dashboard % and the catalog sources that answered. Never blocks the app.

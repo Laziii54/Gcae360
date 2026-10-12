@@ -395,7 +395,7 @@ public static class MauiProgram
         // Sample data only (for UI work without the backend).
         builder.Services.AddSingleton<CarScanner.VinCheck.Services.IVinHistoryService, CarScanner.VinCheck.Services.MockVinHistoryService>();
 #else
-        // Real VIN history through the GCar360 backend (AIConfig.BackendBaseUrl).
+        // Real VIN history through the OBD360 backend (AIConfig.BackendBaseUrl).
         // The provider key and the monthly VIN count live only on the server.
         builder.Services.AddSingleton<CarScanner.VinCheck.Services.IVinHistoryService, CarScanner.VinCheck.Services.VinHistoryService>();
 #endif

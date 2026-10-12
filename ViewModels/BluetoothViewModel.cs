@@ -325,7 +325,7 @@ public partial class BluetoothViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            StatusMessage = ex.Message;
+            StatusMessage = CarScanner.Services.UserError.Describe(ex);
         }
         finally
         {
@@ -387,7 +387,7 @@ public partial class BluetoothViewModel : BaseViewModel
                 _scanAfterReturningFromSettings = true;
 
                 var openSettings =
-                    await Shell.Current.DisplayAlertAsync(
+                    await Shell.Current.DisplayAlertLocalizedAsync(
                         CarScanner.Services.Localization.LocalizationService.T("Bluetooth გამორთულია"),
                         CarScanner.Services.Localization.LocalizationService.T("Bluetooth ჩართული არ არის. გინდა Bluetooth-ის პარამეტრების გახსნა?"),
                         CarScanner.Services.Localization.LocalizationService.T("ჩართვა"),
@@ -467,7 +467,7 @@ public partial class BluetoothViewModel : BaseViewModel
             StatusMessage =
                 ex.Message;
 
-            await Shell.Current.DisplayAlertAsync(
+            await Shell.Current.DisplayAlertLocalizedAsync(
                 CarScanner.Services.Localization.LocalizationService.T("Bluetooth ნებართვა"),
                 CarScanner.Services.Localization.LocalizationService.T(ex.Message),
                 CarScanner.Services.Localization.LocalizationService.T("კარგი"));
@@ -479,7 +479,7 @@ public partial class BluetoothViewModel : BaseViewModel
                     ? "Bluetooth ძებნა ვერ შესრულდა."
                     : ex.Message;
 
-            await Shell.Current.DisplayAlertAsync(
+            await Shell.Current.DisplayAlertLocalizedAsync(
                 CarScanner.Services.Localization.LocalizationService.T("Bluetooth შეცდომა"),
                 CarScanner.Services.Localization.LocalizationService.T(StatusMessage),
                 CarScanner.Services.Localization.LocalizationService.T("კარგი"));
@@ -659,7 +659,7 @@ public partial class BluetoothViewModel : BaseViewModel
             StatusMessage =
                 "OBD-II ადაპტერთან დაკავშირება ვერ მოხერხდა.";
 
-            await Shell.Current.DisplayAlertAsync(
+            await Shell.Current.DisplayAlertLocalizedAsync(
                 CarScanner.Services.Localization.LocalizationService.T("კავშირის შეცდომა"),
                 CarScanner.Services.Localization.LocalizationService.T(string.IsNullOrWhiteSpace(ex.Message)
                     ? "შეამოწმე Bluetooth, OBD ადაპტერი და მანქანის კონტაქტი."
@@ -690,7 +690,7 @@ public partial class BluetoothViewModel : BaseViewModel
             await MainThread.InvokeOnMainThreadAsync(async () =>
             {
                 if (Shell.Current?.CurrentPage is Views.BluetoothPage)
-                    await Shell.Current.GoToAsync("//HomePage");
+                    await CarScanner.Services.SafeNavigation.GoToAsync("//HomePage");
             });
         }
         catch

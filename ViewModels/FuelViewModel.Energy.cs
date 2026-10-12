@@ -349,7 +349,7 @@ public partial class FuelViewModel
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 EnergySourceTitle = L("ბატარეის მონაცემი შეწყდა", "Battery data stopped");
-                EnergySourceText = ex.Message;
+                EnergySourceText = CarScanner.Services.UserError.Describe(ex);
                 EnergySourceColor = WarnColor;
             });
         }
@@ -529,7 +529,7 @@ public partial class FuelViewModel
         else if (_evSource is { } source)
         {
             EnergySourceTitle = L("მონაცემის წყარო", "Data source");
-            EnergySourceText = $"● {source.Label}\n" + (source.IsStandard
+            EnergySourceText = $"{source.Label}\n" + (source.IsStandard
                 ? L("სტანდარტული OBD · ძაბვა × დენი, წამში ერთხელ", "Standard OBD · voltage × current, once per second")
                 : L("მარკის კოდი · ძაბვა × დენი, ყოველ 2 წამში", "Brand identifier · voltage × current, every 2 seconds"))
                 + (_ev.IsSignConfirmed

@@ -65,11 +65,11 @@ public static class ServiceProcedureTexts
         ServiceReason.FuelMismatch => en ? "For a different fuel type." : "სხვა საწვავის ტიპისთვისაა.",
         ServiceReason.AdapterCapabilityMissing => en ? "The connected adapter lacks a required capability." : "მიერთებულ ადაპტერს საჭირო შესაძლებლობა არ აქვს.",
         ServiceReason.ExternalToolRequired => en
-            ? "No owner method is documented; a workshop or manufacturer tool is needed. GCar360 cannot do this."
-            : "მფლობელის მეთოდი დოკუმენტირებული არ არის; საჭიროა სერვისის ან მწარმოებლის ხელსაწყო. GCar360 ამას ვერ ასრულებს.",
+            ? "No owner method is documented; a workshop or manufacturer tool is needed. OBD360 cannot do this."
+            : "მფლობელის მეთოდი დოკუმენტირებული არ არის; საჭიროა სერვისის ან მწარმოებლის ხელსაწყო. OBD360 ამას ვერ ასრულებს.",
         ServiceReason.NoAutomaticPath => en
-            ? "GCar360 has no reviewed automatic method for this car, so only the documented manual steps are offered."
-            : "GCar360-ს ამ მანქანისთვის შემოწმებული ავტომატური მეთოდი არ აქვს, ამიტომ მხოლოდ ხელით ნაბიჯებია.",
+            ? "OBD360 has no reviewed automatic method for this car, so only the documented manual steps are offered."
+            : "OBD360-ს ამ მანქანისთვის შემოწმებული ავტომატური მეთოდი არ აქვს, ამიტომ მხოლოდ ხელით ნაბიჯებია.",
         _ => en ? "No steps are documented." : "ნაბიჯები დოკუმენტირებული არ არის."
     };
 
@@ -77,8 +77,8 @@ public static class ServiceProcedureTexts
     {
         ServiceVerification.VehicleVerified => en ? "Tested on a real vehicle" : "შემოწმებულია რეალურ მანქანაზე",
         ServiceVerification.SourceDocumented => en
-            ? "From a named source — not tested on a real vehicle by GCar360"
-            : "დასახელებული წყაროდან — GCar360-ს რეალურ მანქანაზე არ შეუმოწმებია",
+            ? "From a named source — not tested on a real vehicle by OBD360"
+            : "დასახელებული წყაროდან — OBD360-ს რეალურ მანქანაზე არ შეუმოწმებია",
         _ => en ? "No source recorded" : "წყარო მითითებული არ არის"
     };
 

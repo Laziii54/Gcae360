@@ -102,7 +102,7 @@ public sealed class MaintenanceNotificationService
             var vehicle = tracker.CurrentVehicle;
             var car = string.Join(" ", new[] { vehicle?.Manufacturer, vehicle?.Model }
                 .Where(text => !string.IsNullOrWhiteSpace(text) && !text.Equals("Unknown", StringComparison.OrdinalIgnoreCase)));
-            var title = car.Length > 0 ? $"GCar360 · {car}" : "GCar360";
+            var title = car.Length > 0 ? $"OBD360 · {car}" : "OBD360";
 
             foreach (var part in MaintenanceSchedule.PartsFor(tracker.Powertrain))
             {
@@ -186,8 +186,8 @@ public sealed class MaintenanceNotificationService
         LocalNotificationCenter.Current.Show(new NotificationRequest
         {
             NotificationId = id,
-            Title = title,
-            Description = text,
+            Title = CarScanner.Services.Localization.LocalizationService.T(title),
+            Description = CarScanner.Services.Localization.LocalizationService.T(text),
             Schedule = new NotificationRequestSchedule { NotifyTime = when.ToLocalTime() },
             ReturningData = "maintenance"
         });

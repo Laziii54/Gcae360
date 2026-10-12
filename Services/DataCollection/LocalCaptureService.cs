@@ -63,7 +63,7 @@ public sealed class LocalCaptureService : IDisposable
             return null;
 
         var json = _session.BuildJson(AppInfo.Current.VersionString);
-        var path = Path.Combine(FileSystem.CacheDirectory, $"gcar360-capture-{DateTime.UtcNow:yyyyMMdd-HHmmss}.json");
+        var path = Path.Combine(FileSystem.CacheDirectory, $"obd360-capture-{DateTime.UtcNow:yyyyMMdd-HHmmss}.json");
         await File.WriteAllTextAsync(path, json).ConfigureAwait(false);
         return path;
     }

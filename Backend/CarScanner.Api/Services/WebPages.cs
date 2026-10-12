@@ -4,7 +4,7 @@ using System.Net;
 namespace CarScanner.Api.Services;
 
 /// <summary>
-/// The GCar360 PRO web page (plans, account, card payment) and the
+/// The OBD360 PRO web page (plans, account, card payment) and the
 /// payment result page. Georgian first, English underneath.
 /// </summary>
 public static class WebPages
@@ -27,7 +27,7 @@ input[type=email],input[type=password],select{width:100%;padding:12px;border-rad
 button{width:100%;margin-top:18px;padding:14px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-size:17px;font-weight:700;cursor:pointer}
 button:disabled{opacity:.6}.msg{margin-top:12px;font-size:14px}.err{color:var(--err)}.ok{color:var(--ok)}
 footer{margin-top:28px;font-size:13px;color:var(--muted);text-align:center}footer a{color:var(--muted)}
-.big{font-size:44px;text-align:center;margin:30px 0 6px}.center{text-align:center}
+.big{text-align:center;margin:30px 0 6px}.big svg{display:block;margin:0 auto}.center{text-align:center}
 .grow{flex:1;min-width:0}.card .t{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px}.card .t .badge{margin-left:0}
 .badge.ok{background:#e8f5ee;color:#1f8a4c;margin:3px 0 2px}.opt.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
 .sum{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 16px;margin:10px 0}
@@ -126,7 +126,7 @@ html.is-intl .ka,html.is-ge .en,html.is-intl .ka-only,html:not(.is-intl) .en-blo
 
         return $$"""
 <!doctype html><html lang="ka"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GCar360 PRO</title>{{Style}}
+<title>OBD360 PRO</title>{{Style}}
 <script>
 // Lari for Georgia, US dollars everywhere else (charged in USD by the bank).
 (function(){var tz='';try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'';}catch(e){}
@@ -135,8 +135,8 @@ var ge=tz==='Asia/Tbilisi'||langs.some(function(l){return l.indexOf('ka')===0;})
 if(location.hash==='#usd')ge=false;
 var h=document.documentElement;h.classList.add(ge?'is-ge':'is-intl');h.lang=ge?'ka':'en';})();
 </script></head><body><main>
-<h1>GCar360 PRO</h1>
-<div class="muted">{{T("აირჩიე გეგმა და ჩართე შენს GCar360 ანგარიშზე", "Choose a plan for your GCar360 account")}}</div>
+<h1>OBD360 PRO</h1>
+<div class="muted">{{T("აირჩიე გეგმა და ჩართე შენს OBD360 ანგარიშზე", "Choose a plan for your OBD360 account")}}</div>
 {{unavailable}}
 <form id="f">
 <h2>{{T("გეგმები (30 დღე)", "Plans (30 days)")}}</h2>
@@ -157,7 +157,7 @@ var h=document.documentElement;h.classList.add(ge?'is-ge':'is-intl');h.lang=ge?'
 <button id="pay" type="submit"{{(providers.Count == 0 ? " disabled" : "")}}>{{T("გადახდა ბარათით", "Pay by card")}}</button>
 <div id="m" class="msg"></div>
 <p class="muted">{{note}}</p>
-<p class="muted">{{T("გადახდა ხდება საქართველოს ბანკის დაცულ გვერდზე. ბარათის ნომერს GCar360 ვერ ხედავს.", "You pay on Bank of Georgia's secure page. GCar360 never sees your card number. Prices in US dollars.")}} Visa · Mastercard · Apple Pay · Google Pay</p>
+<p class="muted">{{T("გადახდა ხდება საქართველოს ბანკის დაცულ გვერდზე. ბარათის ნომერს OBD360 ვერ ხედავს.", "You pay on Bank of Georgia's secure page. OBD360 never sees your card number. Prices in US dollars.")}} Visa · Mastercard · Apple Pay · Google Pay</p>
 </form>
 {{Footer}}{{legal.FooterHtml()}}</footer>
 </main>
@@ -167,7 +167,7 @@ const renew=document.getElementById('renew'),bank=document.getElementById('bank'
 const intl=document.documentElement.classList.contains('is-intl');
 const tr=(ka,en)=>intl?en:ka;
 const errors={INVALID_LOGIN:tr('ელ-ფოსტა ან პაროლი არასწორია.','Wrong e-mail or password.'),
-EMAIL_NOT_VERIFIED:tr('ჯერ დაადასტურე ელფოსტა GCar360 აპლიკაციაში (ანგარიში), შემდეგ სცადე ხელახლა.','Verify your email in the GCar360 app (Account) first, then try again.'),
+EMAIL_NOT_VERIFIED:tr('ჯერ დაადასტურე ელფოსტა OBD360 აპლიკაციაში (ანგარიში), შემდეგ სცადე ხელახლა.','Verify your email in the OBD360 app (Account) first, then try again.'),
 VIN_PLAN_REQUIRED:tr('+5 და +10 პაკეტი მხოლოდ VIN PRO ან სრული PRO გეგმითაა.','Packs need VIN PRO or Full PRO.'),
 AUTO_RENEW_UNAVAILABLE:tr('ყოველთვიური გადახდა ახლა ვერ ჩაირთო. აირჩიე „ერთჯერადი“.','Monthly payment is unavailable right now. Choose one-time.'),
 NOT_AVAILABLE:tr('გადახდა დროებით მიუწვდომელია.','Payments are temporarily unavailable.'),
@@ -201,9 +201,9 @@ b.disabled=false;});
     /// <summary>"My subscription": status, payment history, cancel and pay-now.</summary>
     public static string SubscriptionPage(LegalInfo legal) => $$"""
 <!doctype html><html lang="ka"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GCar360 · ჩემი გამოწერა</title>{{Style}}</head><body><main>
+<title>OBD360 · ჩემი გამოწერა</title>{{Style}}</head><body><main>
 <h1>ჩემი გამოწერა</h1>
-<div class="muted">My subscription · GCar360 PRO</div>
+<div class="muted">My subscription · OBD360 PRO</div>
 <form id="login">
 <label class="f">ელ-ფოსტა · E-mail</label><input type="email" name="email" autocomplete="email" required>
 <label class="f">პაროლი · Password</label><input type="password" name="password" autocomplete="current-password" required>
@@ -268,14 +268,14 @@ try{render(await call('/api/web/subscription/cancel'));m.className='msg ok';m.te
     public static string DeleteAccountPage(LegalInfo legal, string formToken) => $$"""
 <!doctype html><html lang="ka"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="index,follow">
-<title>GCar360 · ანგარიშის წაშლა · Delete account</title>{{Style}}</head><body><main>
+<title>OBD360 · ანგარიშის წაშლა · Delete account</title>{{Style}}</head><body><main>
 <h1>ანგარიშის წაშლა</h1>
-<div class="muted">Delete your GCar360 account</div>
+<div class="muted">Delete your OBD360 account</div>
 
 <h2>აპში · In the app</h2>
 <div class="sum">
-<div><span>გახსენი GCar360 → <b>ანგარიში</b> → <b>ანგარიშის წაშლა</b> და დაადასტურე.</span></div>
-<div><span>Open GCar360 → <b>Account</b> → <b>Delete account</b> and confirm.</span></div>
+<div><span>გახსენი OBD360 → <b>ანგარიში</b> → <b>ანგარიშის წაშლა</b> და დაადასტურე.</span></div>
+<div><span>Open OBD360 → <b>Account</b> → <b>Delete account</b> and confirm.</span></div>
 </div>
 
 <h2>აქ, ვებ-გვერდზე · Here on the website</h2>
@@ -318,6 +318,18 @@ go.disabled=false;});
 </body></html>
 """;
 
+    /// <summary>Monochrome outline status icon (same stroke style as the app icon set); takes the colour of the .ok / .err class.</summary>
+    private static string StatusSvg(string kind)
+    {
+        var path = kind switch
+        {
+            "check" => "M5,12.5 L10,17 L19,7",
+            "close" => "M6,6 L18,18 M18,6 L6,18",
+            _ => "M12,3 A9,9 0 1 1 11.99,3 Z M12,11 L12,17 M12,7.5 L12,7.6"
+        };
+        return "<svg viewBox=\"0 0 24 24\" width=\"56\" height=\"56\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"" + path + "\"/></svg>";
+    }
+
     public static string ResultPage(WebOrder? order, DateTimeOffset? activeUntil)
     {
         string icon, title, text, cls;
@@ -329,7 +341,7 @@ go.disabled=false;});
         switch (order?.Status)
         {
             case "paid":
-                icon = "✓"; cls = "ok";
+                icon = StatusSvg("check"); cls = "ok";
                 title = L("გადახდა წარმატებულია", "Payment successful");
                 text = ProductCatalog.IsConsumable(order.ProductId)
                     ? L($"{name} დაემატა შენს ანგარიშს. აპში გახსენი PRO გვერდი და დააჭირე „სტატუსის განახლებას“.",
@@ -338,12 +350,12 @@ go.disabled=false;});
                         $"{name} is on{(untilText is null ? "" : " until " + untilText)}. In the app, open the PRO page and tap “Refresh status”.");
                 break;
             case "failed":
-                icon = "✕"; cls = "err";
+                icon = StatusSvg("close"); cls = "err";
                 title = L("გადახდა ვერ შესრულდა", "Payment failed");
                 text = L("თანხა არ ჩამოგეჭრა. შეგიძლია ხელახლა სცადო.", "You were not charged. You can try again.");
                 break;
             case null:
-                icon = "?"; cls = "err";
+                icon = StatusSvg("info"); cls = "err";
                 title = "შეკვეთა ვერ მოიძებნა · Order not found";
                 text = "";
                 break;
@@ -367,9 +379,9 @@ go.disabled=false;});
 
         return $$"""
 <!doctype html><html lang="{{(en ? "en" : "ka")}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">{{refresh}}
-<title>GCar360 PRO</title>{{Style}}</head><body><main class="center">
+<title>OBD360 PRO</title>{{Style}}</head><body><main class="center">
 <div class="big {{cls}}">{{icon}}</div><h1>{{title}}</h1><p class="muted">{{text}}</p>{{renewText}}
-<p><a href="/pro" class="muted">← GCar360 PRO</a></p></main></body></html>
+<p><a href="/pro" class="muted">← OBD360 PRO</a></p></main></body></html>
 """;
     }
 
@@ -381,19 +393,19 @@ go.disabled=false;});
         switch (order?.Status)
         {
             case "paid":
-                icon = "✓"; cls = "ok";
+                icon = StatusSvg("check"); cls = "ok";
                 title = "გადახდა წარმატებულია · Payment successful";
                 text = reportReady
-                    ? $"VIN {vin}-ის სრული ისტორია მზადაა. დაბრუნდი GCar360 აპში — რეპორტი ავტომატურად გამოჩნდება."
-                    : $"VIN {vin}-ის სრული ისტორია მზადდება. დაბრუნდი GCar360 აპში — რამდენიმე წამში გამოჩნდება.";
+                    ? $"VIN {vin}-ის სრული ისტორია მზადაა. დაბრუნდი OBD360 აპში — რეპორტი ავტომატურად გამოჩნდება."
+                    : $"VIN {vin}-ის სრული ისტორია მზადდება. დაბრუნდი OBD360 აპში — რამდენიმე წამში გამოჩნდება.";
                 break;
             case "failed":
-                icon = "✕"; cls = "err";
+                icon = StatusSvg("close"); cls = "err";
                 title = "გადახდა ვერ შესრულდა · Payment failed";
                 text = "თანხა არ ჩამოგეჭრა. დაბრუნდი აპში და ხელახლა სცადე.";
                 break;
             case null:
-                icon = "?"; cls = "err";
+                icon = StatusSvg("info"); cls = "err";
                 title = "შეკვეთა ვერ მოიძებნა · Order not found";
                 text = "";
                 break;
@@ -410,7 +422,7 @@ go.disabled=false;});
 
         return $$"""
 <!doctype html><html lang="ka"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">{{refresh}}
-<title>GCar360 · VIN</title>{{Style}}</head><body><main class="center">
+<title>OBD360 · VIN</title>{{Style}}</head><body><main class="center">
 <div class="big {{cls}}">{{icon}}</div><h1>{{title}}</h1><p class="muted">{{text}}</p>
 <p class="muted">ეს ფანჯარა შეგიძლია დახურო.</p></main></body></html>
 """;

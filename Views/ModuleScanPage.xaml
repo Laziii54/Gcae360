@@ -2,6 +2,7 @@
 <ContentPage
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:CarScanner.Controls"
     xmlns:vm="clr-namespace:CarScanner.ViewModels"
     xmlns:m="clr-namespace:CarScanner.Models"
     x:Class="CarScanner.Views.ModuleScanPage"
@@ -71,11 +72,11 @@
                                             <Label Text="{Binding Code}" Style="{StaticResource ReportCodeStyle}" VerticalOptions="Center" />
                                             <Border Grid.Column="1" BackgroundColor="{DynamicResource PageBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1"
                                                     StrokeShape="RoundRectangle 10" Padding="9,3" VerticalOptions="Center">
-                                                <Label Text="{Binding Status}" FontSize="11" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                                                <Label Text="{Binding Status}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
                                             </Border>
                                         </Grid>
                                         <Label Text="{Binding Description}" TextColor="{DynamicResource TextColor}" FontSize="14" />
-                                        <Label Text="{Binding EcuName}" Style="{StaticResource ReportMetaStyle}" FontSize="11.5" IsVisible="{Binding HasEcuName}" />
+                                        <Label Text="{Binding EcuName}" Style="{StaticResource ReportMetaStyle}" FontSize="12" IsVisible="{Binding HasEcuName}" />
 
                                         <VerticalStackLayout Spacing="1" IsVisible="{Binding HasCauses}" Margin="0,6,0,0">
                                             <Label AutomationId="DynamicTextFaultCausesHeader" Text="{Binding CausesHeader}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
@@ -103,7 +104,7 @@
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
                     <Path Data="M12,3 L12,21 M16,7 C16,5 14,4.5 12,4.5 C9.5,4.5 8,5.8 8,7.5 C8,11 16,9.5 16,13.5 C16,15.5 14.5,16.5 12,16.5 C9.5,16.5 8,15.5 8,14" Style="{StaticResource RowIconStyle}" />
                     <Label Grid.Column="1" AutomationId="DynamicTextRepairCostButton" Text="{Binding RepairCostButtonText}" Style="{StaticResource RowTitleStyle}" />
-                    <Label Grid.Column="2" Text="›" FontSize="22" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
+                    <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                 </Grid>
             </Border>
 

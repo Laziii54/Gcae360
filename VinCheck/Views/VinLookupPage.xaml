@@ -15,8 +15,8 @@
 
             <!-- ===== Top bar ===== -->
             <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
-                <Button Text="‹" FontSize="24" Padding="0" Command="{Binding BackCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="12" WidthRequest="40" HeightRequest="40" MinimumHeightRequest="40" />
-                <Label Grid.Column="1" Text="GCar360" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalTextAlignment="Center" Margin="4,0,0,0" />
+                <controls:IconButton Kind="chevron-left" Command="{Binding BackCommand}" WidthRequest="40" HeightRequest="40" IconSize="20" StrokeShape="RoundRectangle 12" SemanticProperties.Description="Back" />
+                <Label Grid.Column="1" Text="OBD360" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalTextAlignment="Center" Margin="4,0,0,0" />
                 <Button Grid.Column="2" Text="{Binding LanguageText}" Command="{Binding ToggleLanguageCommand}" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="12" Padding="12,0" HeightRequest="40" MinimumHeightRequest="40" FontSize="12" FontAttributes="Bold" />
                 <Border Grid.Column="3" WidthRequest="40" HeightRequest="40" Padding="0" BackgroundColor="{DynamicResource CardBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 12">
                     <Border.GestureRecognizers>
@@ -35,7 +35,7 @@
                         <BindableLayout.ItemTemplate>
                             <DataTemplate>
                                 <Border BackgroundColor="{DynamicResource PageBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 8" Padding="9,4" Margin="0,0,6,6">
-                                    <Label Text="{Binding .}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                                    <Label Text="{Binding .}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
                                 </Border>
                             </DataTemplate>
                         </BindableLayout.ItemTemplate>

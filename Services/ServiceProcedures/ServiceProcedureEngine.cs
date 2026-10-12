@@ -18,10 +18,10 @@ public enum ServiceKind
 /// <summary>How a procedure is carried out.</summary>
 public enum ServiceMethod
 {
-    /// <summary>GCar360 performs it through the diagnostic interface (reviewed, read-back verified paths only).</summary>
+    /// <summary>OBD360 performs it through the diagnostic interface (reviewed, read-back verified paths only).</summary>
     Automatic,
 
-    /// <summary>The driver does it with buttons / menus; GCar360 only shows the documented steps.</summary>
+    /// <summary>The driver does it with buttons / menus; OBD360 only shows the documented steps.</summary>
     Manual,
 
     /// <summary>Documented, but needs a workshop / manufacturer tool the app cannot replace.</summary>
@@ -29,7 +29,7 @@ public enum ServiceMethod
 }
 
 /// <summary>
-/// What GCar360 itself sends to the vehicle for a procedure. This is about the app's traffic, not about what the driver
+/// What OBD360 itself sends to the vehicle for a procedure. This is about the app's traffic, not about what the driver
 /// does at the dashboard: a manual guide changes the car only through the driver's own button presses.
 /// </summary>
 public enum ServiceEffect
@@ -55,7 +55,7 @@ public enum ServiceVerification
     /// <summary>Tested on a real vehicle.</summary>
     VehicleVerified,
 
-    /// <summary>Taken from a named manufacturer / service source; not tested by GCar360 on a real vehicle.</summary>
+    /// <summary>Taken from a named manufacturer / service source; not tested by OBD360 on a real vehicle.</summary>
     SourceDocumented,
 
     /// <summary>No source recorded.</summary>
@@ -92,7 +92,7 @@ public sealed record ServiceCompatibility(
     IReadOnlyList<ServiceReason> Reasons,
     IReadOnlyList<ServiceReason> Missing);
 
-/// <summary>The vehicle facts GCar360 already has. Anything unknown is null / empty — never guessed.</summary>
+/// <summary>The vehicle facts OBD360 already has. Anything unknown is null / empty — never guessed.</summary>
 public sealed record ServiceVehicleFacts(
     IReadOnlyList<string> Brands,
     string Model,
@@ -276,7 +276,7 @@ public static class ServiceCompatibilityEvaluator
         if (missing.Count > 0)
             return new ServiceCompatibility(ServiceCompatibilityStatus.PartiallySupported, method, reasons, missing);
 
-        // The vehicle matches. What can GCar360 actually do?
+        // The vehicle matches. What can OBD360 actually do?
         if (method == ServiceMethod.Automatic)
         {
             var capabilitiesMissing = facts.AdapterCapabilities is not null &&

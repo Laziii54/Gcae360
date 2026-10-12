@@ -8,14 +8,14 @@
     x:Class="CarScanner.Views.AccelerationPage"
     x:DataType="vm:HomeViewModel"
     BackgroundColor="{DynamicResource PageBg}"
-    Title="0–100">
+    Title="{Binding AccelerationHeadline}">
 
-    <!-- GCar360 title + Performance Video camera (top-right) -->
+    <!-- OBD360 title + Performance Video camera (top-right) -->
     <Shell.TitleView>
         <Grid x:Name="PageTitleView" x:DataType="vm:ShellStatusViewModel" ColumnDefinitions="*,Auto" ColumnSpacing="8" Padding="0,0,10,0">
             <VerticalStackLayout VerticalOptions="Center" Spacing="0">
-                <Label AutomationId="DynamicTextAccelerationShellTitle" Text="GCar360" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" LineBreakMode="TailTruncation" />
-                <Label AutomationId="DynamicTextAccelerationShellVehicle" Text="{Binding VehicleTypeText}" TextColor="{DynamicResource SubTextColor}" FontSize="9" />
+                <Label AutomationId="DynamicTextAccelerationShellTitle" Text="OBD360" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" LineBreakMode="TailTruncation" />
+                <Label AutomationId="DynamicTextAccelerationShellVehicle" Text="{Binding VehicleTypeText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
             </VerticalStackLayout>
             <Border x:Name="CameraButton" Grid.Column="1" WidthRequest="38" HeightRequest="38" Padding="7" VerticalOptions="Center"
                     BackgroundColor="{DynamicResource CardBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 12">
@@ -32,41 +32,41 @@
 
             <!-- Header -->
             <VerticalStackLayout Spacing="2">
-                <Label Text="0–100" Style="{StaticResource PageTitleStyle}" />
+                <Label AutomationId="DynamicTextAccelerationHeadline" Text="{Binding AccelerationHeadline}" Style="{StaticResource PageTitleStyle}" />
                 <Label AutomationId="DynamicTextAccelerationTestLabel" Text="{Binding AccelerationTestLabel}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
                 <!-- Text set in code-behind (bilingual) -->
-                <Label x:Name="SafetyWarningLabel" AutomationId="DynamicTextAccelerationSafetyWarning" TextColor="#F59E0B" FontSize="11" FontAttributes="Bold" LineBreakMode="WordWrap" Margin="0,4,0,0" />
+                <Label x:Name="SafetyWarningLabel" AutomationId="DynamicTextAccelerationSafetyWarning" TextColor="#F59E0B" FontSize="12" FontAttributes="Bold" LineBreakMode="WordWrap" Margin="0,4,0,0" />
             </VerticalStackLayout>
 
             <!-- Live speed + RPM / Throttle / OBD status -->
             <Border Style="{StaticResource ListCardStyle}">
                 <VerticalStackLayout Spacing="0">
                     <VerticalStackLayout Spacing="0" Padding="16,18,16,14" HorizontalOptions="Center">
-                        <Label Text="რეალური OBD სიჩქარე" TextColor="{DynamicResource SubTextColor}" FontSize="11" HorizontalTextAlignment="Center" />
+                        <Label Text="რეალური OBD სიჩქარე" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalTextAlignment="Center" />
                         <Label AutomationId="DynamicTextAccelerationSpeed" Text="{Binding AccelerationSpeed}" TextColor="{DynamicResource TextColor}" FontSize="56" FontAttributes="Bold" HorizontalTextAlignment="Center" />
                         <Label AutomationId="DynamicTextAccelerationSpeedUnit" Text="{Binding AccelerationSpeedUnit}" TextColor="{DynamicResource SubTextColor}" FontSize="13" HorizontalTextAlignment="Center" />
                         <!-- Adapter speed-sample rate: how accurate the timing can be -->
-                        <Label AutomationId="DynamicTextAccelerationRate" Text="{Binding AccelerationRateText}" TextColor="{Binding AccelerationRateColor}" FontSize="11" FontAttributes="Bold" HorizontalTextAlignment="Center" Margin="0,6,0,0" />
+                        <Label AutomationId="DynamicTextAccelerationRate" Text="{Binding AccelerationRateText}" TextColor="{Binding AccelerationRateColor}" FontSize="12" FontAttributes="Bold" HorizontalTextAlignment="Center" Margin="0,6,0,0" />
                     </VerticalStackLayout>
 
                     <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" />
 
                     <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8" Padding="14,12">
                         <VerticalStackLayout HorizontalOptions="Center" Spacing="2">
-                            <Label Text="RPM" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                            <Label Text="RPM" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
                             <Label AutomationId="DynamicTextAccelerationRpm" Text="{Binding AccelerationRpm}" TextColor="{DynamicResource TextColor}" FontSize="15" FontAttributes="Bold" HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" Spacing="2">
-                            <Label Text="Throttle" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                            <Label Text="Throttle" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
                             <Label AutomationId="DynamicTextAccelerationThrottle" Text="{Binding AccelerationThrottle}" TextColor="{DynamicResource TextColor}" FontSize="15" FontAttributes="Bold" HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Column="2" HorizontalOptions="Center" Spacing="2">
-                            <Label Text="OBD" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                            <Label Text="OBD" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
                             <Label AutomationId="DynamicTextAccelerationObdStatus" Text="{Binding AccelerationObdStatus}" TextColor="{Binding AccelerationObdStatusColor}" FontSize="12" FontAttributes="Bold" HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
                     </Grid>
 
-                    <Label IsVisible="False" AutomationId="DynamicTextAccelerationSpeedSource" Text="{Binding AccelerationSpeedSource}" TextColor="{DynamicResource SubTextColor}" FontSize="11" HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" Margin="14,0,14,12" />
+                    <Label IsVisible="False" AutomationId="DynamicTextAccelerationSpeedSource" Text="{Binding AccelerationSpeedSource}" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" Margin="14,0,14,12" />
                 </VerticalStackLayout>
             </Border>
 
@@ -84,7 +84,7 @@
                     <DataTemplate x:DataType="m:AccelerationSplitDisplay">
                         <Border Style="{StaticResource ListCardStyle}" Padding="10,8" WidthRequest="76">
                             <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
-                                <Label Text="{Binding Label}" TextColor="{DynamicResource SubTextColor}" FontSize="11" HorizontalTextAlignment="Center" />
+                                <Label Text="{Binding Label}" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalTextAlignment="Center" />
                                 <Label Text="{Binding TimeText}" TextColor="{DynamicResource TextColor}" FontSize="16" FontAttributes="Bold" HorizontalTextAlignment="Center" />
                             </VerticalStackLayout>
                         </Border>
@@ -115,12 +115,12 @@
                 <VerticalStackLayout Spacing="4">
                     <Grid ColumnDefinitions="*,Auto">
                         <Label Text="ბოლო შედეგი" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
-                        <Label Grid.Column="1" Text="GCar360" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" />
+                        <Label Grid.Column="1" Text="OBD360" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" />
                     </Grid>
                     <Label AutomationId="DynamicTextAccelerationVehicle" Text="{Binding AccelerationResultVehicle}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" LineBreakMode="TailTruncation" />
                     <Label AutomationId="DynamicTextAccelerationResult" Text="{Binding AccelerationResult}" TextColor="{DynamicResource TextColor}" FontSize="26" FontAttributes="Bold" />
                     <Label AutomationId="DynamicTextAccelerationStatus" Text="{Binding AccelerationStatus}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
-                    <Label AutomationId="DynamicTextAccelerationMetrics" Text="{Binding AccelerationMetrics}" TextColor="{DynamicResource SubTextColor}" FontSize="11" Margin="0,4,0,0" />
+                    <Label AutomationId="DynamicTextAccelerationMetrics" Text="{Binding AccelerationMetrics}" TextColor="{DynamicResource SubTextColor}" FontSize="12" Margin="0,4,0,0" />
                 </VerticalStackLayout>
             </Border>
 
@@ -132,15 +132,15 @@
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
                     <Path Data="M4,12 A8,8 0 1 0 6.3,6.3 M4,5 L4,9 L8,9 M12,8 L12,12 L15,14" Style="{StaticResource RowIconStyle}" />
                     <Label Grid.Column="1" Text="გაზომვების ისტორია" Style="{StaticResource RowTitleStyle}" FontAttributes="Bold" />
-                    <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                 </Grid>
             </Border>
             <Border Style="{StaticResource ListCardStyle}">
                 <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToAccelerationLeaderboardCommand}" /></Border.GestureRecognizers>
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">
                     <Path Data="M7,4 L17,4 L17,9 A5,5 0 0 1 7,9 Z M7,6 L4,6 L4,8 A3,3 0 0 0 7,11 M17,6 L20,6 L20,8 A3,3 0 0 1 17,11 M12,14 L12,17 M9,20 L15,20 M10,17 L14,17 L14,20 L10,20 Z" Style="{StaticResource RowIconStyle}" />
-                    <Label Grid.Column="1" Text="0–100 რეიტინგი" Style="{StaticResource RowTitleStyle}" FontAttributes="Bold" />
-                    <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                    <Label Grid.Column="1" Text="{Binding AccelerationRankingRowText}" Style="{StaticResource RowTitleStyle}" FontAttributes="Bold" />
+                    <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                 </Grid>
             </Border>
 

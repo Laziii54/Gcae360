@@ -17,7 +17,8 @@
             <Button Grid.Column="1" AutomationId="DynamicTextServiceRefresh" Text="{Binding RefreshButtonText}" Command="{Binding RefreshCommand}" Padding="14,0" HeightRequest="36" MinimumHeightRequest="36" FontSize="12" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" VerticalOptions="Center" />
         </Grid>
 
-        <ScrollView Grid.Row="1">
+        <RefreshView Grid.Row="1" IsRefreshing="{Binding IsPullRefreshing}" Command="{Binding PullRefreshCommand}" RefreshColor="{DynamicResource Primary}">
+        <ScrollView>
             <VerticalStackLayout Padding="16,6,16,32" Spacing="12">
                 <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" HorizontalOptions="Center" />
 
@@ -26,14 +27,20 @@
                     <VerticalStackLayout Spacing="8">
                         <Grid ColumnDefinitions="*,Auto">
                             <Label Text="{Binding OilCardTitle}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
-                            <Label Grid.Column="1" Text="{Binding OilSourceText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
+                            <Label Grid.Column="1" Text="{Binding OilSourceText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
                         </Grid>
                         <HorizontalStackLayout Spacing="10">
                             <Label AutomationId="DynamicTextServiceResetState" Text="{Binding OilLifeValueText}" FontSize="28" FontAttributes="Bold" TextColor="{Binding OilLifeColor}" VerticalOptions="Center" />
                             <Label IsVisible="{Binding HasOilDue}" Text="{Binding OilDueText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
                         </HorizontalStackLayout>
                         <ProgressBar Progress="{Binding OilLifeFraction}" ProgressColor="{Binding OilLifeColor}" HeightRequest="6" />
-                        <Button AutomationId="DynamicTextServiceResetFull" IsVisible="{Binding CanResetOilLife}" Text="{Binding ResetOilButtonText}" Command="{Binding ResetOilLifeFullCommand}" IsEnabled="{Binding CanPressOilReset}" Style="{StaticResource PrimaryButtonStyle}" HeightRequest="48" FontSize="14" CornerRadius="12" Margin="0,4,0,0" />
+                        <!-- Both targets go through the same checked write-back (speed, voltage, read-back); shown only when the car supports the reset. -->
+                        <Grid IsVisible="{Binding CanResetOilLife}" ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,4,0,0">
+                            <Button AutomationId="DynamicTextServiceResetFull" Text="{Binding ResetFullButtonText}" Command="{Binding ResetOilLifeFullCommand}" IsEnabled="{Binding CanPressOilReset}" Style="{StaticResource PrimaryButtonStyle}" HeightRequest="48" FontSize="13" CornerRadius="12" />
+                            <Button Grid.Column="1" AutomationId="DynamicTextServiceResetHalf" Text="{Binding ResetHalfButtonText}" Command="{Binding ResetOilLifeHalfCommand}" IsEnabled="{Binding CanPressOilReset}" HeightRequest="48" FontSize="13" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderColor="{DynamicResource Primary}" BorderWidth="1.5" CornerRadius="12" />
+                        </Grid>
+                        <!-- No reset button for this car: say why, instead of showing nothing. -->
+                        <Label AutomationId="DynamicTextServiceResetUnavailable" IsVisible="{Binding ShowOilResetUnavailable}" Text="{Binding OilResetUnavailableText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                         <HorizontalStackLayout IsVisible="{Binding IsOilResetRunning}" Spacing="8" HorizontalOptions="Center">
                             <ActivityIndicator IsRunning="{Binding IsOilResetRunning}" HeightRequest="16" WidthRequest="16" Color="{DynamicResource Primary}" />
                             <Label AutomationId="DynamicTextServiceResetProgress" Text="{Binding OilResetStatusText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" VerticalTextAlignment="Center" />
@@ -58,12 +65,12 @@
                                         <Path Data="{Binding IconGeometry}" Style="{StaticResource RowIconStyle}" />
                                         <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
                                             <Label AutomationId="DynamicTextServicePartName" Text="{Binding Name}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                                            <Label AutomationId="DynamicTextServicePartValue" Text="{Binding DueText}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                                            <Label AutomationId="DynamicTextServicePartValue" Text="{Binding DueText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
                                         </VerticalStackLayout>
                                         <Border Grid.Column="2" BackgroundColor="{Binding PillBackground}" StrokeThickness="0" StrokeShape="RoundRectangle 9" Padding="9,3" VerticalOptions="Center">
-                                            <Label Text="{Binding PillText}" FontSize="11" FontAttributes="Bold" TextColor="{Binding PillColor}" />
+                                            <Label Text="{Binding PillText}" FontSize="12" FontAttributes="Bold" TextColor="{Binding PillColor}" />
                                         </Border>
-                                        <Label Grid.Column="3" Text="›" Style="{StaticResource RowChevronStyle}" />
+                                        <controls:Icon Grid.Column="3" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                                     </Grid>
                                 </VerticalStackLayout>
                             </DataTemplate>
@@ -84,7 +91,7 @@
                                         <Label Grid.Column="1" AutomationId="DynamicTextServiceReminderTitle" Text="{Binding Title}" FontSize="14" TextColor="{DynamicResource TextColor}" VerticalTextAlignment="Center" LineBreakMode="WordWrap" />
                                         <Label Grid.Column="2" AutomationId="DynamicTextServiceReminderValue" Text="{Binding ValueText}" FontSize="13" FontAttributes="Bold" TextColor="{Binding ValueColor}" VerticalTextAlignment="Center" HorizontalTextAlignment="End" />
                                         <Button Grid.Column="3" AutomationId="DynamicTextServiceReminderReset" IsVisible="{Binding CanReset}" Text="{Binding ResetButtonText}" Command="{Binding x:DataType=vm:ServiceViewModel, Source={RelativeSource AncestorType={x:Type vm:ServiceViewModel}}, Path=ResetReminderCommand}" CommandParameter="{Binding .}" Padding="12,0" HeightRequest="30" MinimumHeightRequest="30" FontSize="12" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="15" VerticalOptions="Center" />
-                                        <Label Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" AutomationId="DynamicTextServiceReminderManual" IsVisible="{Binding HasManualHint}" Text="{Binding ManualHint}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                        <Label Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" AutomationId="DynamicTextServiceReminderManual" IsVisible="{Binding HasManualHint}" Text="{Binding ManualHint}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                                     </Grid>
                                 </VerticalStackLayout>
                             </DataTemplate>
@@ -112,11 +119,7 @@
                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
                         <Path Data="M3,10 A7,7 0 1 0 17,10 A7,7 0 1 0 3,10 M15.5,15.5 L21,21" Style="{StaticResource RowIconStyle}" VerticalOptions="Center" />
                         <Entry Grid.Column="1" Text="{Binding ProcedureSearchText}" Placeholder="{Binding ProcedureSearchPlaceholder}" FontSize="14" TextColor="{DynamicResource TextColor}" PlaceholderColor="{DynamicResource SubTextColor}" BackgroundColor="Transparent" ReturnType="Search" />
-                        <Label Grid.Column="2" Text="✕" FontSize="14" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" IsVisible="{Binding HasProcedureSearch}">
-                            <Label.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding ClearProcedureSearchCommand}" />
-                            </Label.GestureRecognizers>
-                        </Label>
+                        <controls:IconButton Grid.Column="2" Kind="close" Plain="True" Tint="{DynamicResource SubTextColor}" IsVisible="{Binding HasProcedureSearch}" Command="{Binding ClearProcedureSearchCommand}" WidthRequest="36" HeightRequest="36" IconSize="14" SemanticProperties.Description="Clear" />
                     </Grid>
                 </Border>
 
@@ -150,20 +153,20 @@
                                         </Grid.GestureRecognizers>
                                         <VerticalStackLayout Spacing="3">
                                             <Label Text="{Binding Title}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                                            <Label Text="{Binding Subtitle}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                            <Label Text="{Binding Subtitle}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                                             <FlexLayout Wrap="Wrap" JustifyContent="Start" AlignItems="Center" Margin="0,2,0,0">
                                                 <Border BackgroundColor="{Binding StatusBackground}" StrokeThickness="0" StrokeShape="RoundRectangle 9" Padding="9,3" Margin="0,0,6,4">
-                                                    <Label Text="{Binding StatusText}" FontSize="11" FontAttributes="Bold" TextColor="{Binding StatusColor}" />
+                                                    <Label Text="{Binding StatusText}" FontSize="12" FontAttributes="Bold" TextColor="{Binding StatusColor}" />
                                                 </Border>
                                                 <Border BackgroundColor="Transparent" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 9" Padding="8,2" Margin="0,0,6,4">
-                                                    <Label Text="{Binding MethodText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                                    <Label Text="{Binding MethodText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                                                 </Border>
                                                 <Border BackgroundColor="Transparent" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 9" Padding="8,2" Margin="0,0,0,4">
-                                                    <Label Text="{Binding KindText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                                    <Label Text="{Binding KindText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                                                 </Border>
                                             </FlexLayout>
                                         </VerticalStackLayout>
-                                        <Label Grid.Column="1" Text="{Binding ChevronText}" Style="{StaticResource RowChevronStyle}" VerticalOptions="Start" />
+                                        <controls:Icon Grid.Column="1" Kind="{Binding ChevronKind}" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" VerticalOptions="Start" />
                                     </Grid>
 
                                     <VerticalStackLayout IsVisible="{Binding IsExpanded}" Spacing="8">
@@ -174,8 +177,8 @@
                                         <Label Text="{Binding PrerequisitesText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                                         <Label IsVisible="{Binding HasSteps}" Text="{Binding StepsText}" FontSize="13" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
                                         <Label Text="{Binding ExpectedText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                                        <Label Text="{Binding VerificationText}" FontSize="11.5" FontAttributes="Bold" TextColor="{Binding VerificationColor}" LineBreakMode="WordWrap" />
-                                        <Label IsVisible="{Binding HasSource}" Text="{Binding SourceText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                        <Label Text="{Binding VerificationText}" FontSize="12" FontAttributes="Bold" TextColor="{Binding VerificationColor}" LineBreakMode="WordWrap" />
+                                        <Label IsVisible="{Binding HasSource}" Text="{Binding SourceText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                                         <Button IsVisible="{Binding CanRunAutomatic}" Text="{Binding RunButtonText}" Command="{Binding x:DataType=vm:ServiceViewModel, Source={RelativeSource AncestorType={x:Type vm:ServiceViewModel}}, Path=RunProcedureCommand}" CommandParameter="{Binding .}" Style="{StaticResource PrimaryButtonStyle}" HeightRequest="44" CornerRadius="12" />
                                     </VerticalStackLayout>
                                 </VerticalStackLayout>
@@ -208,9 +211,9 @@
                             <Path Data="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M12,11 L12,16 M12,8 L12,8.01" Style="{StaticResource RowIconStyle}" />
                             <VerticalStackLayout Grid.Column="1" Spacing="1">
                                 <Label Text="{Binding HelpMenuTitle}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                                <Label Text="{Binding HelpMenuText}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                <Label Text="{Binding HelpMenuText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                             </VerticalStackLayout>
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                            <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                         </Grid>
                         <Label IsVisible="{Binding ShowMenuGuide}" Text="{Binding MenuGuideText}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" Margin="14,0,14,12" />
                         <BoxView Style="{StaticResource RowDividerStyle}" />
@@ -221,9 +224,9 @@
                             <Path Data="M3,10 A7,7 0 1 0 17,10 A7,7 0 1 0 3,10 M15.5,15.5 L21,21" Style="{StaticResource RowIconStyle}" />
                             <VerticalStackLayout Grid.Column="1" Spacing="1">
                                 <Label Text="{Binding HelpSearchTitle}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                                <Label Text="{Binding HelpSearchText}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                <Label Text="{Binding HelpSearchText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                             </VerticalStackLayout>
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                            <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                         </Grid>
                         <VerticalStackLayout IsVisible="{Binding ShowSearch}" Padding="14,0,14,14" Spacing="10">
                         <Label AutomationId="DynamicTextServiceDiscoveryHint" Text="{Binding DiscoveryHintText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
@@ -236,7 +239,7 @@
                             <Label AutomationId="DynamicTextServiceDiscoveryProgress" Text="{Binding DiscoveryProgressText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" VerticalTextAlignment="Center" />
                         </HorizontalStackLayout>
                         <Button AutomationId="DynamicTextServiceDiscoveryStop" Text="{Binding DiscoveryCancelText}" Command="{Binding CancelOilDiscoveryCommand}" IsVisible="{Binding IsDiscoveryRunning}" HeightRequest="44" FontSize="13" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" />
-                        <!-- Every value that answered during the search (✓ = equals the dashboard). -->
+                        <!-- Every value that answered during the search (= equals the dashboard). -->
                         <VerticalStackLayout IsVisible="{Binding HasSearchHits}" Spacing="6" BindableLayout.ItemsSource="{Binding SearchHits}">
                             <BindableLayout.ItemTemplate>
                                 <DataTemplate x:DataType="vm:ServiceSearchHitRow">
@@ -244,10 +247,10 @@
                                         <Grid.GestureRecognizers>
                                             <TapGestureRecognizer Tapped="OnSearchHitTapped" />
                                         </Grid.GestureRecognizers>
-                                        <Label Text="{Binding Mark}" TextColor="{Binding MarkColor}" FontSize="15" FontAttributes="Bold" VerticalOptions="Start" />
+                                        <controls:Icon Kind="{Binding Mark}" Tint="{Binding MarkColor}" WidthRequest="15" HeightRequest="15" VerticalOptions="Start" Margin="0,2,0,0" />
                                         <VerticalStackLayout Grid.Column="1" Spacing="0">
                                             <Label Text="{Binding Title}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                                            <Label Text="{Binding Detail}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                                            <Label Text="{Binding Detail}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
                                         </VerticalStackLayout>
                                     </Grid>
                                 </DataTemplate>
@@ -264,9 +267,9 @@
                             <Path Data="M12,4 A8,8 0 1 0 12,20 A8,8 0 1 0 12,4 M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9" Style="{StaticResource RowIconStyle}" />
                             <VerticalStackLayout Grid.Column="1" Spacing="1">
                                 <Label Text="{Binding HelpRecorderTitle}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                                <Label Text="{Binding HelpRecorderText}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                <Label Text="{Binding HelpRecorderText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                             </VerticalStackLayout>
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                            <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                         </Grid>
                         <BoxView Style="{StaticResource RowDividerStyle}" />
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,12">
@@ -276,13 +279,14 @@
                             <Path Data="M3,12 L7,12 L9,6 L13,18 L15,12 L21,12" Style="{StaticResource RowIconStyle}" />
                             <VerticalStackLayout Grid.Column="1" Spacing="1">
                                 <Label Text="CAN მოსმენა (მხოლოდ კითხვა)" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                                <Label Text="მანქანის საკუთარი შეტყობინებები, opendbc-სთან შედარებით" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                <Label Text="მანქანის საკუთარი შეტყობინებები, opendbc-სთან შედარებით" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                             </VerticalStackLayout>
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                            <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                         </Grid>
                     </VerticalStackLayout>
                 </Border>
             </VerticalStackLayout>
         </ScrollView>
+        </RefreshView>
     </Grid>
 </ContentPage>

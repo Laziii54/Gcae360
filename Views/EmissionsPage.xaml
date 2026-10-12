@@ -3,6 +3,7 @@
 <ContentPage
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:CarScanner.Controls"
     xmlns:vm="clr-namespace:CarScanner.ViewModels"
     x:Class="CarScanner.Views.EmissionsPage"
     x:DataType="vm:EmissionsViewModel"
@@ -29,7 +30,7 @@
                         BackgroundColor="{Binding InspectionColor}"
                         StrokeThickness="0"
                         StrokeShape="RoundRectangle 34">
-                        <Label Text="{Binding InspectionGlyph}" FontSize="34" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
+                        <controls:Icon Kind="{Binding InspectionGlyph}" Tint="White" WidthRequest="32" HeightRequest="32" StrokeThickness="2.4" />
                     </Border>
                     <Label
                         Text="{Binding InspectionStatus}"
@@ -105,11 +106,11 @@
                                         StrokeThickness="0"
                                         StrokeShape="RoundRectangle 14"
                                         VerticalOptions="Center">
-                                        <Label Text="{Binding Glyph}" FontSize="16" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
+                                        <controls:Icon Kind="{Binding Glyph}" Tint="White" WidthRequest="15" HeightRequest="15" StrokeThickness="2.2" />
                                     </Border>
                                     <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
                                         <Label Text="{Binding Name}" FontSize="14" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                                        <Label Text="{Binding Category}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                        <Label Text="{Binding Category}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                                     </VerticalStackLayout>
                                     <Label Grid.Column="2" Text="{Binding Status}" TextColor="{Binding StatusColor}" FontSize="13" FontAttributes="Bold" VerticalOptions="Center" />
                                 </Grid>
@@ -148,8 +149,8 @@
 
             <Border Style="{StaticResource ListCardStyle}" Padding="14,13">
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                    <Label Text="ⓘ" FontSize="18" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Start" />
-                    <Label Grid.Column="1" Text="{Binding ObdDisclaimerText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    <controls:Icon Kind="info" Tint="{DynamicResource SubTextColor}" WidthRequest="18" HeightRequest="18" VerticalOptions="Start" />
+                    <Label Grid.Column="1" Text="{Binding ObdDisclaimerText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                 </Grid>
             </Border>
 
@@ -158,7 +159,7 @@
                     <ActivityIndicator IsRunning="{Binding IsBusy}" Color="{DynamicResource Primary}" WidthRequest="22" HeightRequest="22" />
                     <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
                         <Label Text="{Binding LoadingTitle}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
-                        <Label Text="{Binding LoadingSubtitle}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                        <Label Text="{Binding LoadingSubtitle}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                     </VerticalStackLayout>
                 </Grid>
             </Border>

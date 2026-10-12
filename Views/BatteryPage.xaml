@@ -6,6 +6,7 @@
              x:DataType="vm:BatteryViewModel"
              Title="Battery / Charging"
              BackgroundColor="{DynamicResource PageBg}">
+    <RefreshView IsRefreshing="{Binding IsPullRefreshing}" Command="{Binding PullRefreshCommand}" RefreshColor="{DynamicResource Primary}">
     <ScrollView>
         <VerticalStackLayout Padding="16,14,16,32" Spacing="12">
 
@@ -25,11 +26,21 @@
                         <Label Grid.Column="1" Text="{Binding MeasurementState}" FontSize="13" FontAttributes="Bold" TextColor="{Binding MeasurementStateColor}" VerticalOptions="Center" />
                     </Grid>
                     <Label Text="{Binding ChargingStatus}" FontSize="13" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                    <Label Text="{Binding LastUpdated}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                    <Label Text="{Binding LastUpdated}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                 </VerticalStackLayout>
             </Border>
 
             <Button Text="განახლება" Command="{Binding RefreshCommand}" Style="{StaticResource PrimaryButtonStyle}" />
+
+            <!-- The 12 V battery type decides what is normal; the hybrid / EV traction battery has its own page. -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="16,12">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="{Binding BatteryTypeTitle}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                    <Picker ItemsSource="{Binding BatteryTypeOptions}" ItemDisplayBinding="{Binding ., Converter={StaticResource LocalizedTextConverter}}" SelectedIndex="{Binding SelectedTypeIndex}" FontSize="14" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" />
+                    <Label Text="{Binding BatteryTypeHint}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding BatteryTypeNote}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
 
             <!-- Min / Max -->
             <Border Style="{StaticResource ListCardStyle}">
@@ -48,21 +59,11 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Label IsVisible="False" Text="PID 0142 აჩვენებს ECU-ის Control Module Voltage-ს — ეს არის დამუხტვის სისტემის ინდიკატორი და არა აკუმულატორის capacity/health ტესტი." FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0" />
-
-            <!-- High voltage battery -->
-            <Label Text="High Voltage Battery" Style="{StaticResource SectionCaptionStyle}" />
-            <Border Style="{StaticResource ListCardStyle}" Padding="14,13">
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" RowDefinitions="Auto,Auto" RowSpacing="3">
-                    <BoxView WidthRequest="8" HeightRequest="8" CornerRadius="4" Color="{Binding HighVoltageStateColor}" VerticalOptions="Center" />
-                    <Label Grid.Column="1" Text="{Binding HighVoltageState}" FontSize="13" FontAttributes="Bold" TextColor="{Binding HighVoltageStateColor}" VerticalOptions="Center" />
-                    <Label Grid.Row="1" Grid.Column="1" Text="{Binding HighVoltageStatus}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                </Grid>
-            </Border>
+            <Label IsVisible="False" Text="PID 0142 აჩვენებს ECU-ის Control Module Voltage-ს — ეს არის დამუხტვის სისტემის ინდიკატორი და არა აკუმულატორის capacity/health ტესტი." FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0" />
 
             <!-- History -->
             <Label Text="Voltage History" Style="{StaticResource SectionCaptionStyle}" />
-            <Label IsVisible="False" Text="მხოლოდ ამ სესიაში ECU-დან წარმატებით მიღებული გაზომვები." FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0" />
+            <Label IsVisible="False" Text="მხოლოდ ამ სესიაში ECU-დან წარმატებით მიღებული გაზომვები." FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0" />
             <Border Style="{StaticResource ListCardStyle}">
                 <VerticalStackLayout BindableLayout.ItemsSource="{Binding VoltageHistory}" Spacing="0" Margin="0,-1,0,0">
                     <BindableLayout.ItemTemplate>
@@ -79,4 +80,5 @@
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" Margin="0,6" />
         </VerticalStackLayout>
     </ScrollView>
+    </RefreshView>
 </ContentPage>

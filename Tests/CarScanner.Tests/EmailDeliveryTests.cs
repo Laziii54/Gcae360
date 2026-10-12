@@ -82,7 +82,7 @@ public sealed class SmtpDeliveryTests
     public async Task TheRealSender_DeliversAMultipartUtf8Message_ToAnSmtpServer()
     {
         using var sink = new SmtpSink();
-        var options = new EmailOptions { Host = "127.0.0.1", Port = sink.Port, UseSsl = false, FromAddress = "no-reply@example.test", FromName = "GCar360" };
+        var options = new EmailOptions { Host = "127.0.0.1", Port = sink.Port, UseSsl = false, FromAddress = "no-reply@example.test", FromName = "OBD360" };
         var sender = new SmtpEmailSender(options);
         Assert.True(sender.IsConfigured);
 

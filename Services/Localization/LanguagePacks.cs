@@ -48,7 +48,7 @@ internal static partial class LanguagePacks
 
     private static readonly Func<IEnumerable<(string En, string[] T)>>[] ExtraProviders =
     {
-        ExtraRows1, ExtraRows2, ExtraRows3, ExtraRows4, ExtraRows5, ExtraRows6, ExtraRows7, ExtraRows8, ExtraRows9, ExtraRows10,
+        ExtraRows1, ExtraRows2, ExtraRows3, ExtraRows4, ExtraRows5, ExtraRows6, ExtraRows7, ExtraRows8, ExtraRows9, ExtraRows10, ExtraRows11, ExtraRows12, ExtraRows13, ExtraRows14, ExtraRows15, ExtraRows16, ExtraRows17, ExtraRows18, ExtraRows19, ExtraRows20, ExtraRows21, ExtraRows22, ExtraRows23, ExtraRows24, ExtraRows25, ExtraRows26, ExtraRows27, ExtraRows28,
     };
 
     private static (string En, string[] T) R(string en, params string[] translations) => (en, translations);

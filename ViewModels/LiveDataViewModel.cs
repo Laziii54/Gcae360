@@ -728,7 +728,7 @@ public partial class LiveDataViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            StatusMessage = ex.Message;
+            StatusMessage = CarScanner.Services.UserError.Describe(ex);
         }
         finally
         {
@@ -762,7 +762,7 @@ public partial class LiveDataViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            StatusMessage = ex.Message;
+            StatusMessage = CarScanner.Services.UserError.Describe(ex);
         }
         finally
         {
@@ -829,7 +829,7 @@ public partial class LiveDataViewModel : BaseViewModel
         }
         catch (Exception exception)
         {
-            SourceMessage = exception.Message;
+            SourceMessage = CarScanner.Services.UserError.Describe(exception);
             StatusMessage = "OEM Live Data ვერ დაიწყო; გამოგონილი მონაცემი არ გამოჩნდება.";
         }
         finally
@@ -886,7 +886,7 @@ public partial class LiveDataViewModel : BaseViewModel
 
     [RelayCommand]
     // Recordings now live in Graph Studio (old RecordingHistoryPage removed).
-    private Task OpenRecordingHistory() => Shell.Current.GoToAsync(nameof(Views.GraphStudioPage));
+    private Task OpenRecordingHistory() => CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.GraphStudioPage));
 
     public IReadOnlyList<ObdTelemetrySample> GetRecording()
     {

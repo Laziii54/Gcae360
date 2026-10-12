@@ -60,17 +60,17 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <VerticalStackLayout Spacing="0">
                             <Label Text="მოგზაურობა შენახულია" TextColor="{DynamicResource TextColor}" FontSize="16" FontAttributes="Bold" />
-                            <Label AutomationId="DynamicTextTripSummaryTitle" Text="{Binding TripSummaryTitle}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" />
+                            <Label AutomationId="DynamicTextTripSummaryTitle" Text="{Binding TripSummaryTitle}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
                         </VerticalStackLayout>
-                        <Button Grid.Column="1" Text="✕" Command="{Binding CloseTripSummaryCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" FontSize="16" Padding="0" WidthRequest="36" HeightRequest="36" />
+                        <controls:IconButton Grid.Column="1" Kind="close" Plain="True" Tint="{DynamicResource SubTextColor}" Command="{Binding CloseTripSummaryCommand}" WidthRequest="36" HeightRequest="36" IconSize="16" SemanticProperties.Description="Close" />
                     </Grid>
                     <VerticalStackLayout Spacing="0" HorizontalOptions="Center">
-                        <Label Text="ამ მოგზაურობამ დაჯდა" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" HorizontalTextAlignment="Center" />
+                        <Label Text="ამ მოგზაურობამ დაჯდა" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalTextAlignment="Center" />
                         <Label AutomationId="DynamicTextTripSummaryCost" Text="{Binding TripSummaryCostText}" TextColor="{DynamicResource TextColor}" FontSize="30" FontAttributes="Bold" HorizontalTextAlignment="Center" />
-                        <Label AutomationId="DynamicTextTripSummaryCostDetail" Text="{Binding TripSummaryCostDetail}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" HorizontalTextAlignment="Center" />
+                        <Label AutomationId="DynamicTextTripSummaryCostDetail" Text="{Binding TripSummaryCostDetail}" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                     <VerticalStackLayout Spacing="6" IsVisible="{Binding ShowTripSummaryComparison}">
-                        <Label Text="იგივე გზა ჩვეულებრივ ბენზინიან მანქანაზე" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" FontAttributes="Bold" />
+                        <Label Text="იგივე გზა ჩვეულებრივ ბენზინიან მანქანაზე" TextColor="{DynamicResource SubTextColor}" FontSize="12" FontAttributes="Bold" />
                         <Grid ColumnDefinitions="70,*,Auto" ColumnSpacing="8">
                             <Label Text="შენ" TextColor="{DynamicResource SubTextColor}" FontSize="12" VerticalOptions="Center" />
                             <Grid Grid.Column="1" VerticalOptions="Center">
@@ -127,9 +127,9 @@
                         <Label Text="{Binding Instant}" AutomationId="DynamicTextFuelInstantLine" TextColor="{DynamicResource TextColor}" FontSize="17" FontAttributes="Bold" VerticalOptions="Center" />
                         <Label Grid.Column="1" Text="{Binding QualityText}" TextColor="{Binding QualityColor}" FontSize="11.5" FontAttributes="Bold" VerticalOptions="Center" HorizontalTextAlignment="End" MaxLines="2" LineBreakMode="TailTruncation" />
                     </Grid>
-                    <Label Text="{Binding InstantNote}" AutomationId="DynamicTextFuelNote" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" LineBreakMode="WordWrap" />
-                    <Label IsVisible="{Binding HasQualityDetail}" Text="{Binding QualityDetail}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="WordWrap" />
-                    <Label Text="{Binding TripQualityText}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding InstantNote}" AutomationId="DynamicTextFuelNote" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                    <Label IsVisible="{Binding HasQualityDetail}" Text="{Binding QualityDetail}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding TripQualityText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
 
@@ -140,12 +140,12 @@
                         <controls:RingGaugeView Progress="{Binding SocProgress}" RingColor="{Binding SocRingColor}" TrackColor="{DynamicResource BorderColor}" Thickness="9" />
                         <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="0">
                             <Label AutomationId="DynamicTextSocBig" Text="{Binding SocBigText}" TextColor="{DynamicResource TextColor}" FontSize="21" FontAttributes="Bold" HorizontalTextAlignment="Center" />
-                            <Label AutomationId="DynamicTextRange" Text="{Binding RangeText}" TextColor="{DynamicResource SubTextColor}" FontSize="11" HorizontalTextAlignment="Center" />
+                            <Label AutomationId="DynamicTextRange" Text="{Binding RangeText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
                     </Grid>
                     <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
                         <Border IsVisible="{Binding ShowDriveBadge}" BackgroundColor="{Binding DriveBadgeBackground}" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="10,4" HorizontalOptions="Start">
-                            <Label AutomationId="DynamicTextDriveBadge" Text="{Binding DriveBadgeText}" TextColor="{Binding DriveBadgeColor}" FontSize="11.5" FontAttributes="Bold" />
+                            <Label AutomationId="DynamicTextDriveBadge" Text="{Binding DriveBadgeText}" TextColor="{Binding DriveBadgeColor}" FontSize="12" FontAttributes="Bold" />
                         </Border>
                         <HorizontalStackLayout Spacing="5">
                             <Label AutomationId="DynamicTextHeroValue" Text="{Binding HeroValueText}" TextColor="{Binding HeroValueColor}" FontSize="26" FontAttributes="Bold" VerticalOptions="End" />
@@ -154,11 +154,11 @@
                         <VerticalStackLayout Spacing="2" IsVisible="{Binding ShowHeroPowerBar}">
                             <controls:PowerBarView PowerKw="{Binding PowerKw}" HeightRequest="10" TrackColor="{DynamicResource BorderColor}" MarkColor="{DynamicResource SubTextColor}" />
                             <Grid ColumnDefinitions="*,*">
-                                <Label Text="◀ დამუხტვა" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
-                                <Label Grid.Column="1" Text="ხარჯი ▶" TextColor="{DynamicResource SubTextColor}" FontSize="11" HorizontalTextAlignment="End" />
+                                <Label Text="დამუხტვა" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
+                                <Label Grid.Column="1" Text="ხარჯი" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalTextAlignment="End" />
                             </Grid>
                         </VerticalStackLayout>
-                        <Label AutomationId="DynamicTextHeroHint" Text="{Binding HeroHintText}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                        <Label AutomationId="DynamicTextHeroHint" Text="{Binding HeroHintText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
                     </VerticalStackLayout>
                 </Grid>
             </Border>
@@ -167,13 +167,13 @@
             <Border Style="{StaticResource ListCardStyle}" Padding="14,10" IsVisible="{Binding ShowPower}">
                 <VerticalStackLayout Spacing="4">
                     <Grid ColumnDefinitions="*,Auto">
-                        <Label AutomationId="DynamicTextPowerHistoryCaption" Text="{Binding PowerHistoryCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" FontAttributes="Bold" />
-                        <Label Grid.Column="1" Text="kW" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" />
+                        <Label AutomationId="DynamicTextPowerHistoryCaption" Text="{Binding PowerHistoryCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="12" FontAttributes="Bold" />
+                        <Label Grid.Column="1" Text="kW" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
                     </Grid>
                     <controls:PowerHistoryView Samples="{Binding PowerHistory}" HeightRequest="72" LineColor="{DynamicResource BorderColor}" />
                     <Grid ColumnDefinitions="*,*">
-                        <Label Text="▲ ხარჯი" TextColor="{DynamicResource WarnTitle}" FontSize="11" />
-                        <Label Grid.Column="1" Text="▼ დამუხტვა" TextColor="{DynamicResource OkText}" FontSize="11" HorizontalTextAlignment="End" />
+                        <Label Text="ხარჯი" TextColor="{DynamicResource WarnTitle}" FontSize="12" />
+                        <Label Grid.Column="1" Text="დამუხტვა" TextColor="{DynamicResource OkText}" FontSize="12" HorizontalTextAlignment="End" />
                     </Grid>
                 </VerticalStackLayout>
             </Border>
@@ -183,19 +183,19 @@
                 <Border Style="{StaticResource ListCardStyle}" Padding="8,9">
                     <VerticalStackLayout Spacing="1">
                         <Label AutomationId="DynamicTextTripDistance" Text="{Binding TripDistanceText}" TextColor="{DynamicResource TextColor}" FontSize="16" FontAttributes="Bold" HorizontalTextAlignment="Center" />
-                        <Label Text="{Binding DistanceCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="11" HorizontalTextAlignment="Center" />
+                        <Label Text="{Binding DistanceCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                 </Border>
                 <Border Grid.Column="1" Style="{StaticResource ListCardStyle}" Padding="8,9">
                     <VerticalStackLayout Spacing="1">
                         <Label AutomationId="DynamicTextTripDuration" Text="{Binding TripDurationText}" TextColor="{DynamicResource TextColor}" FontSize="16" FontAttributes="Bold" HorizontalTextAlignment="Center" />
-                        <Label Text="{Binding DurationCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="11" HorizontalTextAlignment="Center" />
+                        <Label Text="{Binding DurationCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                 </Border>
                 <Border Grid.Column="2" Style="{StaticResource ListCardStyle}" Padding="8,9">
                     <VerticalStackLayout Spacing="1">
                         <Label AutomationId="DynamicTextTripCost" Text="{Binding TripCostTotalText}" TextColor="{DynamicResource TextColor}" FontSize="16" FontAttributes="Bold" HorizontalTextAlignment="Center" />
-                        <Label Text="{Binding CostCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="11" HorizontalTextAlignment="Center" />
+                        <Label Text="{Binding CostCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                 </Border>
             </Grid>
@@ -211,7 +211,7 @@
             <!-- Energy of this trip: used / recovered / net -->
             <Border Style="{StaticResource ListCardStyle}" Padding="14,12" IsVisible="{Binding ShowEnergy}">
                 <VerticalStackLayout Spacing="0">
-                    <Label AutomationId="DynamicTextEnergyCardCaption" Text="{Binding EnergyCardCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" FontAttributes="Bold" Margin="0,0,0,6" />
+                    <Label AutomationId="DynamicTextEnergyCardCaption" Text="{Binding EnergyCardCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="12" FontAttributes="Bold" Margin="0,0,0,6" />
                     <Grid IsVisible="{Binding ShowEnergyBar}" HeightRequest="8" Margin="0,0,0,4">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="{Binding ConsumedStar}" /><ColumnDefinition Width="{Binding RegenStar}" /></Grid.ColumnDefinitions>
                         <BoxView Color="#D0701F" CornerRadius="4,0,0,4" />
@@ -238,30 +238,30 @@
                         <Label AutomationId="DynamicTextEnergyPerKmCaption" Text="{Binding EnergyPerKmCaption}" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
                         <Label Grid.Column="1" AutomationId="DynamicTextEnergyPerKm" Text="{Binding EnergyPerKmText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
                     </Grid>
-                    <Label IsVisible="False" AutomationId="DynamicTextEnergyNote" Text="{Binding EnergyNoteText}" TextColor="{DynamicResource SubTextColor}" FontSize="11" Margin="0,4,0,0" />
+                    <Label IsVisible="False" AutomationId="DynamicTextEnergyNote" Text="{Binding EnergyNoteText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" Margin="0,4,0,0" />
                 </VerticalStackLayout>
             </Border>
 
             <!-- Plug-in: electric / engine split -->
             <Border Style="{StaticResource ListCardStyle}" Padding="14,12" IsVisible="{Binding ShowDriveSplit}">
                 <VerticalStackLayout Spacing="0">
-                    <Label AutomationId="DynamicTextSplitCaption" Text="{Binding SplitCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" FontAttributes="Bold" Margin="0,0,0,6" />
+                    <Label AutomationId="DynamicTextSplitCaption" Text="{Binding SplitCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="12" FontAttributes="Bold" Margin="0,0,0,6" />
                     <Grid HeightRequest="22" Margin="0,0,0,4">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="{Binding ElectricShareStar}" /><ColumnDefinition Width="{Binding EngineShareStar}" /></Grid.ColumnDefinitions>
                         <Border BackgroundColor="#1E8A4C" StrokeThickness="0" StrokeShape="RoundRectangle 6,0,6,0">
-                            <Label AutomationId="DynamicTextElectricShare" Text="{Binding ElectricShareText}" TextColor="White" FontSize="11" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Label AutomationId="DynamicTextElectricShare" Text="{Binding ElectricShareText}" TextColor="White" FontSize="12" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
                         </Border>
                         <Border Grid.Column="1" BackgroundColor="#D0701F" StrokeThickness="0" StrokeShape="RoundRectangle 0,6,0,6">
-                            <Label AutomationId="DynamicTextEngineShare" Text="{Binding EngineShareText}" TextColor="White" FontSize="11" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Label AutomationId="DynamicTextEngineShare" Text="{Binding EngineShareText}" TextColor="White" FontSize="12" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
                         </Border>
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,8">
-                        <Label Text="⚡ ელექტრო" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
+                        <Label Text="ელექტრო" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
                         <Label Grid.Column="1" AutomationId="DynamicTextElectricSplit" Text="{Binding ElectricSplitText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" HorizontalTextAlignment="End" />
                     </Grid>
                     <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,8">
-                        <Label Text="⛽ ბენზინი" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
+                        <Label Text="ბენზინი" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
                         <Label Grid.Column="1" AutomationId="DynamicTextEngineSplit" Text="{Binding EngineSplitText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" HorizontalTextAlignment="End" />
                     </Grid>
                     <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
@@ -273,7 +273,7 @@
             </Border>
 
             <Border Style="{StaticResource ListCardStyle}" Padding="14,10" IsVisible="{Binding ShowHybridNote}">
-                <Label Text="{Binding HybridNote}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" LineBreakMode="WordWrap" />
+                <Label Text="{Binding HybridNote}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
             </Border>
 
             <!-- Battery: SoC, V/A, capacity, price -->
@@ -311,21 +311,21 @@
             <!-- What this car reports + where the data comes from -->
             <Border Style="{StaticResource ListCardStyle}" Padding="14,10" IsVisible="False">
                 <VerticalStackLayout Spacing="0">
-                    <Label Text="რას კითხულობს ეს მანქანა" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" FontAttributes="Bold" Margin="0,0,0,4" />
+                    <Label Text="რას კითხულობს ეს მანქანა" TextColor="{DynamicResource SubTextColor}" FontSize="12" FontAttributes="Bold" Margin="0,0,0,4" />
                     <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding EnergyCapabilities}">
                         <BindableLayout.ItemTemplate>
                             <DataTemplate x:DataType="vm:EnergyCapabilityRow">
                                 <Grid ColumnDefinitions="18,*,Auto" ColumnSpacing="8" Padding="0,6">
-                                    <Label Text="{Binding Mark}" TextColor="{Binding MarkColor}" FontSize="13" FontAttributes="Bold" VerticalOptions="Center" />
+                                    <controls:Icon Kind="{Binding Mark}" Tint="{Binding MarkColor}" WidthRequest="14" HeightRequest="14" VerticalOptions="Center" HorizontalOptions="Start" />
                                     <Label Grid.Column="1" AutomationId="DynamicTextCapabilityTitle" Text="{Binding Title}" TextColor="{DynamicResource TextColor}" FontSize="12.5" VerticalOptions="Center" />
-                                    <Label Grid.Column="2" AutomationId="DynamicTextCapabilityDetail" Text="{Binding Detail}" TextColor="{DynamicResource SubTextColor}" FontSize="11" VerticalOptions="Center" />
+                                    <Label Grid.Column="2" AutomationId="DynamicTextCapabilityDetail" Text="{Binding Detail}" TextColor="{DynamicResource SubTextColor}" FontSize="12" VerticalOptions="Center" />
                                 </Grid>
                             </DataTemplate>
                         </BindableLayout.ItemTemplate>
                     </VerticalStackLayout>
                     <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
                     <Label AutomationId="DynamicTextEnergySourceTitle" Text="{Binding EnergySourceTitle}" TextColor="{Binding EnergySourceColor}" FontSize="12.5" FontAttributes="Bold" Margin="0,8,0,2" />
-                    <Label AutomationId="DynamicTextEnergySource" Text="{Binding EnergySourceText}" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" />
+                    <Label AutomationId="DynamicTextEnergySource" Text="{Binding EnergySourceText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
                     <!-- Technical energy log: hidden from users (kept for support builds). -->
                     <Button Text="ლოგის კოპირება" Command="{Binding CopyEnergyLogCommand}" IsVisible="False" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="10" HeightRequest="36" FontSize="12" HorizontalOptions="Start" Padding="12,0" Margin="0,6,0,0" />
                 </VerticalStackLayout>
@@ -384,16 +384,16 @@
                     <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" IsVisible="{Binding ShowFuel}" />
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,4" IsVisible="{Binding ShowFuel}">
                         <Label Text="{Binding FuelKindCaption}" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" LineBreakMode="WordWrap" />
-                        <Picker Grid.Column="1" ItemsSource="{Binding FuelKindOptions}" SelectedIndex="{Binding SelectedFuelKindIndex}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" MinimumWidthRequest="130" HorizontalTextAlignment="End" FontSize="14" VerticalOptions="Center" />
+                        <Picker Grid.Column="1" ItemsSource="{Binding FuelKindOptions}" ItemDisplayBinding="{Binding ., Converter={StaticResource LocalizedTextConverter}}" SelectedIndex="{Binding SelectedFuelKindIndex}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" MinimumWidthRequest="130" HorizontalTextAlignment="End" FontSize="14" VerticalOptions="Center" />
                     </Grid>
                     <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
                     <VerticalStackLayout Spacing="0" Padding="0,6" BindableLayout.ItemsSource="{Binding FuelSupportRows}">
                         <BindableLayout.ItemTemplate>
                             <DataTemplate x:DataType="vm:EnergyCapabilityRow">
                                 <Grid ColumnDefinitions="18,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" Padding="0,4">
-                                    <Label Text="{Binding Mark}" TextColor="{Binding MarkColor}" FontSize="13" FontAttributes="Bold" VerticalOptions="Start" />
+                                    <controls:Icon Kind="{Binding Mark}" Tint="{Binding MarkColor}" WidthRequest="14" HeightRequest="14" VerticalOptions="Start" HorizontalOptions="Start" Margin="0,3,0,0" />
                                     <Label Grid.Column="1" Text="{Binding Title}" TextColor="{DynamicResource TextColor}" FontSize="12.5" />
-                                    <Label Grid.Row="1" Grid.Column="1" Text="{Binding Detail}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="WordWrap" />
+                                    <Label Grid.Row="1" Grid.Column="1" Text="{Binding Detail}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
                                 </Grid>
                             </DataTemplate>
                         </BindableLayout.ItemTemplate>

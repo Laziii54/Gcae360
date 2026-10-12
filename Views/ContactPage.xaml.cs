@@ -18,11 +18,11 @@ public partial class ContactPage : ContentPage
     {
         try
         {
-        var subject = string.IsNullOrWhiteSpace(SubjectEntry.Text) ? "Georgian Car Scanner" : SubjectEntry.Text.Trim();
+        var subject = string.IsNullOrWhiteSpace(SubjectEntry.Text) ? "OBD360" : SubjectEntry.Text.Trim();
         var message = MessageEditor.Text?.Trim();
         if (string.IsNullOrWhiteSpace(message))
         {
-            await DisplayAlertAsync("Contact", _localization.IsEnglish ? "Write a message first." : "ჯერ ჩაწერე შეტყობინება.", "OK");
+            await this.DisplayAlertLocalizedAsync("Contact", _localization.IsEnglish ? "Write a message first." : "ჯერ ჩაწერე შეტყობინება.", "OK");
             return;
         }
         try

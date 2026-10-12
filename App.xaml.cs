@@ -74,7 +74,7 @@ public partial class App : Application
         }
 
         if (Interlocked.Exchange(ref _pendingNotificationRoute, null) is { } route)
-            await Shell.Current.GoToAsync(route);
+            await CarScanner.Services.SafeNavigation.GoToAsync(route);
 
         try
         {
@@ -167,7 +167,7 @@ public partial class App : Application
                 if (Shell.Current is null)
                     _pendingNotificationRoute = route;
                 else
-                    await Shell.Current.GoToAsync(route);
+                    await CarScanner.Services.SafeNavigation.GoToAsync(route);
             }
             catch
             {

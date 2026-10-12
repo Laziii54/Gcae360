@@ -633,6 +633,9 @@ public sealed class StandardObdCaptureThroughProtocolTests : IDisposable
                     Assert.Equal(1726, rpm);
                 }
 
+                // Observe() only queues the exchange for a background consumer. Without waiting for it, a busy machine
+                // could count the queue before the consumer had stored anything (the cause of the rare failure).
+                await pipe.DrainAsync();
                 await pipe.FlushAsync(default, force: true); // fails quietly
                 Assert.Equal(enabled ? 1 : 0, queue.Count);
                 Assert.True(new PIDDecoder().TryDecode(0x0D, await elm.SendCommandAsync("010D"), out _));

@@ -148,8 +148,8 @@
                                         TextColor="{DynamicResource SubTextColor}"
                                         LineBreakMode="WordWrap" />
                                     <HorizontalStackLayout Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Spacing="8">
-                                        <Label Text="{Binding SeverityText}" FontSize="11" FontAttributes="Bold" TextColor="{Binding Color}" />
-                                        <Label Text="{Binding Source}" IsVisible="False" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                        <Label Text="{Binding SeverityText}" FontSize="12" FontAttributes="Bold" TextColor="{Binding Color}" />
+                                        <Label Text="{Binding Source}" IsVisible="False" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                                     </HorizontalStackLayout>
                                 </Grid>
                             </VerticalStackLayout>
@@ -163,7 +163,7 @@
                 IsVisible="False"
                 AutomationId="DynamicTextHealthSummary"
                 Text="{Binding ScanSummary}"
-                FontSize="11"
+                FontSize="12"
                 TextColor="{DynamicResource SubTextColor}"
                 Margin="4,0"
                 LineBreakMode="WordWrap" />
@@ -172,7 +172,7 @@
                 IsVisible="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
                 AutomationId="DynamicTextHealthStageIdle"
                 Text="{Binding ScanStage}"
-                FontSize="11"
+                FontSize="12"
                 TextColor="{DynamicResource SubTextColor}"
                 HorizontalTextAlignment="Center"
                 LineBreakMode="WordWrap" />

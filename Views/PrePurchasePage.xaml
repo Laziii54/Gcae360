@@ -2,6 +2,7 @@
 <ContentPage
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:CarScanner.Controls"
     xmlns:vm="clr-namespace:CarScanner.ViewModels"
     xmlns:m="clr-namespace:CarScanner.Models"
     x:Class="CarScanner.Views.PrePurchasePage"
@@ -111,7 +112,7 @@
                 <Button AutomationId="DynamicTextPrePurchaseStart" Text="{Binding StartButtonText}"
                         Command="{Binding StartCommand}" Style="{StaticResource PrimaryButtonStyle}" HeightRequest="52" CornerRadius="12" />
                 <Label Text="დაახლოებით 1–2 წუთი · მანქანაში არაფერი იცვლება"
-                       TextColor="{DynamicResource SubTextColor}" FontSize="11" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                       TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
             </VerticalStackLayout>
 
             <!-- ============ DURING THE CHECK ============ -->
@@ -136,8 +137,11 @@
                     <VerticalStackLayout Spacing="8" BindableLayout.ItemsSource="{Binding Steps}">
                         <BindableLayout.ItemTemplate>
                             <DataTemplate x:DataType="m:PrePurchaseStep">
-                                <Label AutomationId="DynamicTextPrePurchaseStep" Text="{Binding Text}"
-                                       TextColor="{Binding Color}" FontSize="13" LineBreakMode="WordWrap" />
+                                <Grid ColumnDefinitions="18,*" ColumnSpacing="8">
+                                    <controls:Icon Kind="{Binding Mark}" Tint="{Binding Color}" WidthRequest="14" HeightRequest="14" VerticalOptions="Start" Margin="0,2,0,0" />
+                                    <Label Grid.Column="1" AutomationId="DynamicTextPrePurchaseStep" Text="{Binding Text}"
+                                           TextColor="{Binding Color}" FontSize="13" LineBreakMode="WordWrap" />
+                                </Grid>
                             </DataTemplate>
                         </BindableLayout.ItemTemplate>
                     </VerticalStackLayout>
@@ -178,7 +182,7 @@
                             <Border Grid.Column="2" Padding="8,2" StrokeThickness="1" Stroke="{Binding FaultCountColor}"
                                     StrokeShape="RoundRectangle 6" BackgroundColor="Transparent" VerticalOptions="Center">
                                 <Label AutomationId="DynamicTextPrePurchaseFaultCount" Text="{Binding FaultCountText}"
-                                       TextColor="{Binding FaultCountColor}" FontSize="11" FontAttributes="Bold" />
+                                       TextColor="{Binding FaultCountColor}" FontSize="12" FontAttributes="Bold" />
                             </Border>
                         </Grid>
                         <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding Faults}"
@@ -195,7 +199,7 @@
                             <Border Grid.Column="2" Padding="8,2" StrokeThickness="1" Stroke="{Binding MileageBadgeColor}"
                                     StrokeShape="RoundRectangle 6" BackgroundColor="Transparent" VerticalOptions="Center">
                                 <Label AutomationId="DynamicTextPrePurchaseMileageBadge" Text="{Binding MileageBadge}"
-                                       TextColor="{Binding MileageBadgeColor}" FontSize="11" FontAttributes="Bold" />
+                                       TextColor="{Binding MileageBadgeColor}" FontSize="12" FontAttributes="Bold" />
                             </Border>
                         </Grid>
                         <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding MileageRows}"

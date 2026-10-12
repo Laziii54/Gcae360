@@ -169,6 +169,41 @@ public sealed class LiveDataEngine : IAsyncDisposable
     }
 
     /// <summary>
+    /// Starts polling without throwing for the expected states: no adapter link, already running, cancelled. A failure
+    /// leaves the engine NOT running (nothing is flagged before the adapter is initialised), so a later start works.
+    /// </summary>
+    public async Task<LiveDataStartResult> TryStartAsync(CancellationToken token = default)
+    {
+        if (_disposed) return LiveDataStartResult.Failed;
+        switch (LiveDataStartPolicy.Decide(IsRunning, _obd.IsInitialized, _obd.IsAdapterConnected))
+        {
+            case LiveDataStartDecision.AlreadyRunning:
+                return LiveDataStartResult.AlreadyRunning;
+            case LiveDataStartDecision.AdapterNotConnected:
+                return LiveDataStartResult.AdapterNotConnected;
+        }
+
+        try
+        {
+            await StartAsync(token).ConfigureAwait(false);
+            return IsRunning ? LiveDataStartResult.Started : LiveDataStartResult.Failed;
+        }
+        catch (AdapterNotConnectedException)
+        {
+            return LiveDataStartResult.AdapterNotConnected;
+        }
+        catch (OperationCanceledException)
+        {
+            return LiveDataStartResult.Cancelled;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Live data could not start.");
+            return LiveDataStartResult.Failed;
+        }
+    }
+
+    /// <summary>
     /// True while a fuel/energy trip records. Other pages (live data, 0–100 …)
     /// may then ask to stop, but polling keeps running until the trip ends.
     /// </summary>

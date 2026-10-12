@@ -7,14 +7,14 @@
 
 | # | ქვეყანა | ენა (Play / App Store) | რატომ |
 |---|---|---|---|
-| 1 | 🇫🇷 საფრანგეთი | fr-FR | EOBD ყველა ბენზინზე 2001-დან, დიზელზე 2004-დან; ბევრი ძველი მანქანა |
-| 2 | 🇨🇦 კანადა | en-CA + fr-CA | OBD2 და VIN ისტორია (აუქციონები) მუშაობს; კვებეკისთვის ფრანგული |
-| 3 | 🇯🇵 იაპონია | ja | ჰიბრიდები/EV ბევრია; ადგილობრივ მანქანებს ხშირად 17-ნიშნა VIN არ აქვს → VIN-ზე ნაკლები აქცენტი |
-| 4 | 🇨🇳 ჩინეთი | zh-Hans | Google Play იქ არ მუშაობს; App Store-ს ICP ნომერი სჭირდება (იხ. ქვემოთ) |
-| 5 | 🇮🇳 ინდოეთი | en-IN + hi | დიდი ბაზარი, ფასზე მგრძნობიარე; თითქმის ყველა Android |
-| 6 | 🇺🇸 აშშ | en-US | OBD2 1996-დან; VIN აუქციონის ისტორია ყველაზე ძლიერია |
-| 7 | 🇬🇧 დიდი ბრიტანეთი | en-GB | EOBD; ბევრი მეორადი მანქანა |
-| 8 | 🇩🇪 გერმანია | de-DE | ევროპის ყველაზე დიდი ავტობაზარი |
+| 1 | საფრანგეთი | fr-FR | EOBD ყველა ბენზინზე 2001-დან, დიზელზე 2004-დან; ბევრი ძველი მანქანა |
+| 2 | კანადა | en-CA + fr-CA | OBD2 და VIN ისტორია (აუქციონები) მუშაობს; კვებეკისთვის ფრანგული |
+| 3 | იაპონია | ja | ჰიბრიდები/EV ბევრია; ადგილობრივ მანქანებს ხშირად 17-ნიშნა VIN არ აქვს → VIN-ზე ნაკლები აქცენტი |
+| 4 | ჩინეთი | zh-Hans | Google Play იქ არ მუშაობს; App Store-ს ICP ნომერი სჭირდება (იხ. ქვემოთ) |
+| 5 | ინდოეთი | en-IN + hi | დიდი ბაზარი, ფასზე მგრძნობიარე; თითქმის ყველა Android |
+| 6 | აშშ | en-US | OBD2 1996-დან; VIN აუქციონის ისტორია ყველაზე ძლიერია |
+| 7 | დიდი ბრიტანეთი | en-GB | EOBD; ბევრი მეორადი მანქანა |
+| 8 | გერმანია | de-DE | ევროპის ყველაზე დიდი ავტობაზარი |
 | + | ესპანეთი, რუსულენოვანი, თურქეთი | es-ES, ru, tr | დამატებით, როცა პირველები ჩაეშვება |
 
 ## რა უნდა იცოდე ქვეყნების მიხედვით
@@ -33,7 +33,7 @@
 
 ---
 
-## 🇫🇷 საფრანგეთი — `fr-FR`
+## საფრანგეთი — `fr-FR`
 
 **სახელი (Play + App Store):** GCar360 : Diagnostic OBD2
 
@@ -76,7 +76,7 @@ Gratuit : codes défaut, données en direct, consommation, entretien, 0–100 et
 
 ---
 
-## 🇨🇦 კანადა (ინგლისური) — `en-CA`
+## კანადა (ინგლისური) — `en-CA`
 
 **სახელი (Play + App Store):** GCar360: OBD2 Car Scanner
 
@@ -119,7 +119,7 @@ Free: fault codes, live data, fuel, service, 0–100 and VIN basics. PRO is a mo
 
 ---
 
-## 🇨🇦 კანადა (ფრანგული, კვებეკი) — `fr-CA`
+## კანადა (ფრანგული, კვებეკი) — `fr-CA`
 
 **სახელი (Play + App Store):** GCar360 : Diagnostic OBD2
 
@@ -162,7 +162,7 @@ Gratuit : codes moteur, données en direct, consommation, entretien, 0–100 et 
 
 ---
 
-## 🇯🇵 იაპონია — `ja`
+## იაპონია — `ja`
 
 **სახელი (Play + App Store):** GCar360：OBD2 車両診断
 
@@ -204,7 +204,7 @@ GCar360は、スマートフォンとOBD2アダプター（ELM327 Bluetooth／BL
 
 ---
 
-## 🇨🇳 ჩინეთი — `zh-Hans`
+## ჩინეთი — `zh-Hans`
 
 **სახელი (Play + App Store):** GCar360：OBD2汽车诊断
 
@@ -246,7 +246,7 @@ GCar360 让你的手机配合 OBD2 适配器（ELM327 蓝牙、BLE 或 Wi-Fi）�
 
 ---
 
-## 🇮🇳 ინდოეთი (ინგლისური) — `en-IN`
+## ინდოეთი (ინგლისური) — `en-IN`
 
 **სახელი (Play + App Store):** GCar360: OBD2 Car Scanner
 
@@ -289,7 +289,7 @@ Free: fault codes, live data, fuel, service, 0–100 and VIN basics. PRO is a mo
 
 ---
 
-## 🇮🇳 ინდოეთი (ჰინდი) — `hi`
+## ინდოეთი (ჰინდი) — `hi`
 
 **სახელი (Play + App Store):** GCar360: OBD2 कार स्कैनर
 
@@ -331,7 +331,7 @@ GCar360 आपके फ़ोन और OBD2 एडैप्टर (ELM327 ब�
 
 ---
 
-## 🇺🇸 აშშ — `en-US`
+## აშშ — `en-US`
 
 **სახელი (Play + App Store):** GCar360: OBD2 Car Scanner
 
@@ -374,7 +374,7 @@ Free: fault codes, live data, fuel, service, 0–60 and VIN basics. PRO is a mon
 
 ---
 
-## 🇬🇧 დიდი ბრიტანეთი — `en-GB`
+## დიდი ბრიტანეთი — `en-GB`
 
 **სახელი (Play + App Store):** GCar360: OBD2 Car Scanner
 
@@ -417,7 +417,7 @@ Free: fault codes, live data, fuel, service, 0–100 and VIN basics. PRO is a mo
 
 ---
 
-## 🇩🇪 გერმანია — `de-DE`
+## გერმანია — `de-DE`
 
 **სახელი (Play + App Store):** GCar360: OBD2 Auto Diagnose
 
@@ -460,7 +460,7 @@ Kostenlos: Fehlercodes, Live-Daten, Verbrauch, Service, 0–100 und VIN-Basisdat
 
 ---
 
-## 🇪🇸 ესპანეთი — `es-ES`
+## ესპანეთი — `es-ES`
 
 **სახელი (Play + App Store):** GCar360: Diagnosis OBD2
 
@@ -545,7 +545,7 @@ GCar360 превращает телефон и адаптер OBD2 (ELM327 Bluet
 
 ---
 
-## 🇹🇷 თურქეთი — `tr`
+## თურქეთი — `tr`
 
 **სახელი (Play + App Store):** GCar360: OBD2 Arıza Tespit
 

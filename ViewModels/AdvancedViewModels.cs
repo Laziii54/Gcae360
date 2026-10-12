@@ -23,7 +23,8 @@ public partial class EmissionsViewModel : BaseViewModel
     [ObservableProperty] private string summary = "";
     [ObservableProperty] private string inspectionStatus = "";
     [ObservableProperty] private string inspectionColor = "#94A3B8";
-    [ObservableProperty] private string inspectionGlyph = "?";
+    /// <summary>Icon kind (Controls/IconCatalog): info = unknown, check = ready, warning = not ready.</summary>
+    [ObservableProperty] private string inspectionGlyph = "info";
     [ObservableProperty] private string milStatus = "";
     [ObservableProperty] private string emissionDtcStatus = "";
     [ObservableProperty] private string readinessRatio = "— / —";
@@ -364,7 +365,7 @@ public partial class EmissionsViewModel : BaseViewModel
                 : "ჯერ არ შემოწმებულა";
 
             InspectionColor = "#94A3B8";
-            InspectionGlyph = "?";
+            InspectionGlyph = "info";
 
             MilStatus = _localization.IsEnglish
                 ? "Unavailable"
@@ -411,7 +412,7 @@ public partial class EmissionsViewModel : BaseViewModel
                 : "მზადყოფნა მიუწვდომელია";
 
             InspectionColor = "#94A3B8";
-            InspectionGlyph = "?";
+            InspectionGlyph = "info";
         }
         else if (ready)
         {
@@ -420,7 +421,7 @@ public partial class EmissionsViewModel : BaseViewModel
                 : "ტესტისთვის მზადაა";
 
             InspectionColor = "#4ADE80";
-            InspectionGlyph = "✓";
+            InspectionGlyph = "check";
         }
         else
         {
@@ -429,7 +430,7 @@ public partial class EmissionsViewModel : BaseViewModel
                 : "ჯერ არ არის მზად";
 
             InspectionColor = "#FBBF24";
-            InspectionGlyph = "!";
+            InspectionGlyph = "warning";
         }
 
         MilStatus = readiness is null
@@ -510,7 +511,7 @@ public partial class EmissionsViewModel : BaseViewModel
             Status = monitor.Supported == true && monitor.Complete == true
                 ? (_localization.IsEnglish ? "Ready" : "მზადაა")
                 : LocalizeMonitorText(monitor.Status),
-            Glyph = monitor.Complete == true ? "✓" : "!",
+            Glyph = monitor.Complete == true ? "check" : "warning",
             StatusColor = ConvertStatusColor(monitor.StatusColor)
         };
     }
@@ -694,11 +695,11 @@ public partial class EmissionsViewModel : BaseViewModel
 
     [RelayCommand]
     private Task OpenMode06() =>
-        Shell.Current.GoToAsync(nameof(Views.Mode06Page));
+        CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.Mode06Page));
 
     [RelayCommand]
     private Task OpenMode05() =>
-        Shell.Current.GoToAsync(nameof(Views.Mode05Page));
+        CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.Mode05Page));
 }
 
 public sealed class EmissionMonitorDisplayItem
@@ -949,7 +950,7 @@ public partial class EcuIdentifiersViewModel : BaseViewModel
     }
 
     [RelayCommand]
-    private Task OpenModuleScan() => Shell.Current.GoToAsync(nameof(Views.ModuleScanPage));
+    private Task OpenModuleScan() => CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.ModuleScanPage));
 
     /// <summary>Begins bounded, rotating reads only while ECU Explorer is visible.</summary>
     public Task StartPidUpdatesAsync()
@@ -1207,11 +1208,11 @@ public partial class ProViewModel : BaseViewModel
 
     private void ApplyLanguageTexts()
     {
-        PageTitleText = "GCar360 PRO";
+        PageTitleText = "OBD360 PRO";
 
         ProSubtitleText = L(
-            "PRO გეგმა მიბმულია შენს GCar360 ანგარიშზე",
-            "PRO plans are linked to your GCar360 account");
+            "PRO გეგმა მიბმულია შენს OBD360 ანგარიშზე",
+            "PRO plans are linked to your OBD360 account");
 
         CurrentPlanTitleText = L("შენი გეგმა", "Your plan");
         PlansTitleText = L("რას მოიცავს", "What is included");
@@ -1293,8 +1294,8 @@ public partial class ProViewModel : BaseViewModel
                     plan.Subtitle = string.Empty;
                     plan.PriceText = string.Empty;
                     plan.Features = L(
-                        "✓ შეცდომის კოდები და მათი ახსნა\n✓ ცოცხალი მონაცემები\n✓ საწვავის ხარჯი, სერვისი, 0–100\n✓ VIN: მანქანის მონაცემები და ისტორიის მიმოხილვა",
-                        "✓ Fault codes with explanations\n✓ Live data\n✓ Fuel use, service, 0–100\n✓ VIN: car details and a history preview");
+                        "შეცდომის კოდები და მათი ახსნა\nცოცხალი მონაცემები\nსაწვავის ხარჯი, სერვისი, 0–100\nVIN: მანქანის მონაცემები და ისტორიის მიმოხილვა",
+                        "Fault codes with explanations\nLive data\nFuel use, service, 0–100\nVIN: car details and a history preview");
                     plan.IsActive = !hasAny;
                     break;
                 case ProService.ObdProductId:
@@ -1302,8 +1303,8 @@ public partial class ProViewModel : BaseViewModel
                     plan.Subtitle = L("მანქანის სრული დიაგნოსტიკა", "Full car diagnostics");
                     plan.PriceText = $"{Price(plan.ProductId, ProService.PriceGEL)} / {month}";
                     plan.Features = L(
-                        "✓ ყველა მოდულის სკანირება (ABS, SRS, ტრანსმისია…)\n✓ მოდულების ცოცხალი მონაცემები და გრაფიკები\n✓ ყიდვისწინა შემოწმება\n✓ AI დიაგნოსტიკა და კონსულტაცია",
-                        "✓ Scan every module (ABS, SRS, transmission…)\n✓ Module live data and graphs\n✓ Pre-purchase check\n✓ AI diagnostics and consultation");
+                        "ყველა მოდულის სკანირება (ABS, SRS, ტრანსმისია…)\nმოდულების ცოცხალი მონაცემები და გრაფიკები\nყიდვისწინა შემოწმება\nAI დიაგნოსტიკა და კონსულტაცია",
+                        "Scan every module (ABS, SRS, transmission…)\nModule live data and graphs\nPre-purchase check\nAI diagnostics and consultation");
                     plan.IsActive = hasObd;
                     break;
 
@@ -1312,8 +1313,8 @@ public partial class ProViewModel : BaseViewModel
                     plan.Subtitle = L("მანქანის ისტორია VIN კოდით", "Car history by VIN");
                     plan.PriceText = $"{Price(plan.ProductId, ProService.VinPriceGEL)} / {month}";
                     plan.Features = L(
-                        $"✓ VIN: სრული ისტორია, {ProService.VinMonthlyReports} ყოველთვე\n✓ აუქციონის ფოტოები და დაზიანებები\n✓ გარბენი და ტიტულის სტატუსი\n✓ უკვე გახსნილი VIN თავიდან უფასოდ იხსნება",
-                        $"✓ VIN: full history, {ProService.VinMonthlyReports} every month\n✓ Auction photos and damage\n✓ Mileage and title status\n✓ An opened VIN reopens for free");
+                        $"VIN: სრული ისტორია, {ProService.VinMonthlyReports} ყოველთვე\nაუქციონის ფოტოები და დაზიანებები\nგარბენი და ტიტულის სტატუსი\nუკვე გახსნილი VIN თავიდან უფასოდ იხსნება",
+                        $"VIN: full history, {ProService.VinMonthlyReports} every month\nAuction photos and damage\nMileage and title status\nAn opened VIN reopens for free");
                     plan.IsActive = hasVin;
                     break;
 
@@ -1322,8 +1323,8 @@ public partial class ProViewModel : BaseViewModel
                     plan.Subtitle = L("OBD PRO + VIN PRO ერთად", "OBD PRO + VIN PRO together");
                     plan.PriceText = $"{Price(plan.ProductId, ProService.FullPriceGEL)} / {month}";
                     plan.Features = L(
-                        "✓ ყველაფერი PRO-დან\n✓ ყველაფერი VIN PRO-დან\n✓ ყველაზე მომგებიანი",
-                        "✓ Everything in PRO\n✓ Everything in VIN PRO\n✓ The best value");
+                        "ყველაფერი PRO-დან\nყველაფერი VIN PRO-დან\nყველაზე მომგებიანი",
+                        "Everything in PRO\nEverything in VIN PRO\nThe best value");
                     plan.IsActive = hasObd && hasVin;
                     plan.BadgeText = L("საუკეთესო", "Best value");
                     break;
@@ -1497,7 +1498,7 @@ public partial class ProViewModel : BaseViewModel
 
         if (!_account.IsSignedIn)
         {
-            await Shell.Current.GoToAsync(nameof(Views.AccountPage));
+            await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.AccountPage));
             return;
         }
 
@@ -1865,12 +1866,12 @@ public partial class ServiceViewModel : BaseViewModel
         OnPropertyChanged(nameof(HasDiscoveryReport));
         DiscoveryResultText = string.IsNullOrWhiteSpace(value)
             ? string.Empty
-            : value.Contains("★", StringComparison.Ordinal)
+            : value.Contains("MATCH:", StringComparison.Ordinal)
                 ? L("ნაპოვნია და შენახულია — ზეთის რესურსი და განულება ახლა გამოჩნდება.", "Found and saved — oil life and reset now appear.")
                 : value.Contains("No identifier matched", StringComparison.Ordinal)
                     ? L("ეკრანის % ვერცერთ მნიშვნელობას არ დაემთხვა. შეამოწმე, რომ ზუსტად ის % ჩაწერე, რასაც მანქანის ეკრანი ახლა აჩვენებს, და ანთება ჩართულია.",
                         "No value matched the dashboard %. Check that you entered exactly the % the car shows now and that the ignition is on.")
-                    : value.StartsWith("GCar360", StringComparison.Ordinal)
+                    : value.StartsWith("OBD360", StringComparison.Ordinal) || value.StartsWith("GCar360", StringComparison.Ordinal)   // reports saved before the rename
                         ? L("ძიება დასრულდა, შესაბამისობა ვერ მოიძებნა.", "Search finished without a match.")
                         : value;
     }
@@ -1906,14 +1907,14 @@ public partial class ServiceViewModel : BaseViewModel
     [RelayCommand]
     private async Task OpenResetRecorder()
     {
-        try { await Shell.Current.GoToAsync(nameof(Views.ResetRecorderPage)); }
+        try { await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.ResetRecorderPage)); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Reset recorder navigation failed: {ex.Message}"); }
     }
 
     [RelayCommand]
     private async Task OpenPassiveCan()
     {
-        try { await Shell.Current.GoToAsync(nameof(Views.PassiveCanPage)); }
+        try { await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.PassiveCanPage)); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Passive CAN navigation failed: {ex.Message}"); }
     }
 
@@ -1961,7 +1962,7 @@ public partial class ServiceViewModel : BaseViewModel
 
         var index = SearchHits.IndexOf(row);
         if (index >= 0)
-            SearchHits[index] = row with { Mark = "✓", MarkColor = "#1F8A4C", Detail = L("დადასტურდა — შენახულია", "Confirmed — saved"), CanConfirm = false };
+            SearchHits[index] = row with { Mark = "check", MarkColor = "#1F8A4C", Detail = L("დადასტურდა — შენახულია", "Confirmed — saved"), CanConfirm = false };
 
         if (SearchReporter is { } reporter)
             _ = reporter.ReportAsync(vehicle, search, _lastSearchHits, _lastSearchPercent);
@@ -2031,13 +2032,13 @@ public partial class ServiceViewModel : BaseViewModel
             var search = await _serviceDataReader.SearchAllSourcesAsync(vehicle, progress, token);
             var hits = ServiceDataReaderService.MatchDashboard(search.Hits, percent);
 
-            report.AppendLine($"GCar360 service search · {vehicle.Manufacturer} {vehicle.Model} {vehicle.Year}");
+            report.AppendLine($"OBD360 service search · {vehicle.Manufacturer} {vehicle.Model} {vehicle.Year}");
             report.AppendLine($"tried {search.RequestsTried} · answered {search.RequestsAnswered} · dashboard {(percent.HasValue ? $"{percent}%" : "—")}");
             foreach (var hit in hits)
             {
-                report.AppendLine($"{(hit.MatchesDashboard ? "★" : "·")} {hit.Name} = {hit.Value:0.##} {hit.Unit} · {hit.Request} · {hit.Module} · {hit.CatalogMake}");
+                report.AppendLine($"{(hit.MatchesDashboard ? "MATCH" : "·")} {hit.Name} = {hit.Value:0.##} {hit.Unit} · {hit.Request} · {hit.Module} · {hit.CatalogMake}");
                 SearchHits.Add(new ServiceSearchHitRow(
-                    hit.MatchesDashboard ? "✓" : "•",
+                    hit.MatchesDashboard ? "check" : "circle",
                     hit.MatchesDashboard ? "#1F8A4C" : "#5D636B",
                     $"{hit.Name}: {hit.Value:0.##} {hit.Unit}".Trim(),
                     hit.MatchesDashboard
@@ -2071,12 +2072,12 @@ public partial class ServiceViewModel : BaseViewModel
                 var gmProgress = new System.Progress<string>(text => DiscoveryProgressText = text);
                 var gm = await _serviceDataReader.RunGmOilLifeDiscoveryAsync((int)percent.Value, deepScan, gmProgress, token);
                 report.AppendLine().Append(gm);
-                matchedAny = gm.Contains("★", StringComparison.Ordinal);
+                matchedAny = gm.Contains("MATCH:", StringComparison.Ordinal);
             }
 
             DiscoveryReport = report.ToString();
             DiscoveryResultText = matchedAny
-                ? L("✓ ნაპოვნია და შენახულია — ზეთის რესურსი ახლა გამოჩნდება.", "✓ Found and saved — oil life now appears.")
+                ? L("ნაპოვნია და შენახულია — ზეთის რესურსი ახლა გამოჩნდება.", "Found and saved — oil life now appears.")
                 : hits.Count == 0
                     ? L("ვერცერთმა ცნობილმა გზამ ვერ უპასუხა. ამ მანქანისთვის ჯერ წყარო არ გვაქვს — ინსტრუქცია ქვემოთაა.",
                         "None of the known sources answered. We have no source for this car yet — instructions are below.")
@@ -2180,7 +2181,7 @@ public partial class ServiceViewModel : BaseViewModel
         var history = ServiceDataReaderService.LoadOilResetHistory();
         OilResetHistoryText = string.Join("\n", history.Take(3).Select(entry =>
             $"{entry.Date:dd.MM.yyyy HH:mm} · {entry.Before:0.#}% → {entry.After:0.#}% " +
-            (entry.Success ? "✓" : "✕")));
+            (entry.Success ? L("წარმატებით", "OK") : L("ვერ მოხერხდა", "failed"))));
     }
 
     [RelayCommand]
@@ -2254,7 +2255,7 @@ public partial class ServiceViewModel : BaseViewModel
             if (page is null)
                 return;
 
-            confirmed = await page.DisplayAlertAsync(
+            confirmed = await page.DisplayAlertLocalizedAsync(
                 targetPercent switch { 100 => ResetFullButtonText, 50 => ResetHalfButtonText, _ => $"{targetPercent}%" },
                 L(
                     $"ზეთის რესურსი ({OilLifeValueText}) დაყენდება {targetPercent}%-ზე.\n\n" +
@@ -2312,8 +2313,8 @@ public partial class ServiceViewModel : BaseViewModel
             OilResetStatusColor = result.Success ? "#1F8A4C" : result.WriteSent ? "#B3361F" : "#C98A1A";
             OilResetStatusText = result.Success
                 ? result.WriteSent
-                    ? L($"✓ განულდა: {result.Before:0.#}% → {result.After:0.#}%", $"✓ Reset done: {result.Before:0.#}% → {result.After:0.#}%")
-                    : L($"✓ მნიშვნელობა უკვე {targetPercent}%-ია.", $"✓ The value is already {targetPercent}%.")
+                    ? L($"განულდა: {result.Before:0.#}% → {result.After:0.#}%", $"Reset done: {result.Before:0.#}% → {result.After:0.#}%")
+                    : L($"მნიშვნელობა უკვე {targetPercent}%-ია.", $"The value is already {targetPercent}%.")
                 : DescribeOilResetFailure(result);
         }
         catch (OperationCanceledException)
@@ -2759,8 +2760,25 @@ public partial class ServiceViewModel : BaseViewModel
         Title = PageTitleText;
     }
 
+    /// <summary>
+    /// The operation lists feed BindableLayouts. Removing their items makes Android run view animators, which only works
+    /// on a thread with a Looper: changing them from a worker thread crashed the app (crash report: ClearOperationLists ←
+    /// SetErrorState ← Refresh, "Animators may only be run on Looper threads"). A call from any other thread is queued to the
+    /// UI thread and returns at once (nothing waits for the UI thread, so nothing can deadlock).
+    /// </summary>
+    private static bool OnUiThreadOrQueue(Action action)
+    {
+        if (MainThread.IsMainThread)
+            return true;
+        MainThread.BeginInvokeOnMainThread(action);
+        return false;
+    }
+
     private void ClearOperationLists()
     {
+        if (!OnUiThreadOrQueue(ClearOperationLists))
+            return;
+
         MaintenanceProcedures.Clear();
         AdaptationProcedures.Clear();
         CodingFeatures.Clear();
@@ -2780,6 +2798,9 @@ public partial class ServiceViewModel : BaseViewModel
 
     private void UpdateCollectionState()
     {
+        if (!OnUiThreadOrQueue(UpdateCollectionState))
+            return;
+
         ShowMaintenanceEmpty = MaintenanceProcedures.Count == 0;
         ShowAdaptationEmpty = AdaptationProcedures.Count == 0;
         ShowCodingEmpty = CodingFeatures.Count == 0;
@@ -3095,12 +3116,12 @@ public partial class ServiceViewModel : BaseViewModel
                     _lastServiceReadings);
 
             ValidationCaptureStatusText = L(
-                "✓ უსაფრთხო ანგარიში შეიქმნა. აირჩიე სად გააზიარო ან შეინახო.",
-                "✓ Safe report created. Choose where to share or save it.");
+                "უსაფრთხო ანგარიში შეიქმნა. აირჩიე სად გააზიარო ან შეინახო.",
+                "Safe report created. Choose where to share or save it.");
 
             await Share.Default.RequestAsync(new ShareFileRequest
             {
-                Title = L("GCar360 Service Reset შემოწმება", "GCar360 Service Reset Validation"),
+                Title = L("OBD360 Service Reset შემოწმება", "OBD360 Service Reset Validation"),
                 File = new ShareFile(path)
             });
         }
@@ -3507,7 +3528,7 @@ public partial class ServiceViewModel : BaseViewModel
             if (page is null)
                 return;
 
-            var confirmed = await page.DisplayAlertAsync(
+            var confirmed = await page.DisplayAlertLocalizedAsync(
                 AppOilButtonText,
                 L(
                     "ზეთის სერვისის ათვლა თავიდან დაიწყება დღევანდელი დღიდან. დააჭირე მხოლოდ ზეთის შეცვლის შემდეგ.",
@@ -3573,7 +3594,7 @@ public partial class ServiceViewModel : BaseViewModel
             if (page is null)
                 return;
 
-            confirmed = await page.DisplayAlertAsync(
+            confirmed = await page.DisplayAlertLocalizedAsync(
                 row.Title,
                 L(
                     $"{row.Title} ({row.ValueText}) განულდება.\n\n• გააკეთე მხოლოდ სერვისის შესრულების შემდეგ.\n• მანქანა P-ზე, ანთება ჩართული.\n\nგაგრძელდეს?",
@@ -3603,7 +3624,7 @@ public partial class ServiceViewModel : BaseViewModel
 
             ReminderStatusColor = result.Success ? "#1F8A4C" : result.WriteSent ? "#B3361F" : "#C98A1A";
             ReminderStatusText = result.Success
-                ? L($"✓ {row.Title} განულდა.", $"✓ {row.Title} was reset.")
+                ? L($"{row.Title} განულდა.", $"{row.Title} was reset.")
                 : DescribeOilResetFailure(result);
 
             if (_currentOemVehicle is not null)
@@ -3973,7 +3994,7 @@ public partial class ServiceViewModel : BaseViewModel
                 var page = Shell.Current?.CurrentPage ?? Application.Current?.Windows.FirstOrDefault()?.Page;
                 if (page is not null)
                 {
-                    await page.DisplayAlertAsync(
+                    await page.DisplayAlertLocalizedAsync(
                         item.Name ?? string.Empty,
                         message,
                         L("დახურვა", "Close"));
@@ -4006,7 +4027,7 @@ public partial class ServiceViewModel : BaseViewModel
             (item.Name.Contains("life", StringComparison.OrdinalIgnoreCase) ||
              item.Description.Contains("oil", StringComparison.OrdinalIgnoreCase));
 
-        var confirmed = await Shell.Current.DisplayAlertAsync(
+        var confirmed = await Shell.Current.DisplayAlertLocalizedAsync(
             isOilLifeReset
                 ? L("ზეთის რესურსის განულება?", "Reset Oil Life?")
                 : item.Name,
@@ -4065,7 +4086,7 @@ public partial class ServiceViewModel : BaseViewModel
             else if (result.IsSuccess)
             {
                 ServiceResult =
-                    $"✓ {result.Message}" +
+                    $"{result.Message}" +
                     (string.IsNullOrWhiteSpace(result.BackupPath)
                         ? string.Empty
                         : L(
@@ -4099,18 +4120,18 @@ public partial class ServiceViewModel : BaseViewModel
                     {
                         ServiceResetVerificationState.ServiceValueVerified =>
                             L(
-                                $"✓ RESET დადასტურდა ECU readback-ით. {verification.Detail}",
-                                $"✓ RESET confirmed by ECU readback. {verification.Detail}"),
+                                $"RESET დადასტურდა ECU readback-ით. {verification.Detail}",
+                                $"RESET confirmed by ECU readback. {verification.Detail}"),
 
                         ServiceResetVerificationState.ProtocolVerifiedValueUnchanged =>
                             L(
-                                $"✓ ECU-მ reviewed reset command დაადასტურა, მაგრამ წაკითხვადი Service მნიშვნელობა ჯერ არ შეცვლილა. აპი 100%-ს არ გააყალბებს. Ignition cycle-ის შემდეგ ხელახლა დააჭირე Check-ს. {verification.Detail}",
-                                $"✓ The ECU confirmed the reviewed reset command, but the readable service value has not changed yet. The app will not fabricate 100%. Run Check again after an ignition cycle. {verification.Detail}"),
+                                $"ECU-მ reviewed reset command დაადასტურა, მაგრამ წაკითხვადი Service მნიშვნელობა ჯერ არ შეცვლილა. აპი 100%-ს არ გააყალბებს. Ignition cycle-ის შემდეგ ხელახლა დააჭირე Check-ს. {verification.Detail}",
+                                $"The ECU confirmed the reviewed reset command, but the readable service value has not changed yet. The app will not fabricate 100%. Run Check again after an ignition cycle. {verification.Detail}"),
 
                         ServiceResetVerificationState.ProtocolVerifiedReadbackUnavailable =>
                             L(
-                                $"✓ ECU-მ reviewed reset command დაადასტურა. დამოუკიდებელი Service-value readback ამ მანქანაზე მიუწვდომელია, ამიტომ დაფაზე/შემდეგ Check-ზე გადაამოწმე ახალი interval. {verification.Detail}",
-                                $"✓ The ECU confirmed the reviewed reset command. Independent service-value readback is unavailable on this vehicle, so verify the new interval on the cluster/next Check. {verification.Detail}"),
+                                $"ECU-მ reviewed reset command დაადასტურა. დამოუკიდებელი Service-value readback ამ მანქანაზე მიუწვდომელია, ამიტომ დაფაზე/შემდეგ Check-ზე გადაამოწმე ახალი interval. {verification.Detail}",
+                                $"The ECU confirmed the reviewed reset command. Independent service-value readback is unavailable on this vehicle, so verify the new interval on the cluster/next Check. {verification.Detail}"),
 
                         _ => ServiceResult
                     };
@@ -4162,7 +4183,7 @@ public partial class ServiceViewModel : BaseViewModel
         if (IsBusy || _currentOemVehicle is null || !CanRestoreCodingBackup)
             return;
 
-        var confirmed = await Shell.Current.DisplayAlertAsync(
+        var confirmed = await Shell.Current.DisplayAlertLocalizedAsync(
             L("Original Coding Backup-ის აღდგენა", "Restore original coding backup"),
             L(
                 "აღდგება ამ VIN-ის უახლესი original coding backup. აპი თავიდან გადაამოწმებს უსაფრთხოების პირობებს და ჩაწერის შემდეგ ECU-ს პასუხს verify-ს გაუკეთებს. გაგრძელდეს?",
@@ -4179,7 +4200,7 @@ public partial class ServiceViewModel : BaseViewModel
             ServiceResult = L("Coding backup აღდგება…", "Restoring coding backup…");
             var result = await _oemOperations.RestoreLatestCodingBackupAsync(_currentOemVehicle, true);
             ServiceResult = result.IsSuccess
-                ? $"✓ {result.Message}"
+                ? $"{result.Message}"
                 : L($"Backup ვერ აღდგა: {result.Message}", $"Backup restore failed: {result.Message}");
         }
         catch (Exception ex)
@@ -4201,6 +4222,9 @@ public partial class ServiceViewModel : BaseViewModel
 
     private void SetErrorState(Exception exception)
     {
+        if (!OnUiThreadOrQueue(() => SetErrorState(exception)))
+            return;
+
         _currentOemVehicle = null;
         IsGenericObdReady = false;
         ConnectionState = "ERROR";
@@ -4762,7 +4786,7 @@ public partial class ModuleScanViewModel : BaseViewModel
                     .Select(module => ClearL($"{ModuleTitle(module)} · {module.Codes.Count} კოდი", $"{ModuleTitle(module)} · {module.Codes.Count} codes"))
                     .ToList();
                 var options = new[] { allText, engineText }.Concat(moduleTexts).ToArray();
-                var picked = await Shell.Current.DisplayActionSheetAsync(
+                var picked = await Shell.Current.DisplayActionSheetLocalizedAsync(
                     ClearL("რა წავშალო?", "What should be cleared?"), ClearL("გაუქმება", "Cancel"), null, options);
                 if (string.IsNullOrEmpty(picked) || !options.Contains(picked))
                     return;
@@ -4782,7 +4806,7 @@ public partial class ModuleScanViewModel : BaseViewModel
             var speed = await ReadSpeedForClearAsync();
             if (speed is > 0.5)
             {
-                await Shell.Current.DisplayAlertAsync(
+                await Shell.Current.DisplayAlertLocalizedAsync(
                     ClearL("ჯერ გააჩერეთ მანქანა", "Stop the car first"),
                     ClearL("მოძრაობისას შეცდომების წაშლა არ შეიძლება — ABS/ESP შეიძლება წამით გაითიშოს.",
                         "Codes cannot be cleared while driving — ABS/ESP may switch off for a moment."),
@@ -4805,7 +4829,7 @@ public partial class ModuleScanViewModel : BaseViewModel
                 ? (targets.Count > 0 ? ClearL($"ძრავი + {targets.Count} მოდული", $"engine + {targets.Count} modules") : ClearL("ძრავი", "engine"))
                 : ModuleTitle(targets[0]);
 
-            var confirmed = await Shell.Current.DisplayAlertAsync(
+            var confirmed = await Shell.Current.DisplayAlertLocalizedAsync(
                 ClearL("შეცდომების წაშლა", "Clear trouble codes"),
                 ClearL($"წაიშლება: {scopeText}\n\n", $"Will clear: {scopeText}\n\n") + string.Join("\n\n", notes),
                 ClearL("წაშლა", "Clear"),
@@ -4845,7 +4869,7 @@ public partial class ModuleScanViewModel : BaseViewModel
             catch (Exception ex)
             {
                 Status = ClearL($"წაშლა ვერ შესრულდა: {UserError.Describe(ex)}", $"Clearing failed: {UserError.Describe(ex)}");
-                await Shell.Current.DisplayAlertAsync(ClearL("შეცდომა", "Error"), Status, "OK");
+                await Shell.Current.DisplayAlertLocalizedAsync(ClearL("შეცდომა", "Error"), Status, "OK");
                 return;
             }
             finally
@@ -4877,18 +4901,18 @@ public partial class ModuleScanViewModel : BaseViewModel
                 var nowCount = now?.Count ?? 0;
                 if (!accepted && nowCount > 0)
                 {
-                    ClearResults.Add(new ClearResultRow(title, ClearL($"✗ არ წაიშალა — {refusal}", $"✗ Not cleared — {refusal}"), red));
+                    ClearResults.Add(new ClearResultRow(title, ClearL($"არ წაიშალა — {refusal}", $"Not cleared — {refusal}"), red));
                 }
                 else if (nowCount == 0)
                 {
-                    ClearResults.Add(new ClearResultRow(title, ClearL($"✓ წაიშალა ({wasCount} → 0)", $"✓ Cleared ({wasCount} → 0)"), green));
+                    ClearResults.Add(new ClearResultRow(title, ClearL($"წაიშალა ({wasCount} → 0)", $"Cleared ({wasCount} → 0)"), green));
                 }
                 else
                 {
                     var back = string.Join(", ", now!.Take(4));
                     ClearResults.Add(new ClearResultRow(title,
-                        ClearL($"⚠ {nowCount} კოდი დაბრუნდა: {back} — ხარვეზი ჯერ კიდევ არსებობს, საჭიროა შეკეთება.",
-                            $"⚠ {nowCount} code(s) came back: {back} — the fault is still present and needs repair."),
+                        ClearL($"{nowCount} კოდი დაბრუნდა: {back} — ხარვეზი ჯერ კიდევ არსებობს, საჭიროა შეკეთება.",
+                            $"{nowCount} code(s) came back: {back} — the fault is still present and needs repair."),
                         orange));
                 }
             }
@@ -4932,7 +4956,7 @@ public partial class ModuleScanViewModel : BaseViewModel
     }
 
     [RelayCommand]
-    private Task OpenLiveData() => Shell.Current.GoToAsync(nameof(Views.LiveDataPage));
+    private Task OpenLiveData() => CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.LiveDataPage));
 
     /// <summary>ABS, airbag, body … results of the module scan.</summary>
     private void AddModuleResults(ObdScanReport report)
@@ -5044,7 +5068,7 @@ public partial class ModuleScanViewModel : BaseViewModel
     [ObservableProperty] private string moduleLiveButtonText = "მოდულების ცოცხალი მონაცემები";
 
     [RelayCommand]
-    private Task OpenModuleLiveData() => Shell.Current.GoToAsync(nameof(Views.ModuleLiveDataPage));
+    private Task OpenModuleLiveData() => CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.ModuleLiveDataPage));
 
     /// <summary>Adds possible causes and first checks to every shown fault.</summary>
     private async Task EnrichFaultsAsync()
@@ -5230,7 +5254,6 @@ public partial class ModuleScanViewModel : BaseViewModel
         var section = new CarScanner.Services.Reports.ReportSectionItem
         {
             Kind = "scan",
-            Icon = ModuleFaults.Count == 0 ? "✓" : "⚠",
             Title = english ? "Full scan" : "სრული სკანი",
             Status = ModuleFaults.Count == 0
                 ? CarScanner.Services.Reports.ReportStatus.Ok
@@ -5291,7 +5314,7 @@ public partial class ModuleScanViewModel : BaseViewModel
     {
         try
         {
-            await Shell.Current.GoToAsync(nameof(Views.CodingPage));
+            await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.CodingPage));
         }
         catch (Exception commandException)
         {
@@ -5320,7 +5343,7 @@ public partial class ModuleScanViewModel : BaseViewModel
             })
             .ToList();
         _repairCosts.Set(Report?.Vehicle, codes);
-        await Shell.Current.GoToAsync(nameof(Views.RepairCostPage));
+        await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.RepairCostPage));
         }
         catch (Exception commandException)
         {

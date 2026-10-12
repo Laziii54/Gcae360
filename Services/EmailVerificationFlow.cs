@@ -43,7 +43,7 @@ public static class EmailVerificationFlow
 
         if (entry == EmailVerificationEntry.Restricted)
         {
-            var go = await page.DisplayAlertAsync(
+            var go = await page.DisplayAlertLocalizedAsync(
                 LT("ამისთვის ელფოსტა უნდა დადასტურდეს", "Verify your email to continue"),
                 LT("ამ მოქმედებისთვის დადასტურებული ელფოსტაა საჭირო. კოდს გამოვგზავნით შენი ანგარიშის მისამართზე.",
                    "This needs a verified email address. We can send a code to the address on your account."),
@@ -62,7 +62,7 @@ public static class EmailVerificationFlow
             if (failureNote)
             {
                 // The email could not be sent: say so, and let the user retry (never pretend a code is on its way).
-                var again = await page.DisplayAlertAsync(
+                var again = await page.DisplayAlertLocalizedAsync(
                     title,
                     LT("დამადასტურებელი წერილი ვერ გაიგზავნა. სცადე ცოტა ხანში.", "We couldn't send the verification email. Please try again in a moment."),
                     LT("ხელახლა გაგზავნა", "Send again"),
@@ -79,7 +79,7 @@ public static class EmailVerificationFlow
                 needSend = false;
                 if (!sent.Success)
                 {
-                    var retry = await page.DisplayAlertAsync(
+                    var retry = await page.DisplayAlertLocalizedAsync(
                         title,
                         LocalizationService.T(sent.Message),
                         LT("ხელახლა გაგზავნა", "Send again"),
@@ -94,7 +94,7 @@ public static class EmailVerificationFlow
                     return true;
             }
 
-            var code = await page.DisplayPromptAsync(
+            var code = await page.DisplayPromptLocalizedAsync(
                 title,
                 LT("ელფოსტაზე გამოგიგზავნეთ 6-ნიშნა კოდი. შეიყვანე აქ მისამართის დასადასტურებლად. წერილში ღილაკიც არის, თუ ბმული გირჩევნია.",
                    "We sent a 6-digit code to your email. Enter it here to verify your address. The email also has a button if you prefer a link."),
@@ -111,7 +111,7 @@ public static class EmailVerificationFlow
             if (result.Success)
                 return true;
 
-            var tryAgain = await page.DisplayAlertAsync(
+            var tryAgain = await page.DisplayAlertLocalizedAsync(
                 LT("ელფოსტა არ დადასტურდა", "Email not verified"),
                 LocalizationService.T(result.Message),
                 LT("თავიდან ცდა", "Try again"),

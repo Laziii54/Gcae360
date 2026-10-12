@@ -44,8 +44,8 @@
                                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,11">
                                     <VerticalStackLayout Spacing="2" VerticalOptions="Center">
                                         <Label Text="{Binding VehicleSummary}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
-                                        <Label Text="{Binding StartedAt, StringFormat='სკანი: {0:dd.MM.yyyy HH:mm}'}" Style="{StaticResource ReportMetaStyle}" FontSize="11" />
-                                        <Label Text="{Binding VIN, StringFormat='VIN: {0}'}" Style="{StaticResource ReportMetaStyle}" FontSize="11" FontFamily="monospace" LineBreakMode="TailTruncation" />
+                                        <Label Text="{Binding StartedAt, StringFormat='სკანი: {0:dd.MM.yyyy HH:mm}'}" Style="{StaticResource ReportMetaStyle}" FontSize="12" />
+                                        <Label Text="{Binding VIN, StringFormat='VIN: {0}'}" Style="{StaticResource ReportMetaStyle}" FontSize="12" FontFamily="monospace" LineBreakMode="TailTruncation" />
                                     </VerticalStackLayout>
                                     <Button Grid.Column="1" Text="გახსნა" Clicked="OnOpenSessionClicked"
                                             BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderWidth="0"

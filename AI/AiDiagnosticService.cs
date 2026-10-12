@@ -614,7 +614,7 @@ from an ECU-confirmed fault.
         // =====================================================
 
         sb.AppendLine("""
-You are GCar360's automotive diagnostic AI assistant.
+You are OBD360's automotive diagnostic AI assistant.
 
 Act like an experienced automotive technician explaining scan results
 to an ordinary driver.

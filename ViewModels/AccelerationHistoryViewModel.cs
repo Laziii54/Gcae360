@@ -28,11 +28,15 @@ public partial class AccelerationHistoryViewModel : BaseViewModel
         _database = database;
         _units = units;
         _localization = localization;
-        _units.UnitSystemChanged += (_, __) => MainThread.BeginInvokeOnMainThread(async () =>
-        {
-            RefreshUnitPresentation();
-            await RefreshAsync();
-        });
+        // Weak: this view model is created every time the page opens, the unit service lives for the whole run.
+        WeakEventRelay.Attach(this, _units,
+            static (service, handler) => service.UnitSystemChanged += handler,
+            static (service, handler) => service.UnitSystemChanged -= handler,
+            static viewModel => MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                viewModel.RefreshUnitPresentation();
+                await viewModel.RefreshAsync();
+            }));
         RefreshUnitPresentation();
     }
 
@@ -82,7 +86,7 @@ public partial class AccelerationHistoryViewModel : BaseViewModel
         if (item is null)
             return;
 
-        var confirmed = await Shell.Current.DisplayAlertAsync(
+        var confirmed = await Shell.Current.DisplayAlertLocalizedAsync(
             item.TestName,
             L("წაიშალოს ეს გაზომვა?", "Delete this measurement?"),
             L("წაშლა", "Delete"),
@@ -109,7 +113,7 @@ public partial class AccelerationHistoryViewModel : BaseViewModel
         if (Runs.Count == 0)
             return;
 
-        var confirmed = await Shell.Current.DisplayAlertAsync(
+        var confirmed = await Shell.Current.DisplayAlertLocalizedAsync(
             HistoryTitle,
             L("წაიშალოს ყველა გაზომვა?", "Delete all measurements?"),
             L("წაშლა", "Delete"),

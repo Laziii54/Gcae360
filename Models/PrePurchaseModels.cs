@@ -2,7 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace CarScanner.Models;
 
-/// <summary>One step of the pre-purchase check (✓ done, ◌ running, ○ waiting).</summary>
+/// <summary>One step of the pre-purchase check (done, running, waiting or skipped; the state also picks an icon kind).</summary>
 public sealed partial class PrePurchaseStep : ObservableObject
 {
     public string Key { get; init; } = string.Empty;
@@ -12,6 +12,9 @@ public sealed partial class PrePurchaseStep : ObservableObject
     [ObservableProperty] private string text = string.Empty;
     [ObservableProperty] private string color = "#94A3B8";
 
+    /// <summary>Icon kind (Controls/IconCatalog) of the step state.</summary>
+    [ObservableProperty] private string mark = "circle";
+
     /// <summary>0 waiting, 1 running, 2 done, 3 skipped.</summary>
     public int State { get; private set; }
 
@@ -19,12 +22,12 @@ public sealed partial class PrePurchaseStep : ObservableObject
     {
         State = state;
         var label = english ? TextEn : TextKa;
-        (Text, Color) = state switch
+        (Text, Color, Mark) = state switch
         {
-            2 => ($"✓ {label}", "#4ADE80"),
-            1 => ($"◌ {label}…", "#60A5FA"),
-            3 => ($"– {label}", "#94A3B8"),
-            _ => ($"○ {label}", "#94A3B8")
+            2 => (label, "#4ADE80", "check"),
+            1 => ($"{label}…", "#60A5FA", "refresh"),
+            3 => (label, "#94A3B8", "minus"),
+            _ => (label, "#94A3B8", "circle")
         };
     }
 }

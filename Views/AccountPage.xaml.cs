@@ -4,7 +4,7 @@ using CarScanner.Services.Localization;
 namespace CarScanner.Views;
 
 /// <summary>
-/// GCar360 account: sign in or create an account (e-mail + password).
+/// OBD360 account: sign in or create an account (e-mail + password).
 /// PRO plans and opened VIN histories are kept on the account.
 /// </summary>
 public partial class AccountPage : ContentPage
@@ -27,7 +27,7 @@ public partial class AccountPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        TitleLabel.Text = L("GCar360 ანგარიში", "GCar360 account");
+        TitleLabel.Text = L("OBD360 ანგარიში", "OBD360 account");
         SubtitleLabel.Text = L(
             "შედი ანგარიშზე — PRO გეგმა და გახსნილი VIN ისტორიები შენს ანგარიშზე ინახება.",
             "Sign in — your PRO plan and opened VIN histories are kept on your account.");
@@ -240,7 +240,7 @@ public partial class AccountPage : ContentPage
     {
         var verified = await EmailVerificationFlow.RunAsync(_account, entry);
         if (verified)
-            ShowStatus("✓ " + LT("ელფოსტა დადასტურებულია.", "Email verified."), error: false);
+            ShowStatus("" + LT("ელფოსტა დადასტურებულია.", "Email verified."), error: false);
         await RefreshEmailStatusAsync();
     }
 
@@ -275,7 +275,7 @@ public partial class AccountPage : ContentPage
 
                 VerifyCard.IsVisible = true;
                 VerifyStatusLabel.Text = status.Verified
-                    ? "✓ " + LT("ელფოსტა დადასტურებულია.", "Email verified.")
+                    ? "" + LT("ელფოსტა დადასტურებულია.", "Email verified.")
                     : LT("ელფოსტა ჯერ არ არის დადასტურებული.", "Email not verified yet.");
                 VerifyEmailButton.Text = LT("დაადასტურე ელფოსტა", "Verify your email");
                 VerifyEmailButton.IsVisible = !status.Verified;
@@ -318,7 +318,7 @@ public partial class AccountPage : ContentPage
                 !result.Success &&
                 result.Code == AccountService.DeviceAlreadyBoundCode)
             {
-                var move = await DisplayAlertAsync(
+                var move = await this.DisplayAlertLocalizedAsync(
                     L("ანგარიში სხვა ტელეფონზეა", "Account is on another phone"),
                     L("ეს ანგარიში სხვა ტელეფონზეა მიბმული. გადმოვიტანოთ ამ ტელეფონზე? ამის შემდეგ ანგარიში ამ ტელეფონზე იმუშავებს ძველის ნაცვლად.",
                       "This account is linked to another phone. Move it to this phone? It will then work on this phone instead of the other one."),
@@ -350,12 +350,12 @@ public partial class AccountPage : ContentPage
             // PRO status of the account (also admin / promo plans).
             try { await _pro.LoadAsync(forceServerRefresh: true); } catch { }
 
-            ShowStatus(L("✓ შესული ხარ", "✓ Signed in"), error: false);
+            ShowStatus(L("შესული ხარ", "Signed in"), error: false);
             UpdateState();
 
             if (mustChange)
             {
-                await DisplayAlertAsync(
+                await this.DisplayAlertLocalizedAsync(
                     L("დააყენე ახალი პაროლი", "Set a new password"),
                     L("შენ შესული ხარ დროებითი პაროლით. უსაფრთხოებისთვის ახლავე დააყენე ახალი პაროლი (მინიმუმ 10 სიმბოლო).",
                       "You signed in with a temporary password. For your security, set a new password now (at least 10 characters)."),
@@ -370,7 +370,7 @@ public partial class AccountPage : ContentPage
                 await HandleRegistrationEmailAsync();
 
             await Task.Delay(700);
-            try { await Shell.Current.GoToAsync(".."); } catch { }
+            try { await CarScanner.Services.SafeNavigation.GoToAsync(".."); } catch { }
         }
         catch (Exception ex)
         {
@@ -425,7 +425,7 @@ public partial class AccountPage : ContentPage
                 ? L("\n\nApp Store-ით ნაყიდი PRO გამოწერა ავტომატურად არ უქმდება — გააუქმე ის ცალკე: პარამეტრები → შენი სახელი → გამოწერები.",
                     "\n\nA PRO subscription bought through the App Store is not cancelled automatically — cancel it separately in Settings → your name → Subscriptions.")
                 : "";
-            var first = await DisplayAlertAsync(
+            var first = await this.DisplayAlertLocalizedAsync(
                 L("ანგარიშის წაშლა", "Delete account"),
                 L("ანგარიში, PRO სტატუსი, გახსნილი VIN ისტორიები და ანგარიშთან დაკავშირებული სერვერის მონაცემები სამუდამოდ წაიშლება. ამის დაბრუნება შეუძლებელია.",
                   "Your account, PRO status, opened VIN histories and the account data on our server will be permanently deleted. This cannot be undone.") + storeNote,
@@ -434,7 +434,7 @@ public partial class AccountPage : ContentPage
             if (!first)
                 return;
 
-            var second = await DisplayAlertAsync(
+            var second = await this.DisplayAlertLocalizedAsync(
                 L("ნამდვილად წავშალოთ?", "Delete permanently?"),
                 L($"ანგარიში {_account.Email} სამუდამოდ წაიშლება.",
                   $"The account {_account.Email} will be deleted permanently."),
@@ -463,7 +463,7 @@ public partial class AccountPage : ContentPage
                 PasswordEntry.Text = "";
                 UpdateState();
                 ShowStatus(LocalizationService.T(result.Message), error: false);
-                await DisplayAlertAsync(
+                await this.DisplayAlertLocalizedAsync(
                     L("ანგარიში წაიშალა", "Account deleted"),
                     LocalizationService.T(result.Message),
                     "OK");

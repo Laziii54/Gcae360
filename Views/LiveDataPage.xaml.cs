@@ -39,7 +39,7 @@ public partial class LiveDataPage : ContentPage
         if (pro is null)
             return;
         if (await CarScanner.Services.ProGate.EnsureAsync(pro, "მწარმოებლის მონაცემები", "Manufacturer data"))
-            await Shell.Current.GoToAsync(nameof(ModuleLiveDataPage));
+            await CarScanner.Services.SafeNavigation.GoToAsync(nameof(ModuleLiveDataPage));
         }
         catch (Exception commandException)
         {
@@ -51,7 +51,7 @@ public partial class LiveDataPage : ContentPage
     {
         try
         {
-            await Shell.Current.GoToAsync(nameof(GraphStudioPage));
+            await CarScanner.Services.SafeNavigation.GoToAsync(nameof(GraphStudioPage));
         }
         catch (Exception commandException)
         {

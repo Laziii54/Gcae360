@@ -253,8 +253,8 @@ public sealed class AccelerationMeasurementService
         {
             lock (_gate)
                 Status = CarScanner.Services.Localization.LanguageCatalog.UsesEnglishBase
-                    ? "GPS is not available. Allow location for GCar360 and try outdoors."
-                    : "GPS მიუწვდომელია. მიეცი GCar360-ს ლოკაციის ნებართვა და სცადე ღია ცის ქვეშ.";
+                    ? "GPS is not available. Allow location for OBD360 and try outdoors."
+                    : "GPS მიუწვდომელია. მიეცი OBD360-ს ლოკაციის ნებართვა და სცადე ღია ცის ქვეშ.";
             StateChanged?.Invoke(this, EventArgs.Empty);
             return false;
         }
@@ -583,7 +583,7 @@ public sealed class AccelerationMeasurementService
             : sampleCount < minSamples ? (en ? "Not enough ECU speed samples." : "ECU სიჩქარის ნიმუშები საკმარისი არ არის.")
             : !plausible ? (en ? "The measurement does not meet the ranking rules." : "გაზომვის მონაცემები რეიტინგის წესებს არ აკმაყოფილებს.")
             : gpsCheck.Status == RunGpsCheck.Missing
-                ? (en ? "No GPS during the run. Turn on location for GCar360 and measure again outdoors." : "გაზომვისას GPS არ იყო. ჩართე ლოკაცია GCar360-ისთვის და გაზომე ღია ცის ქვეშ.")
+                ? (en ? "No GPS during the run. Turn on location for OBD360 and measure again outdoors." : "გაზომვისას GPS არ იყო. ჩართე ლოკაცია OBD360-ისთვის და გაზომე ღია ცის ქვეშ.")
                 : (en ? $"GPS speed does not match the car's speed (difference {gpsCheck.MedianDiffKph:0} km/h)." : $"GPS-ის სიჩქარე მანქანის სიჩქარეს არ ემთხვევა (სხვაობა {gpsCheck.MedianDiffKph:0} km/h).");
         var run = new AccelerationRun
         {
@@ -607,7 +607,7 @@ public sealed class AccelerationMeasurementService
             SplitsJson = JsonSerializer.Serialize(details.Splits
                 .OrderBy(item => item.Key)
                 .ToDictionary(item => item.Key.ToString(System.Globalization.CultureInfo.InvariantCulture), item => Math.Round(item.Value, 2))),
-            UserName = string.IsNullOrWhiteSpace(_users.Name) ? "GCar360 Driver" : _users.Name.Trim(),
+            UserName = string.IsNullOrWhiteSpace(_users.Name) ? "OBD360 Driver" : _users.Name.Trim(),
             VehicleDisplayName = resolved?.DisplayName ?? string.Empty,
             VinVerified = validVin && verifiedModel,
             LeaderboardEligible = eligible,

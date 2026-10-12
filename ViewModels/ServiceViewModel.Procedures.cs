@@ -37,9 +37,10 @@ public sealed partial class ServiceProcedureRow : ObservableObject
 
     [ObservableProperty] private bool isExpanded;
 
-    public string ChevronText => IsExpanded ? "⌃" : "⌄";
+    /// <summary>Icon kind (Controls/IconCatalog) of the expand / collapse chevron.</summary>
+    public string ChevronKind => IsExpanded ? "chevron-up" : "chevron-down";
 
-    partial void OnIsExpandedChanged(bool value) => OnPropertyChanged(nameof(ChevronText));
+    partial void OnIsExpandedChanged(bool value) => OnPropertyChanged(nameof(ChevronKind));
 }
 
 /// <summary>A category chip above the list.</summary>
@@ -217,7 +218,7 @@ public partial class ServiceViewModel
                     ExecutionType = ServiceProcedureExecutionType.OemDiagnostic,
                     OemOperationId = "builtin:oil-life",
                     VerificationMethod = "ReadBack",
-                    Source = "GCar360 reviewed reset path for this vehicle"
+                    Source = "OBD360 reviewed reset path for this vehicle"
                 };
                 catalog.Insert(0, builtIn);
             }

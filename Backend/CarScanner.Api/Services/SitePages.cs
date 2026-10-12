@@ -4,7 +4,7 @@ using System.Net;
 namespace CarScanner.Api.Services;
 
 /// <summary>
-/// The public GCar360 website: "/" (Georgian) and "/en" (English).
+/// The public OBD360 website: "/" (Georgian) and "/en" (English).
 /// Flat, light design: neutral paper background, graphite text, the logo's
 /// blue for actions and amber for PRO. No gradients or glow.
 /// </summary>
@@ -257,7 +257,7 @@ document.addEventListener("DOMContentLoaded",function(){var btn=document.getElem
         var home = english ? "/en" : "/";
         return $$"""
 <!doctype html><html lang="{{(english ? "en" : "ka")}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{{T("GCar360", "GCar360")}}</title>
+<title>{{T("OBD360", "OBD360")}}</title>
 <meta name="description" content="{{T("OBD2 დიაგნოსტიკა ტელეფონით, შეცდომის კოდები ქართულად, ყიდვისწინა შემოწმება და VIN ისტორია აუქციონის ფოტოებით.", "OBD2 diagnostics on your phone, fault codes explained, pre-purchase checks and VIN history with auction photos.")}}">
 <meta name="theme-color" content="#f4f5f3">{{VerificationMeta()}}
 <link rel="alternate" hreflang="ka" href="/"><link rel="alternate" hreflang="en" href="/en">
@@ -268,7 +268,7 @@ document.addEventListener("DOMContentLoaded",function(){var btn=document.getElem
 {{BootScript}}
 
 <header class="nav"><div class="c">
-<a class="logo" href="{{home}}"><img src="/assets/logo.png" alt="" width="37" height="34"><span>GCar360</span></a>
+<a class="logo" href="{{home}}"><img src="/assets/logo.png" alt="" width="37" height="34"><span>OBD360</span></a>
 <nav><a href="#obd">{{T("დიაგნოსტიკა", "Diagnostics")}}</a><a href="#vin">{{T("VIN შემოწმება", "VIN check")}}</a><a href="#prices">{{T("ფასები", "Pricing")}}</a><a href="#faq">{{T("კითხვები", "FAQ")}}</a></nav>
 <div class="lang" aria-label="Language"><a href="/" class="{{(english ? "" : "on")}}" hreflang="ka">KA</a><a href="/en" class="{{(english ? "on" : "")}}" hreflang="en">EN</a></div>
 <button class="theme" id="theme" type="button" aria-label="{{T("ღია / მუქი", "Light / dark")}}" title="{{T("ღია / მუქი", "Light / dark")}}"><svg class="sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
@@ -361,20 +361,20 @@ document.addEventListener("DOMContentLoaded",function(){var btn=document.getElem
 <details><summary>{{T("რომელი ადაპტერი მჭირდება?", "Which adapter do I need?")}}</summary><p>{{T("ELM327-ზე დაფუძნებული Bluetooth OBD2 ადაპტერი. სანდო მწარმოებლის ადაპტერი უფრო სტაბილურად მუშაობს. VIN შემოწმებას ადაპტერი არ სჭირდება.", "An ELM327-based Bluetooth OBD2 adapter. A well-made adapter is more stable. The VIN check doesn't need one.")}}</p></details>
 <details><summary>{{T("უსაფრთხოა შეცდომების წაშლა?", "Is clearing codes safe?")}}</summary><p>{{T("წაშლა მხოლოდ თიშავს ნათურას. თუ პრობლემა არ გამოსწორდა, შეცდომა ისევ გამოჩნდება. სერიოზული შეცდომის დროს სჯობს მიმართოთ ხელოსანს.", "Clearing only turns the light off. If the problem is still there, the code comes back. For serious faults, see a mechanic first.")}}</p></details>
 <details><summary>{{T("რატომ არ ჩანს ზოგ VIN-ზე ფოტოები?", "Why are there no photos for some VINs?")}}</summary><p>{{T("ფოტოები არსებობს მხოლოდ მაშინ, თუ მანქანა აუქციონზე იყიდებოდა ან ინტერნეტშია გამოქვეყნებული.", "Photos only exist if the car went through an auction or was published online. In that case the check isn't counted.")}}</p></details>
-<details><summary>{{T("როგორ გადავიხადო?", "How do I pay?")}}</summary><p>{{T("აპში ან ვებგვერდზე ქართული ბანკის ბარათით (BOG ან TBC), ან Google Play-ით. ბარათის მონაცემებს ბანკის გვერდზე წერ და GCar360 მათ ვერ ხედავს.", "In the app or on the website with a Georgian bank card (BOG or TBC), or through Google Play. Card details are entered on the bank's page; GCar360 never sees them.")}}</p></details>
+<details><summary>{{T("როგორ გადავიხადო?", "How do I pay?")}}</summary><p>{{T("აპში ან ვებგვერდზე ქართული ბანკის ბარათით (BOG ან TBC), ან Google Play-ით. ბარათის მონაცემებს ბანკის გვერდზე წერ და OBD360 მათ ვერ ხედავს.", "In the app or on the website with a Georgian bank card (BOG or TBC), or through Google Play. Card details are entered on the bank's page; OBD360 never sees them.")}}</p></details>
 <details><summary>{{T("როგორ გავაუქმო გამოწერა?", "How do I cancel?")}}</summary><p>{{T("ყოველთვიური გადახდა უქმდება გვერდზე „ჩემი გამოწერა“ ან აპში — PRO რჩება გადახდილი პერიოდის ბოლომდე. ერთჯერადი გადახდა 30 დღე მოქმედებს და თავისით არ გრძელდება.", "Cancel the monthly payment on the My subscription page or in the app — PRO stays on until the paid period ends. A one-time payment lasts 30 days and doesn't renew.")}} <a href="/account/subscription">{{T("ჩემი გამოწერა", "My subscription")}}</a></p></details>
 <details><summary>{{T("სად ინახება ჩემი მონაცემები?", "Where is my data kept?")}}</summary><p>{{T("დიაგნოსტიკის ისტორია შენს ტელეფონზე ინახება. დეტალები", "Your diagnostic history stays on your phone. Details are in the")}} <a href="/privacy-policy">{{T("კონფიდენციალურობის პოლიტიკაშია", "privacy policy")}}</a>.</p></details>
 </div></div></section>
 
 <section><div class="c"><div class="final">
-<div class="fl"><img src="/assets/logo.png" alt="GCar360" width="104" height="95"><div><h2>{{T("სცადე უფასოდ", "Try it free")}}</h2><p>{{T("შეცდომები, სენსორები და VIN-ის მონაცემები გადახდის გარეშე.", "Fault codes, live data and VIN specs at no cost.")}}</p></div></div>
+<div class="fl"><img src="/assets/logo.png" alt="OBD360" width="104" height="95"><div><h2>{{T("სცადე უფასოდ", "Try it free")}}</h2><p>{{T("შეცდომები, სენსორები და VIN-ის მონაცემები გადახდის გარეშე.", "Fault codes, live data and VIN specs at no cost.")}}</p></div></div>
 <a class="btn btn-p" href="{{PlayStoreUrl}}">{{I("play", 15)}} Google Play</a>
 </div></div></section>
 
 <footer><div class="c">
-<a class="logo" href="{{home}}" style="font-size:15px"><img src="/assets/logo.png" alt="" width="31" height="28" style="height:28px"><span>GCar360</span></a>
+<a class="logo" href="{{home}}" style="font-size:15px"><img src="/assets/logo.png" alt="" width="31" height="28" style="height:28px"><span>OBD360</span></a>
 <nav><a href="/pro">PRO</a><a href="/support">{{T("დახმარება", "Support")}}</a><a href="/privacy-policy">{{T("კონფიდენციალურობა", "Privacy")}}</a><a href="/terms-of-use">{{T("წესები", "Terms")}}</a></nav>
-<span>© {{DateTime.UtcNow.Year}} GCar360</span>
+<span>© {{DateTime.UtcNow.Year}} OBD360</span>
 </div></footer>
 </body></html>
 """;

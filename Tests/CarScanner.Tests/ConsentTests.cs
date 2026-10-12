@@ -633,10 +633,10 @@ public sealed class ConsentTextTests
     public void Georgian_UsesTheRequestedTitleAndButtons()
     {
         var ka = ConsentTexts.For("ka");
-        Assert.Equal("გავაუმჯობესოთ GCar360 ერთად! 🚗", ka.Title);
+        Assert.Equal("გავაუმჯობესოთ OBD360 ერთად!", ka.Title);
         Assert.Equal("თანახმა ვარ", ka.Agree);
         Assert.Equal("ახლა არა", ka.NotNow);
-        Assert.StartsWith("GCar360-ს სურს ავტომობილის დიაგნოსტიკის ტექნიკური მონაცემების შეგროვება", ka.Body);
+        Assert.StartsWith("OBD360-ს სურს ავტომობილის დიაგნოსტიკის ტექნიკური მონაცემების შეგროვება", ka.Body);
     }
 
     [Fact]

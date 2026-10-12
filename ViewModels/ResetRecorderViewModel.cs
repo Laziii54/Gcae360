@@ -101,7 +101,7 @@ public partial class ResetRecorderViewModel(
     [RelayCommand]
     private async Task Close()
     {
-        try { await Shell.Current.GoToAsync(".."); }
+        try { await CarScanner.Services.SafeNavigation.GoToAsync(".."); }
         catch { }
     }
 
@@ -183,7 +183,7 @@ public partial class ResetRecorderViewModel(
             if (IsSuccess)
             {
                 SetResult("#1F8A4C", "#E8F5EE",
-                    L("✓ მადლობა!", "✓ Thank you!"),
+                    L("მადლობა!", "Thank you!"),
                     L("ჩანაწერი გაიგზავნა. როცა შევამოწმებთ, „განულება“ ღილაკი ამ მოდელზე ყველასთვის ჩაირთვება.",
                       "The recording was sent. Once we have checked it, the Reset button will be switched on for everyone with this model."));
             }

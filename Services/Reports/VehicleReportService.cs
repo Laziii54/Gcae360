@@ -27,7 +27,8 @@ public sealed class ReportSectionItem
     /// <summary>scan, battery, mileage, inspection, prepurchase, ai, repair, trip.</summary>
     public string Kind { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
-    public string Icon { get; set; } = "•";
+    /// <summary>Legacy field kept so saved reports still load; no longer displayed (the status picks the icon).</summary>
+    public string Icon { get; set; } = string.Empty;
     public ReportStatus Status { get; set; } = ReportStatus.Info;
     public string Summary { get; set; } = string.Empty;
     public List<ReportLineItem> Lines { get; set; } = new();
@@ -141,7 +142,7 @@ public sealed class VehicleReportService
 
             SectionAdded?.Invoke(this, section);
             ReportChanged?.Invoke(this, EventArgs.Empty);
-            ReportToast.Show(L($"✓ დაემატა ანგარიშს · {report.Sections.Count} შემოწმება", $"✓ Added to the report · {report.Sections.Count} checks"));
+            ReportToast.Show(L($"დაემატა ანგარიშს · {report.Sections.Count} შემოწმება", $"Added to the report · {report.Sections.Count} checks"));
         }
         catch (Exception ex)
         {
@@ -234,7 +235,7 @@ public sealed class VehicleReportService
     {
         var sb = new StringBuilder();
         var score = Score(report);
-        sb.AppendLine(L("GCar360 — მანქანის ანგარიში", "GCar360 — vehicle report"));
+        sb.AppendLine(L("OBD360 — მანქანის ანგარიში", "OBD360 — vehicle report"));
         sb.AppendLine($"{report.Vehicle}{(string.IsNullOrWhiteSpace(report.Vin) ? string.Empty : " · VIN " + report.Vin)}");
         sb.AppendLine($"{report.StartedAt:dd.MM.yyyy HH:mm} – {report.UpdatedAt:HH:mm}");
         sb.AppendLine();

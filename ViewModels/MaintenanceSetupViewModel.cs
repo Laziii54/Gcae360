@@ -151,7 +151,7 @@ public partial class MaintenanceSetupViewModel : BaseViewModel
             return;
         }
 
-        await Shell.Current.GoToAsync("..");
+        await CarScanner.Services.SafeNavigation.GoToAsync("..");
         }
         catch (Exception commandException)
         {

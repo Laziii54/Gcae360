@@ -3,6 +3,7 @@
 <ContentPage
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:CarScanner.Controls"
     xmlns:vm="clr-namespace:CarScanner.ViewModels"
     xmlns:models="clr-namespace:CarScanner.Models"
     x:Class="CarScanner.Views.DiagnosticsPage"
@@ -74,7 +75,7 @@
                         Text="სკანირების დაწყება"
                         Command="{Binding ScanCommand}"
                         Style="{StaticResource PrimaryButtonStyle}"
-                        FontSize="11" />
+                        FontSize="12" />
 
                     <Button
                         Grid.Column="1"
@@ -102,9 +103,9 @@
                         <Path Data="M4,8 L4,4 L8,4 M16,4 L20,4 L20,8 M20,16 L20,20 L16,20 M8,20 L4,20 L4,16 M8,12 L16,12" Style="{StaticResource RowIconStyle}" Stroke="{DynamicResource Primary}" VerticalOptions="Center" />
                         <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
                             <Label Text="ყველა მოდულის სკანი" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
-                            <Label Text="ABS, აირბეგი, ძარა, გადაცემათა კოლოფი…" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                            <Label Text="ABS, აირბეგი, ძარა, გადაცემათა კოლოფი…" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
                         </VerticalStackLayout>
-                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                        <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                     </Grid>
                 </Border>
 
@@ -136,10 +137,10 @@
                     <VerticalStackLayout Spacing="5">
                         <Label Text="{Binding ScanSummary}" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" FontSize="13" />
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                            <Label Text="{Binding CurrentCount}" TextColor="#F87171" FontSize="11" />
-                            <Label Grid.Column="1" Text="{Binding HistoryCount}" TextColor="#FBBF24" FontSize="11" HorizontalTextAlignment="End" />
+                            <Label Text="{Binding CurrentCount}" TextColor="#F87171" FontSize="12" />
+                            <Label Grid.Column="1" Text="{Binding HistoryCount}" TextColor="#FBBF24" FontSize="12" HorizontalTextAlignment="End" />
                         </Grid>
-                        <Label Text="{Binding ModulesSummary}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="WordWrap" />
+                        <Label Text="{Binding ModulesSummary}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
                         <Button Text="Open Related Live Data" Command="{Binding OpenRelatedLiveDataCommand}" HeightRequest="38" BackgroundColor="{DynamicResource ButtonBg}" TextColor="{DynamicResource ButtonTextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" FontSize="11" />
                     </VerticalStackLayout>
                 </Border>
@@ -234,9 +235,9 @@
                             <Label Text="{Binding FreezeFrameTitle}" TextColor="{DynamicResource TextColor}" FontSize="15" FontAttributes="Bold" LineBreakMode="TailTruncation" />
                             <Label Grid.Column="1" Text="{Binding FreezeFrameProgress, StringFormat='{0}%'}" TextColor="#60A5FA" FontSize="12" IsVisible="{Binding IsFreezeFrameLoading}" />
                         </Grid>
-                        <Label Text="{Binding FreezeFrameEmptyMessage}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="WordWrap" />
+                        <Label Text="{Binding FreezeFrameEmptyMessage}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
                         <VerticalStackLayout IsVisible="{Binding IsFreezeFrameLoading}" Spacing="4">
-                            <Label Text="{Binding FreezeFrameProgressText}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="TailTruncation" />
+                            <Label Text="{Binding FreezeFrameProgressText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="TailTruncation" />
                             <ProgressBar Progress="{Binding FreezeFrameProgressValue}" ProgressColor="#2563EB" />
                         </VerticalStackLayout>
                         <VerticalStackLayout BindableLayout.ItemsSource="{Binding FreezeFrameValues}" Spacing="5">
@@ -244,9 +245,9 @@
                                 <DataTemplate x:DataType="models:FreezeFrameValue">
                                     <Border Padding="9" BackgroundColor="{DynamicResource PageBg}" Stroke="{DynamicResource BorderColor}" StrokeShape="RoundRectangle 10">
                                         <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8">
-                                            <Label Text="{Binding Label}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="TailTruncation" />
+                                            <Label Text="{Binding Label}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="TailTruncation" />
                                             <Label Grid.Column="1" Text="{Binding Value}" TextColor="{DynamicResource TextColor}" FontAttributes="Bold" HorizontalTextAlignment="End" />
-                                            <Label Grid.Row="1" Text="{Binding SourceText}" TextColor="#4ADE80" FontSize="9" />
+                                            <Label Grid.Row="1" Text="{Binding SourceText}" TextColor="#4ADE80" FontSize="12" />
                                         </Grid>
                                     </Border>
                                 </DataTemplate>

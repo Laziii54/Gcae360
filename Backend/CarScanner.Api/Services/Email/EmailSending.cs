@@ -17,7 +17,7 @@ public interface IEmailSender
 /// <summary>
 /// Email settings, all from server configuration (environment variables or appsettings), never from source:
 ///   GCS_SMTP_HOST, GCS_SMTP_PORT (587), GCS_SMTP_USER, GCS_SMTP_PASSWORD, GCS_SMTP_SSL (true),
-///   GCS_EMAIL_FROM (sender address), GCS_EMAIL_FROM_NAME ("GCar360"),
+///   GCS_EMAIL_FROM (sender address), GCS_EMAIL_FROM_NAME ("OBD360"),
 ///   GCS_EMAIL_CODE_MINUTES (15), GCS_PUBLIC_BASE_URL (https origin for the logo and the email button),
 ///   GCS_SUPPORT_EMAIL (the support address shown in the footer).
 /// The same keys exist under "Email:" in appsettings (Email:Smtp:Host, …).
@@ -33,7 +33,7 @@ public sealed class EmailOptions
     public string? Password { get; init; }
     public bool UseSsl { get; init; } = true;
     public string? FromAddress { get; init; }
-    public string FromName { get; init; } = "GCar360";
+    public string FromName { get; init; } = "OBD360";
     public string? PublicBaseUrl { get; init; }
     public string SupportEmail { get; init; } = DefaultSupportEmail;
 
@@ -58,7 +58,7 @@ public sealed class EmailOptions
             Password = Pick(config, "Email:Smtp:Password", "GCS_SMTP_PASSWORD"),
             UseSsl = !string.Equals(Pick(config, "Email:Smtp:Ssl", "GCS_SMTP_SSL"), "false", StringComparison.OrdinalIgnoreCase),
             FromAddress = Pick(config, "Email:FromAddress", "GCS_EMAIL_FROM"),
-            FromName = Pick(config, "Email:FromName", "GCS_EMAIL_FROM_NAME") ?? "GCar360",
+            FromName = Pick(config, "Email:FromName", "GCS_EMAIL_FROM_NAME") ?? "OBD360",
             PublicBaseUrl = origin,
             SupportEmail = Pick(config, "Email:SupportEmail", "GCS_SUPPORT_EMAIL") ?? DefaultSupportEmail
         };

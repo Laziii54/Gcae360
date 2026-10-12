@@ -298,7 +298,6 @@ public class MileageViewModel : BaseViewModel
         var section = new CarScanner.Services.Reports.ReportSectionItem
         {
             Kind = "mileage",
-            Icon = "⏱",
             Title = L("გარბენი — მოდულების მიერ მოწოდებული", "Mileage — as reported by the car"),
             Status = analysis.Outcome == MileageOutcome.Conflicting
                 ? CarScanner.Services.Reports.ReportStatus.Warning
@@ -393,7 +392,7 @@ public class MileageViewModel : BaseViewModel
                 var difference = sameUnit ? $"{_units.FormatDistance(conflict.DifferenceKm, "0.#")}" : $"{_units.FormatDistance(conflict.DifferenceKm, "0.#")} ({L("გადათვლილი", "converted")})";
                 Conflicts.Add(new MileageConflictRow
                 {
-                    Text = $"{ReadingTitle(conflict.First)} {MileageWording.FormatValue(conflict.First, en)}  ↔  {ReadingTitle(conflict.Second)} {MileageWording.FormatValue(conflict.Second, en)}  =  {difference}"
+                    Text = $"{ReadingTitle(conflict.First)} {MileageWording.FormatValue(conflict.First, en)} {ReadingTitle(conflict.Second)} {MileageWording.FormatValue(conflict.Second, en)}  =  {difference}"
                 });
             }
 
@@ -522,8 +521,8 @@ public class MileageViewModel : BaseViewModel
         try
         {
             // The log holds requests and answers, not the VIN.
-            await Clipboard.Default.SetTextAsync($"GCar360 mileage log\n{Log}");
-            CopyLogText = L("დაკოპირდა ✓", "Copied ✓");
+            await Clipboard.Default.SetTextAsync($"OBD360 mileage log\n{Log}");
+            CopyLogText = L("დაკოპირდა", "Copied");
         }
         catch
         {

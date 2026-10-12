@@ -365,10 +365,10 @@ public partial class DiagnosticsViewModel : BaseViewModel
     }
 
     [RelayCommand]
-    private Task OpenRelatedLiveData() => Shell.Current.GoToAsync(nameof(Views.LiveDataPage));
+    private Task OpenRelatedLiveData() => CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.LiveDataPage));
 
     [RelayCommand]
-    private Task OpenFullVehicleScan() => Shell.Current.GoToAsync(nameof(Views.ModuleScanPage));
+    private Task OpenFullVehicleScan() => CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.ModuleScanPage));
 
     [RelayCommand]
     private async Task OpenRepairCosts()
@@ -376,7 +376,7 @@ public partial class DiagnosticsViewModel : BaseViewModel
         if (Errors.Count == 0)
             return;
         _repairCosts.Set(_vehicle.CurrentVehicle, Errors);
-        await Shell.Current.GoToAsync(nameof(Views.RepairCostPage));
+        await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.RepairCostPage));
     }
 
     private void UpdateScanProgress(int percent, string stage)
@@ -399,7 +399,7 @@ public partial class DiagnosticsViewModel : BaseViewModel
         }
 
         var confirmed =
-            await Shell.Current.DisplayAlertAsync(
+            await Shell.Current.DisplayAlertLocalizedAsync(
                 CarScanner.Services.Localization.LocalizationService.T("ფრთხილად"),
                 CarScanner.Services.Localization.LocalizationService.T("DTC კოდების წაშლა წაშლის შენახულ დიაგნოსტიკურ ინფორმაციას. გაგრძელდეს?"),
                 CarScanner.Services.Localization.LocalizationService.T("წაშლა"),

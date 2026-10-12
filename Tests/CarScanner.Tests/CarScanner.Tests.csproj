@@ -28,6 +28,9 @@
     <Compile Include="../../Services/OBD/ObdLanguage.cs" Link="ObdLanguage.cs" />
     <Compile Include="../../Services/Energy/EvEnergyMath.cs" Link="Energy/EvEnergyMath.cs" />
     <Compile Include="../../Services/Maintenance/MaintenanceSchedule.cs" Link="Maintenance/MaintenanceSchedule.cs" />
+    <Compile Include="../../Services/BatteryVoltageGuide.cs" Link="BatteryVoltageGuide.cs" />
+    <Compile Include="../../Services/WeakEventRelay.cs" Link="WeakEventRelay.cs" />
+    <Compile Include="../../Services/PullRefreshRunner.cs" Link="PullRefreshRunner.cs" />
     <Compile Include="../../Services/Customs/CustomsCalculator.cs" Link="Customs/CustomsCalculator.cs" />
     <Compile Include="../../Models/AdvancedObdTest.cs" Link="AdvancedObdTest.cs" />
     <Compile Include="../../Models/DiagnosticCode.cs" Link="DiagnosticCode.cs" />
@@ -57,6 +60,9 @@
     <Compile Include="../../Services/Coding/CodingReplyParser.cs" Link="CodingReplyParser.cs" />
     <Compile Include="../../Services/Coding/CodingCapabilities.cs" Link="CodingCapabilities.cs" />
     <Compile Include="../../Services/Coding/GmlanSweep.cs" Link="GmlanSweep.cs" />
+    <Compile Include="../../Services/LiveDataStartPolicy.cs" Link="LiveDataStartPolicy.cs" />
+    <Compile Include="../../Services/NavigationGate.cs" Link="NavigationGate.cs" />
+    <Compile Include="../../Services/CrashExceptionFlattener.cs" Link="CrashExceptionFlattener.cs" />
     <Compile Include="../../Services/OemDiagnostics/ModuleDtcParsers.cs" Link="ModuleDtcParsers.cs" />
     <Compile Include="../../Models/ModuleDtcReportModels.cs" Link="ModuleDtcReportModels.cs" />
     <Compile Include="../../Services/OemDiagnostics/ManufacturerDefinitionCatalogParser.cs" Link="ManufacturerDefinitionCatalogParser.cs" />
@@ -106,6 +112,7 @@
     <Compile Include="../../Services/OBD/Elm327Protocol.cs" Link="Obd/Elm327Protocol.cs" />
     <Compile Include="../../Services/OBD/ObdMonitorCommand.cs" Link="Obd/ObdMonitorCommand.cs" />
     <Compile Include="../../Services/OBD/IObdTransport.cs" Link="Obd/IObdTransport.cs" />
+    <Compile Include="../../Services/OBD/WifiObdTransport.cs" Link="Obd/WifiObdTransport.cs" />
     <Compile Include="../../Services/IBluetoothService.cs" Link="Obd/IBluetoothService.cs" />
     <Compile Include="../../Models/AdapterDiagnostics.cs" Link="Obd/AdapterDiagnostics.cs" />
     <Compile Include="../../Models/AdapterCapabilityCheck.cs" Link="Obd/AdapterCapabilityCheck.cs" />
@@ -148,6 +155,8 @@
     <Compile Include="../../Services/Energy/EnergyCompatibility.cs" Link="Energy/EnergyCompatibility.cs" />
     <Compile Include="../../Services/Energy/FuelSignalMapper.cs" Link="Energy/FuelSignalMapper.cs" />
     <Compile Include="../../Services/Energy/FuelPresenter.cs" Link="Energy/FuelPresenter.cs" />
+    <Compile Include="../../Controls/IconCatalog.cs" Link="Controls/IconCatalog.cs" />
+    <Compile Include="../../Controls/FlowPlacement.cs" Link="Controls/FlowPlacement.cs" />
     <Compile Include="../../Services/Energy/ElectricTripCalculator.cs" Link="Energy/ElectricTripCalculator.cs" />
   </ItemGroup>
 </Project>

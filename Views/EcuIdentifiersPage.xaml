@@ -61,7 +61,7 @@
                                         Grid.Row="1"
                                         Grid.ColumnSpan="2"
                                         Text="{Binding Explanation}"
-                                        FontSize="11"
+                                        FontSize="12"
                                         TextColor="{DynamicResource SubTextColor}"
                                         LineBreakMode="WordWrap" />
 
@@ -91,7 +91,7 @@
             <Label IsVisible="False"
                 Text="{Binding PidRefreshStatus}"
                 TextColor="{DynamicResource SubTextColor}"
-                FontSize="11"
+                FontSize="12"
                 Margin="4,0,0,0"
                 LineBreakMode="WordWrap" />
 
@@ -132,7 +132,7 @@
 
                                         <Label
                                             Text="{Binding Category}"
-                                            FontSize="11"
+                                            FontSize="12"
                                             TextColor="{DynamicResource SubTextColor}" />
 
                                     </VerticalStackLayout>
@@ -159,7 +159,7 @@
                                         <Label
                                             Text="{Binding Status}"
                                             TextColor="{Binding StatusColor}"
-                                            FontSize="10"
+                                            FontSize="12"
                                             HorizontalTextAlignment="End" />
 
                                     </VerticalStackLayout>

@@ -59,7 +59,7 @@ internal static class iOSPdfReportWriter
             {
                 if (!pageOpen)
                     return;
-                DrawAt($"GCar360 · {pageNumber}", new CGPoint(Margin, PageHeight - 27), Font(9, false), UIColor.FromRGB(100, 116, 139));
+                DrawAt($"OBD360 · {pageNumber}", new CGPoint(Margin, PageHeight - 27), Font(9, false), UIColor.FromRGB(100, 116, 139));
             }
 
             void NewPage()
@@ -77,7 +77,7 @@ internal static class iOSPdfReportWriter
                 cg.SetFillColor(Color("#185FA5").CGColor);
                 cg.FillRect(new CGRect(0, 0, PageWidth, 96));
 
-                DrawAt("GCar360", new CGPoint(Margin, 22), Font(22, true), UIColor.White);
+                DrawAt("OBD360", new CGPoint(Margin, 22), Font(22, true), UIColor.White);
                 DrawAt(
                     subtitle ?? (isEnglish ? "Diagnostic report" : "დიაგნოსტიკური ანგარიში"),
                     new CGPoint(Margin, 52),
@@ -168,8 +168,8 @@ internal static class iOSPdfReportWriter
             y += 8;
             WriteWrapped(
                 isEnglish
-                    ? "Report created with GCar360 from real data read from the car."
-                    : "ანგარიში შექმნილია GCar360-ით მანქანიდან წაკითხული რეალური მონაცემებით.",
+                    ? "Report created with OBD360 from real data read from the car."
+                    : "ანგარიში შექმნილია OBD360-ით მანქანიდან წაკითხული რეალური მონაცემებით.",
                 9,
                 false,
                 "#64748B");

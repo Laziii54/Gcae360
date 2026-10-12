@@ -6,7 +6,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:views="clr-namespace:CarScanner.VinCheck.Views">
 
-    <!-- GCar360 blue (same as the app icon). -->
+    <!-- OBD360 blue (same as the app icon). -->
     <Color x:Key="Accent">#1D5BD6</Color>
     <Color x:Key="AccentSoft">#1F1D5BD6</Color>
     <Color x:Key="HeroTop">#1D5BD6</Color>
@@ -24,7 +24,6 @@
 
     <views:NotNullConverter x:Key="NotNull" />
     <views:NotEmptyConverter x:Key="NotEmpty" />
-    <views:StarConverter x:Key="Star" />
     <views:AuctionImagesConverter x:Key="AuctionImages" />
     <views:FirstPhotoConverter x:Key="FirstPhoto" />
     <views:AllPhotosConverter x:Key="AllPhotos" />

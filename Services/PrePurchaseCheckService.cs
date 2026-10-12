@@ -630,8 +630,8 @@ public sealed class PrePurchaseCheckService
             {
                 result.History.Add(new PrePurchaseFinding
                 {
-                    LabelKa = "🔁 აუქციონის გარბენი",
-                    LabelEn = "🔁 Auction odometer",
+                    LabelKa = "აუქციონის გარბენი",
+                    LabelEn = "Auction odometer",
                     ValueKa = $"{history.Access.AuctionCount} აუქციონი — შესადარებლად გახსენი ისტორია",
                     ValueEn = $"{history.Access.AuctionCount} auction(s) — open the history to compare",
                     Color = Grey
@@ -650,8 +650,8 @@ public sealed class PrePurchaseCheckService
         {
             result.History.Add(new PrePurchaseFinding
             {
-                LabelKa = "🔁 აუქციონის გარბენი",
-                LabelEn = "🔁 Auction odometer",
+                LabelKa = "აუქციონის გარბენი",
+                LabelEn = "Auction odometer",
                 ValueKa = $"{shown} · {whereKa} — შეადარე პანელს",
                 ValueEn = $"{shown} · {whereEn} — compare with the dashboard",
                 Color = Grey
@@ -666,8 +666,8 @@ public sealed class PrePurchaseCheckService
             var sameDigits = highest.Miles && Math.Abs(now - highest.Value) <= Math.Max(500, highest.Value * 0.05);
             result.History.Add(new PrePurchaseFinding
             {
-                LabelKa = "⚠ გარბენი აუქციონზე მეტი იყო",
-                LabelEn = "⚠ Odometer was higher at the auction",
+                LabelKa = "გარბენი აუქციონზე მეტი იყო",
+                LabelEn = "Odometer was higher at the auction",
                 ValueKa = sameDigits
                     ? $"{shown} ({whereKa}), ახლა {now:N0} კმ — ციფრები მილებს ჰგავს — თუ პანელი კმ-ზეა გადართული, მილებში ეს ≈ {now * KmPerMile:N0} კმ იქნებოდა"
                     : $"{shown} ({whereKa}), ახლა {now:N0} კმ — ჩანაწერზე ნაკლებია, საჭიროა შემოწმება (სერვისის ჩანაწერები, ერთეული)",
@@ -681,8 +681,8 @@ public sealed class PrePurchaseCheckService
 
         result.History.Add(new PrePurchaseFinding
         {
-            LabelKa = "🔁 აუქციონის გარბენი",
-            LabelEn = "🔁 Auction odometer",
+            LabelKa = "აუქციონის გარბენი",
+            LabelEn = "Auction odometer",
             ValueKa = $"{(latest.Miles ? $"{latest.Value:N0} mi" : $"{latest.Km:N0} km")} → ახლა {now:N0} კმ · ლოგიკურია",
             ValueEn = $"{(latest.Miles ? $"{latest.Value:N0} mi" : $"{latest.Km:N0} km")} → now {now:N0} km · consistent",
             Color = Green
@@ -724,7 +724,7 @@ public sealed class PrePurchaseCheckService
     {
         var report = result.Report;
         var sb = new StringBuilder();
-        sb.AppendLine("===== PRE-PURCHASE CHECK RESULT (read-only scan done by GCar360 just now) =====");
+        sb.AppendLine("===== PRE-PURCHASE CHECK RESULT (read-only scan done by OBD360 just now) =====");
         sb.AppendLine($"Vehicle: {report.Vehicle.Manufacturer} {report.Vehicle.Model} {report.Vehicle.Year} · VIN {CarScanner.AI.AiDiagnosticService.MaskVin(report.Vehicle.VIN)}");
         sb.AppendLine($"Engine: {report.Vehicle.Engine} · Fuel: {report.Vehicle.FuelType}");
         sb.AppendLine($"Overall score: {result.Score}/100 ({result.VerdictEn})");

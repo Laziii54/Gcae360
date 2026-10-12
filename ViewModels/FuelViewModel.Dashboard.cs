@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 namespace CarScanner.ViewModels;
 
 /// <summary>One line of "what this car reports" on the energy page.</summary>
+/// <summary>One line of the capability list; <c>Mark</c> is an icon kind from Controls/IconCatalog, not a glyph.</summary>
 public sealed record EnergyCapabilityRow(string Mark, Color MarkColor, string Title, string Detail);
 
 /// <summary>One label / value line of the trip summary.</summary>
@@ -253,13 +254,13 @@ public partial class FuelViewModel
         }
         else if (_mode == EnergyMode.Hybrid && EngineRunning)
         {
-            DriveBadgeText = L("⛽ ძრავი მუშაობს", "⛽ engine running");
+            DriveBadgeText = L("ძრავი მუშაობს", "engine running");
             DriveBadgeColor = OrangeColor;
             DriveBadgeBackground = OrangeBackground;
         }
         else
         {
-            DriveBadgeText = L("⚡ ელექტროზე", "⚡ on electric");
+            DriveBadgeText = L("ელექტროზე", "on electric");
             DriveBadgeColor = GreenColor;
             DriveBadgeBackground = GreenBackground;
         }
@@ -328,8 +329,8 @@ public partial class FuelViewModel
         var electricShare = totalMeters > 50 ? _electricMeters / totalMeters : 0;
         ElectricShareStar = new GridLength(Math.Max(electricShare, 0.0001), GridUnitType.Star);
         EngineShareStar = new GridLength(totalMeters > 50 ? 1 - electricShare : 0.0001, GridUnitType.Star);
-        ElectricShareText = totalMeters > 50 ? $"⚡ {(electricShare * 100).ToString("0", invariant)}%" : "⚡";
-        EngineShareText = totalMeters > 50 && electricShare < 0.95 ? $"⛽ {((1 - electricShare) * 100).ToString("0", invariant)}%" : string.Empty;
+        ElectricShareText = totalMeters > 50 ? $"{(electricShare * 100).ToString("0", invariant)}%" : "—";
+        EngineShareText = totalMeters > 50 && electricShare < 0.95 ? $"{((1 - electricShare) * 100).ToString("0", invariant)}%" : string.Empty;
         var electricKWh = exact ? _ev.NetKWh : approxKWh;
         ElectricSplitText = $"{(electricKWh is { } ek ? ek.ToString("0.00", invariant) + " kWh · " : string.Empty)}{_units.FormatDistance(_electricMeters / 1000d)}";
         EngineSplitText = $"{_fuelLiters.ToString("0.0", invariant)} {L("ლ", "L")} · {_units.FormatDistance(_engineMeters / 1000d)}";
@@ -353,9 +354,9 @@ public partial class FuelViewModel
 
     private void BuildCapabilities(bool exact)
     {
-        var ok = ("✓", GreenColor);
-        var no = ("✕", GreyColor);
-        var approx = ("≈", AmberColor);
+        var ok = ("check", GreenColor);
+        var no = ("close", GreyColor);
+        var approx = ("approx", AmberColor);
         var rows = new List<EnergyCapabilityRow>
         {
             Row(_socNow is not null ? ok : no, L("ბატარეის %", "Battery %"),
@@ -444,14 +445,14 @@ public partial class FuelViewModel
         {
             if (exact)
             {
-                TripSummaryRows.Add(new(L("⚡ დახარჯული / დაბრუნებული", "⚡ Used / recovered"),
+                TripSummaryRows.Add(new(L("დახარჯული / დაბრუნებული", "Used / recovered"),
                     $"{_ev.ConsumedKWh.ToString("0.00", invariant)} / {_ev.RegeneratedKWh.ToString("0.00", invariant)} kWh"));
             }
 
             if (energy is { } e)
             {
                 var per100 = EvEnergyAccumulator.KWhPer100Km(e, EnergyKm(km));
-                TripSummaryRows.Add(new(L("⚡ წმინდა ხარჯი", "⚡ Net use"),
+                TripSummaryRows.Add(new(L("წმინდა ხარჯი", "Net use"),
                     $"{(exact ? string.Empty : "≈ ")}{e.ToString("0.00", invariant)} kWh" + (per100 is { } p ? $" · {p.ToString("0.0", invariant)} /100{L("კმ", "km")}" : string.Empty)));
             }
 
@@ -466,7 +467,7 @@ public partial class FuelViewModel
         }
 
         if (_mode != EnergyMode.Electric && _fuelLiters > 0)
-            TripSummaryRows.Add(new(L("⛽ ბენზინი", "⛽ Fuel"), $"{_fuelLiters.ToString("0.00", invariant)} {L("ლ", "L")} · {_units.FormatFuelEconomy(_fuelLiters / km * 100d)}"));
+            TripSummaryRows.Add(new(L("ბენზინი", "Fuel"), $"{_fuelLiters.ToString("0.00", invariant)} {L("ლ", "L")} · {_units.FormatFuelEconomy(_fuelLiters / km * 100d)}"));
 
         IsTripSummaryVisible = true;
 
@@ -474,7 +475,6 @@ public partial class FuelViewModel
         var section = new CarScanner.Services.Reports.ReportSectionItem
         {
             Kind = "trip",
-            Icon = "⛽",
             Title = L("მოგზაურობა და ხარჯი", "Trip and consumption"),
             Status = CarScanner.Services.Reports.ReportStatus.Info,
             Summary = string.Join(" · ", new[] { _units.FormatDistance(km), TripSummaryCostText }.Where(part => part != "—"))

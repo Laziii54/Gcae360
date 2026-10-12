@@ -62,14 +62,14 @@ CREATE INDEX IF NOT EXISTS IX_QrReports_ExpiresAt ON QrReports(ExpiresAt);";
         return null;
     }
 
-    /// <summary>Vehicle shown on the report: the app's name, else the masked VIN, else "GCar360".</summary>
+    /// <summary>Vehicle shown on the report: the app's name, else the masked VIN, else "OBD360".</summary>
     public static string VehicleName(QrReportCreateRequest request)
     {
         var vehicle = (request.Vehicle ?? string.Empty).Trim();
         if (vehicle.Length > 0)
             return vehicle.Length > MaxVehicle ? vehicle[..MaxVehicle] : vehicle;
         var vin = (request.Vin ?? string.Empty).Trim().ToUpperInvariant();
-        return vin.Length == 17 ? $"GCar360 · VIN ***{vin[^6..]}" : "GCar360";
+        return vin.Length == 17 ? $"OBD360 · VIN ***{vin[^6..]}" : "OBD360";
     }
 
     public async Task<(string Token, DateTime ExpiresAt)> CreateAsync(string ownerKey, QrReportCreateRequest request, CancellationToken token)
@@ -147,14 +147,14 @@ FROM QrReports WHERE TokenHash=$t LIMIT 1";
         static string H(string? value) => WebUtility.HtmlEncode(value ?? string.Empty).Replace("\n", "<br>");
         var expired = report.ExpiresAt <= DateTime.UtcNow;
         // The content is sent by the app (owner's phone), not verified by
-        // GCar360: neutral wording, no "valid" badge.
+        // OBD360: neutral wording, no "valid" badge.
         var note = expired
             ? "<div class=\"note bad\">ბმულს ვადა გაუვიდა<br>Link expired</div>"
-            : "<div class=\"note\">ანგარიში შექმნა ავტომობილის მფლობელმა GCar360-ით და დამოუკიდებლად გადამოწმებული არ არის.<br>Created by the vehicle owner with GCar360 — not independently verified.</div>";
+            : "<div class=\"note\">ანგარიში შექმნა ავტომობილის მფლობელმა OBD360-ით და დამოუკიდებლად გადამოწმებული არ არის.<br>Created by the vehicle owner with OBD360 — not independently verified.</div>";
         var vinLine = string.IsNullOrWhiteSpace(report.VinMasked) ? string.Empty : "<br>VIN: " + H(report.VinMasked);
         return """
 <!doctype html><html lang="ka"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark">
-<title>GCar360 — QR Report</title>
+<title>OBD360 — QR Report</title>
 <link rel="icon" type="image/png" href="/assets/favicon.png"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 <style>
 :root{--bg:#fafaf8;--paper:#fff;--ink:#1c2128;--muted:#667085;--line:#e4e7ec;--mark:#d99a00}
@@ -175,7 +175,7 @@ section p{margin:0;font-size:16.5px;overflow-wrap:anywhere}
 section p.small{margin-top:8px;font-size:13px;color:var(--muted)}
 .foot{margin-top:30px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px;line-height:1.6}
 </style></head><body><div class="wrap">
-<header><img src="/assets/mark.png" alt=""><b>GCar360</b></header>
+<header><img src="/assets/mark.png" alt=""><b>OBD360</b></header>
 <h1>__VEHICLE__</h1>
 <div class="sub">წაკითხვის დრო / Read at: __CHECKED__<br>ბმული ძალაშია / Link available until: __EXPIRES____VIN__</div>
 __NOTE__
@@ -184,7 +184,7 @@ __NOTE__
 <section><h2>შეცდომის კოდები / Trouble codes</h2><p>__DTC__</p></section>
 <section><h2>Check Engine / Readiness</h2><p>__READY__</p></section>
 __SERVICE__
-<div class="foot">ანგარიში შექმნა ავტომობილის მფლობელმა GCar360 აპით და ასახავს მხოლოდ მის მიერ გამოგზავნილ მონაცემებს; GCar360 მათ დამოუკიდებლად არ ამოწმებს.<br>This report was created by the vehicle owner with the GCar360 app and shows only the data the owner's app sent; GCar360 does not verify it independently.</div>
+<div class="foot">ანგარიში შექმნა ავტომობილის მფლობელმა OBD360 აპით და ასახავს მხოლოდ მის მიერ გამოგზავნილ მონაცემებს; OBD360 მათ დამოუკიდებლად არ ამოწმებს.<br>This report was created by the vehicle owner with the OBD360 app and shows only the data the owner's app sent; OBD360 does not verify it independently.</div>
 </div></body></html>
 """
             .Replace("__NOTE__", note)
@@ -204,7 +204,7 @@ __SERVICE__
 
     public static string RenderExpiredHtml() => """
 <!doctype html><html lang="ka"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark">
-<title>GCar360 — Link expired</title>
+<title>OBD360 — Link expired</title>
 <link rel="icon" type="image/png" href="/assets/favicon.png"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 <style>
 :root{--bg:#fafaf8;--ink:#1c2128;--muted:#667085;--line:#e4e7ec}
@@ -216,7 +216,7 @@ header{display:flex;align-items:center;gap:10px;padding-bottom:14px;border-botto
 header img{width:30px;height:30px;border-radius:7px}header b{font-size:17px}
 h1{font-size:22px;margin:24px 0 6px}p{margin:0;color:var(--muted)}h1+p{margin-bottom:22px}
 </style></head>
-<body><div class="wrap"><header><img src="/assets/mark.png" alt=""><b>GCar360</b></header>
+<body><div class="wrap"><header><img src="/assets/mark.png" alt=""><b>OBD360</b></header>
 <h1>ბმულს ვადა გაუვიდა</h1><p>QR ანგარიშის ბმული ხელმისაწვდომია 30 დღე, რადგან ძველი ანგარიში აღარ ასახავს ავტომობილის მიმდინარე მდგომარეობას.</p>
 <h1>Link expired</h1><p>A QR report link is available for 30 days because an older report no longer reflects the vehicle's current condition.</p></div></body></html>
 """;

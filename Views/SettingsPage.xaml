@@ -2,6 +2,7 @@
 <ContentPage
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:CarScanner.Controls"
     xmlns:vm="clr-namespace:CarScanner.ViewModels"
     x:Class="CarScanner.Views.SettingsPage"
     x:DataType="vm:SettingsViewModel"
@@ -26,7 +27,7 @@
                 <VerticalStackLayout Spacing="0">
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,4">
                             <Label Text="Theme" Style="{StaticResource RowTitleStyle}" />
-                            <Picker Grid.Column="1" ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding ThemeOption}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" MinimumWidthRequest="120" HorizontalTextAlignment="End" FontSize="14" VerticalOptions="Center" />
+                            <Picker Grid.Column="1" ItemsSource="{Binding ThemeOptions}" ItemDisplayBinding="{Binding ., Converter={StaticResource LocalizedTextConverter}}" SelectedItem="{Binding ThemeOption}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" MinimumWidthRequest="120" HorizontalTextAlignment="End" FontSize="14" VerticalOptions="Center" />
                         </Grid>
                         <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,4">
@@ -36,12 +37,12 @@
                         <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,4">
                             <Label Text="Units" Style="{StaticResource RowTitleStyle}" />
-                            <Picker Grid.Column="1" ItemsSource="{Binding UnitOptions}" SelectedItem="{Binding UnitOption}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" MinimumWidthRequest="120" HorizontalTextAlignment="End" FontSize="14" VerticalOptions="Center" />
+                            <Picker Grid.Column="1" ItemsSource="{Binding UnitOptions}" ItemDisplayBinding="{Binding ., Converter={StaticResource LocalizedTextConverter}}" SelectedItem="{Binding UnitOption}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" MinimumWidthRequest="120" HorizontalTextAlignment="End" FontSize="14" VerticalOptions="Center" />
                         </Grid>
                         <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,4">
                             <Label Text="Live Data polling" Style="{StaticResource RowTitleStyle}" />
-                            <Picker Grid.Column="1" ItemsSource="{Binding PollingOptions}" SelectedItem="{Binding PollingOption}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" MinimumWidthRequest="120" HorizontalTextAlignment="End" FontSize="14" VerticalOptions="Center" />
+                            <Picker Grid.Column="1" ItemsSource="{Binding PollingOptions}" ItemDisplayBinding="{Binding ., Converter={StaticResource LocalizedTextConverter}}" SelectedItem="{Binding PollingOption}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" MinimumWidthRequest="120" HorizontalTextAlignment="End" FontSize="14" VerticalOptions="Center" />
                         </Grid>
                         <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,2">
@@ -62,21 +63,21 @@
                             <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding OpenProCommand}" /></Grid.GestureRecognizers>
                             <Path Data="M5 12l4 4 10-10" Style="{StaticResource RowIconStyle}" />
                             <Label Grid.Column="1" Text="PRO / Payments" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                            <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                         </Grid>
                         <BoxView Style="{StaticResource RowDividerStyle}" />
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
                             <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding ManageSubscriptionCommand}" /></Grid.GestureRecognizers>
                             <Path Data="M3 6h18v12H3zM3 10h18" Style="{StaticResource RowIconStyle}" />
                             <Label Grid.Column="1" Text="Manage Subscription" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                            <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                         </Grid>
                         <BoxView Style="{StaticResource RowDividerStyle}" />
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
                             <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding OpenHistoryCommand}" /></Grid.GestureRecognizers>
                             <Path Data="M4 12a8 8 0 1 0 2.3-5.7M4 4v4h4M12 8v4l3 2" Style="{StaticResource RowIconStyle}" />
                             <Label Grid.Column="1" Text="History" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                            <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                         </Grid>
                 </VerticalStackLayout>
             </Border>
@@ -87,28 +88,28 @@
                             <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding OpenContactCommand}" /></Grid.GestureRecognizers>
                             <Path Data="M3 6h18v12H3zM3 7l9 6 9-6" Style="{StaticResource RowIconStyle}" />
                             <Label Grid.Column="1" Text="Contact" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                            <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                         </Grid>
                         <BoxView Style="{StaticResource RowDividerStyle}" />
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
                             <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding PrivacyPolicyCommand}" /></Grid.GestureRecognizers>
                             <Path Data="M6 2h8l5 5v15H6zM14 2v5h5M9 12h7M9 16h7" Style="{StaticResource RowIconStyle}" />
                             <Label Grid.Column="1" Text="Privacy Policy" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                            <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                         </Grid>
                         <BoxView Style="{StaticResource RowDividerStyle}" />
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
                             <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding TermsOfUseCommand}" /></Grid.GestureRecognizers>
                             <Path Data="M6 2h8l5 5v15H6zM14 2v5h5M9 12h7M9 16h7" Style="{StaticResource RowIconStyle}" />
                             <Label Grid.Column="1" Text="Terms of Use" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                            <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                         </Grid>
                         <BoxView Style="{StaticResource RowDividerStyle}" />
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
                             <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding AboutCommand}" /></Grid.GestureRecognizers>
                             <Path Data="M12 21a9 9 0 1 0 0-18a9 9 0 1 0 0 18M12 11v5M12 8h.01" Style="{StaticResource RowIconStyle}" />
                             <Label Grid.Column="1" Text="About" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                            <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                         </Grid>
                 </VerticalStackLayout>
             </Border>
@@ -119,14 +120,14 @@
                             <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding ExportMyDataCommand}" /></Grid.GestureRecognizers>
                             <Path Data="M12 3v12M7 8l5-5 5 5M4 17v4h16v-4" Style="{StaticResource RowIconStyle}" />
                             <Label Grid.Column="1" Text="Export My Data" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                            <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                         </Grid>
                         <BoxView Style="{StaticResource RowDividerStyle}" />
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" BackgroundColor="Transparent">
                             <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding ClearHistoryCommand}" /></Grid.GestureRecognizers>
                             <Path Data="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" Style="{StaticResource RowIconStyle}" />
                             <Label Grid.Column="1" Text="Clear History" Style="{StaticResource RowTitleStyle}" />
-                            <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                            <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                         </Grid>
                 </VerticalStackLayout>
             </Border>
@@ -155,7 +156,7 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Label Text="Georgian Car Scanner" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalOptions="Center" Margin="0,8" />
+            <Label Text="OBD360" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalOptions="Center" Margin="0,8" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

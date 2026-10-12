@@ -155,13 +155,13 @@ public static class FuelPresenter
         _ => string.Empty
     };
 
-    /// <summary>"✓" reported or calculated, "≈" estimate, "·" not enough data yet, "✕" not available.</summary>
+    /// <summary>Icon kind (Controls/IconCatalog): "check" reported or calculated, "approx" estimate, "circle" not enough data yet, "close" not available.</summary>
     public static string Mark(EnergySupport support) => support switch
     {
-        EnergySupport.DirectlySupported or EnergySupport.CalculatedFromAvailableData => "✓",
-        EnergySupport.Estimated or EnergySupport.PartiallySupported => "≈",
-        EnergySupport.InsufficientData => "·",
-        _ => "✕"
+        EnergySupport.DirectlySupported or EnergySupport.CalculatedFromAvailableData => "check",
+        EnergySupport.Estimated or EnergySupport.PartiallySupported => "approx",
+        EnergySupport.InsufficientData => "circle",
+        _ => "close"
     };
 
     // ---- what is saved with a trip --------------------------------------------------------

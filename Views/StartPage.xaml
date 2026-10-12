@@ -5,7 +5,7 @@
     x:Class="CarScanner.Views.StartPage"
     BackgroundColor="{DynamicResource PageBg}"
     Shell.NavBarIsVisible="False"
-    Title="GCar360">
+    Title="OBD360">
 
     <ScrollView>
         <VerticalStackLayout Padding="20,28,20,32" Spacing="14">
@@ -29,7 +29,7 @@
                 </Border>
 
                 <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
-                    <Label Text="GCar360" FontSize="21" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
+                    <Label Text="OBD360" FontSize="21" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
                     <Label Text="რას შევამოწმებთ დღეს?" FontSize="13" TextColor="{DynamicResource SubTextColor}" />
                 </VerticalStackLayout>
 

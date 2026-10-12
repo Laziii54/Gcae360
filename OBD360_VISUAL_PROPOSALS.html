@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OBD360 Visual Proposals</title>
+<style>
+  :root {
+    --bg: #f4f6f9; --card: #ffffff; --ink: #14202e; --sub: #5b6b7d; --line: #d9e0e8;
+    --accent: #1d5bd6; --ok: #1f8a4c; --warn: #c98a1a; --bad: #b3361f; --chip: #e8eef6; --mock: #eef2f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1520; --card: #162130; --ink: #e8eef6; --sub: #97a7ba; --line: #263648;
+      --accent: #6aa2ff; --ok: #4ade80; --warn: #f5b942; --bad: #f87171; --chip: #1f2e42; --mock: #0f1926;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1520; --card: #162130; --ink: #e8eef6; --sub: #97a7ba; --line: #263648;
+    --accent: #6aa2ff; --ok: #4ade80; --warn: #f5b942; --bad: #f87171; --chip: #1f2e42; --mock: #0f1926;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding-inline: 16px; padding-block: 24px 64px; }
+  main { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 28px; margin: 0 0 6px; text-wrap: balance; }
+  h2 { font-size: 22px; margin: 0 0 4px; text-wrap: balance; }
+  h3 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--sub); margin: 18px 0 6px; }
+  p { margin: 6px 0; }
+  .lead { color: var(--sub); max-width: 70ch; }
+  .banner { border: 1.5px solid var(--warn); background: color-mix(in srgb, var(--warn) 12%, var(--card)); padding: 12px 14px; border-radius: 12px; margin: 16px 0 20px; font-weight: 600; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+  nav a { background: var(--chip); color: var(--ink); text-decoration: none; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin-bottom: 18px; }
+  .where { color: var(--sub); font-size: 13px; margin-bottom: 8px; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+  @media (max-width: 760px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+  ul { margin: 4px 0 4px 18px; padding: 0; }
+  li { margin: 3px 0; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--chip); color: var(--sub); margin-right: 6px; }
+  .tag.ok { color: var(--ok); } .tag.warn { color: var(--warn); } .tag.bad { color: var(--bad); }
+  /* phone mock */
+  .phone { background: var(--mock); border: 1px solid var(--line); border-radius: 22px; padding: 12px; display: grid; gap: 8px; font-size: 13px; }
+  .bar { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 13px; }
+  .box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+  .row { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  .big { font-size: 26px; font-weight: 800; line-height: 1.1; }
+  .mid { font-size: 18px; font-weight: 700; }
+  .sm { color: var(--sub); font-size: 12px; }
+  .pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--chip); }
+  .pill.ok { color: var(--ok); } .pill.warn { color: var(--warn); } .pill.bad { color: var(--bad); }
+  .btn { text-align: center; padding: 9px; border-radius: 10px; background: var(--accent); color: #fff; font-weight: 700; }
+  .btn.ghost { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
+  .meter { height: 6px; border-radius: 3px; background: var(--chip); overflow: hidden; }
+  .meter i { display: block; height: 100%; background: var(--accent); }
+  .chart { height: 54px; border-radius: 8px; background: linear-gradient(180deg, transparent 0 60%, color-mix(in srgb, var(--accent) 18%, transparent)); border: 1px solid var(--line); position: relative; }
+  .chart::after { content: ""; position: absolute; inset: 14px 6px 8px; border-bottom: 2px solid var(--accent); border-radius: 50% 50% 0 0 / 100% 100% 0 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  code { background: var(--chip); padding: 1px 5px; border-radius: 5px; font-size: 12.5px; }
+  footer { color: var(--sub); font-size: 13px; margin-top: 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--sub); font-size: 12px; letter-spacing: .05em; text-transform: uppercase; }
+  .tablewrap { overflow-x: auto; }
+  .sev { display: grid; gap: 8px; margin-top: 8px; }
+  .sev .box { font-size: 14px; }
+  /* icon system: outline, one stroke weight, follows the text colour (same paths as Controls/IconCatalog.cs) */
+  .ic { width: 1.15em; height: 1.15em; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; vertical-align: -.2em; flex: none; }
+  .ic.lg { width: 22px; height: 22px; }
+  .icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; margin-top: 8px; }
+  .icons .box { display: grid; justify-items: center; gap: 4px; padding: 10px 6px; font-size: 12px; color: var(--sub); }
+  .icons .box .ic { width: 22px; height: 22px; color: var(--ink); }
+  .tag.appr { color: var(--warn); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><symbol id="i-close" viewBox="0 0 24 24"><path d="M6,6 L18,18 M18,6 L6,18"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M5,12.5 L10,17 L19,7"/></symbol><symbol id="i-minus" viewBox="0 0 24 24"><path d="M6,12 L18,12"/></symbol><symbol id="i-circle" viewBox="0 0 24 24"><path d="M12,6 A6,6 0 1 1 11.99,6 Z"/></symbol><symbol id="i-approx" viewBox="0 0 24 24"><path d="M5,9.5 C7.5,6.5 10,12.5 12,9.5 C14,6.5 16.5,12.5 19,9.5 M5,16 C7.5,13 10,19 12,16 C14,13 16.5,19 19,16"/></symbol><symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9,6 L15,12 L9,18"/></symbol><symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="M15,6 L9,12 L15,18"/></symbol><symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="M6,9 L12,15 L18,9"/></symbol><symbol id="i-chevron-up" viewBox="0 0 24 24"><path d="M6,15 L12,9 L18,15"/></symbol><symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20,12 A8,8 0 1 1 17.6,6.3 M20,4 L20,9 L15,9"/></symbol><symbol id="i-play" viewBox="0 0 24 24"><path d="M8,5 L19,12 L8,19 Z"/></symbol><symbol id="i-pause" viewBox="0 0 24 24"><path d="M8,5 L8,19 M16,5 L16,19"/></symbol><symbol id="i-stop" viewBox="0 0 24 24"><path d="M7,7 L17,7 L17,17 L7,17 Z"/></symbol><symbol id="i-record" viewBox="0 0 24 24"><path d="M12,5 A7,7 0 1 1 11.99,5 Z"/></symbol><symbol id="i-flag" viewBox="0 0 24 24"><path d="M6,21 L6,4 M6,5 L18,5 L15,9 L18,13 L6,13"/></symbol><symbol id="i-expand" viewBox="0 0 24 24"><path d="M4,9 L4,4 L9,4 M15,4 L20,4 L20,9 M20,15 L20,20 L15,20 M9,20 L4,20 L4,15"/></symbol><symbol id="i-menu" viewBox="0 0 24 24"><path d="M5,7 L19,7 M5,12 L19,12 M5,17 L19,17"/></symbol><symbol id="i-star" viewBox="0 0 24 24"><path d="M12,4 L14.4,9.3 L20,10 L15.8,13.9 L17,19.5 L12,16.6 L7,19.5 L8.2,13.9 L4,10 L9.6,9.3 Z"/></symbol><symbol id="i-send" viewBox="0 0 24 24"><path d="M20,4 L10,14 M20,4 L14,20 L10,14 L4,10 Z"/></symbol><symbol id="i-info" viewBox="0 0 24 24"><path d="M12,3 A9,9 0 1 1 11.99,3 Z M12,11 L12,17 M12,7.5 L12,7.6"/></symbol><symbol id="i-warning" viewBox="0 0 24 24"><path d="M12,4 L21,19 L3,19 Z M12,10 L12,14 M12,16.5 L12,16.6"/></symbol></defs></svg>
+<main>
+  <h1>OBD360 — visual proposals</h1>
+  <p class="lead">Fourteen pages that would benefit from a larger redesign. Each card says what the code does today, what looks wrong, a wireframe of the proposed layout, which data rules would not change, and what needs your decision.</p>
+  <div class="banner">PROPOSALS ONLY. Nothing on this page has been built, and no approval has been assumed. Mode 05 and Mode 06 pages and the Coding page logic are not touched by any proposal here.</div>
+  <nav aria-label="Proposals">
+    <a href="#index">Index</a><a href="#principles">Rules</a><a href="#icons">Icons</a>
+    <a href="#mileage">1 Mileage</a><a href="#fuel">2 Fuel</a><a href="#inspection">3 Inspection Readiness</a><a href="#ecu">4 ECU Explorer</a>
+    <a href="#hybrid">5 Hybrid Battery</a><a href="#graph">6 Graph Studio</a><a href="#coding">7 Coding</a><a href="#service">8 Service</a>
+    <a href="#emissions">9 Emissions</a><a href="#accel">10 Acceleration</a><a href="#tacho">11 Tachometer</a><a href="#history">12 History</a>
+    <a href="#leader">13 Leaderboard</a><a href="#report">14 Vehicle Report</a>
+  </nav>
+
+  <section id="index">
+    <h2>Index</h2>
+    <p class="lead">Nothing below is implemented. A “functional implication” says what would have to change besides the screen. Pages tagged <span class="tag appr">approval</span> are safety-critical or add a new page, so they need your approval before any work starts.</p>
+    <div class="tablewrap"><table>
+      <tr><th>#</th><th>Page</th><th>Main change</th><th>Key design decision</th><th>Functional implications</th></tr>
+      <tr><td>1</td><td>Mileage</td><td>One verdict card; sources grouped by outcome</td><td>Never show a “true mileage”; zero and implausible values only under “not used”</td><td>None — wording and layout of existing results</td></tr>
+      <tr><td>2</td><td>Fuel</td><td>Mode by powertrain (combustion, hybrid, plug-in, electric)</td><td>Missing data reads “not reported by this car”, never 0</td><td>Reuses the existing powertrain detection; no new requests</td></tr>
+      <tr><td>3</td><td>Inspection readiness</td><td>OBD check and physical questions as two rows</td><td>Calm wording; the inspection centre decides</td><td>Verdict wording only; scoring unchanged</td></tr>
+      <tr><td>4</td><td>ECU Explorer</td><td>Four module states + summary counts</td><td>“No reply” never means “absent”</td><td>None — same scan</td></tr>
+      <tr><td>5</td><td>Hybrid battery</td><td>One status chip; result card with the normal line</td><td>SOH shown as the car’s own estimate</td><td>None — same reads and tests</td></tr>
+      <tr><td>6</td><td>Graph Studio</td><td>Controls in a bottom sheet; presets</td><td>Tap-to-expand and the upper-left close button already exist</td><td>Presets are fixed channel lists; no new PIDs</td></tr>
+      <tr><td>7 <span class="tag appr">approval</span></td><td>Coding</td><td>Three steps: readiness, backup, change</td><td>Features appear only after readiness is green</td><td>Layout only — every safety check stays where it is</td></tr>
+      <tr><td>8</td><td>Service</td><td>Oil card, reminders, procedures, one help row</td><td>Reset buttons only when the car supports the checked write-back</td><td>None</td></tr>
+      <tr><td>9</td><td>Emissions</td><td>Compact readiness grid; MIL on its own line</td><td>Mode 05 / Mode 06 pages are not touched</td><td>None</td></tr>
+      <tr><td>10</td><td>Acceleration</td><td>One speed ring, split rows, “exact / approximate” chip</td><td>0–100 km/h or 0–60 mph by the unit setting only</td><td>None — same measurement</td></tr>
+      <tr><td>11 <span class="tag appr">approval</span></td><td>Tachometer</td><td>New dashboard view (no such page exists today)</td><td>No redline unless a verified value exists</td><td>New page; standard PIDs only</td></tr>
+      <tr><td>12</td><td>History</td><td>One timeline per car with filter chips</td><td>“Stored only on this phone” line; delete asks first</td><td>Reads several existing stores; no new storage</td></tr>
+      <tr><td>13</td><td>Leaderboard</td><td>Filters in one row; own result pinned</td><td>Review state is always visible</td><td>None — server API unchanged</td></tr>
+      <tr><td>14</td><td>Vehicle report</td><td>Verdict header; fixed export bar</td><td>Checks not yet run appear as “+ add”</td><td>None — PDF, QR, text and history stay</td></tr>
+    </table></div>
+  </section>
+
+  <section id="principles">
+    <h2>Rules every proposal follows</h2>
+    <ul>
+      <li><strong>Reminders and notifications are calm.</strong> An ordinary reminder (“brake fluid in 3 weeks”) uses neutral or soft-amber styling and a short sentence. Red is kept for a fault the car itself reports or for something unsafe to ignore.</li>
+      <li><strong>Text sizes:</strong> page title 24–30, section title 18–22, body 15–17, helper and status text 13–15, nothing a person must read below 12. Only unit tags and chart axis labels may be 11.</li>
+      <li>Long translations wrap onto more lines; no fixed-height label holds a sentence.</li>
+      <li>Light and dark themes are designed together; the wireframes on this page switch with the system theme.</li>
+      <li>One icon style (outline, one stroke weight) across the app, and <strong>no emoji-style icons anywhere</strong> — see “Icon direction” below.</li>
+    </ul>
+    <div class="sev" aria-label="Severity examples">
+      <div class="box row"><span>Reminder — brake fluid in 3 weeks</span><span class="pill warn">soon</span></div>
+      <div class="box row"><span>Reminder — oil service due</span><span class="pill">due</span></div>
+      <div class="box row"><span>The car reports a fault: ABS</span><span class="pill bad">fault</span></div>
+    </div>
+  </section>
+
+
+  <section id="icons">
+    <h2>Icon direction</h2>
+    <p class="lead">Policy: <strong>NO EMOJI-STYLE ICONS IN THE OBD360 USER INTERFACE.</strong> This page contains none either; every icon below is drawn from the app’s own outline set.</p>
+    <div class="cols"><div>
+      <h3>Rules</h3>
+      <ul>
+        <li><strong>Text first.</strong> Many elements need no icon: a clear label or a status word (“Ready”, “Not reported by this car”, “Needs attention”) is better than a symbol.</li>
+        <li>Where an icon helps (close, expand, chevron, play / pause, record, filter menu, favourite, status check / warning / info) it comes from one catalog: monochrome outline, 24-unit grid, round caps, one stroke weight, colour = text colour or a single status colour.</li>
+        <li>No emoji, no Unicode symbols standing in for icons (check marks, crosses, stars, bullets, arrows, flags), no coloured pictograms, no flag images for languages (a two-letter code is used).</li>
+        <li>Status is never carried by colour or an icon alone — the word stays next to it, and every icon-only button has an accessibility label.</li>
+        <li>Light and dark: icons use the text colour, so they follow the theme; status colours use the same tokens as the pills.</li>
+        <li>Kept as they are: the OBD360 logo, manufacturer logos, real graphs, gauges, diagrams and vehicle photos.</li>
+      </ul>
+      <h3>What replaces what</h3>
+      <ul>
+        <li>Emoji on fuel / electric badges → words (“Engine running”, “On electric”) in a pill.</li>
+        <li>Language flags → “KA”, “EN”, “DE” … code badge.</li>
+        <li>Check / cross / dot prefixes in lists → <svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> <svg class="ic" aria-hidden="true"><use href="#i-close"/></svg> <svg class="ic" aria-hidden="true"><use href="#i-circle"/></svg> icons in a fixed column, or just the word.</li>
+        <li>Text arrows used as chevrons and close buttons → <svg class="ic" aria-hidden="true"><use href="#i-chevron-right"/></svg> <svg class="ic" aria-hidden="true"><use href="#i-chevron-down"/></svg> <svg class="ic" aria-hidden="true"><use href="#i-close"/></svg>.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Catalog (21)</h3>
+      <div class="icons"><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg><span>close</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>check</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-minus"/></svg><span>minus</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-circle"/></svg><span>circle</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-approx"/></svg><span>approx</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-chevron-right"/></svg><span>chevron-right</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-chevron-left"/></svg><span>chevron-left</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-chevron-down"/></svg><span>chevron-down</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-chevron-up"/></svg><span>chevron-up</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg><span>refresh</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg><span>play</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg><span>pause</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-stop"/></svg><span>stop</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-record"/></svg><span>record</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-flag"/></svg><span>flag</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-expand"/></svg><span>expand</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg><span>menu</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg><span>star</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-send"/></svg><span>send</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><span>info</span></div><div class="box"><svg class="ic" aria-hidden="true"><use href="#i-warning"/></svg><span>warning</span></div></div>
+    </div></div>
+  </section>
+
+  <section id="mileage">
+    <h2>1 · Mileage verification</h2>
+    <div class="where">Today: <code>Views/MileagePage.xaml</code>, <code>Services/Mileage/*</code>. The analysis layer already separates total odometer from context values and treats zero or out-of-range values as "flagged, not used".</div>
+    <div class="cols"><div>
+      <h3>What looks wrong</h3>
+      <ul><li>The result mixes the verdict, the per-source table and the technical log on one long scroll.</li>
+      <li>"Not requested", "PID not advertised", "no definition" and "no answer" look alike in the list although they mean different things.</li></ul>
+      <h3>Proposal</h3>
+      <ul><li>One headline card: <em>Consistent / Single source / Conflicting / No reading</em>, never a "true mileage".</li>
+      <li>A source list grouped by outcome with fixed colours: Confirmed · Unverified · Not supported · Not requested · PID not advertised · No definition · Communication failed · No data · Insufficient data.</li>
+      <li>Zero and implausible values shown only under "Values to review (not used)".</li>
+      <li>Technical log collapsed behind a “Technical log” row with a <svg class="ic" aria-hidden="true"><use href="#i-chevron-right"/></svg> disclosure icon.</li></ul>
+      <h3>Data rules kept</h3>
+      <ul><li>No estimate is ever shown as a reading; only total-odometer values are compared; nothing is written to the car.</li></ul>
+      <h3>Decision needed</h3>
+      <ul><li>Group by outcome (proposed) or by control unit?</li></ul>
+      <h3>Icons</h3>
+      <ul><li>Source outcomes are written as words in the pills; no check / cross prefixes.</li><li>The “Read again” action uses <svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>; the collapsed technical log uses a <svg class="ic" aria-hidden="true"><use href="#i-chevron-right"/></svg> disclosure icon.</li></ul>
+    </div>
+    <div class="phone">
+      <div class="bar"><span>Mileage</span><span class="pill">Read again</span></div>
+      <div class="box"><div class="sm">Result</div><div class="mid">Single source</div><div class="big">84 210 km</div><div class="sm">Instrument cluster · 22 F40D · read 12:41</div></div>
+      <div class="sm">Confirmed</div>
+      <div class="box row"><span>Cluster (IPC)</span><span class="pill ok">84 210 km</span></div>
+      <div class="sm">Not available</div>
+      <div class="box row"><span>Standard PID A6</span><span class="pill">not advertised</span></div>
+      <div class="box row"><span>Gateway module</span><span class="pill warn">no answer</span></div>
+      <div class="box row"><span>Engine ECU</span><span class="pill">not requested</span></div>
+      <div class="sm">Values to review (not used)</div>
+      <div class="box row"><span>Hybrid control</span><span class="pill bad">0 km</span></div>
+    </div></div>
+  </section>
+
+  <section id="fuel">
+    <h2>2 · Fuel consumption</h2>
+    <div class="where">Today: <code>Views/FuelPage.xaml</code>, <code>ViewModels/FuelViewModel*.cs</code> — one screen for petrol, diesel, hybrid and EV.</div>
+    <div class="cols"><div>
+      <h3>What looks wrong</h3>
+      <ul><li>An engine-off hybrid or an EV looks like a fuel page with empty fuel fields.</li>
+      <li>The fuel average and the engine-on figure are easy to mix up.</li></ul>
+      <h3>Proposal</h3>
+      <ul><li>The page opens in the mode that matches the powertrain: Combustion · Hybrid · Plug-in · Electric.</li>
+      <li>Hybrid: two clearly separated blocks — fuel (whole trip) and battery (used / recovered / net), plus a one-line note about what each average divides by.</li>
+      <li>Electric: kWh, kWh/100 km, recovered by braking; no fuel widgets at all.</li>
+      <li>Missing data shown as "not reported by this car", never as 0.</li></ul>
+      <h3>Decision needed</h3>
+      <ul><li>Should a plug-in hybrid show the electric-only km separately (proposed)?</li></ul>
+      <h3>Icons</h3>
+      <ul><li>No fuel-pump or lightning pictograms: the two blocks are titled “Fuel” and “Battery” in words, and the drive-state chip reads “Engine running” or “On electric”.</li><li>The trip-summary card closes with <svg class="ic" aria-hidden="true"><use href="#i-close"/></svg>.</li></ul>
+    </div>
+    <div class="phone">
+      <div class="bar"><span>Trip</span><span class="pill ok">Hybrid</span></div>
+      <div class="grid2"><div class="box"><div class="sm">Fuel (whole trip)</div><div class="mid">5.8 L/100</div><div class="sm">÷ all 41 km</div></div>
+      <div class="box"><div class="sm">Fuel · engine running</div><div class="mid">7.4 L/100</div><div class="sm">÷ 32 km with engine</div></div></div>
+      <div class="box"><div class="sm">Battery · net use</div><div class="mid">0.9 kWh</div><div class="sm">used 2.1 · recovered 1.2</div></div>
+      <div class="chart"></div>
+      <div class="btn">Stop trip</div>
+    </div></div>
+  </section>
+
+  <section id="inspection">
+    <h2>3 · Inspection readiness</h2>
+    <div class="where">Today: <code>Views/TechnicalInspectionPage.xaml</code> — nine question categories plus an OBD check.</div>
+    <div class="cols"><div>
+      <h3>What looks wrong</h3>
+      <ul><li>The result words ("likely to pass", "unlikely to pass") sound like a promise; the official centre decides.</li>
+      <li>The OBD part and the questionnaire are mixed in one score.</li></ul>
+      <h3>Proposal</h3>
+      <ul><li>Two separate rows: <strong>OBD check</strong> (automatic) and <strong>Physical inspection</strong> (owner's answers).</li>
+      <li>A single, calm summary: "No known problem found", "Needs attention", "Dangerous fault — repair first", "Not finished yet".</li>
+      <li>The disclaimer stays visible: preliminary assessment, not a guarantee.</li></ul>
+      <h3>Icons</h3>
+      <ul><li>Result is a word (“Needs attention”) with at most one <svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> / <svg class="ic" aria-hidden="true"><use href="#i-warning"/></svg> icon inside the badge; no check-mark characters as list prefixes.</li></ul>
+    </div>
+    <div class="phone">
+      <div class="bar"><span>Inspection readiness</span></div>
+      <div class="box"><div class="sm">OBD check · automatic</div><div class="mid">Readiness 7/8 complete</div><span class="pill warn">1 monitor incomplete</span></div>
+      <div class="box"><div class="sm">Physical inspection · 6 of 9</div><div class="meter"><i style="width:66%"></i></div></div>
+      <div class="box"><div class="mid">Needs attention</div><div class="sm">Preliminary — the inspection centre decides.</div></div>
+      <div class="btn ghost">What needs attention</div>
+    </div></div>
+  </section>
+
+  <section id="ecu">
+    <h2>4 · ECU Explorer</h2>
+    <div class="where">Today: <code>Views/ModuleScanPage.xaml</code>, <code>EcuIdentifiersPage</code>, <code>ModuleLiveDataPage</code>.</div>
+    <div class="cols"><div>
+      <h3>What looks wrong</h3>
+      <ul><li>A silent address is easy to read as "module absent" although it only means "no reply".</li></ul>
+      <h3>Proposal</h3>
+      <ul><li>Cards per module with one of four states: <em>Answered</em> · <em>Incomplete reply</em> · <em>Technical failure</em> · <em>No reply (this does not prove the module is absent)</em>.</li>
+      <li>Names marked "from address table" when the module did not report its own name.</li>
+      <li>A sticky summary: answered / incomplete / failed / silent counts.</li></ul>
+      <h3>Icons</h3>
+      <ul><li>The four module states are words (Available · Limited · No reply · Not supported) with their pill colours; the dot / half-dot / ring glyphs are gone.</li><li>The bus tree keeps its drawn connector lines; that is a diagram, not an icon.</li></ul>
+    </div>
+    <div class="phone">
+      <div class="bar"><span>Modules</span><span class="pill">Scan</span></div>
+      <div class="grid3"><div class="box"><div class="mid">6</div><div class="sm">answered</div></div><div class="box"><div class="mid">1</div><div class="sm">incomplete</div></div><div class="box"><div class="mid">9</div><div class="sm">silent</div></div></div>
+      <div class="box row"><span>ABS · 7E2</span><span class="pill ok">answered</span></div>
+      <div class="box row"><span>SRS · 7E3</span><span class="pill warn">incomplete</span></div>
+      <div class="box row"><span>7E9</span><span class="pill">no reply</span></div>
+      <div class="sm">No reply does not prove the module is absent.</div>
+    </div></div>
+  </section>
+
+  <section id="hybrid">
+    <h2>5 · Hybrid battery</h2>
+    <div class="where">Today: <code>Views/HybridHealthPage.xaml</code> (cells, blocks, load test, SOH).</div>
+    <div class="cols"><div>
+      <h3>What looks wrong</h3>
+      <ul><li>States (not READY, no data, cannot load-test on this car, test failed) are explained in long sentences.</li></ul>
+      <h3>Proposal</h3>
+      <ul><li>One status chip at the top: <em>Ready to check · Not READY · No data · Check at rest only · Result</em>.</li>
+      <li>Result card: cell/block spread with the "normal" line drawn on the bar chart, SOH shown as the car's own estimate.</li>
+      <li>Technical details collapsed.</li></ul>
+      <h3>Icons</h3>
+      <ul><li>A single status word in the chip; explanations use <svg class="ic" aria-hidden="true"><use href="#i-info"/></svg> only when a longer note is hidden behind it.</li></ul>
+    </div>
+    <div class="phone">
+      <div class="bar"><span>Hybrid battery</span><span class="pill ok">READY</span></div>
+      <div class="box"><div class="sm">Battery health (SOH) · the car's own estimate</div><div class="big">91 %</div></div>
+      <div class="box"><div class="sm">Block spread</div><div class="mid">0.04 V</div><div class="meter"><i style="width:22%"></i></div><div class="sm">normal &lt; 0.10 V</div></div>
+      <div class="btn ghost">Load test · 30 s</div>
+    </div></div>
+  </section>
+
+  <section id="graph">
+    <h2>6 · Graph Studio</h2>
+    <div class="where">Today: <code>Views/GraphStudioPage.xaml</code>. A tap-to-expand graph with the close X at the upper-left is already implemented (small fix, not a redesign).</div>
+    <div class="cols"><div>
+      <h3>Proposal (larger)</h3>
+      <ul><li>Make the controls a single bottom sheet; keep the graphs full width.</li>
+      <li>Presets ("Engine health", "Fuel and oxygen", "Battery and voltage") as one-tap channel sets.</li>
+      <li>Pinch to change the time window; double-tap to pause.</li></ul>
+      <h3>Decision needed</h3>
+      <ul><li>Is the bottom sheet worth the change, given the page works today?</li></ul>
+      <h3>Icons</h3>
+      <ul><li>Toolbar uses the catalog: <svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg> / <svg class="ic" aria-hidden="true"><use href="#i-play"/></svg>, <svg class="ic" aria-hidden="true"><use href="#i-record"/></svg>, <svg class="ic" aria-hidden="true"><use href="#i-flag"/></svg> marker, <svg class="ic" aria-hidden="true"><use href="#i-expand"/></svg>, <svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg> channels, <svg class="ic" aria-hidden="true"><use href="#i-close"/></svg>. Each has an accessibility label.</li><li>Preset names are text only; the channel graphs themselves are untouched.</li></ul>
+    </div>
+    <div class="phone">
+      <div class="bar"><span><svg class="ic lg" aria-hidden="true"><use href="#i-close"/></svg></span><span class="mid">Engine speed</span><span class="mid">2 140 rpm</span></div>
+      <div class="chart" style="height:110px"></div>
+      <div class="sm">min 780 · avg 1 960 · max 3 120</div>
+      <div class="grid3"><span class="pill">Presets</span><span class="pill">10 s</span><span class="pill"><svg class="ic" aria-hidden="true"><use href="#i-record"/></svg> Rec</span></div>
+    </div></div>
+  </section>
+
+  <section id="coding">
+    <h2>7 · Coding</h2>
+    <div class="where">Today: <code>Views/CodingPage.xaml</code>. <strong>No change is proposed to any logic, command or safety check.</strong></div>
+    <div class="cols"><div>
+      <h3>What looks wrong</h3>
+      <ul><li>The readiness checks, features and backups are on one long page; the safety message competes with the feature list.</li></ul>
+      <h3>Proposal (layout only)</h3>
+      <ul><li>Three steps at the top: <em>1 Readiness · 2 Backup · 3 Change</em>, each with a state.</li>
+      <li>Features listed only after readiness is green, each showing its state word (Supported · Needs backup · Blocked · Unverified).</li></ul>
+      <h3>Decision needed</h3>
+      <ul><li>This touches a safety-critical page. Approve the layout before any work starts.</li></ul>
+      <h3>Icons</h3>
+      <ul><li>Layout and icon style only — readiness rows use <svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> / <svg class="ic" aria-hidden="true"><use href="#i-warning"/></svg> / <svg class="ic" aria-hidden="true"><use href="#i-close"/></svg> in a fixed column, the chosen backup uses <svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>, delete uses <svg class="ic" aria-hidden="true"><use href="#i-close"/></svg>.</li><li>Every safety check, confirmation and write rule stays exactly where it is.</li></ul>
+    </div>
+    <div class="phone">
+      <div class="bar"><span>Coding</span></div>
+      <div class="box row"><span>1 Readiness</span><span class="pill ok">ready</span></div>
+      <div class="box row"><span>2 Backup</span><span class="pill warn">none yet</span></div>
+      <div class="box row"><span>3 Change</span><span class="pill">locked until a backup exists</span></div>
+    </div></div>
+  </section>
+
+  <section id="service">
+    <h2>8 · Service</h2>
+    <div class="where">Today: <code>Views/ServicePage.xaml</code>. The 50 % / 100 % oil-life reset buttons are restored (small fix); shown only when the car supports the checked write-back.</div>
+    <div class="cols"><div>
+      <h3>Proposal (larger)</h3>
+      <ul><li>Top: oil card with the two reset buttons; below: reminders; below: procedures with their honest compatibility pills.</li>
+      <li>The "Help" block (menu guide · search · recorder) becomes a single "Reset in a workshop or by hand" row with a guided flow.</li></ul>
+      <h3>Icons</h3>
+      <ul><li>Procedures expand with <svg class="ic" aria-hidden="true"><use href="#i-chevron-down"/></svg> / <svg class="ic" aria-hidden="true"><use href="#i-chevron-up"/></svg>; the search field clears with <svg class="ic" aria-hidden="true"><use href="#i-close"/></svg>.</li><li>Source notes such as “from the car” are plain text.</li></ul>
+    </div>
+    <div class="phone">
+      <div class="bar"><span>Service</span><span class="pill">Refresh</span></div>
+      <div class="box"><div class="sm">Oil · from the car</div><div class="big">64 %</div><div class="meter"><i style="width:64%"></i></div>
+        <div class="grid2" style="margin-top:6px"><div class="btn">Reset full (100 %)</div><div class="btn ghost">Reset 1/2 (50 %)</div></div></div>
+      <div class="box row"><span>Brake fluid</span><span class="pill warn">in 3 weeks</span></div>
+    </div></div>
+  </section>
+
+  <section id="emissions">
+    <h2>9 · Emissions</h2>
+    <div class="where">Today: <code>Views/EmissionsPage.xaml</code>. Mode 05 / Mode 06 screens stay exactly as they are; only the overview page could change.</div>
+    <div class="cols"><div>
+      <h3>Proposal</h3>
+      <ul><li>Readiness monitors as a compact grid (Complete · Incomplete · Not supported), with the MIL state as a separate line.</li>
+      <li>"A drive cycle may be required" shown only when something is incomplete.</li></ul>
+      <h3>Icons</h3>
+      <ul><li>Monitor readiness: <svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> when complete, <svg class="ic" aria-hidden="true"><use href="#i-warning"/></svg> when not, inside the existing status circle; the MIL line stays a sentence.</li><li>Mode 05 / Mode 06 pages are not touched.</li></ul>
+    </div>
+    <div class="phone">
+      <div class="bar"><span>Emissions</span></div>
+      <div class="box row"><span>MIL</span><span class="pill ok">off</span></div>
+      <div class="grid2"><div class="box row"><span>Catalyst</span><span class="pill ok">done</span></div><div class="box row"><span>EVAP</span><span class="pill warn">not done</span></div></div>
+    </div></div>
+  </section>
+
+  <section id="accel">
+    <h2>10 · Acceleration</h2>
+    <div class="where">Today: <code>Views/AccelerationPage.xaml</code>. The heading and ranking row now follow the unit setting (0–100 km/h or 0–60 mph) — small fix.</div>
+    <div class="cols"><div>
+      <h3>Proposal (larger)</h3>
+      <ul><li>One big speed ring, the live time in the centre, split rows underneath.</li>
+      <li>"Exact (OBD)" or "Approximate (GPS, not ranked)" always visible as a chip.</li>
+      <li>After a run: result card with Share, Save video, Add to ranking.</li></ul>
+      <h3>Icons</h3>
+      <ul><li>The speed ring and split rows stay as drawn; the “exact / approximate” chip is text.</li><li>The filter button uses <svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg>, the rules row <svg class="ic" aria-hidden="true"><use href="#i-chevron-down"/></svg>. No chequered-flag pictogram in the empty state.</li></ul>
+    </div>
+    <div class="phone">
+      <div class="bar"><span>0–100 km/h</span><span class="pill ok">exact · OBD</span></div>
+      <div class="box" style="text-align:center"><div class="big">8.42 s</div><div class="sm">132 km/h</div></div>
+      <div class="grid3"><div class="box"><div class="sm">0–20</div><b>1.1</b></div><div class="box"><div class="sm">0–50</div><b>3.0</b></div><div class="box"><div class="sm">0–80</div><b>5.6</b></div></div>
+      <div class="btn">Start run</div>
+    </div></div>
+  </section>
+
+  <section id="tacho">
+    <h2>11 · Tachometer</h2>
+    <div class="where">No standalone tachometer page exists in the code today; engine speed is a gauge in live data and in Graph Studio. This is a <em>new</em> view proposal.</div>
+    <div class="cols"><div>
+      <h3>Proposal</h3>
+      <ul><li>A dashboard view: one large RPM dial, speed, coolant, throttle — read from standard PIDs only, with "not reported" when a PID is missing.</li>
+      <li>Redline taken from the vehicle profile only when a verified value exists; otherwise no redline is drawn.</li></ul>
+      <h3>Decision needed</h3>
+      <ul><li>Is a new page wanted at all, or only a bigger RPM tile on Live data?</li></ul>
+      <h3>Icons</h3>
+      <ul><li>The gauge is the visual; there is nothing to add an icon to.</li></ul>
+    </div>
+    <div class="phone">
+      <div class="bar"><span>Tachometer</span></div>
+      <div class="box" style="text-align:center"><div class="big">2 140</div><div class="sm">rpm</div><div class="meter"><i style="width:36%"></i></div></div>
+      <div class="grid3"><div class="box"><div class="sm">km/h</div><b>62</b></div><div class="box"><div class="sm">°C</div><b>88</b></div><div class="box"><div class="sm">throttle</div><b>18 %</b></div></div>
+    </div></div>
+  </section>
+
+  <section id="history">
+    <h2>12 · History</h2>
+    <div class="where">Today: <code>Views/HistoryPage.xaml</code>, <code>AccelerationHistoryPage</code>, saved vehicle reports.</div>
+    <div class="cols"><div>
+      <h3>Proposal</h3>
+      <ul><li>One timeline per car with filter chips: Scans · Reports · Runs · Trips.</li>
+      <li>Delete with a confirmation, and a clear "stored only on this phone" line.</li></ul>
+      <h3>Icons</h3>
+      <ul><li>Filter chips are text; deleting uses <svg class="ic" aria-hidden="true"><use href="#i-close"/></svg> after a confirmation.</li></ul>
+    </div>
+    <div class="phone">
+      <div class="bar"><span>History</span></div>
+      <div class="grid3"><span class="pill ok">Scans</span><span class="pill">Reports</span><span class="pill">Runs</span></div>
+      <div class="box row"><span>12 Oct · Full scan</span><span class="pill ok">0 codes</span></div>
+      <div class="box row"><span>09 Oct · 0–100</span><span class="pill">8.42 s</span></div>
+    </div></div>
+  </section>
+
+  <section id="leader">
+    <h2>13 · Leaderboard</h2>
+    <div class="where">Today: <code>Views/AccelerationLeaderboardPage.xaml</code>.</div>
+    <div class="cols"><div>
+      <h3>Proposal</h3>
+      <ul><li>Filters collapsed into one row (Test · Period · Cars); "Verified only" as a switch.</li>
+      <li>Own result pinned at the bottom with its review state (Under review · Verified).</li>
+      <li>"How results are checked" as a one-tap sheet.</li></ul>
+      <h3>Icons</h3>
+      <ul><li>Filters use <svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg>; a verified result is the word “Verified” with <svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>; the empty state is a sentence, not a pictogram.</li></ul>
+    </div>
+    <div class="phone">
+      <div class="bar"><span>0–100 km/h ranking</span><span class="pill">Filters</span></div>
+      <div class="box row"><span>1 · Golf GTI 2019</span><span class="pill ok"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> 5.9 s</span></div>
+      <div class="box row"><span>2 · Civic Type R</span><span class="pill ok"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> 6.1 s</span></div>
+      <div class="box row"><span>My place · 41</span><span class="pill warn">under review</span></div>
+    </div></div>
+  </section>
+
+  <section id="report">
+    <h2>14 · Vehicle report</h2>
+    <div class="where">Today: <code>Views/VehicleReportPage.xaml</code> — now the only report entry on Home.</div>
+    <div class="cols"><div>
+      <h3>Proposal</h3>
+      <ul><li>Header with score and verdict; checks done as rows with the time they ran; checks not yet run as "+ add".</li>
+      <li>Exports (PDF · QR · Text) in one fixed bar; earlier reports below.</li></ul>
+      <h3>Icons</h3>
+      <ul><li>Each check row carries one status icon — <svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> done and fine, <svg class="ic" aria-hidden="true"><use href="#i-warning"/></svg> needs attention, <svg class="ic" aria-hidden="true"><use href="#i-info"/></svg> information, <svg class="ic" aria-hidden="true"><use href="#i-circle"/></svg> not run yet — instead of a pictogram per check type.</li><li>Checks not yet run keep the “+ add” text.</li></ul>
+    </div>
+    <div class="phone">
+      <div class="bar"><span>Vehicle report</span></div>
+      <div class="box row"><div><div class="mid">Generally good</div><div class="sm">7 checks · minor issues</div></div><div class="big">82</div></div>
+      <div class="box row"><span>Fault codes</span><span class="pill ok">0</span></div>
+      <div class="box row"><span>Mileage</span><span class="pill warn">single source</span></div>
+      <div class="grid3"><div class="btn">PDF</div><div class="btn ghost">QR</div><div class="btn ghost">Text</div></div>
+    </div></div>
+  </section>
+
+  <footer>Wireframes use invented sample numbers for layout only. Real screens would show only values the car returned.</footer>
+</main>
+</body>
+</html>

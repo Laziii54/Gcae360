@@ -62,9 +62,9 @@
                                             </DataTrigger>
                                         </Label.Triggers>
                                     </Label>
-                                    <Label AutomationId="DynamicTextSensorPid" IsVisible="False" Grid.Row="1" Grid.Column="1" Text="{Binding Pid, StringFormat='PID 01{0:X2}'}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                                    <Label AutomationId="DynamicTextSensorPid" IsVisible="False" Grid.Row="1" Grid.Column="1" Text="{Binding Pid, StringFormat='PID 01{0:X2}'}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
                                     <Label AutomationId="DynamicTextSensorUnit" Grid.Row="1" Grid.Column="2" Text="{Binding Unit}" TextColor="{DynamicResource SubTextColor}" FontSize="11" HorizontalTextAlignment="End" />
-                                    <Label AutomationId="DynamicTextSensorStatus" Grid.Row="1" Grid.Column="1" Text="{Binding StatusText}" IsVisible="{Binding HasStatus}" TextColor="{Binding StatusColor}" FontSize="11" FontAttributes="Bold" />
+                                    <Label AutomationId="DynamicTextSensorStatus" Grid.Row="1" Grid.Column="1" Text="{Binding StatusText}" IsVisible="{Binding HasStatus}" TextColor="{Binding StatusColor}" FontSize="12" FontAttributes="Bold" />
                                 </Grid>
                                 <BoxView Style="{StaticResource RowDividerStyle}" />
                             </VerticalStackLayout>

@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<ContentPage x:Class="CarScanner.VinCheck.Views.VinHistoryPage" x:Name="Page" xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" xmlns:vc="clr-namespace:CarScanner.VinCheck" Shell.NavBarIsVisible="False" BackgroundColor="{DynamicResource PageBg}">
+<ContentPage x:Class="CarScanner.VinCheck.Views.VinHistoryPage" x:Name="Page" xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" xmlns:controls="clr-namespace:CarScanner.Controls" xmlns:vc="clr-namespace:CarScanner.VinCheck" Shell.NavBarIsVisible="False" BackgroundColor="{DynamicResource PageBg}">
 <ContentPage.Resources>
 <vc:VinCheckResources />
 </ContentPage.Resources>
 <Grid RowDefinitions="Auto,*">
 <!-- Top bar -->
 <Grid Padding="16,12,16,4" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-<Button Text="‹" FontSize="24" Padding="0" Clicked="BackClicked" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="12" WidthRequest="40" HeightRequest="40" MinimumHeightRequest="40"/>
+<controls:IconButton Kind="chevron-left" Clicked="BackClicked" WidthRequest="40" HeightRequest="40" IconSize="20" StrokeShape="RoundRectangle 12" SemanticProperties.Description="Back" />
 <Label Grid.Column="1" Text="{Binding Title}" Style="{StaticResource PageTitleStyle}" FontSize="19" HorizontalTextAlignment="Center" VerticalTextAlignment="Center"/>
 <Border Grid.Column="2" WidthRequest="40" HeightRequest="40" Padding="0" BackgroundColor="{DynamicResource CardBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 12">
 <Border.GestureRecognizers>
@@ -28,7 +28,7 @@
 <VerticalStackLayout Grid.Row="1" Padding="12,10,12,12" Spacing="1">
 <Label Text="{Binding Make}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation"/>
 <Label Text="{Binding Model}" FontSize="13" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation"/>
-<Label Text="{Binding Vin}" FontSize="11" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation"/>
+<Label Text="{Binding Vin}" FontSize="12" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation"/>
 <Button Text="{Binding Source={x:Reference Page},Path=BindingContext.OpenText}" Command="{Binding Source={x:Reference Page},Path=BindingContext.OpenFavoriteCommand}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="10" HeightRequest="36" MinimumHeightRequest="36" Padding="0" FontSize="13" Margin="0,8,0,0"/>
 </VerticalStackLayout>
 </Grid>
@@ -56,11 +56,11 @@
 <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
 <Label Text="{Binding DisplayName}" FontAttributes="Bold" FontSize="14" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation"/>
 <Label Text="{Binding Year}" FontSize="12" TextColor="{DynamicResource SubTextColor}"/>
-<Label Text="{Binding Vin}" FontSize="11" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation"/>
-<Label Text="{Binding DateText}" FontSize="11" TextColor="{DynamicResource SubTextColor}"/>
+<Label Text="{Binding Vin}" FontSize="12" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation"/>
+<Label Text="{Binding DateText}" FontSize="12" TextColor="{DynamicResource SubTextColor}"/>
 </VerticalStackLayout>
-<Button Grid.Column="2" Text="×" Command="{Binding Source={x:Reference Page},Path=BindingContext.DeleteCommand}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="#B3361F" FontSize="20" BorderWidth="0" Padding="0" WidthRequest="36" HeightRequest="40" MinimumHeightRequest="40" VerticalOptions="Center"/>
-<Button Grid.Column="3" Text="›" Command="{Binding Source={x:Reference Page},Path=BindingContext.OpenHistoryCommand}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" FontSize="22" BorderWidth="0" Padding="0" WidthRequest="36" HeightRequest="40" MinimumHeightRequest="40" VerticalOptions="Center"/>
+<controls:IconButton Grid.Column="2" Kind="close" Plain="True" Tint="#B3361F" Command="{Binding Source={x:Reference Page},Path=BindingContext.DeleteCommand}" CommandParameter="{Binding .}" WidthRequest="36" HeightRequest="40" IconSize="16" VerticalOptions="Center" SemanticProperties.Description="Delete" />
+<controls:IconButton Grid.Column="3" Kind="chevron-right" Plain="True" Tint="{DynamicResource SubTextColor}" Command="{Binding Source={x:Reference Page},Path=BindingContext.OpenHistoryCommand}" CommandParameter="{Binding .}" WidthRequest="36" HeightRequest="40" IconSize="16" VerticalOptions="Center" SemanticProperties.Description="Open" />
 </Grid>
 </VerticalStackLayout>
 </DataTemplate>

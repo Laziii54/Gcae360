@@ -3,6 +3,7 @@
     x:Name="RootPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:CarScanner.Controls"
     xmlns:vm="clr-namespace:CarScanner.ViewModels"
     xmlns:m="clr-namespace:CarScanner.Models"
     x:Class="CarScanner.Views.VehicleBrandSelectionPage"
@@ -27,7 +28,7 @@
                                     <TapGestureRecognizer Command="{Binding x:DataType=vm:VehicleBrandSelectionViewModel, Source={RelativeSource AncestorType={x:Type vm:VehicleBrandSelectionViewModel}}, Path=SelectBrandCommand}" CommandParameter="{Binding .}" />
                                 </Grid.GestureRecognizers>
                                 <Label Text="{Binding DisplayName}" Style="{StaticResource RowTitleStyle}" FontSize="15" />
-                                <Label Grid.Column="1" Text="›" Style="{StaticResource RowChevronStyle}" />
+                                <controls:Icon Grid.Column="1" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                             </Grid>
                             <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" Margin="14,0,0,0" />
                         </VerticalStackLayout>
