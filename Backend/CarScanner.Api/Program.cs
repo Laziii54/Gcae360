@@ -319,7 +319,7 @@ app.MapGet("/privacy-policy", () =>
 """;
 
     return Results.Content(
-        html,
+        SeoPages.WithMeta(html, "/privacy-policy"),
         "text/html; charset=utf-8");
 });
 
@@ -352,7 +352,7 @@ app.MapGet("/support", () =>
 </body>
 </html>
 """;
-    return Results.Content(html, "text/html; charset=utf-8");
+    return Results.Content(SeoPages.WithMeta(html, "/support"), "text/html; charset=utf-8");
 });
 
 app.MapGet("/terms-of-use", () =>
@@ -392,7 +392,7 @@ app.MapGet("/terms-of-use", () =>
 </body>
 </html>
 """;
-    return Results.Content(html, "text/html; charset=utf-8");
+    return Results.Content(SeoPages.WithMeta(html, "/terms-of-use"), "text/html; charset=utf-8");
 });
 
 // ============================================================
@@ -2336,6 +2336,10 @@ app.MapGet(
         Results.Content(
             SitePages.HomePage(full.Price, full.IsConfigured, english: true),
             "text/html; charset=utf-8"));
+
+// Crawler files. robots.txt keeps the public site open and points to the sitemap; sitemap.xml lists only the real public pages.
+app.MapGet("/robots.txt", () => Results.Text(SeoPages.RobotsTxt(), "text/plain; charset=utf-8"));
+app.MapGet("/sitemap.xml", () => Results.Text(SeoPages.SitemapXml(), "application/xml; charset=utf-8"));
 
 // ============================================================
 // ADMIN (owner only: GCS_ADMIN_EMAILS [+ GCS_ADMIN_TOTP_SECRET, GCS_ADMIN_IPS])

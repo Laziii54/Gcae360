@@ -31,6 +31,6 @@ GCS_EMAIL_FROM_NAME=OBD360
 # Minutes the code and link stay valid (5-60, default 15)
 GCS_EMAIL_CODE_MINUTES=15
 # https origin used for the logo and the email button (falls back to Payments:PublicBaseUrl)
-GCS_PUBLIC_BASE_URL=…
+GCS_PUBLIC_BASE_URL=https://obd360.ge
 # Support address shown in the email footer (defaults to the one on the public support page)
 GCS_SUPPORT_EMAIL=…

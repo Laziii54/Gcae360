@@ -258,10 +258,8 @@ document.addEventListener("DOMContentLoaded",function(){var btn=document.getElem
         var home = english ? "/en" : "/";
         return $$"""
 <!doctype html><html lang="{{(english ? "en" : "ka")}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{{T("OBD360", "OBD360")}}</title>
-<meta name="description" content="{{T("OBD2 დიაგნოსტიკა ტელეფონით, შეცდომის კოდები ქართულად, ყიდვისწინა შემოწმება და VIN ისტორია აუქციონის ფოტოებით.", "OBD2 diagnostics on your phone, fault codes explained, pre-purchase checks and VIN history with auction photos.")}}">
+{{SeoPages.HomeHead(english)}}
 <meta name="theme-color" content="#f4f5f3">{{VerificationMeta()}}
-<link rel="alternate" hreflang="ka" href="/"><link rel="alternate" hreflang="en" href="/en">
 <link rel="icon" type="image/png" href="/assets/favicon.png"><link rel="icon" type="image/png" sizes="512x512" href="/assets/icon-512.png"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 {{BootHead}}<noscript><style>#boot{display:none}</style></noscript>
 {{Style}}</head><body>

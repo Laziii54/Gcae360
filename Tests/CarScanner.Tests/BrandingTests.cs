@@ -125,4 +125,17 @@ public sealed class BrandingTests
         Assert.DoesNotContain("loader.gif", site);
         Assert.DoesNotContain("loader.webp", site);
     }
+
+    [Fact]
+    public void ThePublicPages_LiveOnTheOwnDomain_WhileTheApiAddressIsConfiguredSeparately()
+    {
+        var links = Read("Services", "StoreLinks.cs");
+        Assert.Contains("\"https://obd360.ge\"", links);
+        Assert.DoesNotContain("azurewebsites", links);
+
+        // The API base (accounts, AI, payments) is not switched with the website: it moves only when the domain serves the API.
+        Assert.Contains("BackendBaseUrl", Read("Services", "AIConfig.cs"));
+
+        Assert.Contains("https://obd360.ge", Read("Backend", "CarScanner.Api", "appsettings.example.json"));
+    }
 }
