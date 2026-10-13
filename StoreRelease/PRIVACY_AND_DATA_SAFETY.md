@@ -35,7 +35,7 @@ must not use it to collect or transmit physical location.
 - Purchase information: processed for subscription verification and website card orders (BOG/TBC).
 - Data encrypted in transit: Yes; cleartext traffic is disabled on Android.
 - Account creation: Optional; account deletion is available inside the PRO screen.
-- Deletion request contact: `gcar360support@gmail.com`.
+- Deletion request contact: `obd360support@gmail.com`.
 - Ads and cross-app tracking: No.
 
 Final answers in Play Console must match the deployed backend, retention policy

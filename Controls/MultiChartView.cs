@@ -245,13 +245,36 @@ public sealed class MultiChartView : GraphicsView
                 // line
                 var path = new PathF();
                 var started = false;
+                float firstX = 0, lastX = 0;
                 foreach (var p in s.Points)
                 {
                     if (p.Time < start.AddSeconds(-1) || p.Time > end.AddSeconds(1)) continue;
                     var x = Math.Clamp(X(p.Time), plot.Left, plot.Right);
                     var y = Math.Clamp(Y(p.Value), plot.Top, plot.Bottom);
-                    if (!started) { path.MoveTo(x, y); started = true; }
+                    if (!started) { path.MoveTo(x, y); started = true; firstX = x; }
                     else path.LineTo(x, y);
+                    lastX = x;
+                }
+
+                // A soft gradient under the line reads better than a bare stroke; skipped in
+                // compact (grid-view) sparklines, where the fill would just be visual noise.
+                if (started && !compact)
+                {
+                    var fill = new PathF(path);
+                    fill.LineTo(lastX, plot.Bottom);
+                    fill.LineTo(firstX, plot.Bottom);
+                    fill.Close();
+                    canvas.SetFillPaint(
+                        new LinearGradientPaint(new Point(0, 0), new Point(0, 1))
+                        {
+                            GradientStops = new[]
+                            {
+                                new PaintGradientStop(0f, s.Color.WithAlpha(0.16f)),
+                                new PaintGradientStop(1f, s.Color.WithAlpha(0f))
+                            }
+                        },
+                        plot);
+                    canvas.FillPath(fill);
                 }
 
                 if (started)

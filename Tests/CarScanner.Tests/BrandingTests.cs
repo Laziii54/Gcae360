@@ -95,7 +95,7 @@ public sealed class BrandingTests
         // descriptors, package / bundle ids, and internal hash salts. Everything else a person can read must say OBD360.
         var allowed = new[]
         {
-            "gcar360support@gmail.com", "com.gcar360.app", "GCar360.AccountDelete.v1", "GCar360.Admin.v2",
+            "com.gcar360.app", "GCar360.AccountDelete.v1", "GCar360.Admin.v2",
             "\"GCar360 PRO\"", "\"GCar360 VIN \"", "gcar360-ranking:", "gcar360-video:", "gcar360-qr:", "gcar360-device:"
         };
         var offenders = new List<string>();

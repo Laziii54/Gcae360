@@ -95,7 +95,7 @@ obd2,obd,car scanner,diagnostic,elm327,check engine,dtc,service,oil,0-100,mileag
 - Privacy: `https://obd360.ge/privacy-policy`
 - Terms: `https://obd360.ge/terms-of-use`
 - Support: `https://obd360.ge/support`
-- Support email: `gcar360support@gmail.com`
+- Support email: `obd360support@gmail.com`
 
 ## In-app products (create with exactly these IDs)
 

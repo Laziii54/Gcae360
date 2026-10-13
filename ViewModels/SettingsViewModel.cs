@@ -1,7 +1,6 @@
 using CarScanner.Services;
 using CarScanner.Services.DataCollection;
 using CarScanner.Services.Localization;
-using CarScanner.Services.OemDiagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Maui.Storage;
@@ -17,8 +16,6 @@ public partial class SettingsViewModel : BaseViewModel
     private readonly LocalizationService _localization;
     private readonly ReminderNotificationService _notifications;
     private readonly DataCollectionService _dataCollection;
-    private readonly LocalCaptureService _capture;
-    private IReadOnlyList<CaptureTarget> _captureTargets = Array.Empty<CaptureTarget>();
     private bool _initialized;
     private bool _syncingConsent;
 
@@ -39,18 +36,6 @@ public partial class SettingsViewModel : BaseViewModel
 
     [ObservableProperty]
     private bool dataCollectionEnabled;
-
-    [ObservableProperty]
-    private string[] captureTargetOptions = Array.Empty<string>();
-
-    [ObservableProperty]
-    private int selectedCaptureTargetIndex;
-
-    [ObservableProperty]
-    private bool captureRecording;
-
-    [ObservableProperty]
-    private string captureStatus = string.Empty;
 
     [ObservableProperty]
     private string unitOption = "Metric";
@@ -88,8 +73,7 @@ public partial class SettingsViewModel : BaseViewModel
         UnitSystemService units,
         LocalizationService localization,
         ReminderNotificationService notifications,
-        DataCollectionService dataCollection,
-        LocalCaptureService capture)
+        DataCollectionService dataCollection)
     {
         _bluetooth = bluetooth;
         _db = db;
@@ -98,7 +82,6 @@ public partial class SettingsViewModel : BaseViewModel
         _localization = localization;
         _notifications = notifications;
         _dataCollection = dataCollection;
-        _capture = capture;
 
         Title = "Settings";
 
@@ -115,9 +98,6 @@ public partial class SettingsViewModel : BaseViewModel
                 false);
 
         DataCollectionEnabled = _dataCollection.IsEnabled;
-        CaptureRecording = _capture.IsRecording;
-        CaptureTargetOptions = new[] { OtherVehicleOption };
-        _ = LoadCaptureTargetsAsync();
 
         AutoReconnect =
             Preferences.Default.Get(
@@ -207,8 +187,6 @@ public partial class SettingsViewModel : BaseViewModel
 
     public string DataCollectionTitle => ConsentWords.SettingsTitle;
 
-    public string DataCollectionInfo => ConsentWords.Body;
-
     /// <summary>One line: not decided / allowed (date) / declined (asked again after) / turned off (date).</summary>
     public string DataCollectionStatus => ConsentTexts.Status(ConsentWords, _dataCollection.Consent);
 
@@ -223,103 +201,7 @@ public partial class SettingsViewModel : BaseViewModel
         finally { _syncingConsent = false; }
 
         OnPropertyChanged(nameof(DataCollectionTitle));
-        OnPropertyChanged(nameof(DataCollectionInfo));
         OnPropertyChanged(nameof(DataCollectionStatus));
-    }
-
-    private string OtherVehicleOption =>
-        _localization.IsEnglish ? "Other vehicle (no target)" : "სხვა მანქანა (სამიზნის გარეშე)";
-
-    public string CaptureTitle =>
-        _localization.IsEnglish ? "Record a car capture to a file (local only)" : "მანქანის ჩანაწერი ფაილში (მხოლოდ ტელეფონზე)";
-
-    public string CaptureInfo =>
-        _localization.IsEnglish
-            ? "Records the read-only requests and replies the app exchanges with the car while you run a scan, and saves them as a file you can share. Nothing is uploaded by the app. No VIN or serial numbers are kept, but a module reply can contain a value the module reported at that moment. A recording is raw material only: it does not make any feature supported. Nothing is written to your car."
-            : "წერს მხოლოდ-წაკითხვის მოთხოვნებსა და პასუხებს, რომლებსაც აპი მანქანასთან ცვლის სკანირებისას, და ინახავს ფაილად, რომლის გაზიარებაც შეგიძლია. აპი არაფერს ტვირთავს ინტერნეტში. VIN და სერიული ნომრები არ ინახება, მაგრამ მოდულის პასუხი შეიძლება შეიცავდეს იმ წამს დაბრუნებულ მნიშვნელობას. ჩანაწერი მხოლოდ ნედლი მასალაა: ის არცერთ ფუნქციას არ ხდის მხარდაჭერილს. მანქანაში არაფერი იწერება.";
-
-    public string CaptureButtonText =>
-        CaptureRecording
-            ? (_localization.IsEnglish ? "Stop recording" : "ჩაწერის გაჩერება")
-            : (_localization.IsEnglish ? "Start recording" : "ჩაწერის დაწყება");
-
-    public string CaptureShareText =>
-        _localization.IsEnglish ? "Save and share recording" : "ჩანაწერის შენახვა და გაზიარება";
-
-    partial void OnCaptureRecordingChanged(bool value) => OnPropertyChanged(nameof(CaptureButtonText));
-
-    private async Task LoadCaptureTargetsAsync()
-    {
-        try
-        {
-            _captureTargets = await _capture.GetTargetsAsync();
-            var options = new List<string> { OtherVehicleOption };
-            options.AddRange(_captureTargets.Select(t => t.DisplayName));
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                CaptureTargetOptions = options.ToArray();
-                SelectedCaptureTargetIndex = 0;   // replacing the list leaves the picker on "nothing selected"
-            });
-        }
-        catch (Exception ex)
-        {
-            CarScanner.Services.CommandErrors.Report(ex, "SettingsViewModel.LoadCaptureTargets");
-        }
-    }
-
-    [RelayCommand]
-    private void ToggleCapture()
-    {
-        try
-        {
-            if (_capture.IsRecording)
-            {
-                _capture.Stop();
-                CaptureRecording = false;
-                CaptureStatus = _localization.IsEnglish
-                    ? $"Stopped. {_capture.ItemCount} different exchanges recorded."
-                    : $"გაჩერდა. ჩაწერილია {_capture.ItemCount} განსხვავებული გაცვლა.";
-                return;
-            }
-
-            var index = SelectedCaptureTargetIndex;
-            string? targetId = index > 0 && index - 1 < _captureTargets.Count ? _captureTargets[index - 1].Id : null;
-            _capture.Start(targetId);
-            CaptureRecording = true;
-            CaptureStatus = _localization.IsEnglish
-                ? "Recording. Connect to the car, then run a scan or the module scan, and come back here to stop."
-                : "იწერება. დაუკავშირდი მანქანას, გაუშვი სკანირება ან მოდულების სკანი და დაბრუნდი აქ გასაჩერებლად.";
-        }
-        catch (Exception ex)
-        {
-            CarScanner.Services.CommandErrors.Report(ex, "SettingsViewModel.ToggleCapture");
-        }
-    }
-
-    [RelayCommand]
-    private async Task ShareCapture()
-    {
-        try
-        {
-            var path = await _capture.SaveAsync();
-            if (path is null)
-            {
-                CaptureStatus = _localization.IsEnglish
-                    ? "Nothing recorded yet. Check that the car is connected and recognised, then run a scan."
-                    : "ჯერ არაფერი ჩაწერილა. შეამოწმე, რომ მანქანა დაკავშირებული და ამოცნობილია, და გაუშვი სკანირება.";
-                return;
-            }
-
-            await Share.Default.RequestAsync(new ShareFileRequest
-            {
-                Title = "OBD360 capture",
-                File = new ShareFile(path)
-            });
-        }
-        catch (Exception ex)
-        {
-            CarScanner.Services.CommandErrors.Report(ex, "SettingsViewModel.ShareCapture");
-        }
     }
 
     partial void OnDataCollectionEnabledChanged(bool value)

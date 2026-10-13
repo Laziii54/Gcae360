@@ -381,13 +381,13 @@ public sealed class AccountService
                 L("შეიყვანე მიმდინარე და ახალი პაროლი.", "Enter the current and the new password."));
         }
 
-        if (newPassword.Length < 10 ||
+        if (newPassword.Length < 8 ||
             newPassword.Length > 128)
         {
             return new(
                 false,
-                L("პაროლი 10-დან 128 სიმბოლომდე უნდა იყოს.",
-                  "The password must have 10 to 128 characters."));
+                L("პაროლი 8-დან 128 სიმბოლომდე უნდა იყოს.",
+                  "The password must have 8 to 128 characters."));
         }
 
         try
@@ -433,10 +433,10 @@ public sealed class AccountService
                     return new(
                         false,
                         !string.IsNullOrWhiteSpace(text) && text.Length <= 300
-                            ? L("ახალი პაროლი არ აკმაყოფილებს მოთხოვნებს (10–128 სიმბოლო, არ უნდა ემთხვეოდეს ძველს).",
+                            ? L("ახალი პაროლი არ აკმაყოფილებს მოთხოვნებს (8–128 სიმბოლო, არ უნდა ემთხვეოდეს ძველს).",
                                 text)
-                            : L("ახალი პაროლი არ აკმაყოფილებს მოთხოვნებს (10–128 სიმბოლო).",
-                                "The new password does not meet the requirements (10–128 characters)."));
+                            : L("ახალი პაროლი არ აკმაყოფილებს მოთხოვნებს (8–128 სიმბოლო).",
+                                "The new password does not meet the requirements (8–128 characters)."));
                 }
 
                 if (statusCode == 429)
@@ -695,8 +695,8 @@ public sealed class AccountService
             return new(
                 false,
                 moveDevice
-                    ? L("ანგარიშის ამ ტელეფონზე გადმოტანა ახლა ვერ მოხერხდა. სცადე მოგვიანებით ან მოგვწერე: gcar360support@gmail.com",
-                        "The account could not be moved to this phone right now. Try again later or write to gcar360support@gmail.com")
+                    ? L("ანგარიშის ამ ტელეფონზე გადმოტანა ახლა ვერ მოხერხდა. სცადე მოგვიანებით ან მოგვწერე: obd360support@gmail.com",
+                        "The account could not be moved to this phone right now. Try again later or write to obd360support@gmail.com")
                     : L("ეს ანგარიში სხვა ტელეფონზეა მიბმული. თავიდან შესვლით შეგიძლია ის ამ ტელეფონზე გადმოიტანო.",
                         "This account is linked to another phone. Sign in again to move it to this phone."),
                 DeviceAlreadyBoundCode);
@@ -717,8 +717,8 @@ public sealed class AccountService
             {
                 return new(
                     false,
-                    L("პაროლი 10-დან 128 სიმბოლომდე უნდა იყოს.",
-                      "The password must have 10 to 128 characters."));
+                    L("პაროლი 8-დან 128 სიმბოლომდე უნდა იყოს.",
+                      "The password must have 8 to 128 characters."));
             }
 
             if (text.Contains("email", StringComparison.OrdinalIgnoreCase))
@@ -734,15 +734,15 @@ public sealed class AccountService
             {
                 return new(
                     false,
-                    L("შეამოწმე ელ-ფოსტა და პაროლი (პაროლი — მინიმუმ 10 სიმბოლო).",
+                    L("შეამოწმე ელ-ფოსტა და პაროლი (პაროლი — მინიმუმ 8 სიმბოლო).",
                       text.Trim()));
             }
 
             return new(
                 false,
                 isRegister
-                    ? L("ანგარიში ვერ შეიქმნა. შეამოწმე ელ-ფოსტა და პაროლი (მინიმუმ 10 სიმბოლო).",
-                        "The account could not be created. Check the e-mail and the password (at least 10 characters).")
+                    ? L("ანგარიში ვერ შეიქმნა. შეამოწმე ელ-ფოსტა და პაროლი (მინიმუმ 8 სიმბოლო).",
+                        "The account could not be created. Check the e-mail and the password (at least 8 characters).")
                     : L("შეამოწმე ელ-ფოსტა და პაროლი.",
                         "Check the e-mail and password."));
         }
@@ -759,8 +759,8 @@ public sealed class AccountService
         {
             return new(
                 false,
-                L("ანგარიში ახლახან გადავიდა სხვა ტელეფონზე. ანგარიშის გადმოტანა შესაძლებელია 7 დღეში ერთხელ — სცადე მოგვიანებით ან მოგვწერე: gcar360support@gmail.com",
-                  "The account was moved to another phone recently. An account can be moved once per 7 days — try again later or write to gcar360support@gmail.com"),
+                L("ანგარიში ახლახან გადავიდა სხვა ტელეფონზე. ანგარიშის გადმოტანა შესაძლებელია 7 დღეში ერთხელ — სცადე მოგვიანებით ან მოგვწერე: obd360support@gmail.com",
+                  "The account was moved to another phone recently. An account can be moved once per 7 days — try again later or write to obd360support@gmail.com"),
                 RebindCooldownCode);
         }
 

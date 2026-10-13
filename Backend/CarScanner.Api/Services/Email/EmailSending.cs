@@ -25,7 +25,7 @@ public interface IEmailSender
 public sealed class EmailOptions
 {
     /// <summary>The support address already published on the site's support page.</summary>
-    public const string DefaultSupportEmail = "gcar360support@gmail.com";
+    public const string DefaultSupportEmail = "obd360support@gmail.com";
 
     public string? Host { get; init; }
     public int Port { get; init; } = 587;

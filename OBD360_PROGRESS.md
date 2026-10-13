@@ -57,7 +57,7 @@ names now say OBD360. `ApplicationTitle` is OBD360. Kept on purpose, because oth
 * payment descriptors sent to the bank (`GCar360 PRO`, `GCar360 VIN …`);
 * hash salts (`gcar360-ranking:`, `gcar360-video:`, `gcar360-device:`), capture schema id `gcar360.capture/1`, channel id
   `gcar360_trip`, handler-thread and wake-lock tags, animation key `gcar360-telemetry`;
-* support address `gcar360support@gmail.com` (the mailbox exists under that name) and the Play Store URL;
+* support address `obd360support@gmail.com` (changed from the old GCar360 mailbox on request) and the Play Store URL;
 * the DTC catalog file headers and the `.vs` folder.
 
 Manual work outside the code: a new support mailbox and its forwarding, store listings and descriptions, bank/merchant

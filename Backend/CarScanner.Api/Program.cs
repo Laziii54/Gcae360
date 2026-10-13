@@ -311,8 +311,8 @@ app.MapGet("/privacy-policy", () =>
 <p class="ka">ყველა კავშირი HTTPS-ით ხდება და ვიყენებთ გონივრულ ტექნიკურ ზომებს, თუმცა არცერთი სისტემა არ არის სრულად დაცული. OBD360 ბავშვებისთვის არ არის განკუთვნილი. კანონის შესაბამისად შეგიძლია მოითხოვო მონაცემებზე წვდომა, შესწორება ან წაშლა.</p>
 
 <h2>14. Changes and contact · ცვლილებები და კონტაქტი</h2>
-<p>We will publish changes on this page with a new date. Questions and privacy requests: <a href="mailto:gcar360support@gmail.com">gcar360support@gmail.com</a></p>
-<p class="ka">ცვლილებებს ამ გვერდზე გამოვაქვეყნებთ ახალი თარიღით. კითხვები და მოთხოვნები: <a href="mailto:gcar360support@gmail.com">gcar360support@gmail.com</a></p>
+<p>We will publish changes on this page with a new date. Questions and privacy requests: <a href="mailto:obd360support@gmail.com">obd360support@gmail.com</a></p>
+<p class="ka">ცვლილებებს ამ გვერდზე გამოვაქვეყნებთ ახალი თარიღით. კითხვები და მოთხოვნები: <a href="mailto:obd360support@gmail.com">obd360support@gmail.com</a></p>
 
 </body>
 </html>
@@ -336,7 +336,7 @@ app.MapGet("/support", () =>
 </head>
 <body>
 <h1>OBD360 Support</h1>
-<p>For help, purchase questions or a data-deletion request, email <a href="mailto:gcar360support@gmail.com">gcar360support@gmail.com</a>.</p>
+<p>For help, purchase questions or a data-deletion request, email <a href="mailto:obd360support@gmail.com">obd360support@gmail.com</a>.</p>
 <h2>Before contacting support</h2>
 <ol>
   <li>Connect the OBD adapter and turn the vehicle ignition on.</li>
@@ -388,7 +388,7 @@ app.MapGet("/terms-of-use", () =>
 <h2>5. Privacy</h2>
 <p>Use of the App is also governed by the <a href="/privacy-policy">Privacy Policy</a>.</p>
 <h2>6. Contact</h2>
-<p>Questions: <a href="mailto:gcar360support@gmail.com">gcar360support@gmail.com</a></p>
+<p>Questions: <a href="mailto:obd360support@gmail.com">obd360support@gmail.com</a></p>
 </body>
 </html>
 """;
@@ -2377,6 +2377,7 @@ app.MapGet(
                 await http.RequestServices.GetRequiredService<ResetRecordingStore>().LatestAsync(100, ct),
                 note, ok),
             "odometer" => AdminPages.Odometer(session, await http.RequestServices.GetRequiredService<OdometerStore>().GroupsAsync(null, null, ct), note, ok),
+            "ecu" => AdminPages.EcuObservations(session, await http.RequestServices.GetRequiredService<EcuObservationStore>().LatestAsync(3000, ct), note, ok),
             "crashes" => AdminPages.Crashes(session, await http.RequestServices.GetRequiredService<CrashReportStore>().GetGroupsAsync(30, ct), note, ok),
             "log" => AdminPages.Log(session, await admin.AuditLogAsync(ct), note, ok),
             "security" => AdminPages.Security(session, AdminService.NewTotpSecret(), note, ok),
@@ -2552,6 +2553,15 @@ app.MapPost(
             await admin.AuditAsync(session.Email, "odometer_" + action, id, ip, ct);
             var label = status switch { "approved" => "დადასტურდა — ამ მოდელზე ყველასთვის ჩაირთო", "rejected" => "უარყოფილია", _ => "დაბრუნდა მოლოდინში" };
             return Results.Redirect(Back("odometer", changed ? label : "ვერ შეიცვალა", changed));
+        }
+
+        if (kind == "ecu")
+        {
+            if (!long.TryParse(id, out var obsId) || action is not ("verify" or "unverify"))
+                return Results.Redirect(Back("ecu", "ჩანაწერი ვერ მოიძებნა", false));
+            var changed = await http.RequestServices.GetRequiredService<EcuObservationStore>().SetReviewAsync(obsId, action == "verify", ct);
+            await admin.AuditAsync(session.Email, "ecu_" + action, id, ip, ct);
+            return Results.Redirect(Back("ecu", changed ? (action == "verify" ? "დამოწმდა" : "დამოწმება მოიხსნა") : "ვერ შეიცვალა", changed));
         }
 
         if (kind == "acceleration")
@@ -2865,6 +2875,21 @@ static async Task<IResult> GenerateGeminiAsync(
         return Results.StatusCode(StatusCodes.Status403Forbidden);
     }
 
+    // A server that has no AI key cannot answer: say so before the request is counted against the person's limits.
+    var apiKey =
+        config["Gemini:ApiKey"] ??
+        Environment.GetEnvironmentVariable(
+            "GEMINI_API_KEY");
+
+    if (string.IsNullOrWhiteSpace(apiKey))
+    {
+        http.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Gemini")
+            .LogError("AI request refused: no Gemini API key is configured on the server (Gemini:ApiKey / GEMINI_API_KEY).");
+        return Results.Json(
+            AiProviderErrors.Body(AiProviderErrors.NotConfigured),
+            statusCode: AiProviderErrors.NotConfigured.HttpStatus);
+    }
+
     var clientKey =
         "ai:" + userId;
 
@@ -2902,18 +2927,6 @@ static async Task<IResult> GenerateGeminiAsync(
         }
     }
 
-    var apiKey =
-        config["Gemini:ApiKey"] ??
-        Environment.GetEnvironmentVariable(
-            "GEMINI_API_KEY");
-
-    if (string.IsNullOrWhiteSpace(apiKey))
-    {
-        return Results.Problem(
-            "Gemini API key is not configured on the server.",
-            statusCode: 503);
-    }
-
     var model =
         string.IsNullOrWhiteSpace(request.Model) ||
         !AppConfig.AllowedModels.Contains(
@@ -2931,6 +2944,9 @@ static async Task<IResult> GenerateGeminiAsync(
     string? raw = null;
     int providerStatus =
         StatusCodes.Status503ServiceUnavailable;
+    string? lastErrorBody = null;
+    var gemini = http.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Gemini");
+    var transportFailure = false;
 
     // At most two models per request (the chosen one + one fallback).
     foreach (var candidateModel in
@@ -2995,46 +3011,59 @@ static async Task<IResult> GenerateGeminiAsync(
                         }
                 });
 
-        using var response =
-            await client.SendAsync(
-                outbound,
-                http.RequestAborted);
-
-        providerStatus =
-            (int)response.StatusCode;
-
-        var candidateRaw =
-            await response.Content
-                .ReadAsStringAsync(
-                    http.RequestAborted);
-
-        if (response.IsSuccessStatusCode)
+        HttpResponseMessage response;
+        string candidateRaw;
+        try
         {
-            raw = candidateRaw;
-            break;
+            response =
+                await client.SendAsync(
+                    outbound,
+                    http.RequestAborted);
+            candidateRaw =
+                await response.Content
+                    .ReadAsStringAsync(
+                        http.RequestAborted);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !http.RequestAborted.IsCancellationRequested)
+        {
+            // Network failure or the provider timed out: not a "server error" of this app, and not hidden as one.
+            gemini.LogWarning("Gemini request to {Model} failed: {Error}", candidateModel, ex.GetType().Name);
+            transportFailure = ex is TaskCanceledException;
+            providerStatus = ex is TaskCanceledException ? 504 : 503;
+            lastErrorBody = null;
+            continue;
         }
 
-        if (!AppConfig.IsFallbackStatus(
-                response.StatusCode))
+        using (response)
         {
-            break;
+            providerStatus =
+                (int)response.StatusCode;
+
+            if (response.IsSuccessStatusCode)
+            {
+                raw = candidateRaw;
+                break;
+            }
+
+            lastErrorBody = candidateRaw;
+            var (googleStatus, googleMessage) = AiProviderErrors.ReadProviderError(candidateRaw);
+            gemini.LogWarning("Gemini {Model} answered HTTP {Status} {GoogleStatus}: {Message}", candidateModel, providerStatus, googleStatus, googleMessage);
+
+            if (!AppConfig.IsFallbackStatus(
+                    response.StatusCode))
+            {
+                break;
+            }
         }
     }
 
     if (raw is null)
     {
-        return Results.Json(
-            new
-            {
-                error =
-                    "AI სერვისთან დაკავშირება ვერ მოხერხდა.",
-                providerStatus =
-                    providerStatus
-            },
-            statusCode:
-                providerStatus is >= 400 and <= 599
-                    ? providerStatus
-                    : StatusCodes.Status502BadGateway);
+        var (lastGoogleStatus, _) = AiProviderErrors.ReadProviderError(lastErrorBody);
+        var failure = transportFailure && lastErrorBody is null
+            ? AiProviderErrors.Timeout
+            : AiProviderErrors.Map(providerStatus, lastGoogleStatus);
+        return Results.Json(AiProviderErrors.Body(failure, providerStatus), statusCode: failure.HttpStatus);
     }
 
     try

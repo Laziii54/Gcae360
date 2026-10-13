@@ -260,7 +260,7 @@ internal static partial class LanguagePacks
         ["Other light vehicle"] = "Otro vehículo ligero",
         ["Overview"] = "Resumen",
         ["PASS"] = "CORRECTO",
-        ["Password — at least 10 characters"] = "Contraseña — al menos 10 caracteres",
+        ["Password — at least 8 characters"] = "Contraseña — al menos 8 caracteres",
         ["Pause"] = "Pausa",
         ["Pending"] = "Pendiente",
         ["Performance history"] = "Historial de rendimiento",

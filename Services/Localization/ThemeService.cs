@@ -51,6 +51,8 @@ public static class ThemeService
         resources["TextColor"] = Color.FromArgb(isLight ? "#1B1D20" : "#ECEEF0");
         resources["SubTextColor"] = Color.FromArgb(isLight ? "#5D636B" : "#9AA1A9");
         resources["BorderColor"] = Color.FromArgb(isLight ? "#DCDFE3" : "#2C3036");
+        // A softer, less contrasty surface for grouped segmented controls (Graph Studio's view switcher).
+        resources["SegTrackBg"] = Color.FromArgb(isLight ? "#EDEEEA" : "#1C1F23");
         resources["DividerColor"] = Color.FromArgb(isLight ? "#ECEEF0" : "#24282D");
         resources["ButtonBg"] = Color.FromArgb(isLight ? "#FFFFFF" : "#23272C");
         resources["ButtonTextColor"] = Color.FromArgb(isLight ? "#1B1D20" : "#ECEEF0");

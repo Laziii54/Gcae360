@@ -141,7 +141,8 @@
                                         Grid.Column="2"
                                         Spacing="1"
                                         HorizontalOptions="End"
-                                        VerticalOptions="Center">
+                                        VerticalOptions="Center"
+                                        MaximumWidthRequest="150">
 
                                         <Label
                                             Text="{Binding CurrentValue}"
@@ -160,7 +161,8 @@
                                             Text="{Binding Status}"
                                             TextColor="{Binding StatusColor}"
                                             FontSize="12"
-                                            HorizontalTextAlignment="End" />
+                                            HorizontalTextAlignment="End"
+                                            LineBreakMode="WordWrap" />
 
                                     </VerticalStackLayout>
 

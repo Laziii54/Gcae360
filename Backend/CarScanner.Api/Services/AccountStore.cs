@@ -1410,10 +1410,10 @@ WHERE AccountId=$id;
         string password)
     {
         if (string.IsNullOrWhiteSpace(password) ||
-            password.Length is < 10 or > 128)
+            password.Length is < 8 or > 128)
         {
             throw new ArgumentException(
-                "Password must contain 10 to 128 characters.");
+                "Password must contain 8 to 128 characters.");
         }
     }
 

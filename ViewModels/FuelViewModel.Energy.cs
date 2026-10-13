@@ -33,6 +33,7 @@ public partial class FuelViewModel
     [ObservableProperty] private bool isHybridMode;
     [ObservableProperty] private bool isElectricMode;
     [ObservableProperty] private bool showEnergy;
+    [ObservableProperty] private bool showEnergyCard;
     [ObservableProperty] private bool showFuel = true;
     [ObservableProperty] private bool showPower;
     [ObservableProperty] private bool hasHeadUnits;
@@ -75,6 +76,8 @@ public partial class FuelViewModel
     [ObservableProperty] private string energyPerKmCaption = "";
 
     private string L(string ka, string en) => _localization.IsEnglish ? en : ka;
+
+    partial void OnHasTripHistoryChanged(bool value) => OnPropertyChanged(nameof(ShowTripHistoryList));
 
     private string? CurrentVin()
     {
@@ -190,6 +193,9 @@ public partial class FuelViewModel
         IsElectricMode = mode == EnergyMode.Electric;
         ShowEnergy = mode != EnergyMode.Fuel;
         ShowFuel = mode != EnergyMode.Electric;
+        // The energy-use summary card repeats what the drive-split card already
+        // shows in Hybrid, so it is kept for Electric only.
+        ShowEnergyCard = ShowEnergy && mode != EnergyMode.Hybrid;
         UpdateFuelKind();
         RefreshPresentation();
     }

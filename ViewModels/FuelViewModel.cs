@@ -69,6 +69,10 @@ public partial class FuelViewModel : BaseViewModel
     [ObservableProperty] private string refuelStatus = "ჯერ არ არის დამატებული შევსების ჩანაწერი.";
     [ObservableProperty] private string tankToTankSummary = "Tank-to-Tank ხარჯისთვის საჭიროა ერთი VIN-ის ორი „სრული ავზი“ ჩანაწერი.";
     [ObservableProperty] private string tripHistorySummary = "დასრულებული მოგზაურობები ჯერ არ არის.";
+    [ObservableProperty] private bool showTripHistory;
+    public string TripHistoryToggleText => ShowTripHistory ? L("დამალვა", "Hide") : L("ისტორიის ნახვა ›", "Show history ›");
+    /// <summary>The expanded list only renders once there is something to show it for.</summary>
+    public bool ShowTripHistoryList => ShowTripHistory && HasTripHistory;
     public ObservableCollection<RefuelRecord> RefuelHistory { get; } = new();
     public ObservableCollection<string> TripHistory { get; } = new();
 
@@ -360,6 +364,15 @@ public partial class FuelViewModel : BaseViewModel
         Preferences.Default.Set("fuel_price_per_liter", value ?? string.Empty);
         RefreshPresentation();
     }
+
+    partial void OnShowTripHistoryChanged(bool value)
+    {
+        OnPropertyChanged(nameof(TripHistoryToggleText));
+        OnPropertyChanged(nameof(ShowTripHistoryList));
+    }
+
+    [RelayCommand]
+    private void ToggleTripHistory() => ShowTripHistory = !ShowTripHistory;
 
     [RelayCommand]
     private async Task AddRefuel()

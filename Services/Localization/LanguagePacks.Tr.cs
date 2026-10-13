@@ -261,7 +261,7 @@ internal static partial class LanguagePacks
         ["Other light vehicle"] = "Diğer hafif araç",
         ["Overview"] = "Genel bakış",
         ["PASS"] = "Geçti",
-        ["Password — at least 10 characters"] = "Şifre — en az 10 karakter",
+        ["Password — at least 8 characters"] = "Şifre — en az 8 karakter",
         ["Pause"] = "Duraklat",
         ["Pending"] = "Bekleyen",
         ["Performance history"] = "Performans geçmişi",

@@ -54,6 +54,12 @@
                             <Label Text="Enable Notifications" Style="{StaticResource RowTitleStyle}" />
                             <CheckBox Grid.Column="1" IsChecked="{Binding NotificationsEnabled}" VerticalOptions="Center" />
                         </Grid>
+                        <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,2">
+                            <Label Text="{Binding DataCollectionTitle}" Style="{StaticResource RowTitleStyle}" LineBreakMode="WordWrap" />
+                            <CheckBox Grid.Column="1" IsChecked="{Binding DataCollectionEnabled}" VerticalOptions="Center" />
+                        </Grid>
+                        <Label Text="{Binding DataCollectionStatus}" FontSize="11" TextColor="{DynamicResource SubTextColor}" Margin="14,0,14,6" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
 
@@ -129,30 +135,6 @@
                             <Label Grid.Column="1" Text="Clear History" Style="{StaticResource RowTitleStyle}" />
                             <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                         </Grid>
-                </VerticalStackLayout>
-            </Border>
-
-            <Border Style="{StaticResource ListCardStyle}" Padding="14,10">
-                <VerticalStackLayout Spacing="6">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                        <Label Text="{Binding DataCollectionTitle}" Style="{StaticResource RowTitleStyle}" LineBreakMode="WordWrap" />
-                        <CheckBox Grid.Column="1" IsChecked="{Binding DataCollectionEnabled}" VerticalOptions="Center" />
-                    </Grid>
-                    <Label Text="{Binding DataCollectionStatus}" FontSize="12.5" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                    <Label Text="{Binding DataCollectionInfo}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                </VerticalStackLayout>
-            </Border>
-
-            <Border Style="{StaticResource ListCardStyle}" Padding="14,10">
-                <VerticalStackLayout Spacing="8">
-                    <Label Text="{Binding CaptureTitle}" Style="{StaticResource RowTitleStyle}" LineBreakMode="WordWrap" />
-                    <Label Text="{Binding CaptureInfo}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                    <Picker Title="{Binding CaptureTitle}" ItemsSource="{Binding CaptureTargetOptions}" SelectedIndex="{Binding SelectedCaptureTargetIndex}" IsEnabled="{Binding CaptureRecording, Converter={StaticResource InverseBoolConverter}}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" FontSize="14" />
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                        <Button Text="{Binding CaptureButtonText}" Command="{Binding ToggleCaptureCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="42" />
-                        <Button Grid.Column="1" Text="{Binding CaptureShareText}" Command="{Binding ShareCaptureCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.2" CornerRadius="12" HeightRequest="42" />
-                    </Grid>
-                    <Label Text="{Binding CaptureStatus}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
 

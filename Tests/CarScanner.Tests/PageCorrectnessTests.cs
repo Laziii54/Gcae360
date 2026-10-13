@@ -187,7 +187,6 @@ public sealed class PageCorrectnessTests
 
     [Theory]
     [InlineData("Services/ObdReportService.cs", "GEORGIAN CAR SCANNER")]
-    [InlineData("Services/DataCollection/LocalCaptureService.cs", "gcar360-capture")]
     [InlineData("ViewModels/CodingViewModel.cs", "gcar360_coding")]
     [InlineData("ViewModels/GraphStudioViewModel.cs", "gcar360_graph")]
     [InlineData("ViewModels/PerformanceVideoViewModel.cs", "gcar360_perf")]

@@ -51,15 +51,19 @@
         <VerticalStackLayout Padding="14,8,14,4" Spacing="8" IsVisible="{Binding IsNotFullScreen}">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
                 <Label Text="Graph Studio" TextColor="{DynamicResource TextColor}" FontSize="20" FontAttributes="Bold" VerticalOptions="Center" />
-                <HorizontalStackLayout Grid.Column="1" Spacing="6">
-                    <controls:IconButton AutomationId="DynamicTextPauseButton" Kind="{Binding PauseIconKind}" Command="{Binding TogglePauseCommand}" SemanticProperties.Description="Pause / resume" />
-                    <controls:IconButton Kind="record" Tint="#C2372B" Command="{Binding ToggleRecordingCommand}" SemanticProperties.Description="Record">
-                        <controls:IconButton.Triggers><DataTrigger TargetType="controls:IconButton" Binding="{Binding IsRecording}" Value="True"><Setter Property="BackgroundColor" Value="#C2372B" /><Setter Property="Tint" Value="White" /><Setter Property="Filled" Value="True" /></DataTrigger></controls:IconButton.Triggers>
-                    </controls:IconButton>
-                    <controls:IconButton Kind="flag" Tint="#1E8A4C" Command="{Binding AddMarkerCommand}" SemanticProperties.Description="Add marker" />
-                    <controls:IconButton Kind="expand" Command="{Binding ToggleFullScreenCommand}" SemanticProperties.Description="Full screen" />
-                    <controls:IconButton Kind="menu" Command="{Binding OpenChannelsCommand}" SemanticProperties.Description="Channels" />
-                </HorizontalStackLayout>
+                <Border Grid.Column="1" BackgroundColor="{DynamicResource CardBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 13" Padding="3">
+                    <HorizontalStackLayout Spacing="1">
+                        <controls:IconButton AutomationId="DynamicTextPauseButton" Kind="{Binding PauseIconKind}" Command="{Binding TogglePauseCommand}" Plain="True" SemanticProperties.Description="Pause / resume" />
+                        <BoxView WidthRequest="1" HeightRequest="18" Color="{DynamicResource BorderColor}" VerticalOptions="Center" Margin="2,0" />
+                        <controls:IconButton Kind="record" Tint="#C2372B" Command="{Binding ToggleRecordingCommand}" Plain="True" SemanticProperties.Description="Record">
+                            <controls:IconButton.Triggers><DataTrigger TargetType="controls:IconButton" Binding="{Binding IsRecording}" Value="True"><Setter Property="BackgroundColor" Value="#C2372B" /><Setter Property="Tint" Value="White" /><Setter Property="Filled" Value="True" /></DataTrigger></controls:IconButton.Triggers>
+                        </controls:IconButton>
+                        <controls:IconButton Kind="flag" Tint="#1E8A4C" Command="{Binding AddMarkerCommand}" Plain="True" SemanticProperties.Description="Add marker" />
+                        <BoxView WidthRequest="1" HeightRequest="18" Color="{DynamicResource BorderColor}" VerticalOptions="Center" Margin="2,0" />
+                        <controls:IconButton Kind="expand" Command="{Binding ToggleFullScreenCommand}" Plain="True" SemanticProperties.Description="Full screen" />
+                        <controls:IconButton Kind="menu" Command="{Binding OpenChannelsCommand}" Plain="True" SemanticProperties.Description="Channels" />
+                    </HorizontalStackLayout>
+                </Border>
             </Grid>
 
             <Border IsVisible="{Binding IsRecordingOpen}" BackgroundColor="{DynamicResource WarnBg}" StrokeThickness="0" StrokeShape="RoundRectangle 10" Padding="12,6">
@@ -69,7 +73,7 @@
                 </Grid>
             </Border>
 
-            <Border BackgroundColor="{DynamicResource BorderColor}" StrokeThickness="0" StrokeShape="RoundRectangle 11" Padding="3">
+            <Border BackgroundColor="{DynamicResource SegTrackBg}" StrokeThickness="0" StrokeShape="RoundRectangle 11" Padding="3">
                 <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="3">
                     <Button Text="ცალკე" Command="{Binding SelectViewCommand}" CommandParameter="separate" Style="{StaticResource GsSeg}">
                         <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsSeparateView}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource CardBg}" /><Setter Property="TextColor" Value="{DynamicResource TextColor}" /></DataTrigger></Button.Triggers>
@@ -89,16 +93,16 @@
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
                 <HorizontalStackLayout Spacing="6">
                         <Button Text="10წ" Command="{Binding SetWindowCommand}" CommandParameter="10" Style="{StaticResource GsPill}">
-                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsWindow10}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource TextColor}" /><Setter Property="TextColor" Value="{DynamicResource CardBg}" /></DataTrigger></Button.Triggers>
+                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsWindow10}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource Primary}" /><Setter Property="TextColor" Value="White" /></DataTrigger></Button.Triggers>
                         </Button>
                         <Button Text="30წ" Command="{Binding SetWindowCommand}" CommandParameter="30" Style="{StaticResource GsPill}">
-                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsWindow30}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource TextColor}" /><Setter Property="TextColor" Value="{DynamicResource CardBg}" /></DataTrigger></Button.Triggers>
+                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsWindow30}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource Primary}" /><Setter Property="TextColor" Value="White" /></DataTrigger></Button.Triggers>
                         </Button>
                         <Button Text="1წთ" Command="{Binding SetWindowCommand}" CommandParameter="60" Style="{StaticResource GsPill}">
-                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsWindow60}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource TextColor}" /><Setter Property="TextColor" Value="{DynamicResource CardBg}" /></DataTrigger></Button.Triggers>
+                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsWindow60}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource Primary}" /><Setter Property="TextColor" Value="White" /></DataTrigger></Button.Triggers>
                         </Button>
                         <Button Text="5წთ" Command="{Binding SetWindowCommand}" CommandParameter="300" Style="{StaticResource GsPill}">
-                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsWindow300}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource TextColor}" /><Setter Property="TextColor" Value="{DynamicResource CardBg}" /></DataTrigger></Button.Triggers>
+                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsWindow300}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource Primary}" /><Setter Property="TextColor" Value="White" /></DataTrigger></Button.Triggers>
                         </Button>
                 </HorizontalStackLayout>
                 <HorizontalStackLayout Grid.Column="1" HorizontalOptions="End" Spacing="8" VerticalOptions="Center">
@@ -153,34 +157,42 @@
                 <VerticalStackLayout IsVisible="{Binding IsSeparateView}" Spacing="8" BindableLayout.ItemsSource="{Binding Channels}">
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="vm:GraphChannel">
-                            <Border Style="{StaticResource ListCardStyle}" Padding="10,8">
+                            <Border Style="{StaticResource ListCardStyle}" Padding="0">
                                 <Border.Triggers><DataTrigger TargetType="Border" Binding="{Binding IsOverLimit}" Value="True"><Setter Property="Stroke" Value="#C2372B" /><Setter Property="StrokeThickness" Value="2" /></DataTrigger></Border.Triggers>
-                                <VerticalStackLayout Spacing="2">
-                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="6">
-                                        <BoxView Color="{Binding Color}" WidthRequest="9" HeightRequest="9" CornerRadius="4.5" VerticalOptions="Center" />
-                                        <Label Grid.Column="1" AutomationId="DynamicTextGraphName" Text="{Binding Name}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" LineBreakMode="TailTruncation" VerticalOptions="Center" />
-                                        <Label Grid.Column="2" AutomationId="DynamicTextGraphValue" Text="{Binding ValueText}" TextColor="{DynamicResource TextColor}" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" />
-                                        <Label Grid.Column="3" Text="{Binding Unit}" TextColor="{DynamicResource SubTextColor}" FontSize="11" VerticalOptions="Center" />
-                                    </Grid>
-                                    <controls:MultiChartView Series="{Binding Series}"
-                                                             TapCommand="{Binding ToggleExpandCommand, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}}"
-                                                             TapCommandParameter="{Binding .}"
-                                                             HeightRequest="{Binding WindowChartHeight, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}}"
-                                                             WindowSeconds="{Binding WindowSeconds, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}}"
-                                                             EndTime="{Binding EndTime, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}}"
-                                                             CursorTime="{Binding CursorTime, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}, Mode=TwoWay}"
-                                                             Markers="{Binding Markers, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}}"
-                                                             KeepCursor="{Binding IsPaused, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}}"
-                                                             GridColor="{DynamicResource BorderColor}"
-                                                             LabelColor="{DynamicResource SubTextColor}"
-                                                             CursorColor="{DynamicResource TextColor}" />
-                                    <HorizontalStackLayout Spacing="12">
-                                        <Label Text="{Binding MinText, StringFormat='მინ {0}'}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
-                                        <Label Text="{Binding AvgText, StringFormat='საშ {0}'}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
-                                        <Label Text="{Binding MaxText, StringFormat='მაქს {0}'}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
-                                        <Label IsVisible="False" Text="{Binding RateText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
-                                    </HorizontalStackLayout>
-                                </VerticalStackLayout>
+                                <Grid ColumnDefinitions="4,*">
+                                    <BoxView Color="{Binding Color}" />
+                                    <VerticalStackLayout Grid.Column="1" Spacing="4" Padding="10,8,10,8">
+                                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                                            <Label AutomationId="DynamicTextGraphName" Text="{Binding Name}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" LineBreakMode="TailTruncation" VerticalOptions="Center" />
+                                            <Label Grid.Column="1" AutomationId="DynamicTextGraphValue" Text="{Binding ValueText}" TextColor="{DynamicResource TextColor}" FontSize="20" FontAttributes="Bold" VerticalOptions="Center" />
+                                            <Label Grid.Column="2" Text="{Binding Unit}" TextColor="{DynamicResource SubTextColor}" FontSize="11" VerticalOptions="End" Margin="0,0,0,3" />
+                                        </Grid>
+                                        <controls:MultiChartView Series="{Binding Series}"
+                                                                 TapCommand="{Binding ToggleExpandCommand, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}}"
+                                                                 TapCommandParameter="{Binding .}"
+                                                                 HeightRequest="{Binding WindowChartHeight, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}}"
+                                                                 WindowSeconds="{Binding WindowSeconds, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}}"
+                                                                 EndTime="{Binding EndTime, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}}"
+                                                                 CursorTime="{Binding CursorTime, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}, Mode=TwoWay}"
+                                                                 Markers="{Binding Markers, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}}"
+                                                                 KeepCursor="{Binding IsPaused, x:DataType=vm:GraphStudioViewModel, Source={RelativeSource AncestorType={x:Type vm:GraphStudioViewModel}}}"
+                                                                 GridColor="{DynamicResource BorderColor}"
+                                                                 LabelColor="{DynamicResource SubTextColor}"
+                                                                 CursorColor="{DynamicResource TextColor}" />
+                                        <HorizontalStackLayout Spacing="6">
+                                            <Border BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="8,3">
+                                                <Label Text="{Binding MinText, StringFormat='მინ {0}'}" TextColor="{DynamicResource SubTextColor}" FontSize="12" FontAttributes="Bold" />
+                                            </Border>
+                                            <Border BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="8,3">
+                                                <Label Text="{Binding AvgText, StringFormat='საშ {0}'}" TextColor="{DynamicResource SubTextColor}" FontSize="12" FontAttributes="Bold" />
+                                            </Border>
+                                            <Border BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="8,3">
+                                                <Label Text="{Binding MaxText, StringFormat='მაქს {0}'}" TextColor="{DynamicResource SubTextColor}" FontSize="12" FontAttributes="Bold" />
+                                            </Border>
+                                            <Label IsVisible="False" Text="{Binding RateText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+                                </Grid>
                             </Border>
                         </DataTemplate>
                     </BindableLayout.ItemTemplate>
@@ -217,13 +229,13 @@
                     </Border>
                     <HorizontalStackLayout Spacing="6">
                         <Button Text="თავისი სკალა" Command="{Binding SetCompareScaleCommand}" CommandParameter="own" Style="{StaticResource GsPill}">
-                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsScaleOwn}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource TextColor}" /><Setter Property="TextColor" Value="{DynamicResource CardBg}" /></DataTrigger></Button.Triggers>
+                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsScaleOwn}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource Primary}" /><Setter Property="TextColor" Value="White" /></DataTrigger></Button.Triggers>
                         </Button>
                         <Button Text="0–100%" Command="{Binding SetCompareScaleCommand}" CommandParameter="percent" Style="{StaticResource GsPill}">
-                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsScalePercent}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource TextColor}" /><Setter Property="TextColor" Value="{DynamicResource CardBg}" /></DataTrigger></Button.Triggers>
+                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsScalePercent}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource Primary}" /><Setter Property="TextColor" Value="White" /></DataTrigger></Button.Triggers>
                         </Button>
                         <Button Text="ერთი სკალა" Command="{Binding SetCompareScaleCommand}" CommandParameter="shared" Style="{StaticResource GsPill}">
-                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsScaleShared}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource TextColor}" /><Setter Property="TextColor" Value="{DynamicResource CardBg}" /></DataTrigger></Button.Triggers>
+                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsScaleShared}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource Primary}" /><Setter Property="TextColor" Value="White" /></DataTrigger></Button.Triggers>
                         </Button>
                     </HorizontalStackLayout>
                     <Border Style="{StaticResource ListCardStyle}" Padding="12,10">
@@ -263,13 +275,13 @@
                     </FlexLayout>
                     <HorizontalStackLayout Spacing="6">
                         <Button Text="2×2" Command="{Binding SetGridSizeCommand}" CommandParameter="4" Style="{StaticResource GsPill}">
-                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsGrid4}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource TextColor}" /><Setter Property="TextColor" Value="{DynamicResource CardBg}" /></DataTrigger></Button.Triggers>
+                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsGrid4}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource Primary}" /><Setter Property="TextColor" Value="White" /></DataTrigger></Button.Triggers>
                         </Button>
                         <Button Text="2×3" Command="{Binding SetGridSizeCommand}" CommandParameter="6" Style="{StaticResource GsPill}">
-                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsGrid6}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource TextColor}" /><Setter Property="TextColor" Value="{DynamicResource CardBg}" /></DataTrigger></Button.Triggers>
+                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsGrid6}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource Primary}" /><Setter Property="TextColor" Value="White" /></DataTrigger></Button.Triggers>
                         </Button>
                         <Button Text="2×4" Command="{Binding SetGridSizeCommand}" CommandParameter="8" Style="{StaticResource GsPill}">
-                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsGrid8}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource TextColor}" /><Setter Property="TextColor" Value="{DynamicResource CardBg}" /></DataTrigger></Button.Triggers>
+                            <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsGrid8}" Value="True"><Setter Property="BackgroundColor" Value="{DynamicResource Primary}" /><Setter Property="TextColor" Value="White" /></DataTrigger></Button.Triggers>
                         </Button>
                     </HorizontalStackLayout>
                     <Label Text="შეეხე ფანჯარას, რომ გადიდდეს." TextColor="{DynamicResource SubTextColor}" FontSize="12" />

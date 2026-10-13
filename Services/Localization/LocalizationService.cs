@@ -462,7 +462,7 @@ public sealed partial class LocalizationService
             ["PRO ანგარიში"] = "PRO account",
             ["ანგარიშიდან გამოსვლა"] = "Sign out",
             ["ანგარიშის სრულად წაშლა"] = "Delete account permanently",
-            ["პაროლი — მინიმუმ 10 სიმბოლო"] = "Password — at least 10 characters",
+            ["პაროლი — მინიმუმ 8 სიმბოლო"] = "Password — at least 8 characters",
             ["შესვლა"] = "Sign in",
             ["რეგისტრაცია"] = "Register",
             ["Readiness წაკითხვა"] = "Read readiness",

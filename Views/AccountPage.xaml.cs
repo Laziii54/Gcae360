@@ -35,7 +35,7 @@ public partial class AccountPage : ContentPage
         LogoutButton.Text = L("გამოსვლა", "Sign out");
         EmailLabel.Text = L("ელ-ფოსტა", "E-mail");
         PasswordLabel.Text = L("პაროლი", "Password");
-        PasswordHintLabel.Text = L("ახალი ანგარიშისთვის: პაროლი — მინიმუმ 10 სიმბოლო", "New account: password at least 10 characters");
+        PasswordHintLabel.Text = L("ახალი ანგარიშისთვის: პაროლი — მინიმუმ 8 სიმბოლო", "New account: password at least 8 characters");
         LoginButton.Text = L("შესვლა", "Sign in");
         RegisterButton.Text = L("ახალი ანგარიშის შექმნა", "Create a new account");
         ForgotPasswordButton.Text = L("დაგავიწყდა პაროლი?", "Forgot password?");
@@ -47,7 +47,7 @@ public partial class AccountPage : ContentPage
         CurrentPasswordLabel.Text = L("მიმდინარე პაროლი", "Current password");
         NewPasswordLabel.Text = L("ახალი პაროლი", "New password");
         RepeatPasswordLabel.Text = L("გაიმეორე ახალი პაროლი", "Repeat the new password");
-        NewPasswordHintLabel.Text = L("მინიმუმ 10 სიმბოლო", "At least 10 characters");
+        NewPasswordHintLabel.Text = L("მინიმუმ 8 სიმბოლო", "At least 8 characters");
         SavePasswordButton.Text = L("პაროლის შენახვა", "Save password");
         CancelPasswordButton.Text = L("გაუქმება", "Cancel");
         ChangePasswordHintLabel.Text = L(
@@ -143,9 +143,9 @@ public partial class AccountPage : ContentPage
                 return;
             }
 
-            if (next.Length < 10)
+            if (next.Length < 8)
             {
-                ShowStatus(L("ახალი პაროლი მინიმუმ 10 სიმბოლო უნდა იყოს.", "The new password must have at least 10 characters."), error: true);
+                ShowStatus(L("ახალი პაროლი მინიმუმ 8 სიმბოლო უნდა იყოს.", "The new password must have at least 8 characters."), error: true);
                 return;
             }
 
@@ -300,9 +300,9 @@ public partial class AccountPage : ContentPage
             return;
         }
 
-        if (register && password.Length < 10)
+        if (register && password.Length < 8)
         {
-            ShowStatus(L("პაროლი მინიმუმ 10 სიმბოლო უნდა იყოს.", "The password must have at least 10 characters."), error: true);
+            ShowStatus(L("პაროლი მინიმუმ 8 სიმბოლო უნდა იყოს.", "The password must have at least 8 characters."), error: true);
             return;
         }
 
@@ -357,15 +357,16 @@ public partial class AccountPage : ContentPage
             {
                 await this.DisplayAlertLocalizedAsync(
                     L("დააყენე ახალი პაროლი", "Set a new password"),
-                    L("შენ შესული ხარ დროებითი პაროლით. უსაფრთხოებისთვის ახლავე დააყენე ახალი პაროლი (მინიმუმ 10 სიმბოლო).",
-                      "You signed in with a temporary password. For your security, set a new password now (at least 10 characters)."),
+                    L("შენ შესული ხარ დროებითი პაროლით. უსაფრთხოებისთვის ახლავე დააყენე ახალი პაროლი (მინიმუმ 8 სიმბოლო).",
+                      "You signed in with a temporary password. For your security, set a new password now (at least 8 characters)."),
                     "OK");
                 NewPasswordEntry.Focus();
                 return;
             }
 
             // Registration: what the server said about the verification email decides what happens next. Skipping
-            // it ("Later") is fine: scanning and every local feature work without a verified email.
+            // it ("Later") is fine: scanning and every local feature work without a verified email. Only paid
+            // actions (checkout, VIN report purchase) require it, and ask again at that point if needed.
             if (register)
                 await HandleRegistrationEmailAsync();
 

@@ -120,19 +120,6 @@
                 </Grid>
             </Border>
 
-            <!-- Fuel: what the number is (reported by the car / estimated / unavailable) -->
-            <Border Style="{StaticResource ListCardStyle}" Padding="14,10" IsVisible="{Binding ShowFuel}">
-                <VerticalStackLayout Spacing="4">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                        <Label Text="{Binding Instant}" AutomationId="DynamicTextFuelInstantLine" TextColor="{DynamicResource TextColor}" FontSize="17" FontAttributes="Bold" VerticalOptions="Center" />
-                        <Label Grid.Column="1" Text="{Binding QualityText}" TextColor="{Binding QualityColor}" FontSize="11.5" FontAttributes="Bold" VerticalOptions="Center" HorizontalTextAlignment="End" MaxLines="2" LineBreakMode="TailTruncation" />
-                    </Grid>
-                    <Label Text="{Binding InstantNote}" AutomationId="DynamicTextFuelNote" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
-                    <Label IsVisible="{Binding HasQualityDetail}" Text="{Binding QualityDetail}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
-                    <Label Text="{Binding TripQualityText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
-                </VerticalStackLayout>
-            </Border>
-
             <!-- Electric / plug-in hero: battery ring + live state -->
             <Border Style="{StaticResource ListCardStyle}" Padding="14,12" IsVisible="{Binding ShowEnergy}">
                 <Grid ColumnDefinitions="92,*" ColumnSpacing="14">
@@ -208,8 +195,8 @@
                 <Button Grid.Column="2" Text="გაჩერება" Command="{Binding StopCommand}" BackgroundColor="#C2372B" TextColor="White" CornerRadius="12" HeightRequest="48" FontAttributes="Bold" />
             </Grid>
 
-            <!-- Energy of this trip: used / recovered / net -->
-            <Border Style="{StaticResource ListCardStyle}" Padding="14,12" IsVisible="{Binding ShowEnergy}">
+            <!-- Energy of this trip: used / recovered / net (Electric only — Hybrid already has the drive-split card below) -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,12" IsVisible="{Binding ShowEnergyCard}">
                 <VerticalStackLayout Spacing="0">
                     <Label AutomationId="DynamicTextEnergyCardCaption" Text="{Binding EnergyCardCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="12" FontAttributes="Bold" Margin="0,0,0,6" />
                     <Grid IsVisible="{Binding ShowEnergyBar}" HeightRequest="8" Margin="0,0,0,4">
@@ -270,10 +257,6 @@
                         <Label Grid.Column="1" AutomationId="DynamicTextSplitFuelAverage" Text="{Binding SplitFuelAverageText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" HorizontalTextAlignment="End" />
                     </Grid>
                 </VerticalStackLayout>
-            </Border>
-
-            <Border Style="{StaticResource ListCardStyle}" Padding="14,10" IsVisible="{Binding ShowHybridNote}">
-                <Label Text="{Binding HybridNote}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
             </Border>
 
             <!-- Battery: SoC, V/A, capacity, price -->
@@ -373,48 +356,34 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Units, fuel type and what this car reports -->
-            <Label Text="{Binding SupportCaption}" Style="{StaticResource SectionCaptionStyle}" />
-            <Border Style="{StaticResource ListCardStyle}" Padding="14,6">
-                <VerticalStackLayout Spacing="0">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,4">
-                        <Label Text="{Binding UnitCaption}" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
-                        <Picker Grid.Column="1" ItemsSource="{Binding FuelUnitOptions}" SelectedIndex="{Binding SelectedFuelUnitIndex}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" MinimumWidthRequest="130" HorizontalTextAlignment="End" FontSize="14" VerticalOptions="Center" />
-                    </Grid>
-                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" IsVisible="{Binding ShowFuel}" />
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,4" IsVisible="{Binding ShowFuel}">
-                        <Label Text="{Binding FuelKindCaption}" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" LineBreakMode="WordWrap" />
-                        <Picker Grid.Column="1" ItemsSource="{Binding FuelKindOptions}" ItemDisplayBinding="{Binding ., Converter={StaticResource LocalizedTextConverter}}" SelectedIndex="{Binding SelectedFuelKindIndex}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" MinimumWidthRequest="130" HorizontalTextAlignment="End" FontSize="14" VerticalOptions="Center" />
-                    </Grid>
-                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
-                    <VerticalStackLayout Spacing="0" Padding="0,6" BindableLayout.ItemsSource="{Binding FuelSupportRows}">
+            <!-- Saved trips (fuel, hybrid and electric): collapsed by default, tap to open.
+                 The list itself can hold hundreds of trips, so once open it scrolls inside
+                 a capped-height box instead of pushing the rest of the page down. -->
+            <Grid ColumnDefinitions="*,Auto">
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding ToggleTripHistoryCommand}" />
+                </Grid.GestureRecognizers>
+                <Label Text="მოგზაურობების ისტორია" Style="{StaticResource SectionCaptionStyle}" VerticalOptions="Center" />
+                <Label Grid.Column="1" Text="{Binding TripHistoryToggleText}" TextColor="{DynamicResource Primary}" FontSize="12" FontAttributes="Bold" VerticalOptions="Center" />
+            </Grid>
+            <Label Text="{Binding TripHistorySummary}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding ToggleTripHistoryCommand}" />
+                </Label.GestureRecognizers>
+            </Label>
+            <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding ShowTripHistoryList}" Padding="0">
+                <ScrollView Orientation="Vertical" MaximumHeightRequest="360">
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding TripHistory}" Spacing="0" Margin="0,-1,0,0">
                         <BindableLayout.ItemTemplate>
-                            <DataTemplate x:DataType="vm:EnergyCapabilityRow">
-                                <Grid ColumnDefinitions="18,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" Padding="0,4">
-                                    <controls:Icon Kind="{Binding Mark}" Tint="{Binding MarkColor}" WidthRequest="14" HeightRequest="14" VerticalOptions="Start" HorizontalOptions="Start" Margin="0,3,0,0" />
-                                    <Label Grid.Column="1" Text="{Binding Title}" TextColor="{DynamicResource TextColor}" FontSize="12.5" />
-                                    <Label Grid.Row="1" Grid.Column="1" Text="{Binding Detail}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
-                                </Grid>
+                            <DataTemplate x:DataType="x:String">
+                                <VerticalStackLayout Spacing="0">
+                                    <BoxView Style="{StaticResource RowDividerStyle}" />
+                                    <Label Text="{Binding .}" TextColor="{DynamicResource TextColor}" FontSize="12.5" Padding="14,10" LineBreakMode="WordWrap" />
+                                </VerticalStackLayout>
                             </DataTemplate>
                         </BindableLayout.ItemTemplate>
                     </VerticalStackLayout>
-                </VerticalStackLayout>
-            </Border>
-
-            <!-- Saved trips (fuel, hybrid and electric) -->
-            <Label Text="მოგზაურობების ისტორია" Style="{StaticResource SectionCaptionStyle}" />
-            <Label Text="{Binding TripHistorySummary}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
-            <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasTripHistory}">
-                <VerticalStackLayout BindableLayout.ItemsSource="{Binding TripHistory}" Spacing="0" Margin="0,-1,0,0">
-                    <BindableLayout.ItemTemplate>
-                        <DataTemplate x:DataType="x:String">
-                            <VerticalStackLayout Spacing="0">
-                                <BoxView Style="{StaticResource RowDividerStyle}" />
-                                <Label Text="{Binding .}" TextColor="{DynamicResource TextColor}" FontSize="12.5" Padding="14,10" LineBreakMode="WordWrap" />
-                            </VerticalStackLayout>
-                        </DataTemplate>
-                    </BindableLayout.ItemTemplate>
-                </VerticalStackLayout>
+                </ScrollView>
             </Border>
         </VerticalStackLayout>
     </ScrollView>

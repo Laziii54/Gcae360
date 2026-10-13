@@ -253,6 +253,28 @@ SELECT changes();";
         finally { _gate.Release(); }
     }
 
+    /// <summary>
+    /// Owner review of one observation: "verified" means a developer has checked this request/response pair
+    /// against real documentation or a real test and it is safe to build a feature on (e.g. an ABS bleed
+    /// procedure, a service-reset write, a hybrid-battery read). Reverting goes back to "unreviewed" — it does
+    /// not delete the observation or its source count.
+    /// </summary>
+    public async Task<bool> SetReviewAsync(long id, bool verified, CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            await using var c = new SqliteConnection(_connectionString);
+            await c.OpenAsync(ct);
+            await using var cmd = c.CreateCommand();
+            cmd.CommandText = "UPDATE EcuObservations SET Review=$r WHERE Id=$id";
+            cmd.Parameters.AddWithValue("$r", verified ? "verified" : "unreviewed");
+            cmd.Parameters.AddWithValue("$id", id);
+            return await cmd.ExecuteNonQueryAsync(ct) > 0;
+        }
+        finally { _gate.Release(); }
+    }
+
     public async Task<IReadOnlyList<EcuObservationRow>> LatestAsync(int count, CancellationToken ct)
     {
         var rows = new List<EcuObservationRow>();

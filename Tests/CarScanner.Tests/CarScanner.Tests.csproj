@@ -106,8 +106,6 @@
     <Compile Include="../../Services/DataCollection/CollectionPayload.cs" Link="DataCollection/CollectionPayload.cs" />
     <Compile Include="../../Services/DataCollection/ConsentPolicy.cs" Link="DataCollection/ConsentPolicy.cs" />
     <Compile Include="../../Services/DataCollection/ConsentTexts.cs" Link="DataCollection/ConsentTexts.cs" />
-    <Compile Include="../../Services/DataCollection/LocalCaptureSession.cs" Link="DataCollection/LocalCaptureSession.cs" />
-    <Compile Include="../../Services/OemDiagnostics/OemCaptureTargetCatalog.cs" Link="OemDiagnostics/OemCaptureTargetCatalog.cs" />
     <Compile Include="../../Services/DataCollection/CollectionPipeline.cs" Link="DataCollection/CollectionPipeline.cs" />
     <Compile Include="../../Services/DataCollection/StandardObdClassifier.cs" Link="DataCollection/StandardObdClassifier.cs" />
     <Compile Include="../../Services/OBD/Elm327Protocol.cs" Link="Obd/Elm327Protocol.cs" />
@@ -158,6 +156,7 @@
     <Compile Include="../../Services/Energy/FuelPresenter.cs" Link="Energy/FuelPresenter.cs" />
     <Compile Include="../../Controls/IconCatalog.cs" Link="Controls/IconCatalog.cs" />
     <Compile Include="../../Controls/FlowPlacement.cs" Link="Controls/FlowPlacement.cs" />
+    <Compile Include="../../Services/AiFailureText.cs" Link="AiFailureText.cs" />
     <Compile Include="../../Services/VehicleSessionIdentity.cs" Link="VehicleSessionIdentity.cs" />
     <Compile Include="../../Services/VehicleIdentityText.cs" Link="VehicleIdentityText.cs" />
     <Compile Include="../../Services/Energy/ElectricTripCalculator.cs" Link="Energy/ElectricTripCalculator.cs" />

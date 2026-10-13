@@ -127,6 +127,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
         ("acceleration", "აჩქარების რეიტინგი"),
         ("service", "სერვისის სწავლება"),
         ("odometer", "გარბენის ადგილები"),
+        ("ecu", "ECU მონაცემები"),
         ("crashes", "აპის შეცდომები"),
         ("log", "ჟურნალი"),
         ("security", "უსაფრთხოება"),
@@ -550,6 +551,76 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
             "<p class=\"muted\">აპი აგზავნის მხოლოდ ადგილს (მოდული, მოთხოვნა, ბაიტები, მასშტაბი) — არა გარბენს და არა სრულ VIN-ს. ადგილი ამ მოდელზე ყველასთვის მუშაობს, როცა დაადასტურებ, როცა შენმა ადმინის ანგარიშმა იპოვა, ან როცა 2 სხვადასხვა შესულმა ანგარიშმა იპოვა სხვადასხვა ტელეფონიდან და სხვადასხვა ქსელიდან. ანონიმური ტელეფონები მას თავისით ვერ ჩართავენ. „უარყოფა“ მას სამუდამოდ თიშავს.</p>";
 
         return Layout(s, "odometer", "გარბენის ადგილები", "აპის „გარბენის ძებნის“ შედეგები მოდელების მიხედვით", content, message, ok);
+    }
+
+    // ============================================================
+    // ECU OBSERVATIONS (opt-in, crowd-sourced raw module answers — the
+    // raw material for adding ABS / service-coding / hybrid support to
+    // a new make or model). Grouped by vehicle so one glance shows what
+    // exists for e.g. "CHEVROLET VOLT" or "TOYOTA PRIUS".
+    // ============================================================
+
+    public static string EcuObservations(AdminService.Session s, IReadOnlyList<EcuObservationRow> rows, string? message, bool ok)
+    {
+        var csrf = H(s.Csrf);
+        var vehicles = rows
+            .GroupBy(r => (r.Make, r.Model))
+            .OrderByDescending(g => g.Max(r => r.SourceCount))
+            .ThenByDescending(g => g.Count())
+            .ToList();
+
+        static string RelPill(string reliability) => reliability switch
+        {
+            "verified" => "<span class=\"pill p-acc\">დამოწმებული</span>",
+            "corroborated" => "<span class=\"pill p-ok\">დადასტურებული (3+)</span>",
+            "repeated" => "<span class=\"pill p-warn\">გამეორებული (2)</span>",
+            _ => "<span class=\"pill p-mute\">ერთჯერადი</span>"
+        };
+
+        string Row(EcuObservationRow r)
+        {
+            var response = r.Response.Length > 80 ? r.Response[..80] + "…" : r.Response;
+            var verify = r.Review == "verified"
+                ? $"<form class=\"inline\" method=\"post\" action=\"/admin/ecu/{r.Id}/unverify\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button class=\"ghost\">დამოწმების მოხსნა</button></form>"
+                : $"<form class=\"inline\" method=\"post\" action=\"/admin/ecu/{r.Id}/verify\"{Confirm("ამ პასუხს ვადასტურებ, როგორც დოკუმენტირებულს — ამაზე ფუნქციის გაშენება შეიძლება?")}><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button class=\"green\">დამოწმება</button></form>";
+
+            return $"""
+<tr><td class="mono">{r.TxCanId:X}→{r.RxCanId:X}{(r.Ext29 ? " ·29b" : "")}</td>
+<td class="mono">{H(r.Request)}</td>
+<td class="mono" style="max-width:220px;white-space:normal;word-break:break-all">{H(response)}</td>
+<td>{H(r.Kind)} · {H(r.Status)}</td>
+<td>{N(r.SourceCount)} წყარო · {N(r.SeenCount)}×</td>
+<td>{RelPill(r.Reliability)}</td>
+<td class="muted">{H(r.LastSeen)}</td>
+<td>{verify}</td></tr>
+""";
+        }
+
+        var body = vehicles.Count == 0
+            ? "<div class=\"panel muted\">მონაცემები ჯერ არ არის — ჩაირთვება, როცა მომხმარებლები დათანხმდებიან მონაცემების გაზიარებას.</div>"
+            : string.Concat(vehicles.Select(g =>
+            {
+                var rowsHtml = string.Concat(g.OrderByDescending(r => r.SourceCount).ThenBy(r => r.Request, StringComparer.Ordinal).Select(Row));
+                var verified = g.Count(r => r.Review == "verified");
+                return $"""
+<details class="panel" style="margin-bottom:10px">
+<summary><b>{H(g.Key.Make)} {H(g.Key.Model)}</b> · {N(g.Count())} განსხვავებული პასუხი{(verified > 0 ? $" · <span class=\"pill p-acc\">{N(verified)} დამოწმებული</span>" : "")} · ბოლო აქტივობა {H(g.Max(r => r.LastSeen))}</summary>
+<div class="tbl" style="margin-top:10px"><table><tr><th>მოდული (TX→RX)</th><th>მოთხოვნა</th><th>პასუხი</th><th>ტიპი</th><th>წყარო</th><th>სტატუსი</th><th>ბოლოს</th><th>მოქმედება</th></tr>{rowsHtml}</table></div>
+</details>
+""";
+            }));
+
+        var content = $"""
+<div class="grid" style="margin-bottom:12px">
+{Kpi("მანქანა", N(vehicles.Count), "სხვადასხვა მარკა/მოდელი")}
+{Kpi("განსხვავებული პასუხი", N(rows.Count), "სულ")}
+{Kpi("დამოწმებული", N(rows.Count(r => r.Review == "verified")), "ფუნქციის გაშენებისთვის მზადაა", "good")}
+{Kpi("დადასტურებული (3+)", N(rows.Count(r => r.Reliability == "corroborated")), "3+ დამოუკიდებელი წყარო")}
+</div>
+<p class="muted">თითო ჯერზე მომხმარებელი აგზავნის მხოლოდ წაკითხვის პასუხებს (VIN და სერიული ნომრები გაფილტრულია) — თანხმობის შემდეგ ფონურად, ხელით არაფერი არ ჩაწერია. „დამოწმება“ = შემოწმებულია დოკუმენტაციასთან/რეალურ ტესტთან და შეიძლება მასზე ფუნქციის (ABS, service coding, ჰიბრიდის დიაგნოსტიკა) გაშენება ახალი მარკა/მოდელისთვის.</p>
+{body}
+""";
+        return Layout(s, "ecu", "ECU მონაცემები", "მარკა/მოდელის მიხედვით დაჯგუფებული, თანხმობით შემოსული დიაგნოსტიკური პასუხები", content, message, ok);
     }
 
     public static string Crashes(AdminService.Session s, IReadOnlyList<CrashGroup> groups, string? message, bool ok)

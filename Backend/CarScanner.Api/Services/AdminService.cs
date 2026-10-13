@@ -608,6 +608,8 @@ ORDER BY o.CreatedAt DESC LIMIT $n";
         "login_no_totp" => "შესვლა უარყოფილია — GCS_ADMIN_TOTP_SECRET არ არის",
         "temp_password" => "დროებითი პაროლი",
         "unbind" => "მოწყობილობის მოხსნა",
+        "ecu_verify" => "ECU პასუხის დამოწმება",
+        "ecu_unverify" => "ECU დამოწმების მოხსნა",
         _ => action
     };
 }

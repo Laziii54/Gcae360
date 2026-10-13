@@ -25,7 +25,6 @@
                         <BoxView WidthRequest="8" HeightRequest="8" CornerRadius="4" Color="{Binding MeasurementStateColor}" VerticalOptions="Center" />
                         <Label Grid.Column="1" Text="{Binding MeasurementState}" FontSize="13" FontAttributes="Bold" TextColor="{Binding MeasurementStateColor}" VerticalOptions="Center" />
                     </Grid>
-                    <Label Text="{Binding ChargingStatus}" FontSize="13" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
                     <Label Text="{Binding LastUpdated}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                 </VerticalStackLayout>
             </Border>
@@ -37,8 +36,6 @@
                 <VerticalStackLayout Spacing="6">
                     <Label Text="{Binding BatteryTypeTitle}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
                     <Picker ItemsSource="{Binding BatteryTypeOptions}" ItemDisplayBinding="{Binding ., Converter={StaticResource LocalizedTextConverter}}" SelectedIndex="{Binding SelectedTypeIndex}" FontSize="14" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" />
-                    <Label Text="{Binding BatteryTypeHint}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                    <Label Text="{Binding BatteryTypeNote}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
 
@@ -64,17 +61,20 @@
             <!-- History -->
             <Label Text="Voltage History" Style="{StaticResource SectionCaptionStyle}" />
             <Label IsVisible="False" Text="მხოლოდ ამ სესიაში ECU-დან წარმატებით მიღებული გაზომვები." FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="4,0" />
-            <Border Style="{StaticResource ListCardStyle}">
-                <VerticalStackLayout BindableLayout.ItemsSource="{Binding VoltageHistory}" Spacing="0" Margin="0,-1,0,0">
-                    <BindableLayout.ItemTemplate>
-                        <DataTemplate x:DataType="x:String">
-                            <VerticalStackLayout Spacing="0">
-                                <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
-                                <Label Text="{Binding .}" FontSize="13" TextColor="{DynamicResource TextColor}" Padding="14,11" LineBreakMode="WordWrap" />
-                            </VerticalStackLayout>
-                        </DataTemplate>
-                    </BindableLayout.ItemTemplate>
-                </VerticalStackLayout>
+            <Border Style="{StaticResource ListCardStyle}" Padding="0">
+                <!-- Up to 30 readings can collect in a session; past the first ~10 rows the list scrolls inside this box instead of pushing the rest of the page down. -->
+                <ScrollView Orientation="Vertical" MaximumHeightRequest="420">
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding VoltageHistory}" Spacing="0" Margin="0,-1,0,0">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <VerticalStackLayout Spacing="0">
+                                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                                    <Label Text="{Binding .}" FontSize="13" TextColor="{DynamicResource TextColor}" Padding="14,11" LineBreakMode="WordWrap" />
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </ScrollView>
             </Border>
 
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" Margin="0,6" />

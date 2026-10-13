@@ -689,7 +689,7 @@ public sealed class EmailConfigurationAndWiringTests
         Assert.False(new EmailOptions().IsConfigured);
         var configured = EmailOptions.From(Config(new()));
         Assert.False(configured.IsConfigured);
-        Assert.Equal("gcar360support@gmail.com", configured.SupportEmail);     // the address already on the public support page
+        Assert.Equal("obd360support@gmail.com", configured.SupportEmail);     // the address already on the public support page
 
         var source = File.ReadAllText(Path.Combine(RepositoryRoot(), "Backend/CarScanner.Api/Services/Email/EmailSending.cs"));
         Assert.Contains("\"GCS_SMTP_PASSWORD\"", source);
@@ -793,7 +793,7 @@ public sealed class VerificationEmailPreview
                 "482915", 15, lang,
                 "https://georgian-car-scanner-api-cyawhhdygecng6bt.germanywestcentral-01.azurewebsites.net/assets/logo.png",
                 "https://georgian-car-scanner-api-cyawhhdygecng6bt.germanywestcentral-01.azurewebsites.net/verify-email?l=" + lang + "&t=PREVIEW_TOKEN_NOT_REAL_PREVIEW_TOKEN_NOT_REAL",
-                "gcar360support@gmail.com", 2026));
+                "obd360support@gmail.com", 2026));
             File.WriteAllText(Path.Combine(dir, $"verify-{lang}.html"), mail.Html);
             File.WriteAllText(Path.Combine(dir, $"verify-{lang}.txt"), mail.PlainText);
         }

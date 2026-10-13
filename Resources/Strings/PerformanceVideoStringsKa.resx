@@ -55,10 +55,10 @@
     <value>გალერეაში ინახება…</value>
   </data>
   <data name="PV_Saved" xml:space="preserve">
-    <value>შენახულია გალერეაში (Movies/GCar360).</value>
+    <value>შენახულია გალერეაში (Movies/OBD360).</value>
   </data>
   <data name="PV_SavedBoth" xml:space="preserve">
-    <value>ორივე ვიდეო შენახულია გალერეაში (Movies/GCar360).</value>
+    <value>ორივე ვიდეო შენახულია გალერეაში (Movies/OBD360).</value>
   </data>
   <data name="PV_Discarded" xml:space="preserve">
     <value>ჩანაწერი წაიშალა.</value>

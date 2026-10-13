@@ -67,7 +67,7 @@ html.is-intl .ka,html.is-ge .en,html.is-intl .ka-only,html:not(.is-intl) .en-blo
             var parts = new List<string> { WebUtility.HtmlEncode(Name) };
             if (Id is not null) parts.Add("ს/კ · ID " + WebUtility.HtmlEncode(Id));
             if (Address is not null) parts.Add(WebUtility.HtmlEncode(Address));
-            parts.Add("<a href=\"mailto:gcar360support@gmail.com\">gcar360support@gmail.com</a>");
+            parts.Add("<a href=\"mailto:obd360support@gmail.com\">obd360support@gmail.com</a>");
             return "<div class=\"legal\">" + string.Join(" · ", parts) + "</div>";
         }
     }
@@ -296,7 +296,7 @@ try{render(await call('/api/web/subscription/cancel'));m.className='msg ok';m.te
 <div><span>ბარათით გადახდების ჩანაწერები (თანხა, თარიღი, შეკვეთის ნომერი) ბუღალტრული მიზნით ინახება ანონიმურად; ავტომატური გადახდა უქმდება და შენახული ბარათი იშლება. Google Play / App Store გამოწერა ცალკე გააუქმე მაღაზიაში.</span></div>
 <div><span>Card payment records (amount, date, order number) are kept anonymised for accounting; automatic payment is cancelled and the saved card is deleted. Cancel a Google Play / App Store subscription separately in the store.</span></div>
 </div>
-<p class="muted">კითხვები · Questions: <a href="mailto:gcar360support@gmail.com">gcar360support@gmail.com</a></p>
+<p class="muted">კითხვები · Questions: <a href="mailto:obd360support@gmail.com">obd360support@gmail.com</a></p>
 {{Footer}}{{legal.FooterHtml()}}</footer>
 </main>
 <script>

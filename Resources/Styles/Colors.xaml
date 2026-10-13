@@ -13,6 +13,7 @@
     <Color x:Key="TextColor">#1B1D20</Color>
     <Color x:Key="SubTextColor">#5D636B</Color>
     <Color x:Key="BorderColor">#DCDFE3</Color>
+    <Color x:Key="SegTrackBg">#EDEEEA</Color>
     <Color x:Key="DividerColor">#ECEEF0</Color>
     <Color x:Key="ProBadgeBg">#FBEECF</Color>
     <Color x:Key="ProBadgeText">#8A5A00</Color>

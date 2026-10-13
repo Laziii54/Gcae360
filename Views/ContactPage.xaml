@@ -16,7 +16,7 @@
             <Border Style="{StaticResource ListCardStyle}">
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="14,13">
                     <Path Data="M3,6 L21,6 L21,18 L3,18 Z M3,6 L12,13 L21,6" Style="{StaticResource RowIconStyle}" />
-                    <Label Grid.Column="1" Text="gcar360support@gmail.com" Style="{StaticResource RowTitleStyle}" />
+                    <Label Grid.Column="1" Text="obd360support@gmail.com" Style="{StaticResource RowTitleStyle}" />
                 </Grid>
             </Border>
 

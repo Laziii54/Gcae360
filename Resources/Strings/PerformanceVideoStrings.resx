@@ -55,10 +55,10 @@
     <value>Saving to the gallery…</value>
   </data>
   <data name="PV_Saved" xml:space="preserve">
-    <value>Saved to the gallery (Movies/GCar360).</value>
+    <value>Saved to the gallery (Movies/OBD360).</value>
   </data>
   <data name="PV_SavedBoth" xml:space="preserve">
-    <value>Both videos were saved to the gallery (Movies/GCar360).</value>
+    <value>Both videos were saved to the gallery (Movies/OBD360).</value>
   </data>
   <data name="PV_Discarded" xml:space="preserve">
     <value>The recording was deleted.</value>

@@ -187,7 +187,7 @@ public sealed class LocalizationRegressionTests
     {
         // Names, units, file formats and addresses are the same in every language.
         "GCar360", "OBD360", "Georgian Car Scanner", "RPM", "OBD", "PDF", "CSV", "JSON", "PRO", "VIN", "Mode 05", "Mode 06",
-        "name@gmail.com", "gcar360support@gmail.com", "Bluetooth", "Bluetooth / OBD2", "VIN Check", "GCar360 AI", "OBD360 AI", "copy"
+        "name@gmail.com", "obd360support@gmail.com", "Bluetooth", "Bluetooth / OBD2", "VIN Check", "GCar360 AI", "OBD360 AI", "copy"
     };
 
     [Fact]
@@ -438,7 +438,7 @@ public sealed class LocalizationRegressionTests
         foreach (var (page, source) in new[]
         {
             ("SettingsPage.xaml", "ThemeOptions"), ("SettingsPage.xaml", "UnitOptions"), ("SettingsPage.xaml", "PollingOptions"),
-            ("FuelPage.xaml", "FuelKindOptions"), ("BatteryPage.xaml", "BatteryTypeOptions")
+            ("BatteryPage.xaml", "BatteryTypeOptions")
         })
         {
             var xaml = File.ReadAllText(Path.Combine(Root, "Views", page));

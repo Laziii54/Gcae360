@@ -41,7 +41,6 @@
                             <Label Text="{Binding PackLabel}" IsVisible="{Binding HasPack}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                         </VerticalStackLayout>
                     </Grid>
-                    <Label Text="{Binding SummaryText}" FontSize="13" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" Margin="0,4,0,0" />
                     <Label Text="{Binding PackNote}" IsVisible="{Binding HasPackNote}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
@@ -150,14 +149,6 @@
                             <Label Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding RemainingLifeCaption}" Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" />
                         </Grid>
                     </VerticalStackLayout>
-                </VerticalStackLayout>
-            </Border>
-
-            <!-- How to read -->
-            <Border IsVisible="{Binding HasResult}" Style="{StaticResource ListCardStyle}" Padding="14,12">
-                <VerticalStackLayout Spacing="4">
-                    <Label Text="{Binding HowToTitle}" FontSize="13" FontAttributes="Bold" />
-                    <Label Text="{Binding HowToText}" Style="{StaticResource CaptionStyle}" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
 
