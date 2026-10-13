@@ -92,9 +92,9 @@ obd2,obd,car scanner,diagnostic,elm327,check engine,dtc,service,oil,0-100,mileag
 
 ## URLs
 
-- Privacy: `https://georgian-car-scanner-api-cyawhhdygecng6bt.germanywestcentral-01.azurewebsites.net/privacy-policy`
-- Terms: `https://georgian-car-scanner-api-cyawhhdygecng6bt.germanywestcentral-01.azurewebsites.net/terms-of-use`
-- Support: `https://georgian-car-scanner-api-cyawhhdygecng6bt.germanywestcentral-01.azurewebsites.net/support`
+- Privacy: `https://obd360.ge/privacy-policy`
+- Terms: `https://obd360.ge/terms-of-use`
+- Support: `https://obd360.ge/support`
 - Support email: `gcar360support@gmail.com`
 
 ## In-app products (create with exactly these IDs)

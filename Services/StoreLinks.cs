@@ -2,12 +2,12 @@ namespace CarScanner.Services;
 
 public static class StoreLinks
 {
-    private const string Backend =
-        "https://georgian-car-scanner-api-cyawhhdygecng6bt.germanywestcentral-01.azurewebsites.net";
+    /// <summary>The public website (privacy policy, terms, support). The API the app calls is configured separately in AIConfig.</summary>
+    public const string Website = "https://obd360.ge";
 
-    public const string PrivacyPolicyUrl = Backend + "/privacy-policy";
-    public const string TermsOfUseUrl = Backend + "/terms-of-use";
-    public const string SupportUrl = Backend + "/support";
+    public const string PrivacyPolicyUrl = Website + "/privacy-policy";
+    public const string TermsOfUseUrl = Website + "/terms-of-use";
+    public const string SupportUrl = Website + "/support";
 
     public static string ManageSubscriptionUrl => DeviceInfo.Platform == DevicePlatform.iOS
         ? "https://apps.apple.com/account/subscriptions"
