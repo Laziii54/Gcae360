@@ -1598,6 +1598,9 @@ public partial class HomeViewModel : BaseViewModel
     {
         try
         {
+        if (!await RequireObdConnectionAsync())
+            return;
+
         // One combined report: every check of this car, exported together.
         await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.VehicleReportPage));
         }

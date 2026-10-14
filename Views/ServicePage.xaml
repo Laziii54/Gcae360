@@ -36,8 +36,18 @@
                         <ProgressBar Progress="{Binding OilLifeFraction}" ProgressColor="{Binding OilLifeColor}" HeightRequest="6" />
                         <!-- Both targets go through the same checked write-back (speed, voltage, read-back); shown only when the car supports the reset. -->
                         <Grid IsVisible="{Binding CanResetOilLife}" ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,4,0,0">
-                            <Button AutomationId="DynamicTextServiceResetFull" Text="{Binding ResetFullButtonText}" Command="{Binding ResetOilLifeFullCommand}" IsEnabled="{Binding CanPressOilReset}" Style="{StaticResource PrimaryButtonStyle}" HeightRequest="48" FontSize="13" CornerRadius="12" />
-                            <Button Grid.Column="1" AutomationId="DynamicTextServiceResetHalf" Text="{Binding ResetHalfButtonText}" Command="{Binding ResetOilLifeHalfCommand}" IsEnabled="{Binding CanPressOilReset}" HeightRequest="48" FontSize="13" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderColor="{DynamicResource Primary}" BorderWidth="1.5" CornerRadius="12" />
+                            <Border BackgroundColor="#1D5BD6" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="8,6" MinimumHeightRequest="48" IsEnabled="{Binding CanPressOilReset}">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ResetOilLifeFullCommand}" />
+                                </Border.GestureRecognizers>
+                                <Label AutomationId="DynamicTextServiceResetFull" Text="{Binding ResetFullButtonText}" FontSize="13" FontAttributes="Bold" TextColor="White" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" HorizontalOptions="Center" VerticalOptions="Center" LineBreakMode="WordWrap" />
+                            </Border>
+                            <Border Grid.Column="1" BackgroundColor="Transparent" Stroke="{DynamicResource Primary}" StrokeThickness="1.5" StrokeShape="RoundRectangle 12" Padding="8,6" MinimumHeightRequest="48" IsEnabled="{Binding CanPressOilReset}">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ResetOilLifeHalfCommand}" />
+                                </Border.GestureRecognizers>
+                                <Label AutomationId="DynamicTextServiceResetHalf" Text="{Binding ResetHalfButtonText}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource Primary}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" HorizontalOptions="Center" VerticalOptions="Center" LineBreakMode="WordWrap" />
+                            </Border>
                         </Grid>
                         <!-- No reset button for this car: say why, instead of showing nothing. -->
                         <Label AutomationId="DynamicTextServiceResetUnavailable" IsVisible="{Binding ShowOilResetUnavailable}" Text="{Binding OilResetUnavailableText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
@@ -67,8 +77,8 @@
                                             <Label AutomationId="DynamicTextServicePartName" Text="{Binding Name}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
                                             <Label AutomationId="DynamicTextServicePartValue" Text="{Binding DueText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
                                         </VerticalStackLayout>
-                                        <Border Grid.Column="2" BackgroundColor="{Binding PillBackground}" StrokeThickness="0" StrokeShape="RoundRectangle 9" Padding="9,3" VerticalOptions="Center">
-                                            <Label Text="{Binding PillText}" FontSize="12" FontAttributes="Bold" TextColor="{Binding PillColor}" />
+                                        <Border Grid.Column="2" BackgroundColor="{Binding PillBackground}" StrokeThickness="0" StrokeShape="RoundRectangle 9" Padding="9,3" MaximumWidthRequest="100" VerticalOptions="Center">
+                                            <Label Text="{Binding PillText}" FontSize="12" FontAttributes="Bold" TextColor="{Binding PillColor}" LineBreakMode="WordWrap" HorizontalTextAlignment="Center" />
                                         </Border>
                                         <controls:Icon Grid.Column="3" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                                     </Grid>
@@ -89,7 +99,7 @@
                                     <Grid ColumnDefinitions="Auto,*,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="4" Padding="14,12">
                                         <Path Data="M9,3 L15,3 M12,3 L12,6 M5,14 A7,7 0 1 0 19,14 A7,7 0 1 0 5,14 M12,10 L12,14 L15,16" Style="{StaticResource RowIconStyle}" />
                                         <Label Grid.Column="1" AutomationId="DynamicTextServiceReminderTitle" Text="{Binding Title}" FontSize="14" TextColor="{DynamicResource TextColor}" VerticalTextAlignment="Center" LineBreakMode="WordWrap" />
-                                        <Label Grid.Column="2" AutomationId="DynamicTextServiceReminderValue" Text="{Binding ValueText}" FontSize="13" FontAttributes="Bold" TextColor="{Binding ValueColor}" VerticalTextAlignment="Center" HorizontalTextAlignment="End" />
+                                        <Label Grid.Column="2" AutomationId="DynamicTextServiceReminderValue" Text="{Binding ValueText}" FontSize="13" FontAttributes="Bold" TextColor="{Binding ValueColor}" VerticalTextAlignment="Center" HorizontalTextAlignment="End" LineBreakMode="WordWrap" MaximumWidthRequest="130" />
                                         <Button Grid.Column="3" AutomationId="DynamicTextServiceReminderReset" IsVisible="{Binding CanReset}" Text="{Binding ResetButtonText}" Command="{Binding x:DataType=vm:ServiceViewModel, Source={RelativeSource AncestorType={x:Type vm:ServiceViewModel}}, Path=ResetReminderCommand}" CommandParameter="{Binding .}" Padding="12,0" HeightRequest="30" MinimumHeightRequest="30" FontSize="12" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="15" VerticalOptions="Center" />
                                         <Label Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" AutomationId="DynamicTextServiceReminderManual" IsVisible="{Binding HasManualHint}" Text="{Binding ManualHint}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                                     </Grid>
@@ -142,6 +152,7 @@
                 <Label IsVisible="{Binding HasProcedureError}" Text="{Binding ProcedureErrorText}" FontSize="12" FontAttributes="Bold" TextColor="#B3361F" LineBreakMode="WordWrap" />
                 <Label IsVisible="{Binding HasProcedureEmpty}" Text="{Binding ProcedureEmptyText}" HorizontalTextAlignment="Center" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="8,4" />
 
+                <ScrollView MaximumHeightRequest="520">
                 <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding ProcedureRows}">
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="vm:ServiceProcedureRow">
@@ -186,6 +197,7 @@
                         </DataTemplate>
                     </BindableLayout.ItemTemplate>
                 </VerticalStackLayout>
+                </ScrollView>
 
                 <!-- Odometer: one line, tap "Change" to correct it -->
                 <Grid ColumnDefinitions="*,Auto" Padding="4,0">

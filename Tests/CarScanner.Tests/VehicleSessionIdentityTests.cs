@@ -223,9 +223,9 @@ public sealed class VehicleSessionIdentityTests
     public void AfterConnecting_TheSameTilesBecomeOpaque_AndNothingNewIsEnabledAutomatically()
     {
         var xaml = Read("Views", "HomePage.xaml");
-        // 15 car tiles are muted until connected and become opaque on IsConnected - that is all the connection changes on Home
-        Assert.Equal(15, Regex.Matches(xaml, @"ListCardStyle[^>]*Opacity=""0\.4""").Count);
-        Assert.Equal(16, Regex.Matches(xaml, @"<DataTrigger TargetType=""(Border|controls:FlowGrid)"" Binding=""\{Binding IsConnected\}"" Value=""True"">").Count);   // 15 tiles + the PRO group
+        // 16 car tiles are muted until connected and become opaque on IsConnected - that is all the connection changes on Home
+        Assert.Equal(16, Regex.Matches(xaml, @"ListCardStyle[^>]*Opacity=""0\.4""").Count);
+        Assert.Equal(17, Regex.Matches(xaml, @"<DataTrigger TargetType=""(Border|controls:FlowGrid)"" Binding=""\{Binding IsConnected\}"" Value=""True"">").Count);   // 16 tiles + the PRO group
         // each page still decides for itself what it supports; Home has no list of "enabled OEM functions"
         Assert.DoesNotContain("EnableOem", Read("ViewModels", "HomeViewModel.cs"));
     }
@@ -239,7 +239,7 @@ public sealed class VehicleSessionIdentityTests
         Assert.Contains("OBD adapter needed", require);
         Assert.Contains("OBD ადაპტერი საჭიროა", require);                       // Georgian and English; other languages through the packs
         Assert.Contains("if (_connectPromptOpen)", require);                      // one prompt at a time
-        foreach (var command in new[] { "GoToTroubleCodes", "GoToLiveData", "GoToSensors", "GoToEmissions", "GoToFreezeFrame", "GoToEcu", "GoToHybridHealth", "GoToBattery", "GoToService", "GoToMileage", "GoToFuel", "GoToModules" })
+        foreach (var command in new[] { "GoToTroubleCodes", "GoToLiveData", "GoToSensors", "GoToEmissions", "GoToFreezeFrame", "GoToEcu", "GoToHybridHealth", "GoToBattery", "GoToService", "GoToMileage", "GoToFuel", "GoToModules", "GoToDiagnosticReport" })
             Assert.Matches("private async Task " + command + @"\(\)[\s\S]{0,500}RequireObdConnectionAsync\(\)", home);
     }
 
@@ -247,7 +247,7 @@ public sealed class VehicleSessionIdentityTests
     public void SettingsAndAdapter_OpenWithoutAConnection()
     {
         var home = Read("ViewModels", "HomeViewModel.cs");
-        foreach (var command in new[] { "GoToAdapterCenter", "GoToSettings", "GoToCoding", "GoToGraphStudio", "GoToDiagnosticReport" })
+        foreach (var command in new[] { "GoToAdapterCenter", "GoToSettings", "GoToCoding", "GoToGraphStudio" })
         {
             var start = home.IndexOf("private async Task " + command + "()", StringComparison.Ordinal);
             Assert.True(start >= 0, command);

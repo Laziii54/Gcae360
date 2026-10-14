@@ -15,7 +15,6 @@ internal static partial class LanguagePacks
             "Nous avons envoyé un code à 6 chiffres à votre e-mail. Saisissez-le ici pour vérifier votre adresse. L'e-mail contient aussi un bouton si vous préférez un lien.",
             "Abbiamo inviato un codice a 6 cifre alla tua e-mail. Inseriscilo qui per verificare il tuo indirizzo. L'e-mail contiene anche un pulsante se preferisci un link."),
         R("Verify", "Doğrula", "Bestätigen", "Potwierdź", "Verificar", "Confirmar", "Vérifier", "Verifica"),
-        R("Later", "Daha sonra", "Später", "Później", "Más tarde", "Mais tarde", "Plus tard", "Più tardi"),
         R("Email not verified", "E-posta doğrulanmadı", "E-Mail nicht bestätigt", "E-mail niepotwierdzony", "Correo no verificado", "E-mail não confirmado", "E-mail non vérifié", "E-mail non verificata"),
         R("Try again", "Tekrar dene", "Erneut versuchen", "Spróbuj ponownie", "Reintentar", "Tentar novamente", "Réessayer", "Riprova"),
         R("Send new code", "Yeni kod gönder", "Neuen Code senden", "Wyślij nowy kod", "Enviar código nuevo", "Enviar novo código", "Envoyer un nouveau code", "Invia un nuovo codice"),

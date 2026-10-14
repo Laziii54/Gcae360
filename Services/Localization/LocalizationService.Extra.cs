@@ -414,7 +414,7 @@ public sealed partial class LocalizationService
             ["შეცვლა"] = "Change",
             ["სარეზერვო ასლები"] = "Backups",
             ["სრული სარეზერვო ასლის შექმნა"] = "Create full backup",
-            ["მხოლოდ კითხულობს ყველა მოდულს — მანქანაზე არაფერი იცვლება. შედარებისთვის შეეხეთ ორ ასლს."] = "Only reads every module — nothing is changed on the car. Tap two backups to compare them.",
+            ["მხოლოდ კითხულობს — მანქანაში არაფერი იცვლება. შედარებისთვის ქვემოთ სიაში შეეხეთ ჯერ ერთ ასლს, მერე მეორეს."] = "Only reads — nothing is changed on the car. To compare, tap one backup in the list below, then the other.",
             ["გაზიარება"] = "Share",
             ["ცვლილებების ისტორია"] = "Change history",
             ["აღდგენა"] = "Restore",

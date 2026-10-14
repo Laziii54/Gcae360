@@ -196,6 +196,10 @@ public partial class FuelViewModel
         // The energy-use summary card repeats what the drive-split card already
         // shows in Hybrid, so it is kept for Electric only.
         ShowEnergyCard = ShowEnergy && mode != EnergyMode.Hybrid;
+        // RefreshDashboard() below only runs when ShowEnergy is true, so it never clears ShowDriveSplit on its
+        // own in Fuel mode: without this, a prior Hybrid visit leaves the drive-split card stuck on screen.
+        if (!ShowEnergy)
+            ShowDriveSplit = false;
         UpdateFuelKind();
         RefreshPresentation();
     }

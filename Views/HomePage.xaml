@@ -346,7 +346,12 @@
                             <Label Text="სერვისი" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" VerticalTextAlignment="Start" MaxLines="2" LineBreakMode="TailTruncation" HeightRequest="34" />
                         </VerticalStackLayout>
                     </Border>
-                    <Border Style="{StaticResource ListCardStyle}" Padding="6,12,6,10">
+                    <Border Style="{StaticResource ListCardStyle}" Padding="6,12,6,10" Opacity="0.4">
+                        <Border.Triggers>
+                            <DataTrigger TargetType="Border" Binding="{Binding IsConnected}" Value="True">
+                                <Setter Property="Opacity" Value="1" />
+                            </DataTrigger>
+                        </Border.Triggers>
                         <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToDiagnosticReportCommand}" /></Border.GestureRecognizers>
                         <VerticalStackLayout Spacing="8" HorizontalOptions="Fill">
                             <Border WidthRequest="40" HeightRequest="40" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 12" HorizontalOptions="Center">

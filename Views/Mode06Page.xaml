@@ -52,8 +52,8 @@
                                         <Label Text="{Binding ActualText}" FontSize="13" TextColor="{DynamicResource TextColor}" />
                                         <Label Grid.Column="1" Text="{Binding LimitsText}" FontSize="12" HorizontalTextAlignment="End" TextColor="{DynamicResource SubTextColor}" />
                                     </Grid>
-                                    <Label Text="{Binding AuxiliaryText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
-                                    <Label AutomationId="DynamicTextMode06Explanation" Text="{Binding ExplanationText}" IsVisible="{Binding HasExplanation}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" Margin="0,3,0,0" />
+                                    <Label IsVisible="False" Text="{Binding AuxiliaryText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                    <Label IsVisible="False" AutomationId="DynamicTextMode06Explanation" Text="{Binding ExplanationText}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" Margin="0,3,0,0" />
                                     <Label IsVisible="False" Text="{Binding DefinitionNote}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                                 </VerticalStackLayout>
                             </VerticalStackLayout>

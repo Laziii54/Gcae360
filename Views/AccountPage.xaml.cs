@@ -219,29 +219,29 @@ public partial class AccountPage : ContentPage
     /// <summary>One English text translated into the app language; Georgian is written out.</summary>
     private string LT(string ka, string en) => _localization.IsEnglish ? LocalizationService.T(en) : ka;
 
-    private async Task HandleRegistrationEmailAsync()
+    /// <summary>True when there was nothing to verify, or the user entered the code. False means they must not be let in.</summary>
+    private async Task<bool> HandleRegistrationEmailAsync()
     {
         switch (_account.EmailVerificationState)
         {
             case "sent":
-                await RunVerificationAsync(EmailVerificationEntry.CodeAlreadySent);
-                break;
+                return await RunVerificationAsync(EmailVerificationEntry.CodeAlreadySent);
             case "failed":
                 // The mail server did not accept the message: say so and offer to try again.
-                await RunVerificationAsync(EmailVerificationEntry.FirstSendFailed);
-                break;
+                return await RunVerificationAsync(EmailVerificationEntry.FirstSendFailed);
             default:
                 // "unavailable" (the server cannot send email) or an older server: nothing to ask for.
-                break;
+                return true;
         }
     }
 
-    private async Task RunVerificationAsync(EmailVerificationEntry entry)
+    private async Task<bool> RunVerificationAsync(EmailVerificationEntry entry)
     {
         var verified = await EmailVerificationFlow.RunAsync(_account, entry);
         if (verified)
             ShowStatus("" + LT("ელფოსტა დადასტურებულია.", "Email verified."), error: false);
         await RefreshEmailStatusAsync();
+        return verified;
     }
 
     private async void OnVerifyEmailClicked(object? sender, EventArgs e)
@@ -313,6 +313,8 @@ public partial class AccountPage : ContentPage
                 ? await _account.RegisterAsync(email, password)
                 : await _account.LoginAsync(email, password);
 
+            var moveDevice = false;
+
             // The account is linked to another phone: ask once, then move it here.
             if (!register &&
                 !result.Success &&
@@ -331,7 +333,16 @@ public partial class AccountPage : ContentPage
                     return;
                 }
 
+                moveDevice = true;
                 result = await _account.LoginAsync(email, password, moveDevice: true);
+            }
+
+            // Login only: a sign-in code was just emailed — every login needs it, not only the first one.
+            if (!register &&
+                !result.Success &&
+                result.Code == AccountService.NeedsLoginCodeCode)
+            {
+                result = await RunLoginCodeAsync(email, password, moveDevice);
             }
 
             if (!result.Success)
@@ -364,11 +375,24 @@ public partial class AccountPage : ContentPage
                 return;
             }
 
-            // Registration: what the server said about the verification email decides what happens next. Skipping
-            // it ("Later") is fine: scanning and every local feature work without a verified email. Only paid
-            // actions (checkout, VIN report purchase) require it, and ask again at that point if needed.
+            // Registration: the account now exists and this device just signed in, but nobody gets into the app
+            // on a fresh registration without entering the code — there is no "skip" any more. Declining or
+            // failing to verify signs the brand-new session back out; the account itself is untouched, and the
+            // user can sign in again (and verify) once they have the code.
             if (register)
-                await HandleRegistrationEmailAsync();
+            {
+                var verified = await HandleRegistrationEmailAsync();
+                if (!verified)
+                {
+                    await _account.LogoutAsync();
+                    UpdateState();
+                    ShowStatus(
+                        LT("ანგარიში შეიქმნა. შესასვლელად ჯერ დაადასტურე ელფოსტა — შედი ხელახლა, როცა კოდი გექნება.",
+                           "Account created. Verify your email to sign in — log in again once you have the code."),
+                        error: true);
+                    return;
+                }
+            }
 
             await Task.Delay(700);
             try { await CarScanner.Services.SafeNavigation.GoToAsync(".."); } catch { }
@@ -381,6 +405,45 @@ public partial class AccountPage : ContentPage
         {
             SetBusy(false);
         }
+    }
+
+    /// <summary>
+    /// Second step of login: the code just emailed to the account. There is no skip option — if this is not
+    /// completed, the caller's result stays unsuccessful and no session was ever created (the server never issued
+    /// a token for this attempt), so there is nothing to sign back out of.
+    /// </summary>
+    private async Task<AccountActionResult> RunLoginCodeAsync(string email, string password, bool moveDevice)
+    {
+        var page = Shell.Current?.CurrentPage ?? Application.Current?.Windows.FirstOrDefault()?.Page;
+        if (page is null)
+            return new(false, L("შესვლა ვერ მოხერხდა.", "Could not sign in."));
+
+        for (var round = 0; round < 6; round++)
+        {
+            var code = await page.DisplayPromptLocalizedAsync(
+                LT("შესვლის დადასტურება", "Confirm sign-in"),
+                LT("უსაფრთხოებისთვის ყოველ შესვლაზე 6-ნიშნა კოდს გიგზავნით ელფოსტაზე. შეიყვანე აქ გასაგრძელებლად.",
+                   "For security, we email a 6-digit code on every sign-in. Enter it here to continue."),
+                LT("დადასტურება", "Confirm"),
+                cancel: null,
+                placeholder: "123456",
+                maxLength: 6,
+                keyboard: Keyboard.Numeric);
+
+            if (code is null)
+                return new(false, LT("შესვლა გაუქმდა.", "Sign-in cancelled."));
+
+            var result = await _account.VerifyLoginCodeAsync(email, password, code, moveDevice);
+            if (result.Success || result.Code is "expired" or "no_code" or "too_many_attempts")
+                return result;
+
+            await page.DisplayAlertLocalizedAsync(
+                LT("კოდი არასწორია", "Wrong code"),
+                LocalizationService.T(result.Message),
+                "OK");
+        }
+
+        return new(false, LT("ვერ დადასტურდა. სცადე ხელახლა შესვლა.", "Could not confirm. Try signing in again."));
     }
 
     /// <summary>

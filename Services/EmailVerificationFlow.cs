@@ -39,7 +39,6 @@ public static class EmailVerificationFlow
             return false;
 
         var title = LT("დაადასტურე ელფოსტა", "Verify your email");
-        var later = LT("მოგვიანებით", "Later");
 
         if (entry == EmailVerificationEntry.Restricted)
         {
@@ -48,7 +47,7 @@ public static class EmailVerificationFlow
                 LT("ამ მოქმედებისთვის დადასტურებული ელფოსტაა საჭირო. კოდს გამოვგზავნით შენი ანგარიშის მისამართზე.",
                    "This needs a verified email address. We can send a code to the address on your account."),
                 LT("კოდის გაგზავნა", "Send code"),
-                later);
+                cancel: null);
             if (!go)
                 return false;
             entry = EmailVerificationEntry.SendFirst;
@@ -66,7 +65,7 @@ public static class EmailVerificationFlow
                     title,
                     LT("დამადასტურებელი წერილი ვერ გაიგზავნა. სცადე ცოტა ხანში.", "We couldn't send the verification email. Please try again in a moment."),
                     LT("ხელახლა გაგზავნა", "Send again"),
-                    later);
+                    cancel: null);
                 if (!again)
                     return false;
                 failureNote = false;
@@ -83,7 +82,7 @@ public static class EmailVerificationFlow
                         title,
                         LocalizationService.T(sent.Message),
                         LT("ხელახლა გაგზავნა", "Send again"),
-                        later);
+                        cancel: null);
                     if (!retry)
                         return false;
                     needSend = true;
@@ -99,13 +98,13 @@ public static class EmailVerificationFlow
                 LT("ელფოსტაზე გამოგიგზავნეთ 6-ნიშნა კოდი. შეიყვანე აქ მისამართის დასადასტურებლად. წერილში ღილაკიც არის, თუ ბმული გირჩევნია.",
                    "We sent a 6-digit code to your email. Enter it here to verify your address. The email also has a button if you prefer a link."),
                 LT("დადასტურება", "Verify"),
-                later,
-                "123456",
+                cancel: null,
+                placeholder: "123456",
                 maxLength: 6,
                 keyboard: Keyboard.Numeric);
 
             if (code is null)
-                return false;                                            // "Later"
+                return false;                                            // dismissed (e.g. system back) without a code
 
             var result = await account.VerifyEmailCodeAsync(code, token);
             if (result.Success)

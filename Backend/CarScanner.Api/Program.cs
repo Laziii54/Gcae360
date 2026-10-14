@@ -23,6 +23,9 @@ builder.Services.AddSingleton<EmailVerificationStore>();
 builder.Services.AddSingleton(sp => EmailOptions.From(sp.GetRequiredService<IConfiguration>()));
 builder.Services.AddSingleton<IEmailSender>(sp => new SmtpEmailSender(sp.GetRequiredService<EmailOptions>()));
 builder.Services.AddSingleton<EmailVerificationService>();
+// Sign-in code: a second factor required on every login (not the one-time check above).
+builder.Services.AddSingleton<LoginCodeStore>();
+builder.Services.AddSingleton<LoginCodeService>();
 builder.Services.AddSingleton<CrashReportStore>();
 builder.Services.AddSingleton<VinDataService>();
 builder.Services.AddSingleton<WebImageSearchService>();
@@ -633,7 +636,8 @@ app.MapPost(
     async (
         AccountRequest request,
         HttpContext http,
-        AccountStore accounts) =>
+        AccountStore accounts,
+        LoginCodeService loginCodes) =>
     {
         var rateKey =
             "account-login:" +
@@ -656,61 +660,151 @@ app.MapPost(
                 StatusCodes.Status429TooManyRequests);
         }
 
-        try
-        {
-            var deviceId =
-                http.Request.Headers[
-                    "X-GCS-Device-Id"].ToString();
+        // The password is checked first, without creating a session or touching device binding, so that a wrong
+        // password never reveals whether a sign-in code would otherwise have been sent.
+        var identity = await accounts.VerifyCredentialsAsync(
+            request.Email ?? string.Empty,
+            request.Password ?? string.Empty,
+            http.RequestAborted);
 
-            // "moveDevice": true moves the account to this phone (password
-            // required, once per 7 days; other sessions end).
-            var result =
-                await accounts.LoginAsync(
-                    request.Email ?? string.Empty,
-                    request.Password ?? string.Empty,
-                    deviceId,
-                    request.MoveDevice == true,
-                    http.RequestAborted);
-
-            if (result is null)
-                EmailThrottle.Failed(request.Email);
-
-            // The response carries "mustChangePassword": true after an
-            // admin temporary password (AccountSessionResult).
-            return result is null
-                ? Results.Unauthorized()
-                : Results.Ok(result);
-        }
-        catch (AccountRebindCooldownException cooldown)
+        if (identity is null)
         {
-            return Results.Json(
-                new
-                {
-                    success = false,
-                    code = "REBIND_COOLDOWN",
-                    nextAllowedAt = cooldown.NextAllowedAt,
-                    message =
-                        "This account was moved to another device less than 7 days ago."
-                },
-                statusCode: StatusCodes.Status429TooManyRequests);
-        }
-        catch (AccountDeviceMismatchException)
-        {
-            return Results.Conflict(
-                new
-                {
-                    success = false,
-                    code = "DEVICE_ALREADY_BOUND",
-                    canMoveDevice = true,
-                    message =
-                        "This account is already linked to another device."
-                });
-        }
-        catch (ArgumentException)
-        {
+            EmailThrottle.Failed(request.Email);
             return Results.Unauthorized();
         }
+
+        // A second factor is required on every login when the mail server is configured. If it is not (or the
+        // email could not be sent just now), signing in falls back to the single-step flow below — a server
+        // mail outage must never lock everyone out.
+        if (loginCodes.Enabled)
+        {
+            var sent = await loginCodes.SendAsync(identity.AccountId, identity.Email, http.Request.Headers["X-GCS-Language"].ToString(), http.RequestAborted);
+            switch (sent.Status)
+            {
+                case LoginCodeSendStatus.Sent:
+                    return Results.Ok(new { needsCode = true, accountId = identity.AccountId });
+                case LoginCodeSendStatus.Cooldown or LoginCodeSendStatus.HourlyLimit:
+                    return Results.Json(
+                        new
+                        {
+                            status = sent.Status == LoginCodeSendStatus.Cooldown ? "cooldown" : "hourly_limit",
+                            retryAfterSeconds = sent.RetryAfter is { } at ? Math.Max(1, (int)Math.Ceiling((at - DateTimeOffset.UtcNow).TotalSeconds)) : 60
+                        },
+                        statusCode: StatusCodes.Status429TooManyRequests);
+            }
+        }
+
+        return await FinishLoginAsync(request, http, accounts);
     });
+
+// Second step of login: the code just emailed to the account on file. Re-checks the password (never trusts the
+// code alone) before finishing the same device-bound sign-in that a single-step login would have done.
+app.MapPost(
+    "/api/accounts/login/verify-code",
+    async (
+        LoginCodeVerifyRequest request,
+        HttpContext http,
+        AccountStore accounts,
+        LoginCodeService loginCodes) =>
+    {
+        var ip = AdminService.ClientIp(http);
+        if (!RateWindow.TryConsume("account-login-code-ip:" + ip, DateTimeOffset.UtcNow, 30, TimeSpan.FromMinutes(15)) ||
+            EmailThrottle.IsBlocked(request.Email))
+        {
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        }
+
+        var identity = await accounts.VerifyCredentialsAsync(
+            request.Email ?? string.Empty,
+            request.Password ?? string.Empty,
+            http.RequestAborted);
+
+        if (identity is null)
+        {
+            EmailThrottle.Failed(request.Email);
+            return Results.Unauthorized();
+        }
+
+        if (!RateWindow.TryConsume("account-login-code:" + identity.AccountId, DateTimeOffset.UtcNow, 20, TimeSpan.FromHours(1)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        var verified = await loginCodes.Store.VerifyAsync(identity.AccountId, request.Code, http.RequestAborted);
+        if (verified != LoginCodeVerifyResult.Verified)
+        {
+            return Results.BadRequest(new
+            {
+                verified = false,
+                reason = verified switch
+                {
+                    LoginCodeVerifyResult.Expired => "expired",
+                    LoginCodeVerifyResult.TooManyAttempts => "too_many_attempts",
+                    LoginCodeVerifyResult.NoPendingCode => "no_code",
+                    _ => "invalid"
+                }
+            });
+        }
+
+        return await FinishLoginAsync(new AccountRequest(request.Email, request.Password, request.MoveDevice), http, accounts);
+    });
+
+// The device-bound sign-in itself, shared by the single-step fallback and the code-verified second step.
+async Task<IResult> FinishLoginAsync(AccountRequest request, HttpContext http, AccountStore accounts)
+{
+    try
+    {
+        var deviceId =
+            http.Request.Headers[
+                "X-GCS-Device-Id"].ToString();
+
+        // "moveDevice": true moves the account to this phone (password
+        // required, once per 7 days; other sessions end).
+        var result =
+            await accounts.LoginAsync(
+                request.Email ?? string.Empty,
+                request.Password ?? string.Empty,
+                deviceId,
+                request.MoveDevice == true,
+                http.RequestAborted);
+
+        if (result is null)
+            EmailThrottle.Failed(request.Email);
+
+        // The response carries "mustChangePassword": true after an
+        // admin temporary password (AccountSessionResult).
+        return result is null
+            ? Results.Unauthorized()
+            : Results.Ok(result);
+    }
+    catch (AccountRebindCooldownException cooldown)
+    {
+        return Results.Json(
+            new
+            {
+                success = false,
+                code = "REBIND_COOLDOWN",
+                nextAllowedAt = cooldown.NextAllowedAt,
+                message =
+                    "This account was moved to another device less than 7 days ago."
+            },
+            statusCode: StatusCodes.Status429TooManyRequests);
+    }
+    catch (AccountDeviceMismatchException)
+    {
+        return Results.Conflict(
+            new
+            {
+                success = false,
+                code = "DEVICE_ALREADY_BOUND",
+                canMoveDevice = true,
+                message =
+                    "This account is already linked to another device."
+            });
+    }
+    catch (ArgumentException)
+    {
+        return Results.Unauthorized();
+    }
+}
 
 app.MapGet(
     "/api/accounts/me",
@@ -2591,22 +2685,22 @@ app.MapPost(
                     return Results.Redirect(Back("users", email + " დაიბლოკა", true));
 
                 case "temppass":
-                {
-                    // No e-mail sender exists: the owner sees the password once
-                    // (in this response, never in a URL) and passes it on.
-                    var temporary = AccountStore.NewTemporaryPassword();
-                    var set = await accounts.SetPasswordAsync(id, temporary, ct);
-                    await admin.AuditAsync(session.Email, "temp_password", email, ip, ct);
-                    var page = AdminPages.Users(
-                        session,
-                        await admin.UsersAsync(email, ct),
-                        email,
-                        set
-                            ? $"{email}: დროებითი პაროლი — {temporary} · გადაეცი მომხმარებელს; შესვლის შემდეგ შეცვალოს. ყველა სესია დასრულდა, მოწყობილობა მოიხსნა."
-                            : "პაროლი ვერ შეიცვალა",
-                        set);
-                    return Results.Content(page, "text/html; charset=utf-8");
-                }
+                    {
+                        // No e-mail sender exists: the owner sees the password once
+                        // (in this response, never in a URL) and passes it on.
+                        var temporary = AccountStore.NewTemporaryPassword();
+                        var set = await accounts.SetPasswordAsync(id, temporary, ct);
+                        await admin.AuditAsync(session.Email, "temp_password", email, ip, ct);
+                        var page = AdminPages.Users(
+                            session,
+                            await admin.UsersAsync(email, ct),
+                            email,
+                            set
+                                ? $"{email}: დროებითი პაროლი — {temporary} · გადაეცი მომხმარებელს; შესვლის შემდეგ შეცვალოს. ყველა სესია დასრულდა, მოწყობილობა მოიხსნა."
+                                : "პაროლი ვერ შეიცვალა",
+                            set);
+                        return Results.Content(page, "text/html; charset=utf-8");
+                    }
 
                 case "unbind":
                     await accounts.ResetDeviceAsync(id, ct);
@@ -3653,6 +3747,7 @@ static async Task DeleteAccountDataAsync(
     await services.GetRequiredService<AdminService>().ForgetAccountAsync(accountId, ct);
 
     await services.GetRequiredService<EmailVerificationStore>().DeleteAsync(accountId, ct);
+    await services.GetRequiredService<LoginCodeStore>().DeleteAsync(accountId, ct);
 
     await services.GetRequiredService<AccountStore>().DeleteAsync(accountId, ct);
 }
@@ -3728,6 +3823,8 @@ record AccountRequest(string? Email, string? Password, bool? MoveDevice = null);
 
 record EmailCodeRequest(string? Code);
 
+record LoginCodeVerifyRequest(string? Email, string? Password, string? Code, bool? MoveDevice = null);
+
 record WebAccountDeleteRequest(string? Email, string? Password, string? Token);
 
 record ChangePasswordRequest(string? CurrentPassword, string? NewPassword);
@@ -3760,14 +3857,14 @@ You are an automotive diagnostic assistant. Treat all measurements and DTCs in t
 """;
 
     public const string DefaultModel =
-        "gemini-3.6-flash";
+        "gemini-3.8-flash";
 
     public static readonly string[] AllowedModels =
     [
         DefaultModel,
-        "gemini-3.5-flash",
-        "gemini-3.5-flash-lite",
-        "gemini-2.5-flash"
+        "gemini-2.5-flash",
+        "gemini-3.1-flash-lite",
+        "gemini-3.5-flash-lite"
     ];
 
     public static IEnumerable<string> GetModelFallbackOrder(

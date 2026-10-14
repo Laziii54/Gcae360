@@ -78,6 +78,18 @@ public partial class CodingViewModel : BaseViewModel
     [ObservableProperty] private bool isGmCar;
     [ObservableProperty] private string lastBackupSummary = string.Empty;
     [ObservableProperty] private bool hasLastBackupSummary;
+    [ObservableProperty] private bool showReadiness;
+    [ObservableProperty] private bool showSafetyNotice;
+    [ObservableProperty] private bool showNoOptionsHelp;
+
+    [RelayCommand]
+    private void ToggleReadiness() => ShowReadiness = !ShowReadiness;
+
+    [RelayCommand]
+    private void ToggleSafetyNotice() => ShowSafetyNotice = !ShowSafetyNotice;
+
+    [RelayCommand]
+    private void ToggleNoOptionsHelp() => ShowNoOptionsHelp = !ShowNoOptionsHelp;
 
     public CodingViewModel(CodingService coding, ProService pro, LocalizationService localization)
     {

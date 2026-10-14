@@ -622,6 +622,11 @@ public sealed class AccountService
                     .ReadFromJsonAsync<AccountResponse>(
                         cancellationToken: token);
 
+            // Login only: a second-factor code was just emailed, no session yet — AccountPage asks for it and
+            // calls VerifyLoginCodeAsync, which finishes the sign-in exactly as below.
+            if (!isRegister && payload?.NeedsCode == true)
+                return new(false, string.Empty, NeedsLoginCodeCode);
+
             if (payload is null ||
                 !Guid.TryParse(
                     payload.AccountId,
@@ -634,31 +639,7 @@ public sealed class AccountService
                     ServerUnavailableMessage());
             }
 
-            await SecureStorage.Default.SetAsync(
-                AccessTokenKey,
-                payload.AccessToken);
-
-            Preferences.Default.Set(
-                AccountIdKey,
-                payload.AccountId);
-
-            Preferences.Default.Set(
-                AccountEmailKey,
-                payload.Email ?? email.Trim());
-
-            Preferences.Default.Set(
-                MustChangePasswordKey,
-                payload.MustChangePassword == true);
-
-            EmailVerificationState = isRegister ? payload.EmailVerification?.Trim().ToLowerInvariant() : null;
-
-            AccountChanged?.Invoke(
-                this,
-                EventArgs.Empty);
-
-            return new(
-                true,
-                L("ანგარიში წარმატებით დაუკავშირდა.", "Signed in to your account."));
+            return await ApplySessionAsync(payload, email, markEmailVerificationState: isRegister);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
@@ -672,6 +653,78 @@ public sealed class AccountService
             return new(
                 false,
                 ServerUnavailableMessage());
+        }
+    }
+
+    /// <summary>Stores the session from a successful register/login/code-verify answer and raises <see cref="AccountChanged"/>.</summary>
+    private async Task<AccountActionResult> ApplySessionAsync(AccountResponse payload, string email, bool markEmailVerificationState)
+    {
+        await SecureStorage.Default.SetAsync(AccessTokenKey, payload.AccessToken!);
+        Preferences.Default.Set(AccountIdKey, payload.AccountId!);
+        Preferences.Default.Set(AccountEmailKey, payload.Email ?? email.Trim());
+        Preferences.Default.Set(MustChangePasswordKey, payload.MustChangePassword == true);
+
+        if (markEmailVerificationState)
+            EmailVerificationState = payload.EmailVerification?.Trim().ToLowerInvariant();
+
+        AccountChanged?.Invoke(this, EventArgs.Empty);
+
+        return new(true, L("ანგარიში წარმატებით დაუკავშირდა.", "Signed in to your account."));
+    }
+
+    /// <summary><see cref="AccountActionResult.Code"/> when login answered "a code was just emailed, no session yet".</summary>
+    public const string NeedsLoginCodeCode = "NEEDS_LOGIN_CODE";
+
+    /// <summary>
+    /// Second step of login: the 6-digit code just emailed to the account (see <see cref="NeedsLoginCodeCode"/>).
+    /// The server re-checks the password itself — the code alone is never enough.
+    /// </summary>
+    public async Task<AccountActionResult> VerifyLoginCodeAsync(string email, string password, string code, bool moveDevice, CancellationToken token = default)
+    {
+        try
+        {
+            using var request = await CreateAuthorizedRequestAsync(HttpMethod.Post, "/api/accounts/login/verify-code");
+            request.Content = JsonContent.Create(new
+            {
+                email = email.Trim(),
+                password,
+                code = (code ?? string.Empty).Trim(),
+                moveDevice
+            });
+
+            using var response = await _http.SendAsync(request, token);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                if (response.StatusCode == HttpStatusCode.BadRequest)
+                {
+                    var body = await ReadEmailStatusAsync(response, token);
+                    return body?.Reason switch
+                    {
+                        "expired" => new(false, L("კოდს ვადა გაუვიდა. მოითხოვე ახალი.", "The code has expired. Request a new one."), "expired"),
+                        "too_many_attempts" => new(false, L("ძალიან ბევრი მცდელობა. მოითხოვე ახალი კოდი.", "Too many attempts. Request a new code."), "too_many_attempts"),
+                        "no_code" => new(false, L("აქტიური კოდი არ არის. მოითხოვე ახალი.", "There is no active code. Request a new one."), "no_code"),
+                        _ => new(false, L("კოდი არასწორია. სცადე თავიდან.", "That code is not correct. Try again."), "invalid")
+                    };
+                }
+
+                var (code2, serverMessage) = await ReadErrorAsync(response, token);
+                return DescribeFailure(response.StatusCode, code2, serverMessage, isRegister: false, moveDevice);
+            }
+
+            var payload = await response.Content.ReadFromJsonAsync<AccountResponse>(cancellationToken: token);
+            if (payload is null || !Guid.TryParse(payload.AccountId, out _) || string.IsNullOrWhiteSpace(payload.AccessToken))
+                return new(false, ServerUnavailableMessage());
+
+            return await ApplySessionAsync(payload, email, markEmailVerificationState: false);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            return new(false, L("შეჩერდა.", "Stopped."));
+        }
+        catch
+        {
+            return new(false, ServerUnavailableMessage());
         }
     }
 
@@ -874,6 +927,9 @@ public sealed class AccountService
 
         /// <summary>"queued" when the server started a verification email, "unavailable" when it cannot send one.</summary>
         public string? EmailVerification { get; set; }   // "sent", "failed" or "unavailable"
+
+        /// <summary>Login only: true when a sign-in code was just emailed and no session was created yet.</summary>
+        public bool? NeedsCode { get; set; }
     }
 
     private sealed class EmailStatusResponse

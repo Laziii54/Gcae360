@@ -37,6 +37,10 @@ public partial class TechnicalInspectionViewModel : BaseViewModel
     // ---------- verdict / OBD (existing bindings) ----------
     [ObservableProperty] private bool hasResult;
     [ObservableProperty] private bool hasIssues;
+    [ObservableProperty] private bool showIssues;
+
+    [RelayCommand]
+    private void ToggleIssues() => ShowIssues = !ShowIssues;
     [ObservableProperty] private string pageHeading = string.Empty;
     [ObservableProperty] private string pageSubtitle = string.Empty;
     [ObservableProperty] private string checkButtonText = string.Empty;

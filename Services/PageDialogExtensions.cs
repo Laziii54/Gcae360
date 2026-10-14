@@ -15,20 +15,22 @@ public static class PageDialogExtensions
     public static Task DisplayAlertLocalizedAsync(this Page page, string title, string message, string cancel) =>
         page.DisplayAlertAsync(T(title), T(message), T(cancel));
 
-    public static Task<bool> DisplayAlertLocalizedAsync(this Page page, string title, string message, string accept, string cancel) =>
-        page.DisplayAlertAsync(T(title), T(message), T(accept), T(cancel));
+    /// <summary>A null <paramref name="cancel"/> hides the second button entirely (MAUI behaviour), not just its label.</summary>
+    public static Task<bool> DisplayAlertLocalizedAsync(this Page page, string title, string message, string accept, string? cancel) =>
+        page.DisplayAlertAsync(T(title), T(message), T(accept), cancel is null ? null : T(cancel));
 
+    /// <summary>A null <paramref name="cancel"/> hides the second button entirely (MAUI behaviour), not just its label.</summary>
     public static Task<string?> DisplayPromptLocalizedAsync(
         this Page page,
         string title,
         string message,
         string accept = "OK",
-        string cancel = "Cancel",
+        string? cancel = "Cancel",
         string? placeholder = null,
         int maxLength = -1,
         Keyboard? keyboard = null,
         string initialValue = "") =>
-        page.DisplayPromptAsync(T(title), T(message), T(accept), T(cancel), placeholder is null ? null : T(placeholder), maxLength, keyboard, initialValue);
+        page.DisplayPromptAsync(T(title), T(message), T(accept), cancel is null ? null : T(cancel), placeholder is null ? null : T(placeholder), maxLength, keyboard, initialValue);
 
     /// <summary>Returns the button text exactly as the caller passed it (not the translated text that was shown).</summary>
     public static async Task<string?> DisplayActionSheetLocalizedAsync(

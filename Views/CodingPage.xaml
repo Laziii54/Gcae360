@@ -17,16 +17,10 @@
             <!-- The car and the connection -->
             <Border Style="{StaticResource ListCardStyle}" Padding="14,12">
                 <VerticalStackLayout Spacing="10">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                        <VerticalStackLayout Spacing="2">
-                            <Label AutomationId="DynamicTextCodingVehicle" Text="{Binding VehicleText}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                            <Label Text="{Binding VinText}" FontSize="12" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                            <Label Text="{Binding ProtocolText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                        </VerticalStackLayout>
-                        <Border Grid.Column="1" VerticalOptions="Start" Padding="9,4" StrokeThickness="0" StrokeShape="RoundRectangle 11" BackgroundColor="{Binding ConnectionBackground}">
-                            <Label Text="{Binding ConnectionChipText}" FontSize="12" FontAttributes="Bold" TextColor="{Binding ConnectionColor}" LineBreakMode="NoWrap" />
-                        </Border>
-                    </Grid>
+                    <VerticalStackLayout Spacing="2">
+                        <Label AutomationId="DynamicTextCodingVehicle" Text="{Binding VehicleText}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                        <Label Text="{Binding VinText}" FontSize="12" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                         <Button Text="{Binding ConnectText}" Command="{Binding ConnectCommand}" IsVisible="{Binding IsConnected, Converter={StaticResource InverseBoolConverter}}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="44" MinimumHeightRequest="44" Grid.ColumnSpan="2" />
                         <Button Text="{Binding RecheckText}" Command="{Binding RecheckCommand}" IsEnabled="{Binding IsNotBusy}" IsVisible="{Binding IsConnected}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="12" FontSize="13" HeightRequest="44" MinimumHeightRequest="44" Grid.ColumnSpan="2" />
@@ -61,18 +55,32 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Is the car ready? (read-only checks) -->
-            <Label Text="{Binding ReadinessCaption}" Style="{StaticResource SectionCaptionStyle}" />
-            <Border Style="{StaticResource ListCardStyle}" Padding="14,10">
-                <VerticalStackLayout Spacing="6" BindableLayout.ItemsSource="{Binding ReadinessRows}">
-                    <BindableLayout.ItemTemplate>
-                        <DataTemplate x:DataType="vm:CodingCheckRow">
-                            <Grid ColumnDefinitions="22,*" ColumnSpacing="4">
-                                <controls:Icon Kind="{Binding Mark}" Tint="{Binding MarkColor}" WidthRequest="14" HeightRequest="14" VerticalOptions="Start" HorizontalOptions="Center" Margin="0,3,0,0" />
-                                <Label Grid.Column="1" Text="{Binding Text}" FontSize="12.5" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                            </Grid>
-                        </DataTemplate>
-                    </BindableLayout.ItemTemplate>
+            <!-- Is the car ready? (read-only checks) — collapsible -->
+            <Border Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout Spacing="0">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Padding="14,12">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ToggleReadinessCommand}" />
+                        </Grid.GestureRecognizers>
+                        <Label Text="{Binding ReadinessCaption}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                        <controls:Icon Grid.Column="1" Kind="chevron-down" Tint="{DynamicResource SubTextColor}" WidthRequest="16" HeightRequest="16" VerticalOptions="Center">
+                            <controls:Icon.Triggers>
+                                <DataTrigger TargetType="controls:Icon" Binding="{Binding ShowReadiness}" Value="True">
+                                    <Setter Property="Kind" Value="chevron-up" />
+                                </DataTrigger>
+                            </controls:Icon.Triggers>
+                        </controls:Icon>
+                    </Grid>
+                    <VerticalStackLayout IsVisible="{Binding ShowReadiness}" Spacing="6" Padding="14,0,14,12" BindableLayout.ItemsSource="{Binding ReadinessRows}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:CodingCheckRow">
+                                <Grid ColumnDefinitions="22,*" ColumnSpacing="4">
+                                    <controls:Icon Kind="{Binding Mark}" Tint="{Binding MarkColor}" WidthRequest="14" HeightRequest="14" VerticalOptions="Start" HorizontalOptions="Center" Margin="0,3,0,0" />
+                                    <Label Grid.Column="1" Text="{Binding Text}" FontSize="12.5" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                                </Grid>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
             </Border>
 
@@ -86,7 +94,7 @@
                                 <VerticalStackLayout Spacing="5" Padding="14,11">
                                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                         <Label Text="{Binding Title}" FontSize="13.5" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" VerticalOptions="Center" />
-                                        <Border Grid.Column="1" Padding="8,3" StrokeThickness="0" StrokeShape="RoundRectangle 10" BackgroundColor="{Binding StateBackground}" VerticalOptions="Start">
+                                        <Border Grid.Column="1" Padding="8,3" MaximumWidthRequest="112" StrokeThickness="0" StrokeShape="RoundRectangle 10" BackgroundColor="{Binding StateBackground}" VerticalOptions="Start">
                                             <Label Text="{Binding StateText}" FontSize="12" FontAttributes="Bold" TextColor="{Binding StateColor}" LineBreakMode="WordWrap" HorizontalTextAlignment="Center" />
                                         </Border>
                                     </Grid>
@@ -99,29 +107,57 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Safety -->
-            <Border Style="{StaticResource ListCardStyle}" Padding="14,12" BackgroundColor="{DynamicResource WarnBg}" Stroke="{DynamicResource WarnStroke}">
-                <VerticalStackLayout Spacing="4">
-                    <Label Text="როგორ ვიცავთ მანქანას" TextColor="{DynamicResource WarnTitle}" FontSize="14" FontAttributes="Bold" />
-                    <Label Text="• ჯერ ყოველთვის სრული სარეზერვო ასლი იქმნება." TextColor="{DynamicResource WarnText}" FontSize="12" LineBreakMode="WordWrap" />
-                    <Label Text="• იცვლება მხოლოდ ის, რაც ზუსტად ამ მოდელზე, წელზე და მოდულზეა შემოწმებული." TextColor="{DynamicResource WarnText}" FontSize="12" LineBreakMode="WordWrap" />
-                    <Label Text="• მანქანა უნდა იდგეს, ძრავი გამორთული, აკუმულატორი 12.2 V-ზე მეტი." TextColor="{DynamicResource WarnText}" FontSize="12" LineBreakMode="WordWrap" />
-                    <Label Text="• ჩაწერის შემდეგ მნიშვნელობა მოწმდება; შეუსაბამობისას ძველი ავტომატურად ბრუნდება." TextColor="{DynamicResource WarnText}" FontSize="12" LineBreakMode="WordWrap" />
-                    <Label Text="• ნებისმიერი ცვლილება ისტორიიდან ერთი შეხებით ბრუნდება." TextColor="{DynamicResource WarnText}" FontSize="12" LineBreakMode="WordWrap" />
+            <!-- Safety — collapsible -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="0" BackgroundColor="{DynamicResource WarnBg}" Stroke="{DynamicResource WarnStroke}">
+                <VerticalStackLayout Spacing="0">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Padding="14,12">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ToggleSafetyNoticeCommand}" />
+                        </Grid.GestureRecognizers>
+                        <Label Text="როგორ ვიცავთ მანქანას" TextColor="{DynamicResource WarnTitle}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
+                        <controls:Icon Grid.Column="1" Kind="chevron-down" Tint="{DynamicResource WarnTitle}" WidthRequest="16" HeightRequest="16" VerticalOptions="Center">
+                            <controls:Icon.Triggers>
+                                <DataTrigger TargetType="controls:Icon" Binding="{Binding ShowSafetyNotice}" Value="True">
+                                    <Setter Property="Kind" Value="chevron-up" />
+                                </DataTrigger>
+                            </controls:Icon.Triggers>
+                        </controls:Icon>
+                    </Grid>
+                    <VerticalStackLayout IsVisible="{Binding ShowSafetyNotice}" Spacing="4" Padding="14,0,14,12">
+                        <Label Text="• ჯერ ყოველთვის სრული სარეზერვო ასლი იქმნება." TextColor="{DynamicResource WarnText}" FontSize="12" LineBreakMode="WordWrap" />
+                        <Label Text="• იცვლება მხოლოდ ის, რაც ზუსტად ამ მოდელზე, წელზე და მოდულზეა შემოწმებული." TextColor="{DynamicResource WarnText}" FontSize="12" LineBreakMode="WordWrap" />
+                        <Label Text="• მანქანა უნდა იდგეს, ძრავი გამორთული, აკუმულატორი 12.2 V-ზე მეტი." TextColor="{DynamicResource WarnText}" FontSize="12" LineBreakMode="WordWrap" />
+                        <Label Text="• ჩაწერის შემდეგ მნიშვნელობა მოწმდება; შეუსაბამობისას ძველი ავტომატურად ბრუნდება." TextColor="{DynamicResource WarnText}" FontSize="12" LineBreakMode="WordWrap" />
+                        <Label Text="• ნებისმიერი ცვლილება ისტორიიდან ერთი შეხებით ბრუნდება." TextColor="{DynamicResource WarnText}" FontSize="12" LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
             </Border>
 
             <!-- Settings for this car -->
             <Label Text="ამ მანქანის პარამეტრები" Style="{StaticResource SectionCaptionStyle}" />
-            <Border Style="{StaticResource ListCardStyle}" Padding="14,12" IsVisible="{Binding HasNoOptions}">
-                <VerticalStackLayout Spacing="5">
-                    <Label Text="ამ მანქანისთვის შემოწმებული პარამეტრი ჯერ არ არის." TextColor="{DynamicResource TextColor}" FontSize="13.5" FontAttributes="Bold" LineBreakMode="WordWrap" />
-                    <Label Text="{Binding NoOptionsText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
-                    <Label Text="ჩვენ არ ვწერთ არაფერს, რაც ზუსტად თქვენს მოდელზე არ არის გამოცდილი — ეს იცავს მოდულებს დაზიანებისგან. ასე დაგვეხმარებით დამატებაში:" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
-                    <Label Text="1. შექმენით სარეზერვო ასლი ქვემოთ." TextColor="{DynamicResource TextColor}" FontSize="12" LineBreakMode="WordWrap" />
-                    <Label Text="2. შეცვალეთ პარამეტრი მანქანის მენიუდან ან სერვისში." TextColor="{DynamicResource TextColor}" FontSize="12" LineBreakMode="WordWrap" />
-                    <Label Text="3. შექმენით მეორე ასლი და მონიშნეთ ორივე — ნახავთ, ზუსტად რა შეიცვალა." TextColor="{DynamicResource TextColor}" FontSize="12" LineBreakMode="WordWrap" />
-                    <Label Text="4. გაგვიზიარეთ ორივე ასლი — შემოწმების შემდეგ პარამეტრი აქ გამოჩნდება." TextColor="{DynamicResource TextColor}" FontSize="12" LineBreakMode="WordWrap" />
+            <Border Style="{StaticResource ListCardStyle}" Padding="0" IsVisible="{Binding HasNoOptions}">
+                <VerticalStackLayout Spacing="0">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Padding="14,12">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ToggleNoOptionsHelpCommand}" />
+                        </Grid.GestureRecognizers>
+                        <Label Text="ამ მანქანისთვის შემოწმებული პარამეტრი ჯერ არ არის." TextColor="{DynamicResource TextColor}" FontSize="13.5" FontAttributes="Bold" LineBreakMode="WordWrap" VerticalOptions="Center" />
+                        <controls:Icon Grid.Column="1" Kind="chevron-down" Tint="{DynamicResource SubTextColor}" WidthRequest="16" HeightRequest="16" VerticalOptions="Center">
+                            <controls:Icon.Triggers>
+                                <DataTrigger TargetType="controls:Icon" Binding="{Binding ShowNoOptionsHelp}" Value="True">
+                                    <Setter Property="Kind" Value="chevron-up" />
+                                </DataTrigger>
+                            </controls:Icon.Triggers>
+                        </controls:Icon>
+                    </Grid>
+                    <VerticalStackLayout IsVisible="{Binding ShowNoOptionsHelp}" Spacing="5" Padding="14,0,14,12">
+                        <Label Text="{Binding NoOptionsText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                        <Label Text="ჩვენ არ ვწერთ არაფერს, რაც ზუსტად თქვენს მოდელზე არ არის გამოცდილი — ეს იცავს მოდულებს დაზიანებისგან. ასე დაგვეხმარებით დამატებაში:" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                        <Label Text="1. შექმენით სარეზერვო ასლი ქვემოთ." TextColor="{DynamicResource TextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                        <Label Text="2. შეცვალეთ პარამეტრი მანქანის მენიუდან ან სერვისში." TextColor="{DynamicResource TextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                        <Label Text="3. შექმენით მეორე ასლი და მონიშნეთ ორივე — ნახავთ, ზუსტად რა შეიცვალა." TextColor="{DynamicResource TextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                        <Label Text="4. გაგვიზიარეთ ორივე ასლი — შემოწმების შემდეგ პარამეტრი აქ გამოჩნდება." TextColor="{DynamicResource TextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
             </Border>
             <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasOptions}">
@@ -150,7 +186,7 @@
             <!-- Backups -->
             <Label Text="სარეზერვო ასლები" Style="{StaticResource SectionCaptionStyle}" />
             <Button Text="სრული სარეზერვო ასლის შექმნა" Command="{Binding CreateBackupCommand}" IsEnabled="{Binding IsNotBusy}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="46" MinimumHeightRequest="46" />
-            <Label Text="მხოლოდ კითხულობს ყველა მოდულს — მანქანაზე არაფერი იცვლება. შედარებისთვის შეეხეთ ორ ასლს." TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
+            <Label Text="მხოლოდ კითხულობს — მანქანაში არაფერი იცვლება. შედარებისთვის ქვემოთ სიაში შეეხეთ ჯერ ერთ ასლს, მერე მეორეს." TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
             <Button IsVisible="{Binding IsGmCar}" Text="{Binding ExtendedReadText}" Command="{Binding CreateExtendedBackupCommand}" IsEnabled="{Binding IsNotBusy}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="12" FontSize="13" HeightRequest="44" MinimumHeightRequest="44" />
             <Label IsVisible="{Binding IsGmCar}" Text="{Binding ExtendedReadHelp}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
 
@@ -162,7 +198,8 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding HasBackups}">
+            <Border Style="{StaticResource ListCardStyle}" Padding="0" IsVisible="{Binding HasBackups}">
+                <ScrollView MaximumHeightRequest="360">
                 <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding Backups}">
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="vm:CodingBackupRow">
@@ -191,6 +228,7 @@
                         </DataTemplate>
                     </BindableLayout.ItemTemplate>
                 </VerticalStackLayout>
+                </ScrollView>
             </Border>
             <Label IsVisible="{Binding HasBackups}" Text="{Binding ShareNoticeText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
 
