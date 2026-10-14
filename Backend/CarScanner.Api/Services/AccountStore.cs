@@ -169,6 +169,27 @@ DELETE FROM AccountSessions WHERE AccountId=$id;";
         return result is not null && IsBanned(result.AccountId) ? null : result;
     }
 
+    /// <summary>
+    /// The account id for an e-mail, without checking any password — "forgot password" needs this since the
+    /// whole point is that the password is not known. Null for an unknown e-mail (the caller must still answer
+    /// the same way either way, so this alone never reveals whether an address is registered).
+    /// </summary>
+    public async Task<AccountIdentity?> FindByEmailAsync(string email, CancellationToken token)
+    {
+        string normalized;
+        try
+        {
+            normalized = NormalizeEmail(email);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+
+        var stored = await ReadCredentialsAsync(normalized, null, token);
+        return stored is null ? null : new AccountIdentity(stored.AccountId, stored.DisplayEmail);
+    }
+
     public async Task<AccountIdentity?> ResolveAsync(string? authorization, CancellationToken token)
     {
         var result = await ResolveCoreAsync(authorization, token);

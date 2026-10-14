@@ -187,6 +187,8 @@ public sealed class EmailGatingTests : IDisposable
     [InlineData("/api/accounts/me")]
     [InlineData("/api/accounts/logout")]
     [InlineData("/api/accounts/password")]
+    [InlineData("/api/accounts/password/forgot")]
+    [InlineData("/api/accounts/password/reset")]
     [InlineData("/api/accounts/email/status")]
     [InlineData("/api/accounts/email/send-code")]
     [InlineData("/api/accounts/email/verify")]

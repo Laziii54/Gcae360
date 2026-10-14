@@ -56,6 +56,22 @@ public sealed class ProService
     {
         _db = db;
         _account = account;
+        _account.AccountChanged += OnAccountChanged;
+    }
+
+    /// <summary>
+    /// PRO is per-account, never implied by "no session": without this, signing out (or deleting the account)
+    /// left the previously cached local entitlement active, because a server refresh attempted right after
+    /// logout has no access token any more, fails silently, and LoadAsync's failure path deliberately preserves
+    /// the existing cache (to survive real outages) — which also preserved it across a sign-out. AccountChanged
+    /// fires only after AccountService has already cleared the stored session, so IsSignedIn is reliable here.
+    /// </summary>
+    private async void OnAccountChanged(object? sender, EventArgs e)
+    {
+        if (_account.IsSignedIn)
+            return;
+
+        try { await DeactivateAsync(); } catch { }
     }
 
     public async Task LoadAsync(bool forceServerRefresh = false)

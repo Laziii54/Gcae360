@@ -753,6 +753,76 @@ public sealed class AccountService
         }
     }
 
+    /// <summary>
+    /// "Forgot password", step 1: always reports the same success either way, whether or not the e-mail is
+    /// registered — the server never confirms which, and this must not either. A code is emailed only when the
+    /// account actually exists.
+    /// </summary>
+    public async Task<AccountActionResult> ForgotPasswordAsync(string email, CancellationToken token = default)
+    {
+        try
+        {
+            using var request = await CreateAuthorizedRequestAsync(HttpMethod.Post, "/api/accounts/password/forgot");
+            request.Content = JsonContent.Create(new { email = email.Trim() });
+
+            using var response = await _http.SendAsync(request, token);
+
+            return response.IsSuccessStatusCode
+                ? new(true, L("თუ ეს ანგარიში არსებობს, კოდი გამოიგზავნა ელფოსტაზე.",
+                    "If an account exists for that address, a code was emailed to it."))
+                : new(false, ServerUnavailableMessage());
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            return new(false, L("შეჩერდა.", "Stopped."));
+        }
+        catch
+        {
+            return new(false, ServerUnavailableMessage());
+        }
+    }
+
+    /// <summary>"Forgot password", step 2: the code just emailed, plus the new password. On success every other session ends.</summary>
+    public async Task<AccountActionResult> ResetPasswordAsync(string email, string code, string newPassword, CancellationToken token = default)
+    {
+        try
+        {
+            using var request = await CreateAuthorizedRequestAsync(HttpMethod.Post, "/api/accounts/password/reset");
+            request.Content = JsonContent.Create(new
+            {
+                email = email.Trim(),
+                code = (code ?? string.Empty).Trim(),
+                newPassword
+            });
+
+            using var response = await _http.SendAsync(request, token);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return new(true, L("პაროლი განახლდა — შედი ახალი პაროლით.",
+                    "Your password was changed — sign in with the new password."));
+            }
+
+            var (code2, _) = await ReadErrorAsync(response, token);
+            return code2 switch
+            {
+                "EXPIRED" => new(false, L("კოდს ვადა გაუვიდა. მოითხოვე ახალი.", "The code has expired. Request a new one."), code2),
+                "TOO_MANY_ATTEMPTS" => new(false, L("ძალიან ბევრი მცდელობა. მოითხოვე ახალი კოდი.", "Too many attempts. Request a new code."), code2),
+                "NO_CODE" => new(false, L("აქტიური კოდი არ არის. მოითხოვე ახალი.", "There is no active code. Request a new one."), code2),
+                "WEAK_PASSWORD" => new(false, L("პაროლი უნდა შეიცავდეს 8-დან 128 სიმბოლომდე.", "The password must be 8 to 128 characters."), code2),
+                _ => new(false, L("კოდი არასწორია. სცადე თავიდან.", "That code is not correct. Try again."), code2 ?? "INVALID_CODE")
+            };
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            return new(false, L("შეჩერდა.", "Stopped."));
+        }
+        catch
+        {
+            return new(false, ServerUnavailableMessage());
+        }
+    }
+
     private static string ServerUnavailableMessage() =>
         L("ანგარიშის სერვერთან დაკავშირება ვერ მოხერხდა. შეამოწმე ინტერნეტი და სცადე მოგვიანებით.",
           "Could not reach the account server. Check the internet and try again later.");

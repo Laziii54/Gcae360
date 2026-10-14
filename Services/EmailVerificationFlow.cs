@@ -98,7 +98,10 @@ public static class EmailVerificationFlow
                 LT("ელფოსტაზე გამოგიგზავნეთ 6-ნიშნა კოდი. შეიყვანე აქ მისამართის დასადასტურებლად. წერილში ღილაკიც არის, თუ ბმული გირჩევნია.",
                    "We sent a 6-digit code to your email. Enter it here to verify your address. The email also has a button if you prefer a link."),
                 LT("დადასტურება", "Verify"),
-                cancel: null,
+                // DisplayPromptAsync's "cancel" is not documented as nullable (unlike DisplayAlertAsync's) and
+                // crashes on iOS when null is passed — a real label is required here; code is null below already
+                // treats a dismissed prompt as "not verified", so this does not add a way to skip verification.
+                cancel: LT("გაუქმება", "Cancel"),
                 placeholder: "123456",
                 maxLength: 6,
                 keyboard: Keyboard.Numeric);

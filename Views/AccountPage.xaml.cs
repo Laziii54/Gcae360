@@ -425,7 +425,10 @@ public partial class AccountPage : ContentPage
                 LT("უსაფრთხოებისთვის ყოველ შესვლაზე 6-ნიშნა კოდს გიგზავნით ელფოსტაზე. შეიყვანე აქ გასაგრძელებლად.",
                    "For security, we email a 6-digit code on every sign-in. Enter it here to continue."),
                 LT("დადასტურება", "Confirm"),
-                cancel: null,
+                // DisplayPromptAsync's "cancel" is not documented as nullable (unlike DisplayAlertAsync's) and
+                // crashes on iOS when null is passed — a real label is required here; code is null below already
+                // treats a dismissed prompt as "not verified", so this does not add a way to skip verification.
+                cancel: LT("გაუქმება", "Cancel"),
                 placeholder: "123456",
                 maxLength: 6,
                 keyboard: Keyboard.Numeric);
@@ -447,29 +450,114 @@ public partial class AccountPage : ContentPage
     }
 
     /// <summary>
-    /// The backend cannot send e-mails, so a password reset is requested from
-    /// support by e-mail.
+    /// Self-service reset: a code is emailed to the account (same server-side infrastructure as the login 2FA
+    /// code, but a separate store so the two never collide), then the code plus a new password are sent together.
     /// </summary>
     private async void OnForgotPasswordClicked(object? sender, EventArgs e)
     {
+        if (_busy)
+            return;
+
         try
         {
-            var email = (EmailEntry.Text ?? "").Trim();
-            var body = string.IsNullOrWhiteSpace(email)
-                ? ""
-                : L("ჩემი ანგარიშის ელ-ფოსტა: ", "My account e-mail: ") + email;
-            var uri = $"mailto:{ContactService.ContactEmail}?subject={Uri.EscapeDataString("Password reset")}" +
-                      (body.Length > 0 ? $"&body={Uri.EscapeDataString(body)}" : "");
-
-            var opened = false;
-            try { opened = await Launcher.Default.OpenAsync(new Uri(uri)); } catch { }
-
-            if (!opened)
+            SetBusy(true);
+            try
             {
+                var page = Shell.Current?.CurrentPage ?? Application.Current?.Windows.FirstOrDefault()?.Page;
+                if (page is null)
+                    return;
+
+                var email = (EmailEntry.Text ?? "").Trim();
+                if (string.IsNullOrWhiteSpace(email))
+                {
+                    email = (await page.DisplayPromptLocalizedAsync(
+                        L("პაროლის აღდგენა", "Reset password"),
+                        L("შეიყვანე ანგარიშის ელ-ფოსტა — კოდს გამოგიგზავნით.", "Enter your account's email — we'll send a code."),
+                        L("გაგრძელება", "Continue"),
+                        cancel: L("გაუქმება", "Cancel"),
+                        keyboard: Keyboard.Email) ?? "").Trim();
+
+                    if (string.IsNullOrWhiteSpace(email))
+                        return;
+                }
+
+                var sent = await _account.ForgotPasswordAsync(email);
+                ShowStatus(sent.Message, error: !sent.Success);
+                if (!sent.Success)
+                    return;
+
+                for (var round = 0; round < 6; round++)
+                {
+                    var code = await page.DisplayPromptLocalizedAsync(
+                        L("შეიყვანე კოდი", "Enter the code"),
+                        L("თუ ეს ანგარიში არსებობს, ელფოსტაზე მიიღებ 6-ნიშნა კოდს. შეიყვანე აქ.",
+                          "If that account exists, you'll get a 6-digit code by email. Enter it here."),
+                        L("შემდეგი", "Next"),
+                        cancel: L("გაუქმება", "Cancel"),
+                        placeholder: "123456",
+                        maxLength: 6,
+                        keyboard: Keyboard.Numeric);
+
+                    if (code is null)
+                    {
+                        ShowStatus(L("პაროლის აღდგენა გაუქმდა.", "Password reset cancelled."), error: false);
+                        return;
+                    }
+
+                    string? newPassword;
+                    while (true)
+                    {
+                        newPassword = await page.DisplayPromptLocalizedAsync(
+                            L("ახალი პაროლი", "New password"),
+                            L("შეიყვანე ახალი პაროლი (მინიმუმ 8 სიმბოლო).", "Enter a new password (at least 8 characters)."),
+                            L("პაროლის დაყენება", "Set password"),
+                            cancel: L("გაუქმება", "Cancel"));
+
+                        if (newPassword is null)
+                        {
+                            ShowStatus(L("პაროლის აღდგენა გაუქმდა.", "Password reset cancelled."), error: false);
+                            return;
+                        }
+
+                        if (newPassword.Length >= 8)
+                            break;
+
+                        await page.DisplayAlertLocalizedAsync(
+                            L("მოკლე პაროლი", "Password too short"),
+                            L("პაროლი უნდა შეიცავდეს მინიმუმ 8 სიმბოლოს.", "The password must be at least 8 characters."),
+                            "OK");
+                    }
+
+                    var result = await _account.ResetPasswordAsync(email, code, newPassword);
+                    if (result.Success)
+                    {
+                        ShowStatus(result.Message, error: false);
+                        EmailEntry.Text = email;
+                        PasswordEntry.Text = "";
+                        return;
+                    }
+
+                    if (result.Code is "EXPIRED" or "TOO_MANY_ATTEMPTS" or "NO_CODE")
+                    {
+                        // The code itself is gone (burned or expired): looping back would just ask for the
+                        // same dead code again — the person has to tap "Forgot password?" again for a new one.
+                        ShowStatus(result.Message, error: true);
+                        return;
+                    }
+
+                    await page.DisplayAlertLocalizedAsync(
+                        L("ვერ შესრულდა", "Could not reset"),
+                        result.Message,
+                        "OK");
+                }
+
                 ShowStatus(
-                    L($"პაროლის აღსადგენად მოგვწერე: {ContactService.ContactEmail}",
-                      $"To reset your password, write to {ContactService.ContactEmail}"),
-                    error: false);
+                    L("ვერ დადასტურდა. სცადე თავიდან „პაროლის აღდგენა“-დან.", "Could not confirm. Start over from \"Forgot password\"."),
+                    error: true);
+            }
+            finally
+            {
+                SetBusy(false);
             }
         }
         catch (Exception commandException)

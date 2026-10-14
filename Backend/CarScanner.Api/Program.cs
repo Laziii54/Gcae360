@@ -26,6 +26,9 @@ builder.Services.AddSingleton<EmailVerificationService>();
 // Sign-in code: a second factor required on every login (not the one-time check above).
 builder.Services.AddSingleton<LoginCodeStore>();
 builder.Services.AddSingleton<LoginCodeService>();
+// Forgot password: a separate store from the login code above, so the two can never collide for one account.
+builder.Services.AddSingleton<PasswordResetStore>();
+builder.Services.AddSingleton<PasswordResetService>();
 builder.Services.AddSingleton<CrashReportStore>();
 builder.Services.AddSingleton<VinDataService>();
 builder.Services.AddSingleton<WebImageSearchService>();
@@ -944,6 +947,95 @@ app.MapPost(
             {
                 success = true
             });
+    });
+
+// ---- forgot password (no session: proves ownership of the e-mail instead) ----
+
+// Body {"email"}. Always answers the same way whether or not the e-mail is registered, so this can never be
+// used to discover accounts. If it does exist (and is not banned), a reset code is emailed — from a separate
+// store than the login 2FA code, so the two never collide for the same account.
+app.MapPost(
+    "/api/accounts/password/forgot",
+    async (
+        ForgotPasswordRequest? request,
+        HttpContext http,
+        AccountStore accounts,
+        PasswordResetService passwordReset) =>
+    {
+        if (!RateWindow.TryConsume("password-forgot-ip:" + AdminService.ClientIp(http), DateTimeOffset.UtcNow, 10, TimeSpan.FromHours(1)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        var identity = await accounts.FindByEmailAsync(request?.Email ?? string.Empty, http.RequestAborted);
+
+        if (identity is not null && !accounts.IsBanned(identity.AccountId) && passwordReset.Enabled &&
+            RateWindow.TryConsume("password-forgot:" + identity.AccountId, DateTimeOffset.UtcNow, 5, TimeSpan.FromHours(1)))
+        {
+            try
+            {
+                await passwordReset.SendAsync(
+                    identity.AccountId,
+                    identity.Email,
+                    http.Request.Headers["X-GCS-Language"].ToString(),
+                    http.RequestAborted);
+            }
+            catch (OperationCanceledException) when (!http.RequestAborted.IsCancellationRequested)
+            {
+            }
+        }
+
+        // Same response either way: never confirms whether the address has an account.
+        return Results.Ok(new { success = true });
+    });
+
+// Body {"email","code","newPassword"}. On success every other session ends and the device binding is
+// released (AccountStore.SetPasswordAsync), the same as the admin "temporary password" action — a reset is
+// meant to be a fresh, trusted start, not just a password swap.
+app.MapPost(
+    "/api/accounts/password/reset",
+    async (
+        ResetPasswordRequest? request,
+        HttpContext http,
+        AccountStore accounts,
+        PasswordResetService passwordReset) =>
+    {
+        if (!RateWindow.TryConsume("password-reset-ip:" + AdminService.ClientIp(http), DateTimeOffset.UtcNow, 20, TimeSpan.FromHours(1)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        var identity = await accounts.FindByEmailAsync(request?.Email ?? string.Empty, http.RequestAborted);
+
+        // An unknown e-mail gets the same "invalid code" answer as a wrong code — never reveals which it was.
+        var result = identity is null || accounts.IsBanned(identity.AccountId)
+            ? PasswordResetVerifyResult.Invalid
+            : await passwordReset.Store.VerifyAsync(identity.AccountId, request?.Code, http.RequestAborted);
+
+        if (result != PasswordResetVerifyResult.Verified)
+        {
+            return Results.BadRequest(new
+            {
+                success = false,
+                code = result switch
+                {
+                    PasswordResetVerifyResult.Expired => "EXPIRED",
+                    PasswordResetVerifyResult.TooManyAttempts => "TOO_MANY_ATTEMPTS",
+                    PasswordResetVerifyResult.NoPendingCode => "NO_CODE",
+                    _ => "INVALID_CODE"
+                }
+            });
+        }
+
+        bool changed;
+        try
+        {
+            changed = await accounts.SetPasswordAsync(identity!.AccountId, request?.NewPassword ?? string.Empty, http.RequestAborted, mustChange: false);
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { success = false, code = "WEAK_PASSWORD", message = ex.Message });
+        }
+
+        return changed
+            ? Results.Ok(new { success = true })
+            : Results.BadRequest(new { success = false, code = "INVALID_CODE" });
     });
 
 app.MapDelete(
@@ -3587,6 +3679,7 @@ static async Task DeleteAccountDataAsync(
 
     await services.GetRequiredService<EmailVerificationStore>().DeleteAsync(accountId, ct);
     await services.GetRequiredService<LoginCodeStore>().DeleteAsync(accountId, ct);
+    await services.GetRequiredService<PasswordResetStore>().DeleteAsync(accountId, ct);
 
     await services.GetRequiredService<AccountStore>().DeleteAsync(accountId, ct);
 }
@@ -3667,6 +3760,10 @@ record LoginCodeVerifyRequest(string? Email, string? Password, string? Code, boo
 record WebAccountDeleteRequest(string? Email, string? Password, string? Token);
 
 record ChangePasswordRequest(string? CurrentPassword, string? NewPassword);
+
+record ForgotPasswordRequest(string? Email);
+
+record ResetPasswordRequest(string? Email, string? Code, string? NewPassword);
 
 record FullCheckoutRequest(string? Provider);
 
