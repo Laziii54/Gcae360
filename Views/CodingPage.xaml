@@ -28,6 +28,15 @@
                 </VerticalStackLayout>
             </Border>
 
+            <!-- Admin-only: one button, full vehicle discovery across every module -->
+            <Border IsVisible="{Binding IsAdmin}" Style="{StaticResource ListCardStyle}" Padding="14,12" BackgroundColor="{DynamicResource WarnBg}" Stroke="{DynamicResource WarnStroke}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="{Binding DeepScanCaption}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource WarnTitle}" />
+                    <Label Text="{Binding DeepScanHelp}" FontSize="12" TextColor="{DynamicResource WarnText}" LineBreakMode="WordWrap" />
+                    <Button Text="{Binding DeepScanCaption}" Command="{Binding DeepScanCommand}" IsEnabled="{Binding IsNotBusy}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="46" MinimumHeightRequest="46" FontSize="13" />
+                </VerticalStackLayout>
+            </Border>
+
             <!-- Progress: stays visible while something is running, can be stopped -->
             <Border Style="{StaticResource ListCardStyle}" Padding="14,10" IsVisible="{Binding IsBusy}">
                 <VerticalStackLayout Spacing="6">

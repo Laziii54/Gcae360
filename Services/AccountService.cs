@@ -85,6 +85,31 @@ public sealed class AccountService
     /// </summary>
     public string? EmailVerificationState { get; private set; }
 
+    /// <summary>
+    /// Server-confirmed only: true when this is the account configured as admin AND it has completed a 2-step
+    /// sign-in on the admin page at least once. A privileged feature must check this, never a local e-mail string.
+    /// False (never throws) when signed out, offline, or the server disagrees.
+    /// </summary>
+    public async Task<bool> IsAdminAsync(CancellationToken token = default)
+    {
+        if (!IsSignedIn)
+            return false;
+        try
+        {
+            using var request = await CreateAuthorizedRequestAsync(HttpMethod.Get, "/api/accounts/me");
+            using var response = await _http.SendAsync(request, token);
+            if (!response.IsSuccessStatusCode)
+                return false;
+
+            var body = await response.Content.ReadFromJsonAsync<MeResponse>(cancellationToken: token);
+            return body?.IsAdmin == true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     /// <summary>Whether this account's email is verified, whether a code can be sent, and whether the server asks for it.</summary>
     public async Task<EmailVerificationStatus?> GetEmailStatusAsync(CancellationToken token = default)
     {
@@ -930,6 +955,11 @@ public sealed class AccountService
 
         /// <summary>Login only: true when a sign-in code was just emailed and no session was created yet.</summary>
         public bool? NeedsCode { get; set; }
+    }
+
+    private sealed class MeResponse
+    {
+        public bool? IsAdmin { get; set; }
     }
 
     private sealed class EmailStatusResponse

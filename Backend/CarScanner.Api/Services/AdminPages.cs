@@ -560,11 +560,16 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
     // exists for e.g. "CHEVROLET VOLT" or "TOYOTA PRIUS".
     // ============================================================
 
+    /// <summary>"ABS / მუხრუჭები", "სტანდარტული OBD2" (the 0x7DF broadcast), or "" (shown as "დაუჯგუფებელი") when the TX/RX pair is not in <see cref="ModuleAddressLabels"/>.</summary>
+    private static string EcuCategory(EcuObservationRow r) =>
+        r.TxCanId == 0x7DF ? "სტანდარტული OBD2" : ModuleAddressLabels.Label(r.Make, r.TxCanId, r.RxCanId);
+
     public static string EcuObservations(AdminService.Session s, IReadOnlyList<EcuObservationRow> rows, string? message, bool ok)
     {
+        const string Unclassified = "დაუჯგუფებელი";
         var csrf = H(s.Csrf);
         var vehicles = rows
-            .GroupBy(r => (r.Make, r.Model))
+            .GroupBy(r => (r.Make, r.Model, r.Year))
             .OrderByDescending(g => g.Max(r => r.SourceCount))
             .ThenByDescending(g => g.Count())
             .ToList();
@@ -596,31 +601,47 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
 """;
         }
 
+        string CategorySection(string label, IEnumerable<EcuObservationRow> items)
+        {
+            var list = items.ToList();
+            var rowsHtml = string.Concat(list.OrderByDescending(r => r.SourceCount).ThenBy(r => r.Request, StringComparer.Ordinal).Select(Row));
+            var verified = list.Count(r => r.Review == "verified");
+            return $"""
+<details class="panel" style="margin:8px 0 0 10px">
+<summary><b>{H(label)}</b> · {N(list.Count)} პასუხი{(verified > 0 ? $" · <span class=\"pill p-acc\">{N(verified)} დამოწმებული</span>" : "")}</summary>
+<div class="tbl" style="margin-top:10px"><table><tr><th>მოდული (TX→RX)</th><th>მოთხოვნა</th><th>პასუხი</th><th>ტიპი</th><th>წყარო</th><th>სტატუსი</th><th>ბოლოს</th><th>მოქმედება</th></tr>{rowsHtml}</table></div>
+</details>
+""";
+        }
+
         var body = vehicles.Count == 0
             ? "<div class=\"panel muted\">მონაცემები ჯერ არ არის — ჩაირთვება, როცა მომხმარებლები დათანხმდებიან მონაცემების გაზიარებას.</div>"
             : string.Concat(vehicles.Select(g =>
             {
-                var rowsHtml = string.Concat(g.OrderByDescending(r => r.SourceCount).ThenBy(r => r.Request, StringComparer.Ordinal).Select(Row));
+                var categories = g
+                    .GroupBy(r => { var c = EcuCategory(r); return string.IsNullOrEmpty(c) ? Unclassified : c; })
+                    .OrderBy(c => c.Key == Unclassified ? 1 : 0).ThenByDescending(c => c.Count());
+                var sectionsHtml = string.Concat(categories.Select(c => CategorySection(c.Key, c)));
                 var verified = g.Count(r => r.Review == "verified");
                 return $"""
 <details class="panel" style="margin-bottom:10px">
-<summary><b>{H(g.Key.Make)} {H(g.Key.Model)}</b> · {N(g.Count())} განსხვავებული პასუხი{(verified > 0 ? $" · <span class=\"pill p-acc\">{N(verified)} დამოწმებული</span>" : "")} · ბოლო აქტივობა {H(g.Max(r => r.LastSeen))}</summary>
-<div class="tbl" style="margin-top:10px"><table><tr><th>მოდული (TX→RX)</th><th>მოთხოვნა</th><th>პასუხი</th><th>ტიპი</th><th>წყარო</th><th>სტატუსი</th><th>ბოლოს</th><th>მოქმედება</th></tr>{rowsHtml}</table></div>
+<summary><b>{H(g.Key.Make)} {H(g.Key.Model)} {H(g.Key.Year)}</b> · {N(g.Count())} განსხვავებული პასუხი{(verified > 0 ? $" · <span class=\"pill p-acc\">{N(verified)} დამოწმებული</span>" : "")} · ბოლო აქტივობა {H(g.Max(r => r.LastSeen))}</summary>
+{sectionsHtml}
 </details>
 """;
             }));
 
         var content = $"""
 <div class="grid" style="margin-bottom:12px">
-{Kpi("მანქანა", N(vehicles.Count), "სხვადასხვა მარკა/მოდელი")}
+{Kpi("მანქანა", N(vehicles.Count), "მარკა/მოდელი/წელი")}
 {Kpi("განსხვავებული პასუხი", N(rows.Count), "სულ")}
 {Kpi("დამოწმებული", N(rows.Count(r => r.Review == "verified")), "ფუნქციის გაშენებისთვის მზადაა", "good")}
 {Kpi("დადასტურებული (3+)", N(rows.Count(r => r.Reliability == "corroborated")), "3+ დამოუკიდებელი წყარო")}
 </div>
-<p class="muted">თითო ჯერზე მომხმარებელი აგზავნის მხოლოდ წაკითხვის პასუხებს (VIN და სერიული ნომრები გაფილტრულია) — თანხმობის შემდეგ ფონურად, ხელით არაფერი არ ჩაწერია. „დამოწმება“ = შემოწმებულია დოკუმენტაციასთან/რეალურ ტესტთან და შეიძლება მასზე ფუნქციის (ABS, service coding, ჰიბრიდის დიაგნოსტიკა) გაშენება ახალი მარკა/მოდელისთვის.</p>
+<p class="muted">თითო ჯერზე მომხმარებელი აგზავნის მხოლოდ წაკითხვის პასუხებს (VIN და სერიული ნომრები გაფილტრულია) — თანხმობის შემდეგ ფონურად, ხელით არაფერი არ ჩაწერია. ყველა მანქანა დაჯგუფებულია მარკა → მოდელი → წელი → სისტემა (ABS, ძრავი, ჰიბრიდი და ა.შ.) მიხედვით — კატეგორია დგინდება ცნობილი მისამართების ცხრილით, არა გამოცნობით; რაც ცხრილში არ არის, „დაუჯგუფებელშია“. „დამოწმება“ = შემოწმებულია დოკუმენტაციასთან/რეალურ ტესტთან და შეიძლება მასზე ფუნქციის გაშენება.</p>
 {body}
 """;
-        return Layout(s, "ecu", "ECU მონაცემები", "მარკა/მოდელის მიხედვით დაჯგუფებული, თანხმობით შემოსული დიაგნოსტიკური პასუხები", content, message, ok);
+        return Layout(s, "ecu", "ECU მონაცემები", "მარკა/მოდელი/წლისა და სისტემის მიხედვით დაჯგუფებული, თანხმობით შემოსული დიაგნოსტიკური პასუხები", content, message, ok);
     }
 
     public static string Crashes(AdminService.Session s, IReadOnlyList<CrashGroup> groups, string? message, bool ok)

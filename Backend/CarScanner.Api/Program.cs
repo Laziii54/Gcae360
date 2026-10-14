@@ -819,9 +819,17 @@ app.MapGet(
                     "X-GCS-Device-Id"].ToString(),
                 http.RequestAborted);
 
-        return account is null
-            ? Results.Unauthorized()
-            : Results.Ok(account);
+        if (account is null)
+            return Results.Unauthorized();
+
+        // Server-authoritative only: the listed admin e-mail AND a completed 2-step /admin sign-in of this exact
+        // account (AdminAccess.HasPerks) — never a client-side email string match for a privileged mobile feature.
+        return Results.Ok(new
+        {
+            account.AccountId,
+            account.Email,
+            isAdmin = AdminAccess.HasPerks(account.AccountId, account.Email)
+        });
     });
 
 app.MapPost(

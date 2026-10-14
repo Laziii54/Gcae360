@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CarScanner.Services;
 using CarScanner.Services.Coding;
+using CarScanner.Services.DataCollection;
 using CarScanner.Services.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -44,6 +45,8 @@ public partial class CodingViewModel : BaseViewModel
     private readonly CodingService _coding;
     private readonly ProService _pro;
     private readonly LocalizationService _localization;
+    private readonly AccountService _account;
+    private readonly DataCollectionService _dataCollection;
     private CancellationTokenSource? _cts;
     private CodingReadinessInput? _readiness;
     private int _verifiedInCatalog;
@@ -81,6 +84,7 @@ public partial class CodingViewModel : BaseViewModel
     [ObservableProperty] private bool showReadiness;
     [ObservableProperty] private bool showSafetyNotice;
     [ObservableProperty] private bool showNoOptionsHelp;
+    [ObservableProperty] private bool isAdmin;
 
     [RelayCommand]
     private void ToggleReadiness() => ShowReadiness = !ShowReadiness;
@@ -91,11 +95,13 @@ public partial class CodingViewModel : BaseViewModel
     [RelayCommand]
     private void ToggleNoOptionsHelp() => ShowNoOptionsHelp = !ShowNoOptionsHelp;
 
-    public CodingViewModel(CodingService coding, ProService pro, LocalizationService localization)
+    public CodingViewModel(CodingService coding, ProService pro, LocalizationService localization, AccountService account, DataCollectionService dataCollection)
     {
         _coding = coding;
         _pro = pro;
         _localization = localization;
+        _account = account;
+        _dataCollection = dataCollection;
         Title = L("კოდირება", "Coding");
         PropertyChanged += (_, e) =>
         {
@@ -134,6 +140,8 @@ public partial class CodingViewModel : BaseViewModel
             OnPropertyChanged(nameof(ChangeButtonText));
             await RefreshAsync();
             await RecheckAsync(announce: false);
+            // Server-confirmed only (the admin's own completed 2-step /admin sign-in) — never a local email check.
+            IsAdmin = await _account.IsAdminAsync();
         }
         catch (Exception ex)
         {
@@ -379,7 +387,21 @@ public partial class CodingViewModel : BaseViewModel
     [RelayCommand]
     private Task CreateExtendedBackup() => BackupAsync(extended: true);
 
-    private async Task BackupAsync(bool extended)
+    public string DeepScanCaption => L("სრული ავტომობილის ღრმა სკანირება", "Full vehicle deep scan");
+
+    public string DeepScanHelp => L(
+        "მხოლოდ წაკითხვა — არაფერი იწერება, არც ერთ მოდულში. პოულობს ყველა პასუხად მოდულს და კითხულობს მათ ყველას (არა მხოლოდ ძრავის მოდულს); GMLAN მანქანებზე ასევე ყველა მოდულზე სრული იდენტიფიკატორის სკანი ჩაირთვება. შედეგი ავტომატურად მიდის admin-ზე, უკვე არსებული, თანხმობაზე დამყარებული არხით.",
+        "Read-only — nothing is written to any module. Finds every module that answers and reads all of them (not only the engine module); on GMLAN cars every module also gets the full identifier sweep. Results flow to admin automatically, through the existing, consent-based upload path.");
+
+    /// <summary>
+    /// One admin-only button: the same checked backup+extended-read flow as above, run across every module that
+    /// answered instead of needing the Coding page opened module by module, with no note prompt. Results still go
+    /// through the existing consented upload pipeline — nothing new is built to move the data.
+    /// </summary>
+    [RelayCommand]
+    private Task DeepScan() => BackupAsync(extended: true, presetNote: L("ღრმა სკანირება", "Deep scan") + " " + DateTime.Now.ToString("dd.MM.yyyy HH:mm"), isDeepScan: true);
+
+    private async Task BackupAsync(bool extended, string? presetNote = null, bool isDeepScan = false)
     {
         if (IsBusy) return;
         try
@@ -391,11 +413,20 @@ public partial class CodingViewModel : BaseViewModel
                 return;
             }
 
-            var note = await Shell.Current.DisplayPromptLocalizedAsync(
-                L("სარეზერვო ასლი", "Backup"),
-                L("მოკლე შენიშვნა (მაგ. „ქარხნული“ ან „DRL ჩართვის შემდეგ“)", "Short note (e.g. \"factory\" or \"after DRL on\")"),
-                "OK", L("გაუქმება", "Cancel"), maxLength: 60);
-            if (note is null) return;
+            string note;
+            if (presetNote is not null)
+            {
+                note = presetNote;
+            }
+            else
+            {
+                var typed = await Shell.Current.DisplayPromptLocalizedAsync(
+                    L("სარეზერვო ასლი", "Backup"),
+                    L("მოკლე შენიშვნა (მაგ. „ქარხნული“ ან „DRL ჩართვის შემდეგ“)", "Short note (e.g. \"factory\" or \"after DRL on\")"),
+                    "OK", L("გაუქმება", "Cancel"), maxLength: 60);
+                if (typed is null) return;
+                note = typed;
+            }
 
             IsBusy = true;
             _cts?.Cancel();
@@ -412,6 +443,9 @@ public partial class CodingViewModel : BaseViewModel
                   $"Values were read from {backup.Modules.Count(m => m.Status == CodingBackupStatus.Read)} module(s); not from {backup.Modules.Count(m => m.Status != CodingBackupStatus.Read)}.")
             };
             lines.AddRange(backup.Warnings);
+            if (isDeepScan && !_dataCollection.IsEnabled)
+                lines.Add(L("შედეგი შენახულია მხოლოდ ამ ტელეფონში — admin-ზე ასატვირთად ჩართეთ „მონაცემების გაზიარება“ Settings-ში.",
+                    "The result was saved on this phone only — turn on \"Share data\" in Settings to upload it to admin."));
             LastBackupSummary = string.Join("\n", lines);
             HasLastBackupSummary = true;
         }
