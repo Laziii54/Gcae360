@@ -94,7 +94,8 @@ public sealed class HistoryAlert
     public string Label { get; set; } = "";
     public string Status { get; set; } = "unknown";
     public string Detail { get; set; } = "";
-    public string Icon => Status == "issue" ? "!" : Status == "clear" ? "✓" : "?";
+    /// <summary>Icon kind (Controls/IconCatalog) of the status tile.</summary>
+    public string Icon => Status == "issue" ? "warning" : Status == "clear" ? "check" : "info";
     public Color Color => Status == "issue" ? Color.FromArgb("#EF4444") : Status == "clear" ? Color.FromArgb("#22C55E") : Color.FromArgb("#94A3B8");
     /// <summary>Soft tile background of the status.</summary>
     public Color TileColor => Status == "issue" ? Color.FromArgb("#26EF4444") : Status == "clear" ? Color.FromArgb("#2622C55E") : Color.FromArgb("#1A94A3B8");
@@ -304,7 +305,7 @@ public sealed class RecallRecord : INotifyPropertyChanged
         }
     }
 
-    [JsonIgnore] public string Chevron => IsExpanded ? "▲" : "▼";
+    [JsonIgnore] public string Chevron => IsExpanded ? "chevron-up" : "chevron-down";
     [JsonIgnore] public string CategoryText => VinText.RecallCategory(Component);
     [JsonIgnore] public string DateText => Date?.ToString("dd.MM.yyyy") ?? "";
 

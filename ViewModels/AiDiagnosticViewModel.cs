@@ -225,7 +225,6 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         var section = new CarScanner.Services.Reports.ReportSectionItem
         {
             Kind = "ai",
-            Icon = "AI",
             Title = english ? "AI conclusion" : "AI დასკვნა",
             Status = CarScanner.Services.Reports.ReportStatus.Info,
             Summary = paragraphs.FirstOrDefault() is { } first ? (first.Length > 160 ? first[..160] + "…" : first) : string.Empty
@@ -573,7 +572,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
     };
 
     [RelayCommand]
-    private Task OpenLiveData() => Shell.Current.GoToAsync(nameof(Views.LiveDataPage));
+    private Task OpenLiveData() => CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.LiveDataPage));
 
     [RelayCommand]
     private async Task RunGuidedFuelTrimTest()
@@ -596,7 +595,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
                 return;
             }
 
-            var continueAtIdle = await Shell.Current.DisplayAlertAsync(
+            var continueAtIdle = await Shell.Current.DisplayAlertLocalizedAsync(
                 CarScanner.Services.Localization.LocalizationService.T("Guided Fuel Trim Test"),
                 CarScanner.Services.Localization.LocalizationService.T("უსაფრთხო ადგილზე გააჩერე მანქანა, ჩართე Parking brake და დატოვე ძრავა idle-ზე. ტესტი მხოლოდ გაჩერებულ მანქანაზე შეასრულე."),
                 CarScanner.Services.Localization.LocalizationService.T("Idle-ის წაკითხვა"),
@@ -615,7 +614,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
                 return;
             }
 
-            var continueAtRpm = await Shell.Current.DisplayAlertAsync(
+            var continueAtRpm = await Shell.Current.DisplayAlertLocalizedAsync(
                 CarScanner.Services.Localization.LocalizationService.T("Guided Fuel Trim Test"),
                 CarScanner.Services.Localization.LocalizationService.T("მანქანა ისევ გაჩერებული უნდა იყოს. ნეიტრალში/P-ზე დაიჭირე დაახლოებით 2500 RPM 10 წამით. არ შეასრულო ეს ტესტი გზაზე ან დახურულ, უვენტილაციო სივრცეში."),
                 CarScanner.Services.Localization.LocalizationService.T("10 წამის შემდეგ წაკითხვა"),

@@ -76,11 +76,9 @@ public class MileageViewModel : BaseViewModel
     public Color ResultBackground { get; private set; } = ThemeService.Soft("#FFFFFF");
     public Color CardStroke { get; private set; } = ThemeService.Soft("#DCDFE3");
     public string ResultValue { get; private set; } = "—";
+    public bool HasResultValue => ResultValue.Length > 0 && ResultValue != "—";
     public string ResultSource { get; private set; } = string.Empty;
     public bool HasResultSource => ResultSource.Length > 0;
-    public string VerdictNote { get; private set; } = string.Empty;
-    public string PowertrainNote { get; private set; } = string.Empty;
-    public bool HasPowertrainNote => PowertrainNote.Length > 0;
 
     // Lists
     public ObservableCollection<MileageReadingRow> Readings { get; } = new();
@@ -298,7 +296,6 @@ public class MileageViewModel : BaseViewModel
         var section = new CarScanner.Services.Reports.ReportSectionItem
         {
             Kind = "mileage",
-            Icon = "⏱",
             Title = L("გარბენი — მოდულების მიერ მოწოდებული", "Mileage — as reported by the car"),
             Status = analysis.Outcome == MileageOutcome.Conflicting
                 ? CarScanner.Services.Reports.ReportStatus.Warning
@@ -372,8 +369,6 @@ public class MileageViewModel : BaseViewModel
             ResultTitle = string.Empty;
             ResultValue = "—";
             ResultSource = string.Empty;
-            VerdictNote = string.Empty;
-            PowertrainNote = string.Empty;
         }
         else
         {
@@ -393,15 +388,16 @@ public class MileageViewModel : BaseViewModel
                 var difference = sameUnit ? $"{_units.FormatDistance(conflict.DifferenceKm, "0.#")}" : $"{_units.FormatDistance(conflict.DifferenceKm, "0.#")} ({L("გადათვლილი", "converted")})";
                 Conflicts.Add(new MileageConflictRow
                 {
-                    Text = $"{ReadingTitle(conflict.First)} {MileageWording.FormatValue(conflict.First, en)}  ↔  {ReadingTitle(conflict.Second)} {MileageWording.FormatValue(conflict.Second, en)}  =  {difference}"
+                    Text = $"{ReadingTitle(conflict.First)} {MileageWording.FormatValue(conflict.First, en)} {ReadingTitle(conflict.Second)} {MileageWording.FormatValue(conflict.Second, en)}  =  {difference}"
                 });
             }
 
             foreach (var attempt in result.Attempts)
                 Attempts.Add(ToAttemptRow(attempt, en));
 
-            ResultTitle = MileageWording.Headline(analysis.Outcome, en);
-            VerdictNote = MileageWording.Explanation(analysis.Outcome, en);
+            ResultTitle = analysis.Outcome == MileageOutcome.NoReading
+                ? L("ოდომეტრი ვერ მოიძებნა", "Odometer not found")
+                : L("ოდომეტრი:", "Odometer:");
 
             switch (analysis.Outcome)
             {
@@ -428,21 +424,12 @@ public class MileageViewModel : BaseViewModel
                 default:
                     // An older stored value is never shown as this scan's result.
                     ResultValue = "—";
-                    ResultSource = _lastKnownMileageKm is { } known
-                        ? L($"ადრინდელი წაკითხვა, ამჯერად არა: {_units.FormatDistance(known, "0")}", $"Earlier reading, not from this scan: {_units.FormatDistance(known, "0")}")
-                        : string.Empty;
+                    ResultSource = string.Empty;
                     ResultTitleColor = Grey;
                     ResultBackground = ThemeService.Soft("#FFFFFF");
                     CardStroke = ThemeService.Soft("#DCDFE3");
                     break;
             }
-
-            var fuel = _vehicleInfo?.FuelType ?? string.Empty;
-            var electricOrHybrid = fuel.Contains("electric", StringComparison.OrdinalIgnoreCase) ||
-                                   fuel.Contains("hybrid", StringComparison.OrdinalIgnoreCase) ||
-                                   fuel.Contains("phev", StringComparison.OrdinalIgnoreCase) ||
-                                   fuel.Contains("bev", StringComparison.OrdinalIgnoreCase);
-            PowertrainNote = MileageWording.PowertrainNote(electricOrHybrid, en);
         }
 
         if (result is not null)
@@ -522,8 +509,8 @@ public class MileageViewModel : BaseViewModel
         try
         {
             // The log holds requests and answers, not the VIN.
-            await Clipboard.Default.SetTextAsync($"GCar360 mileage log\n{Log}");
-            CopyLogText = L("დაკოპირდა ✓", "Copied ✓");
+            await Clipboard.Default.SetTextAsync($"OBD360 mileage log\n{Log}");
+            CopyLogText = L("დაკოპირდა", "Copied");
         }
         catch
         {

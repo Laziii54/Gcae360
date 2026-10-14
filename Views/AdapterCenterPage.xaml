@@ -43,7 +43,7 @@
                                     <BoxView WidthRequest="9" HeightRequest="9" CornerRadius="4.5" Color="{Binding Color}" VerticalOptions="Center" />
                                     <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
                                         <Label Text="{Binding Name}" FontSize="14" TextColor="{DynamicResource TextColor}" />
-                                        <Label Text="{Binding Details}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                        <Label Text="{Binding Details}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                                     </VerticalStackLayout>
                                     <Label Grid.Column="2" Text="{Binding Status}" FontSize="13" FontAttributes="Bold" TextColor="{Binding Color}" VerticalOptions="Center" HorizontalTextAlignment="End" />
                                 </Grid>

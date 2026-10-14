@@ -45,6 +45,16 @@ public sealed class ModuleDtcScanService
     {
         /// <summary>One entry per address that was asked: answered, silent, foreign reply only, or failed.</summary>
         public IReadOnlyList<ModuleProbe> Probes { get; init; } = Probes ?? Array.Empty<ModuleProbe>();
+
+        /// <summary>What the scan knew about the connection and the car (decides why a module was not asked).</summary>
+        public ModuleScanContext Context { get; init; } = ModuleScanContext.Unknown;
+
+        /// <summary>False when the scan could not start at all (adapter not ready): then there is nothing to say about any module.</summary>
+        public bool Executed { get; init; } = true;
+
+        /// <summary>One honest status per core module (ABS, transmission, airbag, ...): reached with/without codes, not reached, or not asked.</summary>
+        public IReadOnlyList<CoreModuleStatus> CoreModules() =>
+            Executed ? CoreModuleStatusEvaluator.Evaluate(Modules, Probes, Context) : Array.Empty<CoreModuleStatus>();
     }
 
     private sealed record Candidate(
@@ -264,7 +274,7 @@ public sealed class ModuleDtcScanService
         CancellationToken token)
     {
         if (!_obd.IsInitialized)
-            return new ScanOutcome(Array.Empty<ModuleDtcReport>(), 0, "OBD adapter არ არის მზად.");
+            return new ScanOutcome(Array.Empty<ModuleDtcReport>(), 0, "OBD adapter არ არის მზად.") { Executed = false };
 
         var protocol = _obd.CurrentProtocol;
         if (protocol is not (ObdProtocol.ISO_15765_4_CAN_11BIT_500K
@@ -273,7 +283,7 @@ public sealed class ModuleDtcScanService
                 or ObdProtocol.ISO_15765_4_CAN_29BIT_250K))
         {
             return new ScanOutcome(Array.Empty<ModuleDtcReport>(), 0,
-                "ამ მანქანის კავშირის ტიპზე (არა CAN) სხვა მოდულების სკანი ჯერ არ არის ხელმისაწვდომი.");
+                "ამ მანქანის კავშირის ტიპზე (არა CAN) სხვა მოდულების სკანი ჯერ არ არის ხელმისაწვდომი.") { Context = new ModuleScanContext(false, false) };
         }
 
         var is29BitCar = protocol is ObdProtocol.ISO_15765_4_CAN_29BIT_500K
@@ -382,7 +392,7 @@ public sealed class ModuleDtcScanService
             System.Diagnostics.Debug.WriteLine($"Module DTC session failed: {ex}");
             sessionError = ex;
             if (results.Count == 0)
-                return new ScanOutcome(results, checkedCount, SessionFailureNote(ex, partial: false), probes);
+                return new ScanOutcome(results, checkedCount, SessionFailureNote(ex, partial: false), probes) { Context = new ModuleScanContext(carMoving, true) };
         }
 
         await DescribeAsync(results, token).ConfigureAwait(false);
@@ -403,7 +413,7 @@ public sealed class ModuleDtcScanService
         if (probeNote.Length > 0)
             note = note.Length == 0 ? probeNote : note + "\n" + probeNote;
 
-        return new ScanOutcome(results, checkedCount, note, probes);
+        return new ScanOutcome(results, checkedCount, note, probes) { Context = new ModuleScanContext(carMoving, true) };
     }
 
     private static string L(string ka, string en) => ObdLang.IsEnglish ? en : ka;

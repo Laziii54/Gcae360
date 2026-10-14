@@ -85,6 +85,31 @@ public sealed class AccountService
     /// </summary>
     public string? EmailVerificationState { get; private set; }
 
+    /// <summary>
+    /// Server-confirmed only: true when this is the account configured as admin AND it has completed a 2-step
+    /// sign-in on the admin page at least once. A privileged feature must check this, never a local e-mail string.
+    /// False (never throws) when signed out, offline, or the server disagrees.
+    /// </summary>
+    public async Task<bool> IsAdminAsync(CancellationToken token = default)
+    {
+        if (!IsSignedIn)
+            return false;
+        try
+        {
+            using var request = await CreateAuthorizedRequestAsync(HttpMethod.Get, "/api/accounts/me");
+            using var response = await _http.SendAsync(request, token);
+            if (!response.IsSuccessStatusCode)
+                return false;
+
+            var body = await response.Content.ReadFromJsonAsync<MeResponse>(cancellationToken: token);
+            return body?.IsAdmin == true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     /// <summary>Whether this account's email is verified, whether a code can be sent, and whether the server asks for it.</summary>
     public async Task<EmailVerificationStatus?> GetEmailStatusAsync(CancellationToken token = default)
     {
@@ -381,13 +406,13 @@ public sealed class AccountService
                 L("შეიყვანე მიმდინარე და ახალი პაროლი.", "Enter the current and the new password."));
         }
 
-        if (newPassword.Length < 10 ||
+        if (newPassword.Length < 8 ||
             newPassword.Length > 128)
         {
             return new(
                 false,
-                L("პაროლი 10-დან 128 სიმბოლომდე უნდა იყოს.",
-                  "The password must have 10 to 128 characters."));
+                L("პაროლი 8-დან 128 სიმბოლომდე უნდა იყოს.",
+                  "The password must have 8 to 128 characters."));
         }
 
         try
@@ -433,10 +458,10 @@ public sealed class AccountService
                     return new(
                         false,
                         !string.IsNullOrWhiteSpace(text) && text.Length <= 300
-                            ? L("ახალი პაროლი არ აკმაყოფილებს მოთხოვნებს (10–128 სიმბოლო, არ უნდა ემთხვეოდეს ძველს).",
+                            ? L("ახალი პაროლი არ აკმაყოფილებს მოთხოვნებს (8–128 სიმბოლო, არ უნდა ემთხვეოდეს ძველს).",
                                 text)
-                            : L("ახალი პაროლი არ აკმაყოფილებს მოთხოვნებს (10–128 სიმბოლო).",
-                                "The new password does not meet the requirements (10–128 characters)."));
+                            : L("ახალი პაროლი არ აკმაყოფილებს მოთხოვნებს (8–128 სიმბოლო).",
+                                "The new password does not meet the requirements (8–128 characters)."));
                 }
 
                 if (statusCode == 429)
@@ -622,6 +647,11 @@ public sealed class AccountService
                     .ReadFromJsonAsync<AccountResponse>(
                         cancellationToken: token);
 
+            // Login only: a second-factor code was just emailed, no session yet — AccountPage asks for it and
+            // calls VerifyLoginCodeAsync, which finishes the sign-in exactly as below.
+            if (!isRegister && payload?.NeedsCode == true)
+                return new(false, string.Empty, NeedsLoginCodeCode);
+
             if (payload is null ||
                 !Guid.TryParse(
                     payload.AccountId,
@@ -634,31 +664,7 @@ public sealed class AccountService
                     ServerUnavailableMessage());
             }
 
-            await SecureStorage.Default.SetAsync(
-                AccessTokenKey,
-                payload.AccessToken);
-
-            Preferences.Default.Set(
-                AccountIdKey,
-                payload.AccountId);
-
-            Preferences.Default.Set(
-                AccountEmailKey,
-                payload.Email ?? email.Trim());
-
-            Preferences.Default.Set(
-                MustChangePasswordKey,
-                payload.MustChangePassword == true);
-
-            EmailVerificationState = isRegister ? payload.EmailVerification?.Trim().ToLowerInvariant() : null;
-
-            AccountChanged?.Invoke(
-                this,
-                EventArgs.Empty);
-
-            return new(
-                true,
-                L("ანგარიში წარმატებით დაუკავშირდა.", "Signed in to your account."));
+            return await ApplySessionAsync(payload, email, markEmailVerificationState: isRegister);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
@@ -672,6 +678,148 @@ public sealed class AccountService
             return new(
                 false,
                 ServerUnavailableMessage());
+        }
+    }
+
+    /// <summary>Stores the session from a successful register/login/code-verify answer and raises <see cref="AccountChanged"/>.</summary>
+    private async Task<AccountActionResult> ApplySessionAsync(AccountResponse payload, string email, bool markEmailVerificationState)
+    {
+        await SecureStorage.Default.SetAsync(AccessTokenKey, payload.AccessToken!);
+        Preferences.Default.Set(AccountIdKey, payload.AccountId!);
+        Preferences.Default.Set(AccountEmailKey, payload.Email ?? email.Trim());
+        Preferences.Default.Set(MustChangePasswordKey, payload.MustChangePassword == true);
+
+        if (markEmailVerificationState)
+            EmailVerificationState = payload.EmailVerification?.Trim().ToLowerInvariant();
+
+        AccountChanged?.Invoke(this, EventArgs.Empty);
+
+        return new(true, L("ანგარიში წარმატებით დაუკავშირდა.", "Signed in to your account."));
+    }
+
+    /// <summary><see cref="AccountActionResult.Code"/> when login answered "a code was just emailed, no session yet".</summary>
+    public const string NeedsLoginCodeCode = "NEEDS_LOGIN_CODE";
+
+    /// <summary>
+    /// Second step of login: the 6-digit code just emailed to the account (see <see cref="NeedsLoginCodeCode"/>).
+    /// The server re-checks the password itself — the code alone is never enough.
+    /// </summary>
+    public async Task<AccountActionResult> VerifyLoginCodeAsync(string email, string password, string code, bool moveDevice, CancellationToken token = default)
+    {
+        try
+        {
+            using var request = await CreateAuthorizedRequestAsync(HttpMethod.Post, "/api/accounts/login/verify-code");
+            request.Content = JsonContent.Create(new
+            {
+                email = email.Trim(),
+                password,
+                code = (code ?? string.Empty).Trim(),
+                moveDevice
+            });
+
+            using var response = await _http.SendAsync(request, token);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                if (response.StatusCode == HttpStatusCode.BadRequest)
+                {
+                    var body = await ReadEmailStatusAsync(response, token);
+                    return body?.Reason switch
+                    {
+                        "expired" => new(false, L("კოდს ვადა გაუვიდა. მოითხოვე ახალი.", "The code has expired. Request a new one."), "expired"),
+                        "too_many_attempts" => new(false, L("ძალიან ბევრი მცდელობა. მოითხოვე ახალი კოდი.", "Too many attempts. Request a new code."), "too_many_attempts"),
+                        "no_code" => new(false, L("აქტიური კოდი არ არის. მოითხოვე ახალი.", "There is no active code. Request a new one."), "no_code"),
+                        _ => new(false, L("კოდი არასწორია. სცადე თავიდან.", "That code is not correct. Try again."), "invalid")
+                    };
+                }
+
+                var (code2, serverMessage) = await ReadErrorAsync(response, token);
+                return DescribeFailure(response.StatusCode, code2, serverMessage, isRegister: false, moveDevice);
+            }
+
+            var payload = await response.Content.ReadFromJsonAsync<AccountResponse>(cancellationToken: token);
+            if (payload is null || !Guid.TryParse(payload.AccountId, out _) || string.IsNullOrWhiteSpace(payload.AccessToken))
+                return new(false, ServerUnavailableMessage());
+
+            return await ApplySessionAsync(payload, email, markEmailVerificationState: false);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            return new(false, L("შეჩერდა.", "Stopped."));
+        }
+        catch
+        {
+            return new(false, ServerUnavailableMessage());
+        }
+    }
+
+    /// <summary>
+    /// "Forgot password", step 1: always reports the same success either way, whether or not the e-mail is
+    /// registered — the server never confirms which, and this must not either. A code is emailed only when the
+    /// account actually exists.
+    /// </summary>
+    public async Task<AccountActionResult> ForgotPasswordAsync(string email, CancellationToken token = default)
+    {
+        try
+        {
+            using var request = await CreateAuthorizedRequestAsync(HttpMethod.Post, "/api/accounts/password/forgot");
+            request.Content = JsonContent.Create(new { email = email.Trim() });
+
+            using var response = await _http.SendAsync(request, token);
+
+            return response.IsSuccessStatusCode
+                ? new(true, L("თუ ეს ანგარიში არსებობს, კოდი გამოიგზავნა ელფოსტაზე.",
+                    "If an account exists for that address, a code was emailed to it."))
+                : new(false, ServerUnavailableMessage());
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            return new(false, L("შეჩერდა.", "Stopped."));
+        }
+        catch
+        {
+            return new(false, ServerUnavailableMessage());
+        }
+    }
+
+    /// <summary>"Forgot password", step 2: the code just emailed, plus the new password. On success every other session ends.</summary>
+    public async Task<AccountActionResult> ResetPasswordAsync(string email, string code, string newPassword, CancellationToken token = default)
+    {
+        try
+        {
+            using var request = await CreateAuthorizedRequestAsync(HttpMethod.Post, "/api/accounts/password/reset");
+            request.Content = JsonContent.Create(new
+            {
+                email = email.Trim(),
+                code = (code ?? string.Empty).Trim(),
+                newPassword
+            });
+
+            using var response = await _http.SendAsync(request, token);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return new(true, L("პაროლი განახლდა — შედი ახალი პაროლით.",
+                    "Your password was changed — sign in with the new password."));
+            }
+
+            var (code2, _) = await ReadErrorAsync(response, token);
+            return code2 switch
+            {
+                "EXPIRED" => new(false, L("კოდს ვადა გაუვიდა. მოითხოვე ახალი.", "The code has expired. Request a new one."), code2),
+                "TOO_MANY_ATTEMPTS" => new(false, L("ძალიან ბევრი მცდელობა. მოითხოვე ახალი კოდი.", "Too many attempts. Request a new code."), code2),
+                "NO_CODE" => new(false, L("აქტიური კოდი არ არის. მოითხოვე ახალი.", "There is no active code. Request a new one."), code2),
+                "WEAK_PASSWORD" => new(false, L("პაროლი უნდა შეიცავდეს 8-დან 128 სიმბოლომდე.", "The password must be 8 to 128 characters."), code2),
+                _ => new(false, L("კოდი არასწორია. სცადე თავიდან.", "That code is not correct. Try again."), code2 ?? "INVALID_CODE")
+            };
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            return new(false, L("შეჩერდა.", "Stopped."));
+        }
+        catch
+        {
+            return new(false, ServerUnavailableMessage());
         }
     }
 
@@ -695,8 +843,8 @@ public sealed class AccountService
             return new(
                 false,
                 moveDevice
-                    ? L("ანგარიშის ამ ტელეფონზე გადმოტანა ახლა ვერ მოხერხდა. სცადე მოგვიანებით ან მოგვწერე: gcar360support@gmail.com",
-                        "The account could not be moved to this phone right now. Try again later or write to gcar360support@gmail.com")
+                    ? L("ანგარიშის ამ ტელეფონზე გადმოტანა ახლა ვერ მოხერხდა. სცადე მოგვიანებით ან მოგვწერე: obd360support@gmail.com",
+                        "The account could not be moved to this phone right now. Try again later or write to obd360support@gmail.com")
                     : L("ეს ანგარიში სხვა ტელეფონზეა მიბმული. თავიდან შესვლით შეგიძლია ის ამ ტელეფონზე გადმოიტანო.",
                         "This account is linked to another phone. Sign in again to move it to this phone."),
                 DeviceAlreadyBoundCode);
@@ -717,8 +865,8 @@ public sealed class AccountService
             {
                 return new(
                     false,
-                    L("პაროლი 10-დან 128 სიმბოლომდე უნდა იყოს.",
-                      "The password must have 10 to 128 characters."));
+                    L("პაროლი 8-დან 128 სიმბოლომდე უნდა იყოს.",
+                      "The password must have 8 to 128 characters."));
             }
 
             if (text.Contains("email", StringComparison.OrdinalIgnoreCase))
@@ -734,15 +882,15 @@ public sealed class AccountService
             {
                 return new(
                     false,
-                    L("შეამოწმე ელ-ფოსტა და პაროლი (პაროლი — მინიმუმ 10 სიმბოლო).",
+                    L("შეამოწმე ელ-ფოსტა და პაროლი (პაროლი — მინიმუმ 8 სიმბოლო).",
                       text.Trim()));
             }
 
             return new(
                 false,
                 isRegister
-                    ? L("ანგარიში ვერ შეიქმნა. შეამოწმე ელ-ფოსტა და პაროლი (მინიმუმ 10 სიმბოლო).",
-                        "The account could not be created. Check the e-mail and the password (at least 10 characters).")
+                    ? L("ანგარიში ვერ შეიქმნა. შეამოწმე ელ-ფოსტა და პაროლი (მინიმუმ 8 სიმბოლო).",
+                        "The account could not be created. Check the e-mail and the password (at least 8 characters).")
                     : L("შეამოწმე ელ-ფოსტა და პაროლი.",
                         "Check the e-mail and password."));
         }
@@ -759,8 +907,8 @@ public sealed class AccountService
         {
             return new(
                 false,
-                L("ანგარიში ახლახან გადავიდა სხვა ტელეფონზე. ანგარიშის გადმოტანა შესაძლებელია 7 დღეში ერთხელ — სცადე მოგვიანებით ან მოგვწერე: gcar360support@gmail.com",
-                  "The account was moved to another phone recently. An account can be moved once per 7 days — try again later or write to gcar360support@gmail.com"),
+                L("ანგარიში ახლახან გადავიდა სხვა ტელეფონზე. ანგარიშის გადმოტანა შესაძლებელია 7 დღეში ერთხელ — სცადე მოგვიანებით ან მოგვწერე: obd360support@gmail.com",
+                  "The account was moved to another phone recently. An account can be moved once per 7 days — try again later or write to obd360support@gmail.com"),
                 RebindCooldownCode);
         }
 
@@ -874,6 +1022,14 @@ public sealed class AccountService
 
         /// <summary>"queued" when the server started a verification email, "unavailable" when it cannot send one.</summary>
         public string? EmailVerification { get; set; }   // "sent", "failed" or "unavailable"
+
+        /// <summary>Login only: true when a sign-in code was just emailed and no session was created yet.</summary>
+        public bool? NeedsCode { get; set; }
+    }
+
+    private sealed class MeResponse
+    {
+        public bool? IsAdmin { get; set; }
     }
 
     private sealed class EmailStatusResponse

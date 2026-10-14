@@ -69,6 +69,10 @@ public partial class FuelViewModel : BaseViewModel
     [ObservableProperty] private string refuelStatus = "ჯერ არ არის დამატებული შევსების ჩანაწერი.";
     [ObservableProperty] private string tankToTankSummary = "Tank-to-Tank ხარჯისთვის საჭიროა ერთი VIN-ის ორი „სრული ავზი“ ჩანაწერი.";
     [ObservableProperty] private string tripHistorySummary = "დასრულებული მოგზაურობები ჯერ არ არის.";
+    [ObservableProperty] private bool showTripHistory;
+    public string TripHistoryToggleText => ShowTripHistory ? L("დამალვა", "Hide") : L("ისტორიის ნახვა ›", "Show history ›");
+    /// <summary>The expanded list only renders once there is something to show it for.</summary>
+    public bool ShowTripHistoryList => ShowTripHistory && HasTripHistory;
     public ObservableCollection<RefuelRecord> RefuelHistory { get; } = new();
     public ObservableCollection<string> TripHistory { get; } = new();
 
@@ -107,24 +111,50 @@ public partial class FuelViewModel : BaseViewModel
         UpdateFuelKind();
     }
 
+    private bool _startInProgress;
+
     [RelayCommand]
     private async Task Start()
     {
+        // A second tap while the first start is still initialising the adapter must not start a second one.
+        if (_startInProgress)
+            return;
+        _startInProgress = true;
+        var startedTripHere = false;
         try
         {
         if (!await ProGate.EnsureOrOpenAsync(_pro))
             return;
 
         IsTripSummaryVisible = false;
+
+        // Polling comes first: nothing is subscribed, flagged or started until the adapter really answers, so a
+        // missing connection leaves no half-started trip behind (the crash report: Start → StartAsync → InitializeAsync).
+        var started = await _engine.TryStartAsync();
+        if (started is LiveDataStartResult.AdapterNotConnected)
+        {
+            Status = L("ჯერ დააკავშირე OBD ადაპტერი, შემდეგ დაიწყე.", "Connect the OBD adapter first, then start.");
+            return;
+        }
+        if (started is LiveDataStartResult.Cancelled)
+            return;
+        if (started is LiveDataStartResult.Failed)
+        {
+            Status = L("ადაპტერიდან კითხვა ვერ დაიწყო. სცადე თავიდან.", "Reading from the adapter could not start. Try again.");
+            return;
+        }
+
+        try
+        {
         Subscribe();
         _engine.SetFuelAnalyticsEnabled(true);
         if (_tripStartedAt is null)
         {
             ResetCurrentTrip();
             _tripStartedAt = DateTime.Now;
+            startedTripHere = true;
         }
         UpdateFuelKind();
-        await _engine.StartAsync();
         _engine.KeepRunningForTrip = true;
         StartEnergyLoop();
         BeginTripTracking();
@@ -133,12 +163,31 @@ public partial class FuelViewModel : BaseViewModel
 
         // Keep recording when the app goes to the background or the screen turns off.
         TripKeepAlive.Start(
-            L("GCar360 — მოგზაურობა იწერება", "GCar360 — trip is recording"),
-            L("შეეხე აპის გასახსნელად", "Tap to open the app"));
+            CarScanner.Services.Localization.LocalizationService.T(L("OBD360 — მოგზაურობა იწერება", "OBD360 — trip is recording")),
+            CarScanner.Services.Localization.LocalizationService.T(L("შეეხე აპის გასახსნელად", "Tap to open the app")));
+        }
+        catch
+        {
+            // Undo what this start did, so the page is not left "recording" without a trip, then report it.
+            StopEnergyLoop();
+            _engine.KeepRunningForTrip = false;
+            Unsubscribe();
+            _engine.SetFuelAnalyticsEnabled(false);
+            if (startedTripHere)
+                _tripStartedAt = null;
+            // Polling that THIS start began is stopped again; polling another page started is left alone.
+            if (started is LiveDataStartResult.Started)
+                await _engine.StopAsync(force: true);
+            throw;
+        }
         }
         catch (Exception commandException)
         {
             CarScanner.Services.CommandErrors.Report(commandException, "FuelViewModel.Start");
+        }
+        finally
+        {
+            _startInProgress = false;
         }
     }
 
@@ -307,7 +356,7 @@ public partial class FuelViewModel : BaseViewModel
         if (TripKeepAlive.IsActive)
             TripKeepAlive.Update(_mode == EnergyMode.Electric
                 ? $"{Distance} · {TripDurationText}"
-                : $"{Distance} · {L("საშუალო", "Average")} {Average} · {FuelUsed}");
+                : $"{Distance} · {CarScanner.Services.Localization.LocalizationService.T(L("საშუალო", "Average"))} {Average} · {FuelUsed}");
     }
 
     partial void OnFuelPriceTextChanged(string value)
@@ -315,6 +364,15 @@ public partial class FuelViewModel : BaseViewModel
         Preferences.Default.Set("fuel_price_per_liter", value ?? string.Empty);
         RefreshPresentation();
     }
+
+    partial void OnShowTripHistoryChanged(bool value)
+    {
+        OnPropertyChanged(nameof(TripHistoryToggleText));
+        OnPropertyChanged(nameof(ShowTripHistoryList));
+    }
+
+    [RelayCommand]
+    private void ToggleTripHistory() => ShowTripHistory = !ShowTripHistory;
 
     [RelayCommand]
     private async Task AddRefuel()

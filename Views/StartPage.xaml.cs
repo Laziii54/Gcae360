@@ -37,7 +37,7 @@ public partial class StartPage : ContentPage
         MainThread.BeginInvokeOnMainThread(UpdateLanguageButton);
 
     private void UpdateLanguageButton() =>
-        LanguageButton.Text = _localization.CurrentFlag;
+        LanguageButton.Text = _localization.CurrentBadge;
 
     private async void OnLanguageClicked(object? sender, EventArgs e)
     {
@@ -73,7 +73,7 @@ public partial class StartPage : ContentPage
         _navigating = true;
         try
         {
-            await Shell.Current.GoToAsync(route);
+            await CarScanner.Services.SafeNavigation.GoToAsync(route);
         }
         catch
         {

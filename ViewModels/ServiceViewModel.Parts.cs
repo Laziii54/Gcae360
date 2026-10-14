@@ -1,3 +1,4 @@
+using CarScanner.Services;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using CarScanner.Services.Maintenance;
@@ -77,7 +78,7 @@ public partial class ServiceViewModel
         OdometerSourceText = odometer is null
             ? L("მანქანამ არ მისცა · დააჭირე", "Not reported · tap")
             : odometer.FromCar
-                ? L("● მანქანიდან", "● from the car")
+                ? L("მანქანიდან", "from the car")
                 : L($"ხელით · {odometer.Utc.ToLocalTime():dd.MM.yyyy}", $"entered · {odometer.Utc.ToLocalTime():dd.MM.yyyy}");
         OdometerSourceColor = odometer?.FromCar == true ? MaintenanceText.OkColor : MaintenanceText.UnknownColor;
 
@@ -162,7 +163,7 @@ public partial class ServiceViewModel
         {
         if (row is null)
             return;
-        await Shell.Current.GoToAsync($"{nameof(MaintenancePartPage)}?part={row.Id}");
+        await CarScanner.Services.SafeNavigation.GoToAsync($"{nameof(MaintenancePartPage)}?part={row.Id}");
         }
         catch (Exception commandException)
         {
@@ -172,7 +173,7 @@ public partial class ServiceViewModel
 
     [RelayCommand]
     private async Task OpenMaintenanceSetup() =>
-        await Shell.Current.GoToAsync(nameof(MaintenanceSetupPage));
+        await CarScanner.Services.SafeNavigation.GoToAsync(nameof(MaintenanceSetupPage));
 
     [RelayCommand]
     private async Task EditOdometer()
@@ -183,7 +184,7 @@ public partial class ServiceViewModel
         if (tracker is null)
             return;
 
-        var text = await Shell.Current.DisplayPromptAsync(
+        var text = await Shell.Current.DisplayPromptLocalizedAsync(
             L("მიმდინარე გარბენი", "Current odometer"),
             L($"ჩაწერე დაფაზე ნაჩვენები გარბენი ({MaintenanceText.DistanceUnit}).", $"Enter the odometer shown on the dashboard ({MaintenanceText.DistanceUnit})."),
             L("შენახვა", "Save"),

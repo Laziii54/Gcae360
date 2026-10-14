@@ -22,7 +22,7 @@ namespace CarScanner.Services.OemDiagnostics;
 ///    traffic (0x700–0x7FF or 0x18DAxxxx) is recorded, so the exact request and
 ///    the car's answer can be read. This also works on gateway cars.
 ///
-/// The recording is analysed on the phone and sent to the GCar360 server,
+/// The recording is analysed on the phone and sent to the OBD360 server,
 /// where a command is reviewed before it is ever used to reset a car.
 /// </summary>
 public sealed class ResetRecorderService(OBDService obd, AccountService account)

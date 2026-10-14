@@ -12,7 +12,8 @@ namespace CarScanner.ViewModels;
 public sealed partial class ReportSectionRow : ObservableObject
 {
     public string Kind { get; init; } = string.Empty;
-    public string Icon { get; init; } = "•";
+    /// <summary>Icon kind (Controls/IconCatalog) that shows the status of the check.</summary>
+    public string IconKind { get; init; } = "circle";
     public string Title { get; init; } = string.Empty;
     public string Summary { get; init; } = string.Empty;
     public string TimeText { get; init; } = string.Empty;
@@ -100,7 +101,7 @@ public partial class VehicleReportViewModel : BaseViewModel
             DoneSections.Add(new ReportSectionRow
             {
                 Kind = section.Kind,
-                Icon = section.Icon,
+                IconKind = StatusIcon(section.Status),
                 Title = section.Title,
                 Summary = section.Summary,
                 TimeText = section.At.ToString("HH:mm"),
@@ -112,11 +113,11 @@ public partial class VehicleReportViewModel : BaseViewModel
         }
 
         MissingSections.Clear();
-        foreach (var (kind, icon, ka, en) in AllChecks)
+        foreach (var (kind, ka, en) in AllChecks)
         {
             if (report.Sections.Any(s => s.Kind == kind))
                 continue;
-            MissingSections.Add(new ReportSectionRow { Kind = kind, Icon = icon, Title = L(ka, en), IconColor = Grey, IconBackground = GreyBg });
+            MissingSections.Add(new ReportSectionRow { Kind = kind, IconKind = "circle", Title = L(ka, en), IconColor = Grey, IconBackground = GreyBg });
         }
 
         HasSections = report.Sections.Count > 0;
@@ -154,15 +155,22 @@ public partial class VehicleReportViewModel : BaseViewModel
         _ => (CarScanner.Services.Localization.ThemeService.Soft("#1D5BD6"), CarScanner.Services.Localization.ThemeService.Soft("#E4ECFB"))
     };
 
-    private static readonly (string Kind, string Icon, string Ka, string En)[] AllChecks =
+    private static string StatusIcon(ReportStatus status) => status switch
     {
-        ("scan", "⚠", "სრული სკანი", "Full scan"),
-        ("battery", "⚡", "ჰიბრიდის / EV ბატარეა", "Hybrid / EV battery"),
-        ("mileage", "⏱", "რეალური გარბენი", "Real mileage"),
-        ("inspection", "✓", "ტექდათვალიერება (OBD)", "Technical inspection (OBD)"),
-        ("prepurchase", "🔍", "ყიდვისწინა შემოწმება", "Pre-purchase check"),
-        ("ai", "AI", "AI დასკვნა", "AI conclusion"),
-        ("trip", "⛽", "მოგზაურობა და ხარჯი", "Trip and consumption")
+        ReportStatus.Ok => "check",
+        ReportStatus.Warning or ReportStatus.Bad => "warning",
+        _ => "info"
+    };
+
+    private static readonly (string Kind, string Ka, string En)[] AllChecks =
+    {
+        ("scan", "სრული სკანი", "Full scan"),
+        ("battery", "ჰიბრიდის / EV ბატარეა", "Hybrid / EV battery"),
+        ("mileage", "რეალური გარბენი", "Real mileage"),
+        ("inspection", "ტექდათვალიერება (OBD)", "Technical inspection (OBD)"),
+        ("prepurchase", "ყიდვისწინა შემოწმება", "Pre-purchase check"),
+        ("ai", "AI დასკვნა", "AI conclusion"),
+        ("trip", "მოგზაურობა და ხარჯი", "Trip and consumption")
     };
 
     [RelayCommand]
@@ -188,7 +196,7 @@ public partial class VehicleReportViewModel : BaseViewModel
             _ => null
         };
         if (route is not null)
-            await Shell.Current.GoToAsync(route);
+            await CarScanner.Services.SafeNavigation.GoToAsync(route);
     }
 
     [RelayCommand]
@@ -201,7 +209,7 @@ public partial class VehicleReportViewModel : BaseViewModel
         {
             IsBusy = true;
             var path = await _pdf.ExportCombinedAsync(report, _reports.LastScanReport, _vehicle.CurrentVehicle);
-            await Share.Default.RequestAsync(new ShareFileRequest { Title = L("GCar360 ანგარიში", "GCar360 report"), File = new ShareFile(path) });
+            await Share.Default.RequestAsync(new ShareFileRequest { Title = L("OBD360 ანგარიში", "OBD360 report"), File = new ShareFile(path) });
         }
         finally
         {
@@ -217,7 +225,7 @@ public partial class VehicleReportViewModel : BaseViewModel
             var report = _reports.Current;
             if (report.Sections.Count == 0) return;
             if (!await ProGate.EnsureOrOpenAsync()) return;
-            await Share.Default.RequestAsync(new ShareTextRequest { Title = L("GCar360 ანგარიში", "GCar360 report"), Text = _reports.BuildText(report) });
+            await Share.Default.RequestAsync(new ShareTextRequest { Title = L("OBD360 ანგარიში", "OBD360 report"), Text = _reports.BuildText(report) });
         }
         catch (Exception exception)
         {
@@ -253,7 +261,7 @@ public partial class VehicleReportViewModel : BaseViewModel
         var ordered = report.Sections.OrderBy(s => s.At).ToList();
         _qrSession.Set(new QrReportDraft
         {
-            Vehicle = Clip(string.IsNullOrWhiteSpace(report.Vehicle) ? "GCar360" : report.Vehicle, 160),
+            Vehicle = Clip(string.IsNullOrWhiteSpace(report.Vehicle) ? "OBD360" : report.Vehicle, 160),
             Vin = report.Vin,
             CheckedAt = report.UpdatedAt,
             Status = Clip($"{score}/100 · {_reports.Verdict(score)}", 120),
@@ -262,13 +270,13 @@ public partial class VehicleReportViewModel : BaseViewModel
             ReadinessSummary = Clip(Lines(ordered.Where(s => s.Kind is not ("scan" or "repair" or "ai"))), 4000),
             ServiceHistory = Clip(Lines(ordered.Where(s => s.Kind == "ai")), 4000)
         });
-        await Shell.Current.GoToAsync(nameof(Views.QrReportPage));
+        await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.QrReportPage));
     }
 
     [RelayCommand]
     private async Task StartNew()
     {
-        var ok = await Shell.Current.DisplayAlertAsync(
+        var ok = await Shell.Current.DisplayAlertLocalizedAsync(
             L("ახალი ანგარიში", "New report"),
             L("მიმდინარე ანგარიში ისტორიაში შეინახება და ახალი, ცარიელი დაიწყება.", "The current report is kept in history and a new, empty one starts."),
             L("დაწყება", "Start"),
@@ -285,8 +293,8 @@ public partial class VehicleReportViewModel : BaseViewModel
     private Task ShareHistory(ReportHistoryRow? row) =>
         row is null
             ? Task.CompletedTask
-            : Share.Default.RequestAsync(new ShareTextRequest { Title = "GCar360", Text = _reports.BuildText(row.Report) });
+            : Share.Default.RequestAsync(new ShareTextRequest { Title = "OBD360", Text = _reports.BuildText(row.Report) });
 
     [RelayCommand]
-    private Task OpenScanHistory() => Shell.Current.GoToAsync(nameof(Views.DiagnosticReportPage));
+    private Task OpenScanHistory() => CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.DiagnosticReportPage));
 }

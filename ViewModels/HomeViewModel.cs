@@ -182,7 +182,7 @@ public partial class HomeViewModel : BaseViewModel
     private string accelerationSpeedSource = "Vehicle Speed PID 01 0D-ის რეალურ პასუხს ველოდები…";
 
     [ObservableProperty]
-    private string accelerationObdStatus = "● Disconnected";
+    private string accelerationObdStatus = "Disconnected";
 
     [ObservableProperty]
     private Color accelerationObdStatusColor = Colors.Gray;
@@ -240,22 +240,22 @@ public partial class HomeViewModel : BaseViewModel
     /// <summary>PRO marks on the home tiles: shown only while PRO is not active.</summary>
     public bool ShowProBadges => ProGate.IsLocked;
 
-    /// <summary>Top bar: "PRO" to buy, "PRO ✓" when active.</summary>
-    public string ProButtonText => ProGate.IsLocked ? "PRO" : "PRO ✓";
+    /// <summary>Top bar badge text; the active state is not shown with a glyph.</summary>
+    public string ProButtonText => "PRO";
+
+    /// <summary>True while PRO is active (the AI send control then becomes an icon button).</summary>
+    public bool HasProAccess => !ProGate.IsLocked;
 
     private void RefreshProState()
     {
         OnPropertyChanged(nameof(ShowProBadges));
         OnPropertyChanged(nameof(ProButtonText));
-        OnPropertyChanged(nameof(AiSendText));
+        OnPropertyChanged(nameof(HasProAccess));
     }
 
     // ---- AI question field on the home page ----
 
     [ObservableProperty] private string aiQuestion = string.Empty;
-
-    /// <summary>Send button: "PRO" until PRO is active, then an arrow.</summary>
-    public string AiSendText => ProGate.IsLocked ? "PRO" : "➤";
 
     [RelayCommand]
     private async Task AskAi(string? preset)
@@ -274,7 +274,7 @@ public partial class HomeViewModel : BaseViewModel
             var question = AiQuestion?.Trim() ?? string.Empty;
             AiQuestion = string.Empty;
 
-            await Shell.Current.GoToAsync(nameof(Views.AiPage));
+            await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.AiPage));
 
             if (question.Length > 0 &&
                 IPlatformApplication.Current?.Services.GetService<AiDiagnosticViewModel>() is { } ai)
@@ -348,23 +348,25 @@ public partial class HomeViewModel : BaseViewModel
             {
                 UpdateAccelerationState();
 
-                LanguageToggleFlag = _localization.CurrentFlag;
+                LanguageToggleFlag = _localization.CurrentBadge;
 
                 UpdateHomeLanguageTexts();
 
-                if (_vehicle.CurrentVehicle is not null)
+                if (_bluetooth.IsConnected && _vehicle.CurrentVehicle is not null)
                     ApplyVehicleInfo(_vehicle.CurrentVehicle);
+                else if (!_bluetooth.IsConnected)
+                    ShowDisconnectedIdentity();
             });
 
         _units.UnitSystemChanged += (_, __) =>
             MainThread.BeginInvokeOnMainThread(UpdateAccelerationState);
 
-        LanguageToggleFlag = _localization.CurrentFlag;
+        LanguageToggleFlag = _localization.CurrentBadge;
 
         UpdateHomeLanguageTexts();
         UpdateAccelerationState();
 
-        Title = "Georgian Car Scanner";
+        Title = "OBD360";
 
         _bluetooth.ConnectionChanged += OnConnectionChanged;
         _vehicleContext.Changed += OnVehicleContextChanged;
@@ -377,6 +379,10 @@ public partial class HomeViewModel : BaseViewModel
         // მხოლოდ ავტომობილი
         ApplyVehicleContext(VehicleKind.Car);
         ApplyBrandProfile(_brand.Current);
+
+        // A saved brand choice is a preference, not a connected vehicle: until this session identifies a car, say so.
+        if (!_bluetooth.IsConnected)
+            ShowDisconnectedIdentity();
 
         UpdateStatus(_bluetooth.IsConnected);
 
@@ -428,7 +434,7 @@ public partial class HomeViewModel : BaseViewModel
             : snapshot.HasCurrentSpeed
                 ? L($"რეალური ECU პასუხი · PID 01 0D · {snapshot.LastSpeedAt?.ToLocalTime():HH:mm:ss}", $"Real ECU answer · PID 01 0D · {snapshot.LastSpeedAt?.ToLocalTime():HH:mm:ss}")
                 : L("PID 01 0D-ის პასუხს ველოდები…", "Waiting for PID 01 0D…");
-        AccelerationObdStatus = _bluetooth.IsConnected ? "● Connected" : "● Disconnected";
+        AccelerationObdStatus = _bluetooth.IsConnected ? "Connected" : "Disconnected";
         AccelerationObdStatusColor = _bluetooth.IsConnected ? Colors.LimeGreen : Colors.IndianRed;
         AccelerationRpm = snapshot.HasCurrentRpm
             ? snapshot.CurrentRpm.ToString(System.Globalization.CultureInfo.InvariantCulture)
@@ -582,7 +588,7 @@ public partial class HomeViewModel : BaseViewModel
         {
             AccelerationSpeed = "—";
             AccelerationSpeedSource = L("ადაპტერი არ არის · შეგიძლია ტელეფონის GPS-ით გაზომო", "No adapter · you can measure with the phone GPS");
-            AccelerationObdStatus = "● Disconnected";
+            AccelerationObdStatus = "Disconnected";
             AccelerationObdStatusColor = Colors.IndianRed;
             AccelerationStatus = L("ზუსტი დროისთვის დააკავშირე OBD2 ადაპტერი, ან დააჭირე ARM და აირჩიე GPS.",
                 "Connect an OBD2 adapter for an exact time, or tap ARM and choose GPS.");
@@ -625,7 +631,7 @@ public partial class HomeViewModel : BaseViewModel
         // also on cars without OBD speed, but it is an estimate and not ranked).
         if (!_bluetooth.IsConnected)
         {
-            var useGps = await Shell.Current.DisplayAlertAsync(
+            var useGps = await Shell.Current.DisplayAlertLocalizedAsync(
                 L("ადაპტერი არ არის დაკავშირებული", "No adapter connected"),
                 L("გავზომო ტელეფონის GPS-ით? GPS წამში დაახლოებით ერთხელ ახლდება, ამიტომ შედეგი მიახლოებითია და რეიტინგში არ შედის. ზუსტი დროისთვის დააკავშირე OBD2 ადაპტერი.",
                   "Measure with the phone GPS? GPS updates about once a second, so the result is approximate and not ranked. For an exact time, connect an OBD2 adapter."),
@@ -751,11 +757,11 @@ public partial class HomeViewModel : BaseViewModel
 
     [RelayCommand]
     private Task GoToAccelerationHistory()
-        => Shell.Current.GoToAsync(nameof(Views.AccelerationHistoryPage));
+        => CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.AccelerationHistoryPage));
 
     [RelayCommand]
     private Task GoToAccelerationLeaderboard()
-        => Shell.Current.GoToAsync(nameof(Views.AccelerationLeaderboardPage));
+        => CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.AccelerationLeaderboardPage));
 
     [RelayCommand]
     private async Task GoToAcceleration()
@@ -765,7 +771,7 @@ public partial class HomeViewModel : BaseViewModel
         if (!await RequireObdConnectionAsync())
             return;
 
-        await Shell.Current.GoToAsync(nameof(Views.AccelerationPage));
+        await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.AccelerationPage));
         }
         catch (Exception commandException)
         {
@@ -786,20 +792,6 @@ public partial class HomeViewModel : BaseViewModel
         catch (Exception commandException)
         {
             CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.ToggleLanguage");
-        }
-    }
-
-    /// <summary>Text-only vehicle report: scan, then save/share as a .txt file.</summary>
-    [RelayCommand]
-    private async Task GoToVehicleJournal()
-    {
-        try
-        {
-            await Shell.Current.GoToAsync(nameof(Views.VehicleJournalPage));
-        }
-        catch (Exception commandException)
-        {
-            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToVehicleJournal");
         }
     }
 
@@ -833,23 +825,7 @@ public partial class HomeViewModel : BaseViewModel
                 _servicePreviewCache = null;
                 _servicePreviewCacheVin = null;
                 _vehicle.ClearConnectedVehicleState();
-                ConnectedBrandImage = string.Empty;
-
-                VinNumber = _localization.IsEnglish
-                     ? "VIN unknown"
-                     : "VIN უცნობია";
-
-                VehicleName = _localization.IsEnglish
-                    ? "Vehicle unknown"
-                    : "მანქანა უცნობია";
-
-                VehicleTrim = _localization.IsEnglish
-                    ? "Trim unavailable"
-                    : "კომპლექტაცია მიუწვდომელია";
-
-                FuelType = _localization.IsEnglish
-                    ? "Fuel unavailable"
-                    : "საწვავი მიუწვდომელია";
+                ShowDisconnectedIdentity();
             }
 
             UpdateStatus(connected);
@@ -1012,6 +988,13 @@ public partial class HomeViewModel : BaseViewModel
 
     private string L(string ka, string en) => _localization.IsEnglish ? en : ka;
 
+    /// <summary>
+    /// The ranked test of the unit system the person chose: 0–100 km/h for metric, 0–60 mph for imperial. The page
+    /// heading and the ranking row follow it instead of a fixed "0–100", and a change of language never changes it.
+    /// </summary>
+    public string AccelerationHeadline => _units.PerformanceTestLabel;
+    public string AccelerationRankingRowText => L($"{_units.PerformanceTestLabel} რეიტინგი", $"{_units.PerformanceTestLabel} ranking");
+
     private string FormatServiceMetricValue(ServiceMetricReading reading)
     {
         var unit = (reading.Unit ?? string.Empty).Trim().ToLowerInvariant();
@@ -1069,9 +1052,6 @@ public partial class HomeViewModel : BaseViewModel
 
         BrandSupportNote = profile.GenericSupportNote;
         BrandVerificationText = _brand.GetVerificationMessage(null);
-
-        if (VehicleName is "მანქანა უცნობია" or "მანქანის ინფორმაცია მიუწვდომელია")
-            VehicleName = profile.DisplayName;
 
         // The selected brand is known before the ECU replies.  Show that
         // immediately, but keep VIN/year explicitly marked as pending so the
@@ -1289,7 +1269,7 @@ public partial class HomeViewModel : BaseViewModel
     {
         try
         {
-        await Shell.Current.GoToAsync(
+        await CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.VehicleBrandSelectionPage));
         }
         catch (Exception commandException)
@@ -1304,7 +1284,7 @@ public partial class HomeViewModel : BaseViewModel
     {
         try
         {
-        await Shell.Current.GoToAsync(
+        await CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.VehicleBrandSelectionPage));
         }
         catch (Exception commandException)
@@ -1315,7 +1295,7 @@ public partial class HomeViewModel : BaseViewModel
 
     [RelayCommand]
     private Task BeginConnection()
-        => Shell.Current.GoToAsync(nameof(Views.VehicleBrandSelectionPage));
+        => CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.VehicleBrandSelectionPage));
 
 
 
@@ -1332,7 +1312,7 @@ public partial class HomeViewModel : BaseViewModel
         if (!await RequireObdConnectionAsync())
             return;
 
-        await Shell.Current.GoToAsync(
+        await CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.ModuleScanPage));
         }
         catch (Exception commandException)
@@ -1350,7 +1330,7 @@ public partial class HomeViewModel : BaseViewModel
         if (!await RequireObdConnectionAsync())
             return;
 
-        await Shell.Current.GoToAsync(
+        await CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.ModuleScanPage));
         }
         catch (Exception commandException)
@@ -1368,7 +1348,7 @@ public partial class HomeViewModel : BaseViewModel
         {
             // Opens without an adapter on purpose (saved backups, history, what is available and why); the page itself
             // says "connect the adapter" and offers the button. Returning silently here left the tile looking broken.
-            await Shell.Current.GoToAsync(nameof(Views.CodingPage));
+            await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.CodingPage));
         }
         catch (Exception commandException)
         {
@@ -1383,7 +1363,7 @@ public partial class HomeViewModel : BaseViewModel
         try
         {
             if (!_bluetooth.IsConnected) return;
-            await Shell.Current.GoToAsync(nameof(Views.GraphStudioPage));
+            await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.GraphStudioPage));
         }
         catch (Exception commandException)
         {
@@ -1399,7 +1379,7 @@ public partial class HomeViewModel : BaseViewModel
         if (!await RequireObdConnectionAsync())
             return;
 
-        await Shell.Current.GoToAsync(
+        await CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.LiveDataPage));
         }
         catch (Exception commandException)
@@ -1417,7 +1397,7 @@ public partial class HomeViewModel : BaseViewModel
         if (!await RequireObdConnectionAsync())
             return;
 
-        await Shell.Current.GoToAsync(
+        await CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.SensorsPage));
         }
         catch (Exception commandException)
@@ -1432,7 +1412,7 @@ public partial class HomeViewModel : BaseViewModel
     {
         try
         {
-        await Shell.Current.GoToAsync(
+        await CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.HistoryPage));
         }
         catch (Exception commandException)
@@ -1447,7 +1427,7 @@ public partial class HomeViewModel : BaseViewModel
     {
         try
         {
-        await Shell.Current.GoToAsync(
+        await CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.SettingsPage));
         }
         catch (Exception commandException)
@@ -1465,7 +1445,7 @@ public partial class HomeViewModel : BaseViewModel
         if (!await RequireObdConnectionAsync())
             return;
 
-        await Shell.Current.GoToAsync(
+        await CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.EmissionsPage));
         }
         catch (Exception commandException)
@@ -1482,7 +1462,7 @@ public partial class HomeViewModel : BaseViewModel
         if (!await RequireObdConnectionAsync())
             return;
 
-        await Shell.Current.GoToAsync(
+        await CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.TechnicalInspectionPage));
         }
         catch (Exception commandException)
@@ -1497,7 +1477,7 @@ public partial class HomeViewModel : BaseViewModel
         try
         {
         if (!await RequireObdConnectionAsync()) return;
-        await Shell.Current.GoToAsync(nameof(Views.VehicleHealthPage));
+        await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.VehicleHealthPage));
         }
         catch (Exception commandException)
         {
@@ -1511,7 +1491,7 @@ public partial class HomeViewModel : BaseViewModel
         try
         {
         if (!await RequireObdConnectionAsync()) return;
-        await Shell.Current.GoToAsync(nameof(Views.BatteryPage));
+        await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.BatteryPage));
         }
         catch (Exception commandException)
         {
@@ -1526,7 +1506,7 @@ public partial class HomeViewModel : BaseViewModel
         {
         if (!await RequireObdConnectionAsync())
             return;
-        await Shell.Current.GoToAsync(nameof(Views.HybridHealthPage));
+        await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.HybridHealthPage));
         }
         catch (Exception commandException)
         {
@@ -1535,7 +1515,9 @@ public partial class HomeViewModel : BaseViewModel
     }
     [RelayCommand] private async Task GoToAdapterCenter() {
         try
-        { if (!await RequireObdConnectionAsync()) return; await Shell.Current.GoToAsync(nameof(Views.AdapterCenterPage));
+        {
+            // The adapter page is where the connection is made, so it must open without one.
+            await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.AdapterCenterPage));
         }
         catch (Exception commandException)
         {
@@ -1551,7 +1533,7 @@ public partial class HomeViewModel : BaseViewModel
         if (!await RequireObdConnectionAsync())
             return;
 
-        await Shell.Current.GoToAsync(
+        await CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.EcuIdentifiersPage));
         }
         catch (Exception commandException)
@@ -1568,7 +1550,7 @@ public partial class HomeViewModel : BaseViewModel
         if (!await RequireObdConnectionAsync())
             return;
 
-        await Shell.Current.GoToAsync(nameof(Views.CapabilityCenterPage));
+        await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.CapabilityCenterPage));
         }
         catch (Exception commandException)
         {
@@ -1585,7 +1567,7 @@ public partial class HomeViewModel : BaseViewModel
         if (!await RequireObdConnectionAsync())
             return;
 
-        await Shell.Current.GoToAsync(
+        await CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.MileagePage));
         }
         catch (Exception commandException)
@@ -1603,7 +1585,7 @@ public partial class HomeViewModel : BaseViewModel
         if (!await RequireObdConnectionAsync())
             return;
 
-        await Shell.Current.GoToAsync(nameof(Views.FreezeFramePage));
+        await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.FreezeFramePage));
         }
         catch (Exception commandException)
         {
@@ -1616,8 +1598,11 @@ public partial class HomeViewModel : BaseViewModel
     {
         try
         {
+        if (!await RequireObdConnectionAsync())
+            return;
+
         // One combined report: every check of this car, exported together.
-        await Shell.Current.GoToAsync(nameof(Views.VehicleReportPage));
+        await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.VehicleReportPage));
         }
         catch (Exception commandException)
         {
@@ -1634,7 +1619,7 @@ public partial class HomeViewModel : BaseViewModel
         if (!await RequireObdConnectionAsync())
             return;
 
-        await Shell.Current.GoToAsync(
+        await CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.AiPage));
         }
         catch (Exception commandException)
@@ -1652,7 +1637,7 @@ public partial class HomeViewModel : BaseViewModel
         if (!await RequireObdConnectionAsync())
             return;
 
-        await Shell.Current.GoToAsync(
+        await CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.FuelPage));
         }
         catch (Exception commandException)
@@ -1668,7 +1653,7 @@ public partial class HomeViewModel : BaseViewModel
         if (await _pro.EnsureProAsync())
             return true;
 
-        var openActivation = await Shell.Current.DisplayAlertAsync(
+        var openActivation = await Shell.Current.DisplayAlertLocalizedAsync(
             CarScanner.Services.Localization.LocalizationService.T("PRO ფუნქცია"),
             CarScanner.Services.Localization.LocalizationService.T($"{feature} ხელმისაწვდომია მხოლოდ აქტიური PRO ვერსიით."),
             CarScanner.Services.Localization.LocalizationService.T("გააქტიურება"),
@@ -1689,7 +1674,7 @@ public partial class HomeViewModel : BaseViewModel
         if (!await RequireObdConnectionAsync())
             return;
 
-        await Shell.Current.GoToAsync(
+        await CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.ServicePage));
         }
         catch (Exception commandException)
@@ -1709,7 +1694,7 @@ public partial class HomeViewModel : BaseViewModel
 
         // "Module diagnostics" tile = live values of the modules (ABS, steering,
         // battery …). The all-module trouble-code scan stays on the DTC page.
-        await Shell.Current.GoToAsync(
+        await CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.ModuleLiveDataPage));
         }
         catch (Exception commandException)
@@ -1724,7 +1709,7 @@ public partial class HomeViewModel : BaseViewModel
     {
         try
         {
-        await Shell.Current.GoToAsync(
+        await CarScanner.Services.SafeNavigation.GoToAsync(
             nameof(Views.ProPage));
         }
         catch (Exception commandException)
@@ -1733,11 +1718,45 @@ public partial class HomeViewModel : BaseViewModel
         }
     }
 
+    private bool _connectPromptOpen;
+
+    /// <summary>For tiles handled in code-behind: true when connected, otherwise the "connect an adapter" explanation is shown.</summary>
+    public Task<bool> EnsureObdConnectionAsync() => RequireObdConnectionAsync();
+
     /// <summary>
-    /// Car features are dimmed and disabled on the home page until the
-    /// adapter is connected; a tap that still gets here simply does nothing.
+    /// Every tile stays visible and tappable. Features that need the car are muted until the adapter is connected, and a tap
+    /// on one explains what to do (once at a time) instead of silently doing nothing.
     /// </summary>
-    private Task<bool> RequireObdConnectionAsync() => Task.FromResult(_bluetooth.IsConnected);
+    private async Task<bool> RequireObdConnectionAsync()
+    {
+        if (_bluetooth.IsConnected)
+            return true;
+
+        if (_connectPromptOpen)
+            return false;
+
+        _connectPromptOpen = true;
+        try
+        {
+            if (Shell.Current is { } shell)
+                await CarScanner.Services.PageDialogExtensions.DisplayAlertLocalizedAsync(
+                    shell,
+                    L("OBD ადაპტერი საჭიროა", "OBD adapter needed"),
+                    L("ეს ფუნქცია მუშაობს დაკავშირებულ OBD ადაპტერთან. გახსენი „ადაპტერი“, დააკავშირე და სცადე თავიდან.",
+                      "This feature needs a connected OBD adapter. Open Adapter, connect it, and try again."),
+                    "OK");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Connect prompt failed: {ex.Message}");
+        }
+        finally
+        {
+            _connectPromptOpen = false;
+        }
+
+        return false;
+    }
 
     // ============================================================
     // OBD PROTOCOL EXPLANATION
@@ -1846,7 +1865,7 @@ public partial class HomeViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// "↻ განახლება" on the vehicle card: forgets the current identity and
+    /// "განახლება" on the vehicle card: forgets the current identity and
     /// reads VIN / vehicle / trim / fuel from the ECU again.
     /// </summary>
     [RelayCommand]
@@ -1869,6 +1888,17 @@ public partial class HomeViewModel : BaseViewModel
         {
             CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.RefreshVehicleIdentity");
         }
+    }
+
+    /// <summary>The vehicle card while no adapter is connected: nothing is claimed about a vehicle.</summary>
+    private void ShowDisconnectedIdentity()
+    {
+        var lines = VehicleIdentityText.Disconnected(_localization.IsEnglish);
+        ConnectedBrandImage = string.Empty;
+        VinNumber = lines.Vin;
+        VehicleName = lines.Name;
+        VehicleTrim = lines.Trim;
+        FuelType = lines.Fuel;
     }
 
     private void ShowIdentityLoading()
@@ -1940,13 +1970,10 @@ public partial class HomeViewModel : BaseViewModel
                     "Unknown",
                     StringComparison.OrdinalIgnoreCase)));
 
+        // Nothing obtained in this session: "Reading…" while the read runs, otherwise "unknown". The brand the person picked
+        // earlier (resolved.DisplayName) is a preference and is deliberately not shown as the vehicle.
         if (string.IsNullOrWhiteSpace(VehicleName))
-        {
-            VehicleName = resolved.DisplayName;
-        }
-
-        if (string.IsNullOrWhiteSpace(VehicleName) && reading)
-            VehicleName = loadingText;
+            VehicleName = reading ? loadingText : VehicleIdentityText.Name(null, _localization.IsEnglish);
 
         // კომპლექტაცია
         VehicleTrim = reading && IsMissing(vehicle.Trim)

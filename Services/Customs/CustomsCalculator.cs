@@ -10,7 +10,7 @@ public enum CustomsCurrency { Usd, Eur }
 public sealed record CustomsFeeTier(decimal? UpToGel, decimal FeeGel);
 
 /// <summary>
-/// Import rules (from the GCar360 server; built-in copy when offline).
+/// Import rules (from the OBD360 server; built-in copy when offline).
 /// Every field after <see cref="RatesDate"/> is optional so older servers
 /// and older app versions keep working.
 /// </summary>

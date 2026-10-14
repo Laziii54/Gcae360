@@ -22,14 +22,59 @@ public partial class BatteryViewModel : BaseViewModel
     [ObservableProperty] private string measurementState = "NOT CHECKED";
     [ObservableProperty] private string measurementStateColor = "#94A3B8";
     [ObservableProperty] private string lastUpdated = "ბოლო განახლება: ჯერ არ არის";
-    [ObservableProperty] private string highVoltageStatus = "HV Battery/BECM მონაცემები ჯერ არ შემოწმებულა.";
-    [ObservableProperty] private string highVoltageState = "NOT CHECKED";
-    [ObservableProperty] private string highVoltageStateColor = "#94A3B8";
+    [ObservableProperty] private int selectedTypeIndex;
+    [ObservableProperty] private string batteryTypeHint = "";
+
+    private const string TypePreference = "battery12v_type_v1";
+    [ObservableProperty] private bool isPullRefreshing;
+
+    /// <summary>Pull-to-refresh: the same read as the Refresh button, never a second one while one is running.</summary>
+    [RelayCommand]
+    private Task PullRefresh() => PullRefreshRunner.RunAsync(
+        Refresh,
+        () => IsBusy,
+        value => IsPullRefreshing = value,
+        CarScanner.Helpers.RefreshHaptics.Completed);
+
+    private double? _lastValue;
+    private double? _lastRpm;
+
+    public string BatteryTypeTitle => L("12 V აკუმულატორის ტიპი", "12 V battery type");
+    public string BatteryTypeNote => L("მანქანიდან არ იკითხება — აირჩიე შენი აკუმულატორის ტიპი.", "Not read from the car — choose your 12 V battery type.");
+
+    public IReadOnlyList<string> BatteryTypeOptions { get; } = new[]
+    {
+        L("ჩვეულებრივი (ტყვია-მჟავა)", "Standard (lead-acid)"),
+        L("AGM / EFB (start-stop)", "AGM / EFB (start-stop)"),
+        L("ჰიბრიდი / EV — 12 V დამხმარე", "Hybrid / EV — 12 V auxiliary"),
+        L("ლითიუმი 12 V", "Lithium 12 V")
+    };
 
     public BatteryViewModel(OBDService obd)
     {
         _obd = obd;
         Title = "Battery / Charging";
+        int saved;
+        try { saved = Preferences.Default.Get(TypePreference, 0); }
+        catch { saved = 0; }
+        selectedTypeIndex = Enum.IsDefined(typeof(Battery12VType), saved) ? saved : 0;
+        BatteryTypeHint = BatteryVoltageGuide.Hint((Battery12VType)selectedTypeIndex);
+    }
+
+    /// <summary>The verdict depends on the battery type, so a change re-judges the last reading without a new request.</summary>
+    partial void OnSelectedTypeIndexChanged(int value)
+    {
+        if (!Enum.IsDefined(typeof(Battery12VType), value))
+            return;
+        var type = (Battery12VType)value;
+        try { Preferences.Default.Set(TypePreference, value); } catch { /* a missing preference store must not break the page */ }
+        BatteryTypeHint = BatteryVoltageGuide.Hint(type);
+        if (_lastValue is { } last)
+        {
+            var verdict = BatteryVoltageGuide.Describe(last, _lastRpm, type);
+            ChargingStatus = verdict.Text;
+            MeasurementStateColor = ColorOf(verdict.Level);
+        }
     }
 
     [RelayCommand]
@@ -50,8 +95,6 @@ public partial class BatteryViewModel : BaseViewModel
 
             if (!_obd.IsInitialized)
                 await _obd.InitializeAsync();
-
-            await RefreshHighVoltageStatusAsync();
 
             // PID 0142 is optional. Use the bounded live reader so an ECU
             // that advertises it incorrectly cannot keep this page loading.
@@ -105,14 +148,17 @@ public partial class BatteryViewModel : BaseViewModel
     private void ApplySuccessfulMeasurement(double value, double? rpm, DateTime timestamp)
     {
         _samples.Add(value);
+        _lastValue = value;
+        _lastRpm = rpm;
         if (_samples.Count > HistoryLimit)
             _samples.RemoveAt(0);
 
         Voltage = $"{value:F2} V";
         Minimum = $"{_samples.Min():F2} V";
         Maximum = $"{_samples.Max():F2} V";
-        var (status, color) = DescribeVoltage(value, rpm);
-        ChargingStatus = status;
+        var verdict = BatteryVoltageGuide.Describe(value, rpm, (Battery12VType)SelectedTypeIndex);
+        var color = ColorOf(verdict.Level);
+        ChargingStatus = verdict.Text;
         LastUpdated = $"ბოლო განახლება: {timestamp:HH:mm:ss}";
         MeasurementState = "AVAILABLE";
         MeasurementStateColor = color;
@@ -142,83 +188,13 @@ public partial class BatteryViewModel : BaseViewModel
         System.Diagnostics.Debug.WriteLine($"Battery voltage refresh failed: {exception.Message}");
     }
 
-    private async Task RefreshHighVoltageStatusAsync()
-    {
-        if (!_obd.IsPidSupported(0x5B))
-        {
-            HighVoltageState = "NOT AVAILABLE";
-            HighVoltageStateColor = "#94A3B8";
-            HighVoltageStatus = "Generic OBD-II-მა Hybrid Battery Remaining Life (PID 015B) არ დაადასტურა. Pack voltage, current, SOC და cell data-სთვის საჭიროა დადასტურებული OEM/BMS პროფილი.";
-            return;
-        }
-
-        try
-        {
-            var reading = (await _obd.ReadLiveValuesAsync(new[] { 0x5B })).FirstOrDefault();
-            if (reading is null || !double.TryParse(reading.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
-            {
-                HighVoltageState = "NOT AVAILABLE";
-                HighVoltageStateColor = "#F59E0B";
-                HighVoltageStatus = "ECU-მ PID 015B მხარდაჭერად გამოაცხადა, მაგრამ დეკოდირებადი მნიშვნელობა არ დააბრუნა. სხვა HV მონაცემი არ არის ნაჩვენები.";
-                return;
-            }
-
-            HighVoltageState = "AVAILABLE";
-            HighVoltageStateColor = "#4ADE80";
-            HighVoltageStatus = $"ECU-reported Hybrid Battery Remaining Life: {value:0.##}%. ეს არ არის ავტომატურად Battery SOC, pack voltage ან cell მდგომარეობა.";
-        }
-        catch (Exception ex)
-        {
-            HighVoltageState = "ERROR";
-            HighVoltageStateColor = "#F87171";
-            HighVoltageStatus = "Hybrid Battery PID ვერ განახლდა; მონაცემი არ არის გამოგონილი.";
-            System.Diagnostics.Debug.WriteLine($"Hybrid battery refresh failed: {ex.Message}");
-        }
-    }
-
     private static string L(string ka, string en) => CarScanner.Services.OBD.ObdLang.IsEnglish ? en : ka;
 
-    private const string Green = "#4ADE80";
-    private const string Amber = "#F59E0B";
-    private const string Red = "#F87171";
-    private const string Neutral = "#94A3B8";
-
-    /// <summary>
-    /// Engine running (RPM &gt; 400): the alternator should hold 13.6–14.8 V.
-    /// Engine off: 12.4–12.7 V is a healthy resting battery. Without RPM the
-    /// engine state is unknown and the value is not judged as resting/charging.
-    /// </summary>
-    private static (string Text, string Color) DescribeVoltage(double value, double? rpm)
+    private static string ColorOf(VoltageLevel level) => level switch
     {
-        if (rpm is > 400)
-        {
-            return value switch
-            {
-                > 15.0 => (L("ძრავა მუშაობს: გადამუხტვა — შეამოწმე დამუხტვის სისტემა (რეგულატორი)", "Engine running: overcharging — check the charging system (regulator)"), Red),
-                < 13.2 => (L("ძრავა მუშაობს: გენერატორი არ მუხტავს — შეამოწმე გენერატორი და ღვედი", "Engine running: alternator not charging — check the alternator and belt"), Red),
-                < 13.6 => (L("ძრავა მუშაობს: სუსტი დამუხტვა — შეამოწმე გენერატორი", "Engine running: weak charging — check the alternator"), Amber),
-                <= 14.8 => (L("ძრავა მუშაობს: ნორმალური დამუხტვის ძაბვა", "Engine running: normal charging voltage"), Green),
-                _ => (L("ძრავა მუშაობს: დამუხტვა ზედა ზღვართანაა (14.8–15.0 V)", "Engine running: charging near the upper limit (14.8–15.0 V)"), Amber)
-            };
-        }
-
-        if (rpm is null)
-        {
-            return value switch
-            {
-                < 12.0 => (L("ძრავის მდგომარეობა უცნობია: დაბალი ძაბვა — შეამოწმე აკუმულატორი და დამუხტვა", "Engine state unknown: low voltage — check the battery and charging"), Red),
-                > 15.0 => (L("ძრავის მდგომარეობა უცნობია: მაღალი ძაბვა — შეამოწმე დამუხტვის სისტემა", "Engine state unknown: high voltage — check the charging system"), Red),
-                _ => (L("ძრავის მდგომარეობა უცნობია (RPM ვერ წავიკითხე) — ძაბვა შეფასების გარეშე", "Engine state unknown (RPM not readable) — voltage shown without a verdict"), Neutral)
-            };
-        }
-
-        // Engine off.
-        return value switch
-        {
-            < 12.0 => (L("ძრავა გამორთულია: დაბალი ძაბვა — შეამოწმე აკუმულატორი", "Engine off: low voltage — check the battery"), Red),
-            < 12.4 => (L("ძრავა გამორთულია: აკუმულატორი ნაწილობრივ დაცლილია", "Engine off: battery partly discharged"), Amber),
-            <= 13.0 => (L("ძრავა გამორთულია: ნორმალური მოსვენების ძაბვა", "Engine off: normal resting voltage"), Green),
-            _ => (L("ძრავა გამორთულია: ზედაპირული მუხტი (ახლახან იმუხტებოდა)", "Engine off: surface charge (recently charged)"), Green)
-        };
-    }
+        VoltageLevel.Good => "#4ADE80",
+        VoltageLevel.Attention => "#F59E0B",
+        VoltageLevel.Problem => "#F87171",
+        _ => "#94A3B8"
+    };
 }

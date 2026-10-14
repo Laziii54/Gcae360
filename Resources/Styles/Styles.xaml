@@ -11,7 +11,7 @@
     </Style>
 
     <Style x:Key="PageTitleStyle" TargetType="Label">
-        <Setter Property="FontSize" Value="23" />
+        <Setter Property="FontSize" Value="24" />
         <Setter Property="FontAttributes" Value="Bold" />
         <Setter Property="TextColor" Value="{DynamicResource TextColor}" />
     </Style>
@@ -23,7 +23,7 @@
     </Style>
 
     <Style x:Key="CaptionStyle" TargetType="Label">
-        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontSize" Value="12" />
         <Setter Property="TextColor" Value="{DynamicResource SubTextColor}" />
         <Setter Property="LineBreakMode" Value="WordWrap" />
     </Style>
@@ -98,7 +98,7 @@
         <Setter Property="VerticalOptions" Value="Center" />
     </Style>
     <Style x:Key="ProBadgeTextStyle" TargetType="Label">
-        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontSize" Value="11" />
         <Setter Property="FontAttributes" Value="Bold" />
         <Setter Property="TextColor" Value="{DynamicResource ProBadgeText}" />
     </Style>

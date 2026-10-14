@@ -3,6 +3,7 @@
              x:Name="Page"
              xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:CarScanner.Controls"
              xmlns:vc="clr-namespace:CarScanner.VinCheck"
              xmlns:views="clr-namespace:CarScanner.VinCheck.Views"
              Shell.NavBarIsVisible="False"
@@ -17,12 +18,10 @@
 
                 <!-- ===== Top bar ===== -->
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                    <Button Text="‹" FontSize="24" Padding="0" Clicked="BackClicked" BackgroundColor="{DynamicResource CardBg}" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="12" WidthRequest="40" HeightRequest="40" MinimumHeightRequest="40" />
+                    <controls:IconButton Kind="chevron-left" Clicked="BackClicked" WidthRequest="40" HeightRequest="40" IconSize="20" StrokeShape="RoundRectangle 12" SemanticProperties.Description="Back" />
                     <Label Grid.Column="1" Text="{Binding ReportTitle}" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
                            HorizontalTextAlignment="Center" VerticalTextAlignment="Center" LineBreakMode="TailTruncation" />
-                    <Button Grid.Column="2" Text="{Binding IsFavorite,Converter={StaticResource Star}}" Command="{Binding ToggleFavoriteCommand}"
-                            BackgroundColor="{DynamicResource CardBg}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="12"
-                            TextColor="#C98A1A" WidthRequest="40" HeightRequest="40" MinimumHeightRequest="40" FontSize="20" Padding="0" />
+                    <controls:IconButton Grid.Column="2" Kind="star" Filled="{Binding IsFavorite}" Tint="#C98A1A" Command="{Binding ToggleFavoriteCommand}" WidthRequest="40" HeightRequest="40" IconSize="20" StrokeShape="RoundRectangle 12" SemanticProperties.Description="Favorite" />
                 </Grid>
 
                 <!-- ===== Vehicle card: photo, facts, VIN ===== -->
@@ -57,7 +56,7 @@
 
                             <Border BackgroundColor="{DynamicResource PageBg}" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 10" Padding="14,10">
                                 <VerticalStackLayout Spacing="1">
-                                    <Label Text="VIN" TextColor="{DynamicResource SubTextColor}" FontSize="11" FontAttributes="Bold" CharacterSpacing="2" />
+                                    <Label Text="VIN" TextColor="{DynamicResource SubTextColor}" FontSize="12" FontAttributes="Bold" CharacterSpacing="2" />
                                     <Label Text="{Binding Report.Vin}" TextColor="{DynamicResource TextColor}" FontSize="16" FontFamily="monospace" FontAttributes="Bold" CharacterSpacing="1" />
                                 </VerticalStackLayout>
                             </Border>
@@ -120,8 +119,7 @@
                                     <VerticalStackLayout Spacing="6">
                                         <Border BackgroundColor="{Binding Color}" StrokeThickness="0" StrokeShape="RoundRectangle 12"
                                                 WidthRequest="24" HeightRequest="24" HorizontalOptions="Start">
-                                            <Label Text="{Binding Icon}" TextColor="White" FontSize="13" FontAttributes="Bold"
-                                                   HorizontalOptions="Center" VerticalOptions="Center" />
+                                            <controls:Icon Kind="{Binding Icon}" Tint="White" WidthRequest="13" HeightRequest="13" />
                                         </Border>
                                         <Label Text="{Binding Label}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
                                         <Label Text="{Binding Detail}" FontSize="12" TextColor="{DynamicResource SubTextColor}" MaxLines="3" LineBreakMode="TailTruncation" />
@@ -175,7 +173,7 @@
                                             </CarouselView>
                                             <Border BackgroundColor="#B3000000" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="9,3"
                                                     HorizontalOptions="End" VerticalOptions="End" Margin="10" InputTransparent="True">
-                                                <Label Text="{Binding PhotoCountText}" TextColor="White" FontSize="11" FontAttributes="Bold" />
+                                                <Label Text="{Binding PhotoCountText}" TextColor="White" FontSize="12" FontAttributes="Bold" />
                                             </Border>
                                         </Grid>
                                         <!-- thumbnails -->
@@ -206,7 +204,7 @@
                                                     <Label Text="{Binding SaleDateText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                                                 </VerticalStackLayout>
                                                 <VerticalStackLayout Grid.Column="1" IsVisible="{Binding HasPrice}" HorizontalOptions="End">
-                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.SoldForText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="End" />
+                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.SoldForText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="End" />
                                                     <Label Text="{Binding PriceText}" TextColor="{DynamicResource TextColor}" FontSize="18" FontAttributes="Bold" HorizontalTextAlignment="End" />
                                                 </VerticalStackLayout>
                                             </Grid>
@@ -216,31 +214,31 @@
 
                                             <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="12">
                                                 <VerticalStackLayout>
-                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.PrimaryLabel}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.PrimaryLabel}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                                                     <Label Text="{Binding DamageValue}" FontSize="14" FontAttributes="Bold" TextColor="#B3361F" />
                                                 </VerticalStackLayout>
                                                 <VerticalStackLayout Grid.Column="1">
-                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.SecondaryLabel}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.SecondaryLabel}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                                                     <Label Text="{Binding SecondaryValue}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
                                                 </VerticalStackLayout>
                                                 <VerticalStackLayout Grid.Row="1">
-                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.OdometerLabel}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.OdometerLabel}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                                                     <Label Text="{Binding OdometerText}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
                                                 </VerticalStackLayout>
                                                 <VerticalStackLayout Grid.Row="1" Grid.Column="1">
-                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.TitleLabel}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.TitleLabel}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                                                     <Label Text="{Binding TitleValue}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
                                                 </VerticalStackLayout>
                                                 <VerticalStackLayout Grid.Row="2">
-                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.KeysLabel}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.KeysLabel}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                                                     <Label Text="{Binding KeysValue}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
                                                 </VerticalStackLayout>
                                                 <VerticalStackLayout Grid.Row="2" Grid.Column="1">
-                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.RunsLabel}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.RunsLabel}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                                                     <Label Text="{Binding RunValue}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
                                                 </VerticalStackLayout>
                                                 <VerticalStackLayout Grid.Row="3">
-                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.LotLabel}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                                    <Label Text="{Binding Source={x:Reference Page},Path=BindingContext.LotLabel}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                                                     <Label Text="{Binding LotValue}" FontSize="14" FontAttributes="Bold" FontFamily="monospace" TextColor="{DynamicResource TextColor}" />
                                                 </VerticalStackLayout>
                                             </Grid>
@@ -266,7 +264,7 @@
                                             <Border BackgroundColor="#B3000000" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="8,3"
                                                     HorizontalOptions="Start" VerticalOptions="End" Margin="8" InputTransparent="True"
                                                     IsVisible="{Binding Overlay,Converter={StaticResource NotEmpty}}">
-                                                <Label Text="{Binding Overlay}" TextColor="White" FontSize="11" />
+                                                <Label Text="{Binding Overlay}" TextColor="White" FontSize="12" />
                                             </Border>
                                             <Grid.GestureRecognizers>
                                                 <TapGestureRecognizer Command="{Binding Source={x:Reference Page},Path=BindingContext.OpenAuctionPhotoCommand}"
@@ -366,7 +364,7 @@
                                             <Label Grid.Column="1" Text="{Binding ValueText}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
                                             <VerticalStackLayout Grid.Column="2" VerticalOptions="Center">
                                                 <Label Text="{Binding DateText}" FontSize="13" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="End" />
-                                                <Label Text="{Binding Source}" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="End" />
+                                                <Label Text="{Binding Source}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="End" />
                                             </VerticalStackLayout>
                                         </Grid>
                                     </VerticalStackLayout>
@@ -483,10 +481,10 @@
                                                 <Label Text="{Binding CategoryText}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
                                                 <Label Text="{Binding RecallId,StringFormat='NHTSA {0}'}" FontSize="12" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" />
                                             </VerticalStackLayout>
-                                            <Label Grid.Column="2" Text="{Binding Chevron}" FontSize="12" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
+                                            <controls:Icon Grid.Column="2" Kind="{Binding Chevron}" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                                         </Grid>
                                         <VerticalStackLayout Spacing="6" Padding="46,0,14,12" IsVisible="{Binding IsExpanded}">
-                                            <Label Text="{Binding Component}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                            <Label Text="{Binding Component}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                                             <Label Text="{Binding Description}" FontSize="13" TextColor="{DynamicResource TextColor}" />
                                             <Label Text="{Binding RemedyText}" FontSize="13" TextColor="{DynamicResource SubTextColor}" />
                                         </VerticalStackLayout>

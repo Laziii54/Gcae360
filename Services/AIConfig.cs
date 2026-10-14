@@ -7,6 +7,6 @@ public static class AIConfig
     public const string BackendBaseUrl = "https://georgian-car-scanner-api-cyawhhdygecng6bt.germanywestcentral-01.azurewebsites.net";
     public const string DiagnosePath = "/api/ai/diagnose";
     public const string ChatPath = "/api/ai/chat";
-    public const string DefaultModel = "gemini-3.6-flash";
+    public const string DefaultModel = "gemini-3.8-flash";
     public const int MaxRequestSeconds = 60;
 }

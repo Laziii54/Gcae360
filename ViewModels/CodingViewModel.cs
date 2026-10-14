@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CarScanner.Services;
 using CarScanner.Services.Coding;
+using CarScanner.Services.DataCollection;
 using CarScanner.Services.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -28,6 +29,7 @@ public sealed record CodingDiffRow(string Module, string Location, string Change
 public sealed record CodingHistoryRow(CodingChange Change, string Title, string Detail, bool CanRestore);
 
 /// <summary>One line of the readiness list: a mark, the text, and the colour of the state.</summary>
+/// <summary><c>Mark</c> is an icon kind from Controls/IconCatalog.</summary>
 public sealed record CodingCheckRow(string Mark, string Text, Color MarkColor);
 
 /// <summary>One feature of the page with the state it is in for this car right now, and why.</summary>
@@ -43,6 +45,8 @@ public partial class CodingViewModel : BaseViewModel
     private readonly CodingService _coding;
     private readonly ProService _pro;
     private readonly LocalizationService _localization;
+    private readonly AccountService _account;
+    private readonly DataCollectionService _dataCollection;
     private CancellationTokenSource? _cts;
     private CodingReadinessInput? _readiness;
     private int _verifiedInCatalog;
@@ -77,12 +81,27 @@ public partial class CodingViewModel : BaseViewModel
     [ObservableProperty] private bool isGmCar;
     [ObservableProperty] private string lastBackupSummary = string.Empty;
     [ObservableProperty] private bool hasLastBackupSummary;
+    [ObservableProperty] private bool showReadiness;
+    [ObservableProperty] private bool showSafetyNotice;
+    [ObservableProperty] private bool showNoOptionsHelp;
+    [ObservableProperty] private bool isAdmin;
 
-    public CodingViewModel(CodingService coding, ProService pro, LocalizationService localization)
+    [RelayCommand]
+    private void ToggleReadiness() => ShowReadiness = !ShowReadiness;
+
+    [RelayCommand]
+    private void ToggleSafetyNotice() => ShowSafetyNotice = !ShowSafetyNotice;
+
+    [RelayCommand]
+    private void ToggleNoOptionsHelp() => ShowNoOptionsHelp = !ShowNoOptionsHelp;
+
+    public CodingViewModel(CodingService coding, ProService pro, LocalizationService localization, AccountService account, DataCollectionService dataCollection)
     {
         _coding = coding;
         _pro = pro;
         _localization = localization;
+        _account = account;
+        _dataCollection = dataCollection;
         Title = L("კოდირება", "Coding");
         PropertyChanged += (_, e) =>
         {
@@ -121,6 +140,8 @@ public partial class CodingViewModel : BaseViewModel
             OnPropertyChanged(nameof(ChangeButtonText));
             await RefreshAsync();
             await RecheckAsync(announce: false);
+            // Server-confirmed only (the admin's own completed 2-step /admin sign-in) — never a local email check.
+            IsAdmin = await _account.IsAdminAsync();
         }
         catch (Exception ex)
         {
@@ -278,10 +299,10 @@ public partial class CodingViewModel : BaseViewModel
         {
             var (mark, hex) = check.State switch
             {
-                CodingCheckState.Ok => ("✓", "#1E8A4C"),
-                CodingCheckState.Warning => ("!", "#B06A00"),
-                CodingCheckState.Blocked => ("✕", "#B3361F"),
-                _ => ("•", "#5D636B")
+                CodingCheckState.Ok => ("check", "#1E8A4C"),
+                CodingCheckState.Warning => ("warning", "#B06A00"),
+                CodingCheckState.Blocked => ("close", "#B3361F"),
+                _ => ("circle", "#5D636B")
             };
             ReadinessRows.Add(new CodingCheckRow(mark, check.Text(en), ThemeService.Soft(hex)));
         }
@@ -326,7 +347,7 @@ public partial class CodingViewModel : BaseViewModel
     {
         try
         {
-            await Shell.Current.GoToAsync(nameof(Views.BluetoothPage));
+            await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.BluetoothPage));
         }
         catch (Exception ex)
         {
@@ -366,7 +387,21 @@ public partial class CodingViewModel : BaseViewModel
     [RelayCommand]
     private Task CreateExtendedBackup() => BackupAsync(extended: true);
 
-    private async Task BackupAsync(bool extended)
+    public string DeepScanCaption => L("სრული ავტომობილის ღრმა სკანირება", "Full vehicle deep scan");
+
+    public string DeepScanHelp => L(
+        "მხოლოდ წაკითხვა — არაფერი იწერება, არც ერთ მოდულში. პოულობს ყველა პასუხად მოდულს და კითხულობს მათ ყველას (არა მხოლოდ ძრავის მოდულს); GMLAN მანქანებზე ასევე ყველა მოდულზე სრული იდენტიფიკატორის სკანი ჩაირთვება. შედეგი ავტომატურად მიდის admin-ზე, უკვე არსებული, თანხმობაზე დამყარებული არხით.",
+        "Read-only — nothing is written to any module. Finds every module that answers and reads all of them (not only the engine module); on GMLAN cars every module also gets the full identifier sweep. Results flow to admin automatically, through the existing, consent-based upload path.");
+
+    /// <summary>
+    /// One admin-only button: the same checked backup+extended-read flow as above, run across every module that
+    /// answered instead of needing the Coding page opened module by module, with no note prompt. Results still go
+    /// through the existing consented upload pipeline — nothing new is built to move the data.
+    /// </summary>
+    [RelayCommand]
+    private Task DeepScan() => BackupAsync(extended: true, presetNote: L("ღრმა სკანირება", "Deep scan") + " " + DateTime.Now.ToString("dd.MM.yyyy HH:mm"), isDeepScan: true);
+
+    private async Task BackupAsync(bool extended, string? presetNote = null, bool isDeepScan = false)
     {
         if (IsBusy) return;
         try
@@ -374,21 +409,30 @@ public partial class CodingViewModel : BaseViewModel
             HasError = false;
             if (!_coding.IsConnected)
             {
-                await Shell.Current.DisplayAlertAsync(L("კოდირება", "Coding"), L("ჯერ OBD ადაპტერს დაუკავშირდით და ჩართეთ ანთება.", "Connect the OBD adapter and switch the ignition on first."), "OK");
+                await Shell.Current.DisplayAlertLocalizedAsync(L("კოდირება", "Coding"), L("ჯერ OBD ადაპტერს დაუკავშირდით და ჩართეთ ანთება.", "Connect the OBD adapter and switch the ignition on first."), "OK");
                 return;
             }
 
-            var note = await Shell.Current.DisplayPromptAsync(
-                L("სარეზერვო ასლი", "Backup"),
-                L("მოკლე შენიშვნა (მაგ. „ქარხნული“ ან „DRL ჩართვის შემდეგ“)", "Short note (e.g. \"factory\" or \"after DRL on\")"),
-                "OK", L("გაუქმება", "Cancel"), maxLength: 60);
-            if (note is null) return;
+            string note;
+            if (presetNote is not null)
+            {
+                note = presetNote;
+            }
+            else
+            {
+                var typed = await Shell.Current.DisplayPromptLocalizedAsync(
+                    L("სარეზერვო ასლი", "Backup"),
+                    L("მოკლე შენიშვნა (მაგ. „ქარხნული“ ან „DRL ჩართვის შემდეგ“)", "Short note (e.g. \"factory\" or \"after DRL on\")"),
+                    "OK", L("გაუქმება", "Cancel"), maxLength: 60);
+                if (typed is null) return;
+                note = typed;
+            }
 
             IsBusy = true;
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
             var progress = new Progress<(double Fraction, string Text)>(p => Report(p.Fraction, p.Text));
-            var backup = await _coding.CreateBackupAsync(note.Trim(), progress, _cts.Token, extended);
+            var backup = await _coding.CreateBackupAsync(note.Trim(), progress, _cts.Token, extended, deepScan: isDeepScan);
             await RefreshAsync();
             Report(1, L($"შენახულია: {backup.Modules.Count} მოდული, {backup.ReadCount} მნიშვნელობა. მანქანაზე არაფერი შეცვლილა.",
                 $"Saved: {backup.Modules.Count} modules, {backup.ReadCount} values. Nothing was changed on the car."));
@@ -399,6 +443,9 @@ public partial class CodingViewModel : BaseViewModel
                   $"Values were read from {backup.Modules.Count(m => m.Status == CodingBackupStatus.Read)} module(s); not from {backup.Modules.Count(m => m.Status != CodingBackupStatus.Read)}.")
             };
             lines.AddRange(backup.Warnings);
+            if (isDeepScan && !_dataCollection.IsEnabled)
+                lines.Add(L("შედეგი შენახულია მხოლოდ ამ ტელეფონში — admin-ზე ასატვირთად ჩართეთ „მონაცემების გაზიარება“ Settings-ში.",
+                    "The result was saved on this phone only — turn on \"Share data\" in Settings to upload it to admin."));
             LastBackupSummary = string.Join("\n", lines);
             HasLastBackupSummary = true;
         }
@@ -427,7 +474,7 @@ public partial class CodingViewModel : BaseViewModel
         if (row is null) return;
         try
         {
-            var path = Path.Combine(FileSystem.CacheDirectory, $"gcar360_coding_{row.Backup.CreatedAt:yyyyMMdd_HHmm}.txt");
+            var path = Path.Combine(FileSystem.CacheDirectory, $"obd360_coding_{row.Backup.CreatedAt:yyyyMMdd_HHmm}.txt");
             await File.WriteAllTextAsync(path, CodingService.BuildText(row.Backup) + Environment.NewLine + Environment.NewLine +
                 System.Text.Json.JsonSerializer.Serialize(row.Backup));
             await Share.Default.RequestAsync(new ShareFileRequest { Title = L("კოდირების სარეზერვო ასლი", "Coding backup"), File = new ShareFile(path) });
@@ -444,7 +491,7 @@ public partial class CodingViewModel : BaseViewModel
         if (row is null) return;
         try
         {
-            var ok = await Shell.Current.DisplayAlertAsync(L("წაშლა", "Delete"), L("წავშალო ეს სარეზერვო ასლი?", "Delete this backup?"), L("წაშლა", "Delete"), L("გაუქმება", "Cancel"));
+            var ok = await Shell.Current.DisplayAlertLocalizedAsync(L("წაშლა", "Delete"), L("წავშალო ეს სარეზერვო ასლი?", "Delete this backup?"), L("წაშლა", "Delete"), L("გაუქმება", "Cancel"));
             if (!ok) return;
             _coding.DeleteBackup(row.Backup);
             await RefreshAsync();
@@ -523,21 +570,21 @@ public partial class CodingViewModel : BaseViewModel
             if (!await ProGate.EnsureOrOpenAsync(_pro)) return;
 
             var choices = row.Option.Values.Select(v => L(v.Ka, v.En)).ToArray();
-            var picked = await Shell.Current.DisplayActionSheetAsync(row.Title, L("გაუქმება", "Cancel"), null, choices);
+            var picked = await Shell.Current.DisplayActionSheetLocalizedAsync(row.Title, L("გაუქმება", "Cancel"), null, choices);
             var target = row.Option.Values.FirstOrDefault(v => L(v.Ka, v.En) == picked);
             if (target is null) return;
 
             IsBusy = true;
             var checks = await _coding.CheckConditionsAsync(row.Option, CancellationToken.None);
             IsBusy = false;
-            var list = string.Join("\n", checks.Select(c => (c.Ok ? "✓ " : "✗ ") + c.Text));
+            var list = string.Join("\n", checks.Select(c => (c.Ok ? L("შესრულებულია: ", "Met: ") : L("არ არის შესრულებული: ", "Not met: ")) + c.Text));
             if (checks.Any(c => !c.Ok))
             {
-                await Shell.Current.DisplayAlertAsync(L("ჯერ არ შეიძლება", "Not yet"), list, "OK");
+                await Shell.Current.DisplayAlertLocalizedAsync(L("ჯერ არ შეიძლება", "Not yet"), list, "OK");
                 return;
             }
 
-            var confirm = await Shell.Current.DisplayAlertAsync(
+            var confirm = await Shell.Current.DisplayAlertLocalizedAsync(
                 L("დაადასტურეთ ცვლილება", "Confirm the change"),
                 L($"{row.Title} → {target.Ka}\n\n{list}\n\nჯერ შეიქმნება სრული სარეზერვო ასლი. ჩაწერის შემდეგ მნიშვნელობა შემოწმდება და შეუსაბამობისას თავდაპირველი ავტომატურად დაბრუნდება. პროცესის დროს არ გამორთოთ ანთება და ადაპტერი.",
                   $"{row.Title} → {target.En}\n\n{list}\n\nA full backup is made first. After writing, the value is read back; on any mismatch the original is restored automatically. Do not switch off the ignition or unplug the adapter."),
@@ -548,7 +595,7 @@ public partial class CodingViewModel : BaseViewModel
             var progress = new Progress<string>(text => Report(0.5, text));
             var result = await _coding.WriteOptionAsync(row.Option, target, progress, CancellationToken.None);
             Report(result.Success ? 1 : 0, result.Message);
-            await Shell.Current.DisplayAlertAsync(result.Success ? L("მზადაა", "Done") : L("არ შეიცვალა", "Not changed"), result.Message, "OK");
+            await Shell.Current.DisplayAlertLocalizedAsync(result.Success ? L("მზადაა", "Done") : L("არ შეიცვალა", "Not changed"), result.Message, "OK");
             await RefreshAsync();
         }
         catch (Exception ex)
@@ -567,7 +614,7 @@ public partial class CodingViewModel : BaseViewModel
         if (row is null || !row.CanRestore || IsBusy) return;
         try
         {
-            var ok = await Shell.Current.DisplayAlertAsync(L("აღდგენა", "Restore"),
+            var ok = await Shell.Current.DisplayAlertLocalizedAsync(L("აღდგენა", "Restore"),
                 L($"დავაბრუნო თავდაპირველი მნიშვნელობა?\n{row.Title}", $"Put the original value back?\n{row.Title}"),
                 L("აღდგენა", "Restore"), L("გაუქმება", "Cancel"));
             if (!ok) return;
@@ -576,7 +623,7 @@ public partial class CodingViewModel : BaseViewModel
             var progress = new Progress<string>(text => Report(0.5, text));
             var result = await _coding.RestoreAsync(row.Change, progress, CancellationToken.None);
             Report(result.Success ? 1 : 0, result.Message);
-            await Shell.Current.DisplayAlertAsync(result.Success ? L("მზადაა", "Done") : L("ვერ აღდგა", "Not restored"), result.Message, "OK");
+            await Shell.Current.DisplayAlertLocalizedAsync(result.Success ? L("მზადაა", "Done") : L("ვერ აღდგა", "Not restored"), result.Message, "OK");
             await RefreshAsync();
         }
         catch (Exception ex)

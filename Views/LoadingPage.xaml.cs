@@ -1,13 +1,13 @@
 namespace CarScanner.Views;
 
 /// <summary>
-/// Opening screen: the animated GCar360 logo in the middle of the screen.
-/// The full GIF loop is played only on the very first launch; later cold
-/// starts show it briefly (about one second) so the app opens quickly.
+/// Opening screen: the OBD360 logo in the middle of the screen (same black as the splash screen).
+/// The first launch shows it a little longer; later cold starts show it briefly (under one second)
+/// so the app opens quickly.
 /// </summary>
 public partial class LoadingPage : ContentPage
 {
-    // One loop of Resources/Images/gcar_loading.gif is 3.36 s.
+    // First launch: the logo stays about as long as the old animated intro did.
     private const int FirstLaunchAnimationMilliseconds = 3400;
     private const int RepeatLaunchMilliseconds = 800;
     private const int FirstLaunchFadeMilliseconds = 250;

@@ -50,8 +50,9 @@ public sealed class LanguagePickerPage : ContentPage
                 VerticalOptions = LayoutOptions.Center,
                 Content = new Label
                 {
-                    Text = language.Flag,
-                    FontSize = 22,
+                    Text = language.Badge,
+                    FontSize = 13,
+                    FontAttributes = FontAttributes.Bold,
                     HorizontalOptions = LayoutOptions.Center,
                     VerticalOptions = LayoutOptions.Center
                 }
@@ -87,15 +88,7 @@ public sealed class LanguagePickerPage : ContentPage
                     StrokeShape = new RoundRectangle { CornerRadius = 12 },
                     BackgroundColor = accent,
                     VerticalOptions = LayoutOptions.Center,
-                    Content = new Label
-                    {
-                        Text = "✓",
-                        TextColor = Colors.White,
-                        FontSize = 14,
-                        FontAttributes = FontAttributes.Bold,
-                        HorizontalOptions = LayoutOptions.Center,
-                        VerticalOptions = LayoutOptions.Center
-                    }
+                    Content = new CarScanner.Controls.Icon { Kind = "check", Tint = Colors.White, WidthRequest = 14, HeightRequest = 14 }
                 }
                 : new Border
                 {
@@ -177,15 +170,7 @@ public sealed class LanguagePickerPage : ContentPage
             StrokeShape = new RoundRectangle { CornerRadius = 17 },
             BackgroundColor = cardBg,
             VerticalOptions = LayoutOptions.Center,
-            Content = new Label
-            {
-                Text = "✕",
-                TextColor = text,
-                FontSize = 13,
-                FontAttributes = FontAttributes.Bold,
-                HorizontalOptions = LayoutOptions.Center,
-                VerticalOptions = LayoutOptions.Center
-            }
+            Content = new CarScanner.Controls.Icon { Kind = "close", Tint = text, WidthRequest = 13, HeightRequest = 13 }
         };
         closeButton.GestureRecognizers.Add(closeTap);
         SemanticProperties.SetDescription(closeButton, "Close");

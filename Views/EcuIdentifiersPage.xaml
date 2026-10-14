@@ -22,61 +22,10 @@
                 Style="{StaticResource PrimaryButtonStyle}"
                 HeightRequest="50" />
 
-            <!-- ECM Identification: key / value list -->
-            <Label Text="ECM Identification" Style="{StaticResource SectionCaptionStyle}" />
-
-            <Border Style="{StaticResource ListCardStyle}">
-                <VerticalStackLayout
-                    BindableLayout.ItemsSource="{Binding Items}"
-                    Spacing="0"
-                    Margin="0,-1,0,0">
-
-                    <BindableLayout.ItemTemplate>
-                        <DataTemplate x:DataType="m:EcuIdentifier">
-                            <VerticalStackLayout Spacing="0">
-                                <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
-                                <Grid
-                                    ColumnDefinitions="Auto,*"
-                                    RowDefinitions="Auto,Auto"
-                                    ColumnSpacing="12"
-                                    RowSpacing="3"
-                                    Padding="14,13">
-
-                                    <Label
-                                        Text="{Binding Name}"
-                                        FontSize="13"
-                                        TextColor="{DynamicResource SubTextColor}"
-                                        VerticalOptions="Start" />
-
-                                    <Label
-                                        Grid.Column="1"
-                                        Text="{Binding Value}"
-                                        FontSize="13"
-                                        FontAttributes="Bold"
-                                        TextColor="{DynamicResource TextColor}"
-                                        HorizontalTextAlignment="End"
-                                        LineBreakMode="WordWrap" />
-
-                                    <Label
-                                        Grid.Row="1"
-                                        Grid.ColumnSpan="2"
-                                        Text="{Binding Explanation}"
-                                        FontSize="11"
-                                        TextColor="{DynamicResource SubTextColor}"
-                                        LineBreakMode="WordWrap" />
-
-                                </Grid>
-                            </VerticalStackLayout>
-                        </DataTemplate>
-                    </BindableLayout.ItemTemplate>
-
-                </VerticalStackLayout>
-            </Border>
-
             <!-- Supported PIDs Header -->
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
 
-                <Label Text="Supported PIDs" Style="{StaticResource SectionCaptionStyle}" />
+                <Label Text="Supported PIDs" Style="{StaticResource SectionCaptionStyle}" VerticalOptions="End" />
 
                 <Label
                     Grid.Column="1"
@@ -84,6 +33,8 @@
                     FontSize="12"
                     FontAttributes="Bold"
                     TextColor="#1F8A4C"
+                    HorizontalTextAlignment="End"
+                    LineBreakMode="TailTruncation"
                     VerticalOptions="End" />
 
             </Grid>
@@ -91,7 +42,7 @@
             <Label IsVisible="False"
                 Text="{Binding PidRefreshStatus}"
                 TextColor="{DynamicResource SubTextColor}"
-                FontSize="11"
+                FontSize="12"
                 Margin="4,0,0,0"
                 LineBreakMode="WordWrap" />
 
@@ -132,7 +83,7 @@
 
                                         <Label
                                             Text="{Binding Category}"
-                                            FontSize="11"
+                                            FontSize="12"
                                             TextColor="{DynamicResource SubTextColor}" />
 
                                     </VerticalStackLayout>
@@ -141,7 +92,8 @@
                                         Grid.Column="2"
                                         Spacing="1"
                                         HorizontalOptions="End"
-                                        VerticalOptions="Center">
+                                        VerticalOptions="Center"
+                                        MaximumWidthRequest="150">
 
                                         <Label
                                             Text="{Binding CurrentValue}"
@@ -159,10 +111,62 @@
                                         <Label
                                             Text="{Binding Status}"
                                             TextColor="{Binding StatusColor}"
-                                            FontSize="10"
-                                            HorizontalTextAlignment="End" />
+                                            FontSize="12"
+                                            HorizontalTextAlignment="End"
+                                            LineBreakMode="WordWrap" />
 
                                     </VerticalStackLayout>
+
+                                </Grid>
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- ECM Identification: key / value list -->
+            <Label Text="ECM Identification" Style="{StaticResource SectionCaptionStyle}" />
+
+            <Border Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout
+                    BindableLayout.ItemsSource="{Binding Items}"
+                    Spacing="0"
+                    Margin="0,-1,0,0">
+
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="m:EcuIdentifier">
+                            <VerticalStackLayout Spacing="0">
+                                <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                                <Grid
+                                    ColumnDefinitions="Auto,*"
+                                    RowDefinitions="Auto,Auto"
+                                    ColumnSpacing="12"
+                                    RowSpacing="3"
+                                    Padding="14,13">
+
+                                    <Label
+                                        Text="{Binding Name}"
+                                        FontSize="13"
+                                        TextColor="{DynamicResource SubTextColor}"
+                                        VerticalOptions="Start" />
+
+                                    <Label
+                                        Grid.Column="1"
+                                        Text="{Binding Value}"
+                                        FontSize="13"
+                                        FontAttributes="Bold"
+                                        TextColor="{DynamicResource TextColor}"
+                                        HorizontalTextAlignment="End"
+                                        LineBreakMode="WordWrap" />
+
+                                    <Label
+                                        Grid.Row="1"
+                                        Grid.ColumnSpan="2"
+                                        Text="{Binding Explanation}"
+                                        FontSize="12"
+                                        TextColor="{DynamicResource SubTextColor}"
+                                        LineBreakMode="WordWrap" />
 
                                 </Grid>
                             </VerticalStackLayout>

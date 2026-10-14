@@ -17,7 +17,7 @@ public sealed class PdfReportService
 
     public async Task<string> ExportAsync(ObdScanReport report, CancellationToken token = default)
     {
-        var path = Path.Combine(FileSystem.CacheDirectory, $"GCar360-report-{DateTime.Now:yyyyMMdd-HHmmss}.pdf");
+        var path = Path.Combine(FileSystem.CacheDirectory, $"OBD360-report-{DateTime.Now:yyyyMMdd-HHmmss}.pdf");
         var sections = BuildSections(report);
         return await WriteAsync(report, sections, path, null, token);
     }
@@ -31,7 +31,7 @@ public sealed class PdfReportService
         IEnumerable<(string Title, IEnumerable<(string Text, bool Bold, string? Color)> Lines)> summary,
         CancellationToken token = default)
     {
-        var path = Path.Combine(FileSystem.CacheDirectory, $"GCar360-prepurchase-{DateTime.Now:yyyyMMdd-HHmmss}.pdf");
+        var path = Path.Combine(FileSystem.CacheDirectory, $"OBD360-prepurchase-{DateTime.Now:yyyyMMdd-HHmmss}.pdf");
         var sections = summary
             .Select(section => new ReportSection(
                 section.Title,
@@ -51,7 +51,7 @@ public sealed class PdfReportService
         VehicleInfo? vehicle,
         CancellationToken token = default)
     {
-        var path = Path.Combine(FileSystem.CacheDirectory, $"GCar360-vehicle-report-{DateTime.Now:yyyyMMdd-HHmmss}.pdf");
+        var path = Path.Combine(FileSystem.CacheDirectory, $"OBD360-vehicle-report-{DateTime.Now:yyyyMMdd-HHmmss}.pdf");
         var header = scan ?? new ObdScanReport
         {
             Vehicle = vehicle ?? new VehicleInfo { VIN = report.Vin },
@@ -199,7 +199,7 @@ public sealed class PdfReportService
         {
             dtc.Add(report.DtcServicesRead == 0
                 ? new(L("შეცდომის კოდები ვერ წაიკითხა.", "Fault codes could not be read."), false, "#B45309")
-                : new(L("✓ შეცდომის კოდი არ არის.", "✓ No fault codes."), true, "#15803D"));
+                : new(L("შეცდომის კოდი არ არის.", "No fault codes."), true, "#15803D"));
         }
         else
         {
@@ -221,7 +221,7 @@ public sealed class PdfReportService
                 var name = IsEnglish ? module.NameEn : module.NameKa;
                 if (module.Codes.Count == 0)
                 {
-                    lines.Add(new($"✓ {name}", false, "#15803D"));
+                    lines.Add(new($"{name}", false, "#15803D"));
                     continue;
                 }
 
@@ -308,7 +308,7 @@ public sealed class PdfReportService
                 textPaint.SetTypeface(regular);
                 textPaint.TextSize = 9;
                 textPaint.Color = Android.Graphics.Color.ParseColor("#64748B");
-                canvas.DrawText($"GCar360 · {pageNumber}", Margin, PageHeight - 20, textPaint);
+                canvas.DrawText($"OBD360 · {pageNumber}", Margin, PageHeight - 20, textPaint);
                 document.FinishPage(page);
                 page = null;
                 canvas = null;
@@ -333,7 +333,7 @@ public sealed class PdfReportService
                     textPaint.Color = Android.Graphics.Color.White;
                     textPaint.SetTypeface(bold);
                     textPaint.TextSize = 22;
-                    canvas.DrawText("GCar360", Margin, 44, textPaint);
+                    canvas.DrawText("OBD360", Margin, 44, textPaint);
                     textPaint.SetTypeface(regular);
                     textPaint.TextSize = 13;
                     canvas.DrawText(subtitle ?? L("დიაგნოსტიკური ანგარიში", "Diagnostic report"), Margin, 68, textPaint);
@@ -421,8 +421,8 @@ public sealed class PdfReportService
 
             y += 8;
             WriteWrapped(
-                L("ანგარიში შექმნილია GCar360-ით მანქანიდან წაკითხული რეალური მონაცემებით.",
-                  "Report created with GCar360 from real data read from the car."),
+                L("ანგარიში შექმნილია OBD360-ით მანქანიდან წაკითხული რეალური მონაცემებით.",
+                  "Report created with OBD360 from real data read from the car."),
                 9, false, "#64748B");
 
             FinishPage();

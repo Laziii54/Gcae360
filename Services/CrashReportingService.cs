@@ -37,24 +37,50 @@ public sealed partial class CrashReportingService
         _ = UploadPendingAsync();
     }
 
+    /// <summary>Failures already reported in this run (a loop that fails every second must not fill the queue).</summary>
+    private readonly HashSet<string> _reportedThisRun = new(StringComparer.Ordinal);
+
     public void Capture(Exception exception, string source, bool fatal)
     {
         try
         {
-            var report = new CrashEnvelope(
-                Guid.NewGuid().ToString("N"),
-                DateTimeOffset.UtcNow,
-                AppInfo.Current.VersionString ?? "unknown",
-                DeviceInfo.Current.Platform.ToString(),
-                DeviceInfo.Current.VersionString ?? "unknown",
-                Limit(exception.GetType().FullName, 200),
-                SanitizeStack(exception.StackTrace),
-                Limit(source, 80),
-                fatal);
+            // User cancellation is not a failure.
+            if (!fatal && CrashExceptionFlattener.IsOnlyCancellation(exception))
+                return;
 
-            var json = JsonSerializer.Serialize(report);
-            Directory.CreateDirectory(PendingFolder);
-            File.WriteAllText(Path.Combine(PendingFolder, report.ReportId + ".json"), json);
+            // An AggregateException has no stack of its own: report what actually failed inside it.
+            var wasAggregate = exception is AggregateException;
+            var parts = CrashExceptionFlattener.Leaves(exception);
+            if (parts.Count == 0)
+                parts = new[] { exception };
+
+            foreach (var part in parts.Take(CrashExceptionFlattener.MaxParts))
+            {
+                var type = Limit(CrashExceptionFlattener.TypeName(part), 200);
+                var stack = CrashExceptionFlattener.SanitizeStack(part.StackTrace);
+                var fingerprint = CrashExceptionFlattener.Fingerprint(type, stack);
+                lock (_reportedThisRun)
+                {
+                    if (_reportedThisRun.Count > 200 || !_reportedThisRun.Add(fingerprint))
+                        continue;
+                }
+
+                var report = new CrashEnvelope(
+                    Guid.NewGuid().ToString("N"),
+                    DateTimeOffset.UtcNow,
+                    AppInfo.Current.VersionString ?? "unknown",
+                    DeviceInfo.Current.Platform.ToString(),
+                    DeviceInfo.Current.VersionString ?? "unknown",
+                    type,
+                    stack,
+                    Limit(CrashExceptionFlattener.Category(source, fatal, wasAggregate), 80),
+                    fatal);
+
+                var json = JsonSerializer.Serialize(report);
+                Directory.CreateDirectory(PendingFolder);
+                File.WriteAllText(Path.Combine(PendingFolder, report.ReportId + ".json"), json);
+            }
+
             TrimPending();
         }
         catch
@@ -181,26 +207,10 @@ public sealed partial class CrashReportingService
     private static string PendingFolder =>
         Path.Combine(FileSystem.Current.AppDataDirectory, PendingFolderName);
 
-    private static string SanitizeStack(string? stack)
-    {
-        if (string.IsNullOrWhiteSpace(stack))
-            return string.Empty;
-
-        var sanitized = SourcePathRegex().Replace(stack, string.Empty);
-        sanitized = SecretRegex().Replace(sanitized, "$1[REDACTED]");
-        return Limit(sanitized, 8_000);
-    }
-
     private static string Limit(string? value, int length) =>
         string.IsNullOrWhiteSpace(value)
             ? string.Empty
             : value.Length <= length ? value : value[..length];
-
-    [GeneratedRegex(@"\s+in\s+[^\r\n]+:line\s+\d+", RegexOptions.IgnoreCase)]
-    private static partial Regex SourcePathRegex();
-
-    [GeneratedRegex(@"(?i)(api[_-]?key|authorization|bearer|token)(\s*[:=]\s*)\S+")]
-    private static partial Regex SecretRegex();
 }
 
 public sealed record CrashEnvelope(

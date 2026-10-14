@@ -219,7 +219,6 @@ public static class MauiProgram
 
         // Optional anonymous data collection (off until the user opts in) and passive, read-only CAN listening.
         builder.Services.AddSingleton<CarScanner.Services.DataCollection.DataCollectionService>();
-        builder.Services.AddSingleton<CarScanner.Services.DataCollection.LocalCaptureService>();
         builder.Services.AddSingleton<CarScanner.Services.DataCollection.ConsentPromptService>();
         builder.Services.AddSingleton<CarScanner.Services.Passive.IDbcSource, CarScanner.Services.Passive.CatalogDbcSource>();
         builder.Services.AddSingleton<CarScanner.Services.Passive.PassiveCanService>();
@@ -395,7 +394,7 @@ public static class MauiProgram
         // Sample data only (for UI work without the backend).
         builder.Services.AddSingleton<CarScanner.VinCheck.Services.IVinHistoryService, CarScanner.VinCheck.Services.MockVinHistoryService>();
 #else
-        // Real VIN history through the GCar360 backend (AIConfig.BackendBaseUrl).
+        // Real VIN history through the OBD360 backend (AIConfig.BackendBaseUrl).
         // The provider key and the monthly VIN count live only on the server.
         builder.Services.AddSingleton<CarScanner.VinCheck.Services.IVinHistoryService, CarScanner.VinCheck.Services.VinHistoryService>();
 #endif

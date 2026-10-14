@@ -23,6 +23,12 @@ builder.Services.AddSingleton<EmailVerificationStore>();
 builder.Services.AddSingleton(sp => EmailOptions.From(sp.GetRequiredService<IConfiguration>()));
 builder.Services.AddSingleton<IEmailSender>(sp => new SmtpEmailSender(sp.GetRequiredService<EmailOptions>()));
 builder.Services.AddSingleton<EmailVerificationService>();
+// Sign-in code: a second factor required on every login (not the one-time check above).
+builder.Services.AddSingleton<LoginCodeStore>();
+builder.Services.AddSingleton<LoginCodeService>();
+// Forgot password: a separate store from the login code above, so the two can never collide for one account.
+builder.Services.AddSingleton<PasswordResetStore>();
+builder.Services.AddSingleton<PasswordResetService>();
 builder.Services.AddSingleton<CrashReportStore>();
 builder.Services.AddSingleton<VinDataService>();
 builder.Services.AddSingleton<WebImageSearchService>();
@@ -146,7 +152,7 @@ app.MapGet(
             {
                 status = "ok",
                 ok = true,
-                service = "Georgian Car Scanner API",
+                service = "OBD360 API",
                 // Informational version carries "+<git commit>" when built from the repository.
                 version = System.Reflection.Assembly.GetExecutingAssembly()
                     .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
@@ -220,7 +226,7 @@ app.MapGet("/privacy-policy", () =>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>GCar360 — Privacy Policy / კონფიდენციალურობის პოლიტიკა</title>
+    <title>OBD360 — Privacy Policy / კონფიდენციალურობის პოლიტიკა</title>
     <style>
         body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.7;max-width:900px;margin:0 auto;padding:30px 20px;color:#222;background:#fff}
         h1{font-size:30px;margin-bottom:8px}
@@ -235,11 +241,11 @@ app.MapGet("/privacy-policy", () =>
 </head>
 <body>
 
-<h1>Privacy Policy — GCar360</h1>
+<h1>Privacy Policy — OBD360</h1>
 <p class="updated">Last updated: October 8, 2026 · ბოლო განახლება: 2026 წლის 8 ოქტომბერი</p>
 
-<p>GCar360 ("we", "the App") is a vehicle diagnostic application that connects to OBD adapters and offers diagnostics, AI explanations, VIN history, QR reports, a public acceleration leaderboard and a website for card payments. This policy describes what the App and our server process, who else receives it and how long it is kept. Each section is given in English and in Georgian.</p>
-<p class="ka">GCar360 („ჩვენ“, „აპი“) არის ავტომობილის დიაგნოსტიკის აპი, რომელიც უკავშირდება OBD ადაპტერს და გთავაზობთ დიაგნოსტიკას, AI ახსნებს, VIN ისტორიას, QR ანგარიშებს, აჩქარების საჯარო რეიტინგს და ვებგვერდს ბარათით გადახდისთვის. ეს პოლიტიკა აღწერს, რას ამუშავებს აპი და ჩვენი სერვერი, ვის გადაეცემა მონაცემები და რამდენ ხანს ინახება. ყოველი ნაწილი მოცემულია ინგლისურად და ქართულად.</p>
+<p>OBD360 ("we", "the App") is a vehicle diagnostic application that connects to OBD adapters and offers diagnostics, AI explanations, VIN history, QR reports, a public acceleration leaderboard and a website for card payments. This policy describes what the App and our server process, who else receives it and how long it is kept. Each section is given in English and in Georgian.</p>
+<p class="ka">OBD360 („ჩვენ“, „აპი“) არის ავტომობილის დიაგნოსტიკის აპი, რომელიც უკავშირდება OBD ადაპტერს და გთავაზობთ დიაგნოსტიკას, AI ახსნებს, VIN ისტორიას, QR ანგარიშებს, აჩქარების საჯარო რეიტინგს და ვებგვერდს ბარათით გადახდისთვის. ეს პოლიტიკა აღწერს, რას ამუშავებს აპი და ჩვენი სერვერი, ვის გადაეცემა მონაცემები და რამდენ ხანს ინახება. ყოველი ნაწილი მოცემულია ინგლისურად და ქართულად.</p>
 
 <h2>1. Data on your device · მონაცემები შენს ტელეფონზე</h2>
 <p>Vehicle data read over Bluetooth (VIN, trouble codes, live sensor values), your display name, language, settings, service records, fuel and electric trips and reminders are stored on your phone. They leave the phone only when you use one of the features below.</p>
@@ -258,8 +264,8 @@ app.MapGet("/privacy-policy", () =>
 <p class="ka">VIN-ის შემოწმებისას VIN იგზავნება შემდეგ მომწოდებლებთან: NHTSA vPIC და NHTSA recalls (აშშ-ის სახელმწიფო სერვისი; გამოწვევებისთვის — მარკა, მოდელი და წელი), Apibara, API-Auctions და VehicleDatabases (აუქციონების ისტორია და ფოტოები), VinAudit (ფასიანი სრული ისტორია, NMVTIS) და ამავე VIN-ის ფოტოებისთვის — Brave Search და Serper (Google-ის ძებნის შედეგები). მომწოდებლების პასუხები სერვერზე ინახება VIN-ის მიხედვით; შენ მიერ გახსნილი ან ნაყიდი ანგარიშები ანგარიშზეა მიბმული მის წაშლამდე.</p>
 
 <h2>5. QR reports · QR ანგარიშები</h2>
-<p>A QR report stores a summary of the scan you selected: vehicle name, the last six VIN characters, scan summary, trouble codes, readiness and, if present, the service history you entered. Anyone with the link or QR code can open it. The page states that it was created by the vehicle owner with GCar360 and is not independently verified. The link stops working after 30 days and expired reports are deleted from the server.</p>
-<p class="ka">QR ანგარიში ინახავს არჩეული სკანის შეჯამებას: ავტომობილის სახელს, VIN-ის ბოლო ექვს სიმბოლოს, სკანის შეჯამებას, შეცდომის კოდებს, მზადყოფნას და, თუ არის, შენ მიერ შეყვანილ სერვისის ისტორიას. ბმულის ან QR კოდის მქონე ნებისმიერ ადამიანს შეუძლია მისი ნახვა. გვერდზე მითითებულია, რომ ანგარიში შექმნა ავტომობილის მფლობელმა GCar360-ით და დამოუკიდებლად გადამოწმებული არ არის. ბმული 30 დღის შემდეგ აღარ მუშაობს და ვადაგასული ანგარიშები სერვერიდან იშლება.</p>
+<p>A QR report stores a summary of the scan you selected: vehicle name, the last six VIN characters, scan summary, trouble codes, readiness and, if present, the service history you entered. Anyone with the link or QR code can open it. The page states that it was created by the vehicle owner with OBD360 and is not independently verified. The link stops working after 30 days and expired reports are deleted from the server.</p>
+<p class="ka">QR ანგარიში ინახავს არჩეული სკანის შეჯამებას: ავტომობილის სახელს, VIN-ის ბოლო ექვს სიმბოლოს, სკანის შეჯამებას, შეცდომის კოდებს, მზადყოფნას და, თუ არის, შენ მიერ შეყვანილ სერვისის ისტორიას. ბმულის ან QR კოდის მქონე ნებისმიერ ადამიანს შეუძლია მისი ნახვა. გვერდზე მითითებულია, რომ ანგარიში შექმნა ავტომობილის მფლობელმა OBD360-ით და დამოუკიდებლად გადამოწმებული არ არის. ბმული 30 დღის შემდეგ აღარ მუშაობს და ვადაგასული ანგარიშები სერვერიდან იშლება.</p>
 
 <h2>6. Acceleration leaderboard · აჩქარების რეიტინგი</h2>
 <p>If you publish a 0–100 km/h, 0–60 mph or ¼ mile result, your display name, vehicle model and time are shown publicly. The VIN is used to confirm the model and only a one-way hash of it is stored. While measuring, the App uses the phone's GPS (foreground only); when you publish, ECU and GPS speed traces are sent. GPS coordinates are kept only for results that need a review (top places or unusually fast results), and for those we may ask for the video you recorded in the App. Coordinates and videos are seen only by the administrator and are deleted 30 days after the review. If you delete your account, results waiting for review are deleted and public results stay anonymised ("Deleted").</p>
@@ -307,19 +313,19 @@ app.MapGet("/privacy-policy", () =>
 <p class="ka">ანგარიშის სამუდამოდ წაშლა შეგიძლია აპში (ანგარიშის / PRO ეკრანი → ანგარიშის წაშლა) ან ვებგვერდზე <a href="/account/delete">/account/delete</a> ელ-ფოსტით და პაროლით. წაშლა აჩერებს ვებგვერდის ავტომატურ გადახდას, შლის ანგარიშს, სესიებს, გამოწერებს, კრედიტებს, ნაყიდ ანგარიშებს, QR ანგარიშებს და შესამოწმებელ შედეგებს, ზემოთ ჩამოთვლილ ჩანაწერებს კი ანონიმურს ხდის. მაღაზიის გამოწერა ცალკე უნდა გააუქმო Google Play-ში ან App Store-ში.</p>
 
 <h2>13. Security, children, rights · უსაფრთხოება, ბავშვები, უფლებები</h2>
-<p>All traffic uses HTTPS and we use reasonable technical measures, but no system is completely secure. GCar360 is not directed to children. Depending on your law you may request access, correction or deletion of your data.</p>
-<p class="ka">ყველა კავშირი HTTPS-ით ხდება და ვიყენებთ გონივრულ ტექნიკურ ზომებს, თუმცა არცერთი სისტემა არ არის სრულად დაცული. GCar360 ბავშვებისთვის არ არის განკუთვნილი. კანონის შესაბამისად შეგიძლია მოითხოვო მონაცემებზე წვდომა, შესწორება ან წაშლა.</p>
+<p>All traffic uses HTTPS and we use reasonable technical measures, but no system is completely secure. OBD360 is not directed to children. Depending on your law you may request access, correction or deletion of your data.</p>
+<p class="ka">ყველა კავშირი HTTPS-ით ხდება და ვიყენებთ გონივრულ ტექნიკურ ზომებს, თუმცა არცერთი სისტემა არ არის სრულად დაცული. OBD360 ბავშვებისთვის არ არის განკუთვნილი. კანონის შესაბამისად შეგიძლია მოითხოვო მონაცემებზე წვდომა, შესწორება ან წაშლა.</p>
 
 <h2>14. Changes and contact · ცვლილებები და კონტაქტი</h2>
-<p>We will publish changes on this page with a new date. Questions and privacy requests: <a href="mailto:gcar360support@gmail.com">gcar360support@gmail.com</a></p>
-<p class="ka">ცვლილებებს ამ გვერდზე გამოვაქვეყნებთ ახალი თარიღით. კითხვები და მოთხოვნები: <a href="mailto:gcar360support@gmail.com">gcar360support@gmail.com</a></p>
+<p>We will publish changes on this page with a new date. Questions and privacy requests: <a href="mailto:obd360support@gmail.com">obd360support@gmail.com</a></p>
+<p class="ka">ცვლილებებს ამ გვერდზე გამოვაქვეყნებთ ახალი თარიღით. კითხვები და მოთხოვნები: <a href="mailto:obd360support@gmail.com">obd360support@gmail.com</a></p>
 
 </body>
 </html>
 """;
 
     return Results.Content(
-        html,
+        SeoPages.WithMeta(html, "/privacy-policy"),
         "text/html; charset=utf-8");
 });
 
@@ -331,12 +337,12 @@ app.MapGet("/support", () =>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>GCar360 — Support</title>
+    <title>OBD360 — Support</title>
     <style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.65;max-width:900px;margin:auto;padding:30px 20px;color:#222}h1{font-size:32px}h2{margin-top:28px}</style>
 </head>
 <body>
-<h1>GCar360 Support</h1>
-<p>For help, purchase questions or a data-deletion request, email <a href="mailto:gcar360support@gmail.com">gcar360support@gmail.com</a>.</p>
+<h1>OBD360 Support</h1>
+<p>For help, purchase questions or a data-deletion request, email <a href="mailto:obd360support@gmail.com">obd360support@gmail.com</a>.</p>
 <h2>Before contacting support</h2>
 <ol>
   <li>Connect the OBD adapter and turn the vehicle ignition on.</li>
@@ -352,7 +358,7 @@ app.MapGet("/support", () =>
 </body>
 </html>
 """;
-    return Results.Content(html, "text/html; charset=utf-8");
+    return Results.Content(SeoPages.WithMeta(html, "/support"), "text/html; charset=utf-8");
 });
 
 app.MapGet("/terms-of-use", () =>
@@ -363,11 +369,11 @@ app.MapGet("/terms-of-use", () =>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>GCar360 — Terms of Use</title>
+    <title>OBD360 — Terms of Use</title>
     <style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.65;max-width:900px;margin:auto;padding:30px 20px;color:#222}h1{font-size:32px}h2{margin-top:28px}</style>
 </head>
 <body>
-<h1>Terms of Use — GCar360</h1>
+<h1>Terms of Use — OBD360</h1>
 <p>Last updated: October 1, 2026</p>
 <h2>1. Diagnostic information</h2>
 <p>The App provides informational vehicle diagnostics. Results, code explanations and AI responses are not guaranteed repair conclusions. Safety-critical work must be confirmed by a qualified professional.</p>
@@ -388,11 +394,11 @@ app.MapGet("/terms-of-use", () =>
 <h2>5. Privacy</h2>
 <p>Use of the App is also governed by the <a href="/privacy-policy">Privacy Policy</a>.</p>
 <h2>6. Contact</h2>
-<p>Questions: <a href="mailto:gcar360support@gmail.com">gcar360support@gmail.com</a></p>
+<p>Questions: <a href="mailto:obd360support@gmail.com">obd360support@gmail.com</a></p>
 </body>
 </html>
 """;
-    return Results.Content(html, "text/html; charset=utf-8");
+    return Results.Content(SeoPages.WithMeta(html, "/terms-of-use"), "text/html; charset=utf-8");
 });
 
 // ============================================================
@@ -633,7 +639,8 @@ app.MapPost(
     async (
         AccountRequest request,
         HttpContext http,
-        AccountStore accounts) =>
+        AccountStore accounts,
+        LoginCodeService loginCodes) =>
     {
         var rateKey =
             "account-login:" +
@@ -656,61 +663,151 @@ app.MapPost(
                 StatusCodes.Status429TooManyRequests);
         }
 
-        try
-        {
-            var deviceId =
-                http.Request.Headers[
-                    "X-GCS-Device-Id"].ToString();
+        // The password is checked first, without creating a session or touching device binding, so that a wrong
+        // password never reveals whether a sign-in code would otherwise have been sent.
+        var identity = await accounts.VerifyCredentialsAsync(
+            request.Email ?? string.Empty,
+            request.Password ?? string.Empty,
+            http.RequestAborted);
 
-            // "moveDevice": true moves the account to this phone (password
-            // required, once per 7 days; other sessions end).
-            var result =
-                await accounts.LoginAsync(
-                    request.Email ?? string.Empty,
-                    request.Password ?? string.Empty,
-                    deviceId,
-                    request.MoveDevice == true,
-                    http.RequestAborted);
-
-            if (result is null)
-                EmailThrottle.Failed(request.Email);
-
-            // The response carries "mustChangePassword": true after an
-            // admin temporary password (AccountSessionResult).
-            return result is null
-                ? Results.Unauthorized()
-                : Results.Ok(result);
-        }
-        catch (AccountRebindCooldownException cooldown)
+        if (identity is null)
         {
-            return Results.Json(
-                new
-                {
-                    success = false,
-                    code = "REBIND_COOLDOWN",
-                    nextAllowedAt = cooldown.NextAllowedAt,
-                    message =
-                        "This account was moved to another device less than 7 days ago."
-                },
-                statusCode: StatusCodes.Status429TooManyRequests);
-        }
-        catch (AccountDeviceMismatchException)
-        {
-            return Results.Conflict(
-                new
-                {
-                    success = false,
-                    code = "DEVICE_ALREADY_BOUND",
-                    canMoveDevice = true,
-                    message =
-                        "This account is already linked to another device."
-                });
-        }
-        catch (ArgumentException)
-        {
+            EmailThrottle.Failed(request.Email);
             return Results.Unauthorized();
         }
+
+        // A second factor is required on every login when the mail server is configured. If it is not (or the
+        // email could not be sent just now), signing in falls back to the single-step flow below — a server
+        // mail outage must never lock everyone out.
+        if (loginCodes.Enabled)
+        {
+            var sent = await loginCodes.SendAsync(identity.AccountId, identity.Email, http.Request.Headers["X-GCS-Language"].ToString(), http.RequestAborted);
+            switch (sent.Status)
+            {
+                case LoginCodeSendStatus.Sent:
+                    return Results.Ok(new { needsCode = true, accountId = identity.AccountId });
+                case LoginCodeSendStatus.Cooldown or LoginCodeSendStatus.HourlyLimit:
+                    return Results.Json(
+                        new
+                        {
+                            status = sent.Status == LoginCodeSendStatus.Cooldown ? "cooldown" : "hourly_limit",
+                            retryAfterSeconds = sent.RetryAfter is { } at ? Math.Max(1, (int)Math.Ceiling((at - DateTimeOffset.UtcNow).TotalSeconds)) : 60
+                        },
+                        statusCode: StatusCodes.Status429TooManyRequests);
+            }
+        }
+
+        return await FinishLoginAsync(request, http, accounts);
     });
+
+// Second step of login: the code just emailed to the account on file. Re-checks the password (never trusts the
+// code alone) before finishing the same device-bound sign-in that a single-step login would have done.
+app.MapPost(
+    "/api/accounts/login/verify-code",
+    async (
+        LoginCodeVerifyRequest request,
+        HttpContext http,
+        AccountStore accounts,
+        LoginCodeService loginCodes) =>
+    {
+        var ip = AdminService.ClientIp(http);
+        if (!RateWindow.TryConsume("account-login-code-ip:" + ip, DateTimeOffset.UtcNow, 30, TimeSpan.FromMinutes(15)) ||
+            EmailThrottle.IsBlocked(request.Email))
+        {
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        }
+
+        var identity = await accounts.VerifyCredentialsAsync(
+            request.Email ?? string.Empty,
+            request.Password ?? string.Empty,
+            http.RequestAborted);
+
+        if (identity is null)
+        {
+            EmailThrottle.Failed(request.Email);
+            return Results.Unauthorized();
+        }
+
+        if (!RateWindow.TryConsume("account-login-code:" + identity.AccountId, DateTimeOffset.UtcNow, 20, TimeSpan.FromHours(1)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        var verified = await loginCodes.Store.VerifyAsync(identity.AccountId, request.Code, http.RequestAborted);
+        if (verified != LoginCodeVerifyResult.Verified)
+        {
+            return Results.BadRequest(new
+            {
+                verified = false,
+                reason = verified switch
+                {
+                    LoginCodeVerifyResult.Expired => "expired",
+                    LoginCodeVerifyResult.TooManyAttempts => "too_many_attempts",
+                    LoginCodeVerifyResult.NoPendingCode => "no_code",
+                    _ => "invalid"
+                }
+            });
+        }
+
+        return await FinishLoginAsync(new AccountRequest(request.Email, request.Password, request.MoveDevice), http, accounts);
+    });
+
+// The device-bound sign-in itself, shared by the single-step fallback and the code-verified second step.
+async Task<IResult> FinishLoginAsync(AccountRequest request, HttpContext http, AccountStore accounts)
+{
+    try
+    {
+        var deviceId =
+            http.Request.Headers[
+                "X-GCS-Device-Id"].ToString();
+
+        // "moveDevice": true moves the account to this phone (password
+        // required, once per 7 days; other sessions end).
+        var result =
+            await accounts.LoginAsync(
+                request.Email ?? string.Empty,
+                request.Password ?? string.Empty,
+                deviceId,
+                request.MoveDevice == true,
+                http.RequestAborted);
+
+        if (result is null)
+            EmailThrottle.Failed(request.Email);
+
+        // The response carries "mustChangePassword": true after an
+        // admin temporary password (AccountSessionResult).
+        return result is null
+            ? Results.Unauthorized()
+            : Results.Ok(result);
+    }
+    catch (AccountRebindCooldownException cooldown)
+    {
+        return Results.Json(
+            new
+            {
+                success = false,
+                code = "REBIND_COOLDOWN",
+                nextAllowedAt = cooldown.NextAllowedAt,
+                message =
+                    "This account was moved to another device less than 7 days ago."
+            },
+            statusCode: StatusCodes.Status429TooManyRequests);
+    }
+    catch (AccountDeviceMismatchException)
+    {
+        return Results.Conflict(
+            new
+            {
+                success = false,
+                code = "DEVICE_ALREADY_BOUND",
+                canMoveDevice = true,
+                message =
+                    "This account is already linked to another device."
+            });
+    }
+    catch (ArgumentException)
+    {
+        return Results.Unauthorized();
+    }
+}
 
 app.MapGet(
     "/api/accounts/me",
@@ -725,9 +822,17 @@ app.MapGet(
                     "X-GCS-Device-Id"].ToString(),
                 http.RequestAborted);
 
-        return account is null
-            ? Results.Unauthorized()
-            : Results.Ok(account);
+        if (account is null)
+            return Results.Unauthorized();
+
+        // Server-authoritative only: the listed admin e-mail AND a completed 2-step /admin sign-in of this exact
+        // account (AdminAccess.HasPerks) — never a client-side email string match for a privileged mobile feature.
+        return Results.Ok(new
+        {
+            account.AccountId,
+            account.Email,
+            isAdmin = AdminAccess.HasPerks(account.AccountId, account.Email)
+        });
     });
 
 app.MapPost(
@@ -842,6 +947,95 @@ app.MapPost(
             {
                 success = true
             });
+    });
+
+// ---- forgot password (no session: proves ownership of the e-mail instead) ----
+
+// Body {"email"}. Always answers the same way whether or not the e-mail is registered, so this can never be
+// used to discover accounts. If it does exist (and is not banned), a reset code is emailed — from a separate
+// store than the login 2FA code, so the two never collide for the same account.
+app.MapPost(
+    "/api/accounts/password/forgot",
+    async (
+        ForgotPasswordRequest? request,
+        HttpContext http,
+        AccountStore accounts,
+        PasswordResetService passwordReset) =>
+    {
+        if (!RateWindow.TryConsume("password-forgot-ip:" + AdminService.ClientIp(http), DateTimeOffset.UtcNow, 10, TimeSpan.FromHours(1)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        var identity = await accounts.FindByEmailAsync(request?.Email ?? string.Empty, http.RequestAborted);
+
+        if (identity is not null && !accounts.IsBanned(identity.AccountId) && passwordReset.Enabled &&
+            RateWindow.TryConsume("password-forgot:" + identity.AccountId, DateTimeOffset.UtcNow, 5, TimeSpan.FromHours(1)))
+        {
+            try
+            {
+                await passwordReset.SendAsync(
+                    identity.AccountId,
+                    identity.Email,
+                    http.Request.Headers["X-GCS-Language"].ToString(),
+                    http.RequestAborted);
+            }
+            catch (OperationCanceledException) when (!http.RequestAborted.IsCancellationRequested)
+            {
+            }
+        }
+
+        // Same response either way: never confirms whether the address has an account.
+        return Results.Ok(new { success = true });
+    });
+
+// Body {"email","code","newPassword"}. On success every other session ends and the device binding is
+// released (AccountStore.SetPasswordAsync), the same as the admin "temporary password" action — a reset is
+// meant to be a fresh, trusted start, not just a password swap.
+app.MapPost(
+    "/api/accounts/password/reset",
+    async (
+        ResetPasswordRequest? request,
+        HttpContext http,
+        AccountStore accounts,
+        PasswordResetService passwordReset) =>
+    {
+        if (!RateWindow.TryConsume("password-reset-ip:" + AdminService.ClientIp(http), DateTimeOffset.UtcNow, 20, TimeSpan.FromHours(1)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        var identity = await accounts.FindByEmailAsync(request?.Email ?? string.Empty, http.RequestAborted);
+
+        // An unknown e-mail gets the same "invalid code" answer as a wrong code — never reveals which it was.
+        var result = identity is null || accounts.IsBanned(identity.AccountId)
+            ? PasswordResetVerifyResult.Invalid
+            : await passwordReset.Store.VerifyAsync(identity.AccountId, request?.Code, http.RequestAborted);
+
+        if (result != PasswordResetVerifyResult.Verified)
+        {
+            return Results.BadRequest(new
+            {
+                success = false,
+                code = result switch
+                {
+                    PasswordResetVerifyResult.Expired => "EXPIRED",
+                    PasswordResetVerifyResult.TooManyAttempts => "TOO_MANY_ATTEMPTS",
+                    PasswordResetVerifyResult.NoPendingCode => "NO_CODE",
+                    _ => "INVALID_CODE"
+                }
+            });
+        }
+
+        bool changed;
+        try
+        {
+            changed = await accounts.SetPasswordAsync(identity!.AccountId, request?.NewPassword ?? string.Empty, http.RequestAborted, mustChange: false);
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { success = false, code = "WEAK_PASSWORD", message = ex.Message });
+        }
+
+        return changed
+            ? Results.Ok(new { success = true })
+            : Results.BadRequest(new { success = false, code = "INVALID_CODE" });
     });
 
 app.MapDelete(
@@ -1687,7 +1881,7 @@ app.MapGet(
     });
 
 // ============================================================
-// WEB PAYMENTS (GCar360 PRO page, Georgian bank cards)
+// WEB PAYMENTS (OBD360 PRO page, Georgian bank cards)
 //   GET  /pro                               – plans + payment form
 //   POST /api/web/checkout                  – starts a bank payment
 //   GET  /pro/result?order=…                – result page
@@ -2320,7 +2514,7 @@ app.MapGet(
 
 // ============================================================
 // PUBLIC WEBSITE
-//   GET /  – what GCar360 is and what every part does
+//   GET /  – what OBD360 is and what every part does
 // ============================================================
 
 app.MapGet(
@@ -2336,6 +2530,10 @@ app.MapGet(
         Results.Content(
             SitePages.HomePage(full.Price, full.IsConfigured, english: true),
             "text/html; charset=utf-8"));
+
+// Crawler files. robots.txt keeps the public site open and points to the sitemap; sitemap.xml lists only the real public pages.
+app.MapGet("/robots.txt", () => Results.Text(SeoPages.RobotsTxt(), "text/plain; charset=utf-8"));
+app.MapGet("/sitemap.xml", () => Results.Text(SeoPages.SitemapXml(), "application/xml; charset=utf-8"));
 
 // ============================================================
 // ADMIN (owner only: GCS_ADMIN_EMAILS [+ GCS_ADMIN_TOTP_SECRET, GCS_ADMIN_IPS])
@@ -2373,6 +2571,7 @@ app.MapGet(
                 await http.RequestServices.GetRequiredService<ResetRecordingStore>().LatestAsync(100, ct),
                 note, ok),
             "odometer" => AdminPages.Odometer(session, await http.RequestServices.GetRequiredService<OdometerStore>().GroupsAsync(null, null, ct), note, ok),
+            "ecu" => AdminPages.EcuObservations(session, await http.RequestServices.GetRequiredService<EcuObservationStore>().LatestAsync(3000, ct), note, ok),
             "crashes" => AdminPages.Crashes(session, await http.RequestServices.GetRequiredService<CrashReportStore>().GetGroupsAsync(30, ct), note, ok),
             "log" => AdminPages.Log(session, await admin.AuditLogAsync(ct), note, ok),
             "security" => AdminPages.Security(session, AdminService.NewTotpSecret(), note, ok),
@@ -2398,7 +2597,7 @@ app.MapGet(
             var overviewOk = ok;
             if (budget > 0 && used * 100 > budget * 80)
             {
-                overviewNote = $"⚠ VIN პროვაიდერის თვიური ბიუჯეტი: გამოყენებულია {used} / {budget} ({used * 100 / budget}%). / VIN provider monthly budget {used}/{budget} used." +
+                overviewNote = $"VIN პროვაიდერის თვიური ბიუჯეტი: გამოყენებულია {used} / {budget} ({used * 100 / budget}%). / VIN provider monthly budget {used}/{budget} used." +
                                (note is null ? "" : " · " + note);
                 overviewOk = false;
             }
@@ -2550,6 +2749,15 @@ app.MapPost(
             return Results.Redirect(Back("odometer", changed ? label : "ვერ შეიცვალა", changed));
         }
 
+        if (kind == "ecu")
+        {
+            if (!long.TryParse(id, out var obsId) || action is not ("verify" or "unverify"))
+                return Results.Redirect(Back("ecu", "ჩანაწერი ვერ მოიძებნა", false));
+            var changed = await http.RequestServices.GetRequiredService<EcuObservationStore>().SetReviewAsync(obsId, action == "verify", ct);
+            await admin.AuditAsync(session.Email, "ecu_" + action, id, ip, ct);
+            return Results.Redirect(Back("ecu", changed ? (action == "verify" ? "დამოწმდა" : "დამოწმება მოიხსნა") : "ვერ შეიცვალა", changed));
+        }
+
         if (kind == "acceleration")
         {
             // One row: SubmissionId (route) + AccountId (hidden form field).
@@ -2577,22 +2785,22 @@ app.MapPost(
                     return Results.Redirect(Back("users", email + " დაიბლოკა", true));
 
                 case "temppass":
-                {
-                    // No e-mail sender exists: the owner sees the password once
-                    // (in this response, never in a URL) and passes it on.
-                    var temporary = AccountStore.NewTemporaryPassword();
-                    var set = await accounts.SetPasswordAsync(id, temporary, ct);
-                    await admin.AuditAsync(session.Email, "temp_password", email, ip, ct);
-                    var page = AdminPages.Users(
-                        session,
-                        await admin.UsersAsync(email, ct),
-                        email,
-                        set
-                            ? $"{email}: დროებითი პაროლი — {temporary} · გადაეცი მომხმარებელს; შესვლის შემდეგ შეცვალოს. ყველა სესია დასრულდა, მოწყობილობა მოიხსნა."
-                            : "პაროლი ვერ შეიცვალა",
-                        set);
-                    return Results.Content(page, "text/html; charset=utf-8");
-                }
+                    {
+                        // No e-mail sender exists: the owner sees the password once
+                        // (in this response, never in a URL) and passes it on.
+                        var temporary = AccountStore.NewTemporaryPassword();
+                        var set = await accounts.SetPasswordAsync(id, temporary, ct);
+                        await admin.AuditAsync(session.Email, "temp_password", email, ip, ct);
+                        var page = AdminPages.Users(
+                            session,
+                            await admin.UsersAsync(email, ct),
+                            email,
+                            set
+                                ? $"{email}: დროებითი პაროლი — {temporary} · გადაეცი მომხმარებელს; შესვლის შემდეგ შეცვალოს. ყველა სესია დასრულდა, მოწყობილობა მოიხსნა."
+                                : "პაროლი ვერ შეიცვალა",
+                            set);
+                        return Results.Content(page, "text/html; charset=utf-8");
+                    }
 
                 case "unbind":
                     await accounts.ResetDeviceAsync(id, ct);
@@ -2861,6 +3069,21 @@ static async Task<IResult> GenerateGeminiAsync(
         return Results.StatusCode(StatusCodes.Status403Forbidden);
     }
 
+    // A server that has no AI key cannot answer: say so before the request is counted against the person's limits.
+    var apiKey =
+        config["Gemini:ApiKey"] ??
+        Environment.GetEnvironmentVariable(
+            "GEMINI_API_KEY");
+
+    if (string.IsNullOrWhiteSpace(apiKey))
+    {
+        http.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Gemini")
+            .LogError("AI request refused: no Gemini API key is configured on the server (Gemini:ApiKey / GEMINI_API_KEY).");
+        return Results.Json(
+            AiProviderErrors.Body(AiProviderErrors.NotConfigured),
+            statusCode: AiProviderErrors.NotConfigured.HttpStatus);
+    }
+
     var clientKey =
         "ai:" + userId;
 
@@ -2898,18 +3121,6 @@ static async Task<IResult> GenerateGeminiAsync(
         }
     }
 
-    var apiKey =
-        config["Gemini:ApiKey"] ??
-        Environment.GetEnvironmentVariable(
-            "GEMINI_API_KEY");
-
-    if (string.IsNullOrWhiteSpace(apiKey))
-    {
-        return Results.Problem(
-            "Gemini API key is not configured on the server.",
-            statusCode: 503);
-    }
-
     var model =
         string.IsNullOrWhiteSpace(request.Model) ||
         !AppConfig.AllowedModels.Contains(
@@ -2920,164 +3131,11 @@ static async Task<IResult> GenerateGeminiAsync(
 
     var client =
         clients.CreateClient();
+    var logger = http.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Gemini");
 
-    client.Timeout =
-        TimeSpan.FromSeconds(60);
-
-    string? raw = null;
-    int providerStatus =
-        StatusCodes.Status503ServiceUnavailable;
-
-    // At most two models per request (the chosen one + one fallback).
-    foreach (var candidateModel in
-             AppConfig.GetModelFallbackOrder(model).Take(2))
-    {
-        var uri =
-            $"https://generativelanguage.googleapis.com/v1beta/models/" +
-            $"{Uri.EscapeDataString(candidateModel)}:generateContent";
-
-        using var outbound =
-            new HttpRequestMessage(
-                HttpMethod.Post,
-                uri);
-
-        outbound.Headers
-            .TryAddWithoutValidation(
-                "x-goog-api-key",
-                apiKey);
-
-        outbound.Content =
-            JsonContent.Create(
-                new
-                {
-                    systemInstruction =
-                        new
-                        {
-                            parts =
-                                new[]
-                                {
-                                    new
-                                    {
-                                        text = AppConfig.AiSafetyInstruction
-                                    }
-                                }
-                        },
-
-                    contents =
-                        new[]
-                        {
-                            new
-                            {
-                                role = "user",
-                                parts =
-                                    new[]
-                                    {
-                                        new
-                                        {
-                                            text =
-                                                request.Prompt
-                                        }
-                                    }
-                            }
-                        },
-
-                    generationConfig =
-                        new
-                        {
-                            // Cost cap. Newer Gemini models spend part of this budget on
-                            // internal reasoning (1800 cut chat answers off mid-sentence).
-                            maxOutputTokens = 2048,
-                            temperature = 0.3
-                        }
-                });
-
-        using var response =
-            await client.SendAsync(
-                outbound,
-                http.RequestAborted);
-
-        providerStatus =
-            (int)response.StatusCode;
-
-        var candidateRaw =
-            await response.Content
-                .ReadAsStringAsync(
-                    http.RequestAborted);
-
-        if (response.IsSuccessStatusCode)
-        {
-            raw = candidateRaw;
-            break;
-        }
-
-        if (!AppConfig.IsFallbackStatus(
-                response.StatusCode))
-        {
-            break;
-        }
-    }
-
-    if (raw is null)
-    {
-        return Results.Json(
-            new
-            {
-                error =
-                    "AI სერვისთან დაკავშირება ვერ მოხერხდა.",
-                providerStatus =
-                    providerStatus
-            },
-            statusCode:
-                providerStatus is >= 400 and <= 599
-                    ? providerStatus
-                    : StatusCodes.Status502BadGateway);
-    }
-
-    try
-    {
-        using var doc =
-            JsonDocument.Parse(raw);
-
-        // Join every answer part (a reply can arrive in several parts);
-        // internal "thought" parts are never shown to the user.
-        var candidate =
-            doc.RootElement
-                .GetProperty("candidates")[0];
-
-        var builder = new StringBuilder();
-        if (candidate.TryGetProperty("content", out var content) &&
-            content.TryGetProperty("parts", out var parts))
-        {
-            foreach (var part in parts.EnumerateArray())
-            {
-                if (part.TryGetProperty("thought", out var thought) &&
-                    thought.ValueKind == JsonValueKind.True)
-                {
-                    continue;
-                }
-
-                if (part.TryGetProperty("text", out var piece))
-                    builder.Append(piece.GetString());
-            }
-        }
-
-        string? text = builder.ToString().Trim();
-        if (text.Length == 0)
-            text = null;
-
-        return Results.Text(
-            text ??
-            "AI-მ პასუხი ვერ დააბრუნა.",
-            "text/plain",
-            Encoding.UTF8);
-    }
-    catch
-    {
-        return Results.Problem(
-            "AI response parse failed.",
-            statusCode: 502);
-    }
+    return await GeminiClient.CallWithFallbackAsync(client, apiKey, model, request.Prompt, logger, http.RequestAborted);
 }
+
 
 // ============================================================
 // VIN REPORT
@@ -3620,6 +3678,8 @@ static async Task DeleteAccountDataAsync(
     await services.GetRequiredService<AdminService>().ForgetAccountAsync(accountId, ct);
 
     await services.GetRequiredService<EmailVerificationStore>().DeleteAsync(accountId, ct);
+    await services.GetRequiredService<LoginCodeStore>().DeleteAsync(accountId, ct);
+    await services.GetRequiredService<PasswordResetStore>().DeleteAsync(accountId, ct);
 
     await services.GetRequiredService<AccountStore>().DeleteAsync(accountId, ct);
 }
@@ -3695,9 +3755,15 @@ record AccountRequest(string? Email, string? Password, bool? MoveDevice = null);
 
 record EmailCodeRequest(string? Code);
 
+record LoginCodeVerifyRequest(string? Email, string? Password, string? Code, bool? MoveDevice = null);
+
 record WebAccountDeleteRequest(string? Email, string? Password, string? Token);
 
 record ChangePasswordRequest(string? CurrentPassword, string? NewPassword);
+
+record ForgotPasswordRequest(string? Email);
+
+record ResetPasswordRequest(string? Email, string? Code, string? NewPassword);
 
 record FullCheckoutRequest(string? Provider);
 
@@ -3727,14 +3793,17 @@ You are an automotive diagnostic assistant. Treat all measurements and DTCs in t
 """;
 
     public const string DefaultModel =
-        "gemini-3.6-flash";
+        "gemini-3.8-flash";
 
+    // gemini-2.5-flash is deliberately NOT listed: Google now answers it with 404 "no longer
+    // available to new users" for this key (confirmed in production logs, 2026-10-14). Both
+    // models below are confirmed Stable on ai.google.dev/gemini-api/docs/models as of this
+    // writing, with 3.5-flash-lite explicitly recommended for new projects.
     public static readonly string[] AllowedModels =
     [
         DefaultModel,
-        "gemini-3.5-flash",
         "gemini-3.5-flash-lite",
-        "gemini-2.5-flash"
+        "gemini-3.1-flash-lite"
     ];
 
     public static IEnumerable<string> GetModelFallbackOrder(
@@ -3754,17 +3823,48 @@ You are an automotive diagnostic assistant. Treat all measurements and DTCs in t
         }
     }
 
-    public static bool IsFallbackStatus(
+    public enum FailureKind
+    {
+        /// <summary>Overloaded / rate-limited / a passing server hiccup: worth retrying the SAME model after a short wait.</summary>
+        Transient,
+
+        /// <summary>This specific model is unknown/unavailable to this key: a genuinely different model may still work.</summary>
+        ModelUnavailable,
+
+        /// <summary>Bad request, bad key, or no permission: not specific to any model, so switching models will not help either.</summary>
+        Blocked
+    }
+
+    /// <summary>
+    /// 429 (quota) and 5xx (overload, internal error, timeout) are Transient — Google's own wording for a 503 is
+    /// "usually temporary", so the right response is a short wait and the SAME model, not giving up on it.
+    /// 404 is ModelUnavailable — this exact model id is unknown/deprecated for this key; a different model is the
+    /// only useful move. 400/401/403 are Blocked — the request or the key itself is the problem, which affects
+    /// every model equally, so neither retrying nor switching models will help.
+    /// </summary>
+    public static FailureKind ClassifyFailure(
         System.Net.HttpStatusCode statusCode)
     {
-        return statusCode is
-            System.Net.HttpStatusCode.NotFound or
+        if (statusCode is
             System.Net.HttpStatusCode.TooManyRequests or
             System.Net.HttpStatusCode.InternalServerError or
             System.Net.HttpStatusCode.BadGateway or
             System.Net.HttpStatusCode.ServiceUnavailable or
-            System.Net.HttpStatusCode.GatewayTimeout;
+            System.Net.HttpStatusCode.GatewayTimeout)
+        {
+            return FailureKind.Transient;
+        }
+
+        if (statusCode is System.Net.HttpStatusCode.NotFound)
+            return FailureKind.ModelUnavailable;
+
+        // 400, 401, 403, and anything else unexpected: treated as Blocked, the conservative choice —
+        // never worth spending a second attempt on model-switching for an error that is not about the model.
+        return FailureKind.Blocked;
     }
+
+    /// <summary>Wait before retrying the same model after a Transient failure.</summary>
+    public static readonly TimeSpan TransientRetryDelay = TimeSpan.FromSeconds(1.5);
 }
 
 // ============================================================
@@ -4014,4 +4114,236 @@ static class EmailThrottle
 
     public static void Failed(string? email) =>
         RateWindow.TryConsume(Key(email), DateTimeOffset.UtcNow, MaxFailures, Window);
+}
+
+/// <summary>
+/// The actual outbound call(s) to Gemini, with model fallback — a real class (not a Program.cs local function,
+/// which would be invisible to tests) so it can be exercised directly against a stubbed HttpClient, without
+/// reconstructing accounts/entitlements/rate limits (which live in GenerateGeminiAsync and are untouched here).
+/// </summary>
+static class GeminiClient
+{
+public static async Task<IResult> CallWithFallbackAsync(
+    HttpClient client,
+    string apiKey,
+    string model,
+    string prompt,
+    ILogger logger,
+    CancellationToken cancellationToken)
+{
+    // Short enough that two attempts plus the transient-retry wait still finish inside the
+    // mobile app's own 60s request budget (AIConfig.MaxRequestSeconds).
+    client.Timeout =
+        TimeSpan.FromSeconds(25);
+
+    string? raw = null;
+    int providerStatus =
+        StatusCodes.Status503ServiceUnavailable;
+    string? lastErrorBody = null;
+    var gemini = logger;
+    var transportFailure = false;
+
+    // At most two outbound calls per request. A Transient failure (overloaded / rate-limited) retries the
+    // SAME model once, after a short wait — Google's own wording for a 503 is "usually temporary". A
+    // ModelUnavailable failure (404: this model id is unknown to this key) moves on to the next, distinct
+    // model instead. A Blocked failure (400/401/403: the request or the key itself) stops immediately —
+    // it is not specific to this model, so neither retrying nor switching models would help.
+    var fallbackModel = AppConfig.GetModelFallbackOrder(model).Skip(1).FirstOrDefault();
+    var candidateModel = model;
+    var usedFallbackModel = false;
+
+    for (var attempt = 1; attempt <= 2; attempt++)
+    {
+        var uri =
+            $"https://generativelanguage.googleapis.com/v1beta/models/" +
+            $"{Uri.EscapeDataString(candidateModel)}:generateContent";
+
+        using var outbound =
+            new HttpRequestMessage(
+                HttpMethod.Post,
+                uri);
+
+        outbound.Headers
+            .TryAddWithoutValidation(
+                "x-goog-api-key",
+                apiKey);
+
+        outbound.Content =
+            JsonContent.Create(
+                new
+                {
+                    systemInstruction =
+                        new
+                        {
+                            parts =
+                                new[]
+                                {
+                                    new
+                                    {
+                                        text = AppConfig.AiSafetyInstruction
+                                    }
+                                }
+                        },
+
+                    contents =
+                        new[]
+                        {
+                            new
+                            {
+                                role = "user",
+                                parts =
+                                    new[]
+                                    {
+                                        new
+                                        {
+                                            text =
+                                                prompt
+                                        }
+                                    }
+                            }
+                        },
+
+                    generationConfig =
+                        new
+                        {
+                            // Cost cap. Newer Gemini models spend part of this budget on
+                            // internal reasoning (1800 cut chat answers off mid-sentence).
+                            maxOutputTokens = 2048,
+                            temperature = 0.3
+                        }
+                });
+
+        HttpResponseMessage response;
+        string candidateRaw;
+        try
+        {
+            response =
+                await client.SendAsync(
+                    outbound,
+                    cancellationToken);
+            candidateRaw =
+                await response.Content
+                    .ReadAsStringAsync(
+                        cancellationToken);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !cancellationToken.IsCancellationRequested)
+        {
+            // Network failure or the provider timed out: not a "server error" of this app, and not hidden as one.
+            // Not specific to the model, so a retry stays on the same model rather than switching.
+            gemini.LogWarning("Gemini request to {Model} failed: {Error}", candidateModel, ex.GetType().Name);
+            transportFailure = ex is TaskCanceledException;
+            providerStatus = ex is TaskCanceledException ? 504 : 503;
+            lastErrorBody = null;
+
+            if (attempt < 2)
+                await Task.Delay(AppConfig.TransientRetryDelay, cancellationToken);
+
+            continue;
+        }
+
+        using (response)
+        {
+            providerStatus =
+                (int)response.StatusCode;
+
+            if (response.IsSuccessStatusCode)
+            {
+                raw = candidateRaw;
+                break;
+            }
+
+            lastErrorBody = candidateRaw;
+            transportFailure = false;
+            var (googleStatus, googleMessage) = AiProviderErrors.ReadProviderError(candidateRaw);
+
+            // Diagnostic only, never used to change retry timing: on a 429, a server-supplied Retry-After
+            // header is Google's own signal that this is a short, bounded throttle rather than a harder,
+            // longer-lived quota exhaustion (which would not carry one). Logged so an admin reading the
+            // log stream can tell the two apart; the original error for THIS model is preserved here even
+            // if a later attempt (same or fallback model) later overwrites providerStatus/lastErrorBody.
+            var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds;
+            gemini.LogWarning(
+                "Gemini {Model} answered HTTP {Status} {GoogleStatus} (retryAfter={RetryAfter}): {Message}",
+                candidateModel, providerStatus, googleStatus, retryAfter?.ToString("0.#") ?? "none", googleMessage);
+
+            if (attempt == 2)
+                break;
+
+            var kind = AppConfig.ClassifyFailure(response.StatusCode);
+            if (kind == AppConfig.FailureKind.Transient)
+            {
+                // Overloaded / rate-limited: Google's own wording calls this "usually temporary" — wait, then
+                // retry the SAME model rather than spending the last attempt on an unrelated one.
+                await Task.Delay(AppConfig.TransientRetryDelay, cancellationToken);
+            }
+            else if (kind == AppConfig.FailureKind.ModelUnavailable && !usedFallbackModel && fallbackModel is not null)
+            {
+                // This exact model id is unknown/unavailable to this key: a different model may still work.
+                candidateModel = fallbackModel;
+                usedFallbackModel = true;
+            }
+            else
+            {
+                // Blocked (400/401/403): the request or the key is the problem, not this model — neither
+                // retrying nor switching models would help, so stop instead of wasting the last attempt.
+                // Also reached when ModelUnavailable has no distinct fallback left to try.
+                break;
+            }
+        }
+    }
+
+    if (raw is null)
+    {
+        var (lastGoogleStatus, _) = AiProviderErrors.ReadProviderError(lastErrorBody);
+        var failure = transportFailure && lastErrorBody is null
+            ? AiProviderErrors.Timeout
+            : AiProviderErrors.Map(providerStatus, lastGoogleStatus);
+        return Results.Json(AiProviderErrors.Body(failure, providerStatus), statusCode: failure.HttpStatus);
+    }
+
+    try
+    {
+        using var doc =
+            JsonDocument.Parse(raw);
+
+        // Join every answer part (a reply can arrive in several parts);
+        // internal "thought" parts are never shown to the user.
+        var candidate =
+            doc.RootElement
+                .GetProperty("candidates")[0];
+
+        var builder = new StringBuilder();
+        if (candidate.TryGetProperty("content", out var content) &&
+            content.TryGetProperty("parts", out var parts))
+        {
+            foreach (var part in parts.EnumerateArray())
+            {
+                if (part.TryGetProperty("thought", out var thought) &&
+                    thought.ValueKind == JsonValueKind.True)
+                {
+                    continue;
+                }
+
+                if (part.TryGetProperty("text", out var piece))
+                    builder.Append(piece.GetString());
+            }
+        }
+
+        string? text = builder.ToString().Trim();
+        if (text.Length == 0)
+            text = null;
+
+        return Results.Text(
+            text ??
+            "AI-მ პასუხი ვერ დააბრუნა.",
+            "text/plain",
+            Encoding.UTF8);
+    }
+    catch
+    {
+        return Results.Problem(
+            "AI response parse failed.",
+            statusCode: 502);
+    }
+}
 }

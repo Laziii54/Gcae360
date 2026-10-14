@@ -10,6 +10,9 @@ public enum FuelSignal
     /// <summary>SAE J1979 PID 01 5E, litres per hour.</summary>
     DirectFuelRateLph,
 
+    /// <summary>SAE J1979 PID 01 9D (engine fuel rate), grams per second of fuel. Needs a known liquid fuel to become litres.</summary>
+    EngineFuelRateGramsPerSecond,
+
     /// <summary>SAE J1979 PID 01 10, grams per second.</summary>
     MafGramsPerSecond,
 
@@ -145,6 +148,19 @@ public static class FuelRateResolver
             sawImplausibleDirect = true;
         }
 
+        // 1b) The car's own fuel MASS flow (PID 9D, g/s). It is a reading, converted to litres with the density of the selected fuel.
+        //     Without a known liquid fuel there is no honest conversion, so the value is left unused.
+        var massRate = signals.Get(FuelSignal.EngineFuelRateGramsPerSecond, now, FuelLimits.FuelSignalMaxAge);
+        if (massRate is { } gramsPerSecond && FuelKinds.TryGetMafConstants(kind, out var massConstants))
+        {
+            var litres = gramsPerSecond / (massConstants.DensityKgPerLiter * 1000d) * 3600d;
+            if (double.IsFinite(litres) && litres is >= 0 and <= FuelLimits.MaximumFuelRateLph)
+                return new FuelRate(litres, FuelDataQuality.Direct, FuelRateIssue.None, false,
+                    "PID 01 9D (fuel mass rate reported by the ECU) ÷ density",
+                    $"density {massConstants.DensityKgPerLiter:0.###} kg/L assumed for the selected fuel");
+            sawImplausibleDirect = true;
+        }
+
         // 2) An estimate from air flow.
         var maf = signals.Get(FuelSignal.MafGramsPerSecond, now, FuelLimits.FuelSignalMaxAge);
         if (maf is null)
@@ -152,7 +168,7 @@ public static class FuelRateResolver
             if (sawImplausibleDirect)
                 return FuelRate.Unavailable(FuelRateIssue.Implausible);
 
-            var everSeen = signals.HasEverReceived(FuelSignal.DirectFuelRateLph) || signals.HasEverReceived(FuelSignal.MafGramsPerSecond);
+            var everSeen = signals.HasEverReceived(FuelSignal.DirectFuelRateLph) || signals.HasEverReceived(FuelSignal.EngineFuelRateGramsPerSecond) || signals.HasEverReceived(FuelSignal.MafGramsPerSecond);
             return FuelRate.Unavailable(everSeen ? FuelRateIssue.Stale : FuelRateIssue.NoFuelData);
         }
 

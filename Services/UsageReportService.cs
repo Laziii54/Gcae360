@@ -5,7 +5,7 @@ using Plugin.LocalNotification;
 namespace CarScanner.Services;
 
 /// <summary>
-/// Tells the GCar360 server, at most every few hours, that this installation
+/// Tells the OBD360 server, at most every few hours, that this installation
 /// is in use: app version, Android version, language and whether reminders
 /// can be shown. Only a random installation id is sent (no name, phone
 /// number or location). The owner sees totals on the admin page.

@@ -124,7 +124,7 @@ public partial class QrReportViewModel : BaseViewModel
         if (!HasQr) return;
         await Microsoft.Maui.ApplicationModel.DataTransfer.Share.Default.RequestAsync(new ShareTextRequest
         {
-            Title = _localization.IsEnglish ? "GCar360 — QR Report" : "GCar360 — QR ანგარიში",
+            Title = _localization.IsEnglish ? "OBD360 — QR Report" : "OBD360 — QR ანგარიში",
             Text = PublicUrl
         });
         }

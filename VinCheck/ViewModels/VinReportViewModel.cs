@@ -108,8 +108,8 @@ public partial class VinReportViewModel(
 
         if (!account.IsSignedIn)
         {
-            await Shell.Current.DisplayAlertAsync(VinText.T("VinHistory"), VinText.T("SignInRequired"), "OK");
-            try { await Shell.Current.GoToAsync(nameof(AccountPage)); } catch { }
+            await Shell.Current.DisplayAlertLocalizedAsync(VinText.T("VinHistory"), VinText.T("SignInRequired"), "OK");
+            try { await CarScanner.Services.SafeNavigation.GoToAsync(nameof(AccountPage)); } catch { }
             return;
         }
 
@@ -147,7 +147,7 @@ public partial class VinReportViewModel(
                     "TOO_MANY" => VinText.T("TooMany"),
                     _ => VinText.T("FullFailed")
                 };
-                await Shell.Current.DisplayAlertAsync(FullTitleText, message, "OK");
+                await Shell.Current.DisplayAlertLocalizedAsync(FullTitleText, message, "OK");
                 await LoadFullAsync();
                 return;
             }
@@ -433,7 +433,7 @@ public partial class VinReportViewModel(
         {
         if (Report is null) return;
         await Clipboard.Default.SetTextAsync(Report.Vin);
-        await Shell.Current.DisplayAlertAsync(VinText.T("VinHistory"), VinText.T("VinCopied"), "OK");
+        await Shell.Current.DisplayAlertLocalizedAsync(VinText.T("VinHistory"), VinText.T("VinCopied"), "OK");
         }
         catch (Exception commandException)
         {
@@ -486,7 +486,7 @@ public partial class VinReportViewModel(
         }
         catch
         {
-            await Shell.Current.DisplayAlertAsync(VinText.T("VinHistory"), VinText.T("Unavailable"), "OK");
+            await Shell.Current.DisplayAlertLocalizedAsync(VinText.T("VinHistory"), VinText.T("Unavailable"), "OK");
         }
         finally
         {
@@ -515,8 +515,8 @@ public partial class VinReportViewModel(
         // user signs in first (nothing is charged before that).
         if (!account.IsSignedIn)
         {
-            await Shell.Current.DisplayAlertAsync(VinText.T("VinHistory"), VinText.T("SignInRequired"), "OK");
-            try { await Shell.Current.GoToAsync(nameof(AccountPage)); } catch { }
+            await Shell.Current.DisplayAlertLocalizedAsync(VinText.T("VinHistory"), VinText.T("SignInRequired"), "OK");
+            try { await CarScanner.Services.SafeNavigation.GoToAsync(nameof(AccountPage)); } catch { }
             return;
         }
 
@@ -554,7 +554,7 @@ public partial class VinReportViewModel(
             await database.SaveSearchAsync(opened);
 
             if (opened.Access is { AuctionCount: 0 })
-                await Shell.Current.DisplayAlertAsync(VinText.T("VinHistory"), VinText.T("NotCharged"), "OK");
+                await Shell.Current.DisplayAlertLocalizedAsync(VinText.T("VinHistory"), VinText.T("NotCharged"), "OK");
         }
         catch (VinServiceException ex) when (ex.Kind == VinError.PlanRequired)
         {
@@ -573,11 +573,11 @@ public partial class VinReportViewModel(
                 VinError.RateLimited => VinText.T("TooMany"),
                 _ => VinText.T("HistoryUnavailable")
             };
-            await Shell.Current.DisplayAlertAsync(VinText.T("VinHistory"), message, "OK");
+            await Shell.Current.DisplayAlertLocalizedAsync(VinText.T("VinHistory"), message, "OK");
         }
         catch (Exception)
         {
-            await Shell.Current.DisplayAlertAsync(VinText.T("VinHistory"), VinText.T("HistoryUnavailable"), "OK");
+            await Shell.Current.DisplayAlertLocalizedAsync(VinText.T("VinHistory"), VinText.T("HistoryUnavailable"), "OK");
         }
         finally
         {
@@ -587,7 +587,7 @@ public partial class VinReportViewModel(
 
     /// <summary>No VIN plan and no extra checks on the account.</summary>
     private static Task OfferPlansAsync() =>
-        Shell.Current.DisplayAlertAsync(
+        Shell.Current.DisplayAlertLocalizedAsync(
             VinText.T("PlanRequiredTitle"),
             VinText.T("PlanRequiredMessage"),
             "OK");
@@ -599,7 +599,7 @@ public partial class VinReportViewModel(
             ? VinText.Format("QuotaReset", monthlyLimit, reset.ToLocalTime().ToString("dd.MM.yyyy", CultureInfo.InvariantCulture))
             : string.Empty;
 
-        return Shell.Current.DisplayAlertAsync(
+        return Shell.Current.DisplayAlertLocalizedAsync(
             VinText.Format("QuotaUsedTitle", monthlyLimit),
             message,
             "OK");
@@ -611,7 +611,7 @@ public partial class VinReportViewModel(
         try
         {
         if (selection.Images.Count == 0) return;
-        await Shell.Current.GoToAsync(nameof(VinPhotoGalleryPage), new ShellNavigationQueryParameters { { "Selection", selection } });
+        await CarScanner.Services.SafeNavigation.GoToAsync(nameof(VinPhotoGalleryPage), new ShellNavigationQueryParameters { { "Selection", selection } });
         }
         catch (Exception commandException)
         {

@@ -27,7 +27,7 @@ public partial class ProPage : ContentPage
 
     private async void OnAccountClicked(object? sender, EventArgs e)
     {
-        try { await Shell.Current.GoToAsync(nameof(AccountPage)); }
+        try { await CarScanner.Services.SafeNavigation.GoToAsync(nameof(AccountPage)); }
         catch (Exception commandException)
         {
             CarScanner.Services.CommandErrors.Report(commandException, "ProPage.OnAccountClicked");

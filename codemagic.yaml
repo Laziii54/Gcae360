@@ -1,6 +1,6 @@
 ﻿workflows:
   maui-ios:
-    name: GCar360 iOS
+    name: OBD360 iOS
     max_build_duration: 120
     instance_type: mac_mini_m2
 
@@ -41,7 +41,7 @@
           "$DOTNET" workload install ios maui --version 10.0.401
           "$DOTNET" workload --info
 
-      - name: Build GCar360 IPA
+      - name: Build OBD360 IPA
         script: |
           IOS_TFM=$(grep -oE 'net[0-9]+\.[0-9]+-ios' CarScanner.csproj | head -1)
 

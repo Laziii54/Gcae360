@@ -402,8 +402,9 @@ from an ECU-confirmed fault.
 
             if (!res.IsSuccessStatusCode)
             {
+                // The server names its own AI failures (AI_PROVIDER_CONFIG, AI_PROVIDER_QUOTA, ...); use that text when it is there.
                 throw new InvalidOperationException(
-                    DescribeFailure(res.StatusCode));
+                    AiFailureText.FromBody(body, IsEnglish()) ?? DescribeFailure(res.StatusCode));
             }
 
             if (string.IsNullOrWhiteSpace(body))
@@ -614,7 +615,7 @@ from an ECU-confirmed fault.
         // =====================================================
 
         sb.AppendLine("""
-You are GCar360's automotive diagnostic AI assistant.
+You are OBD360's automotive diagnostic AI assistant.
 
 Act like an experienced automotive technician explaining scan results
 to an ordinary driver.

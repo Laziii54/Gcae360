@@ -243,7 +243,7 @@ public partial class MaintenancePartViewModel : BaseViewModel
     {
         try
         {
-        var confirm = await Shell.Current.DisplayAlertAsync(
+        var confirm = await Shell.Current.DisplayAlertLocalizedAsync(
             PartName,
             L("წავშალო ბოლო ჩანაწერი?", "Delete the last record?"),
             L("წაშლა", "Delete"),

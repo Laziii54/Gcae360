@@ -25,7 +25,7 @@
                         <Entry Grid.Column="2" Text="{Binding IntervalMonthsText}" Keyboard="Numeric" Placeholder="12" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="End" />
                         <Label Grid.Column="3" Text="{Binding MonthsCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="13" VerticalOptions="Center" />
                     </Grid>
-                    <Label Text="{Binding StandardText}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                    <Label Text="{Binding StandardText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                         <Button Text="{Binding SaveIntervalText}" Command="{Binding SaveIntervalCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="10" HeightRequest="38" FontSize="12" FontAttributes="Bold" Padding="6,0" />
                         <Button Grid.Column="1" Text="{Binding RestoreText}" Command="{Binding RestoreStandardCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="10" HeightRequest="38" FontSize="12" FontAttributes="Bold" Padding="6,0" />
@@ -74,7 +74,7 @@
                 <VerticalStackLayout Spacing="6">
                     <Label Text="{Binding InstructionCaption}" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" />
                     <Label Text="{Binding InstructionText}" TextColor="{DynamicResource TextColor}" FontSize="12" LineBreakMode="WordWrap" />
-                    <Label Text="{Binding InstructionNote}" TextColor="{DynamicResource SubTextColor}" FontSize="11" />
+                    <Label Text="{Binding InstructionNote}" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
                 </VerticalStackLayout>
             </Border>
         </VerticalStackLayout>

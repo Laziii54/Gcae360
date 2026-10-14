@@ -72,7 +72,7 @@ public sealed class VerificationEmailTemplateTests
         var mail = VerificationEmailTemplate.Render(Model("ka"));
         Assert.Contains("დაადასტურე შენი ელფოსტა", mail.Html);
         Assert.Contains("შენი დამადასტურებელი კოდია", mail.Html);
-        Assert.Contains("მონიშნე კოდი და შეიყვანე GCar360 აპლიკაციაში.", mail.Html);
+        Assert.Contains("მონიშნე კოდი და შეიყვანე OBD360 აპლიკაციაში.", mail.Html);
         Assert.Contains("დაადასტურე ელფოსტა", mail.Html);                      // the button
     }
 
@@ -112,14 +112,14 @@ public sealed class VerificationEmailTemplateTests
     }
 
     [Fact]
-    public void TheClipboardIcon_IsOnlyAVisualCue_WithNoScriptOrFakeCopyButton()
+    public void TheCodeBox_HasNoEmojiIcon_NoScriptAndNoFakeCopyButton()
     {
         var html = VerificationEmailTemplate.Render(Model()).Html;
-        Assert.Contains("&#128203;", html);                                     // 📋 as text, works with images blocked
+        Assert.DoesNotContain("&#128203;", html);                                // no clipboard emoji: the copy hint is written as text
         Assert.DoesNotContain("<script", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("javascript:", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("onclick", html, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("clipboard", html.Replace("&#128203;", ""), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("clipboard", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("<button", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("<form", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("<link", html, StringComparison.OrdinalIgnoreCase);   // no external stylesheet
@@ -132,7 +132,7 @@ public sealed class VerificationEmailTemplateTests
         var images = Regex.Matches(html, "<img\\b[^>]*>").Select(m => m.Value).ToArray();
         var logo = Assert.Single(images);
         Assert.Contains("src=\"https://api.example.test/assets/logo.png\"", logo);
-        Assert.Contains("alt=\"GCar360\"", logo);
+        Assert.Contains("alt=\"OBD360\"", logo);
         Assert.DoesNotContain("width=\"1\"", logo);
         Assert.DoesNotContain("1x1", html);
     }
@@ -142,7 +142,8 @@ public sealed class VerificationEmailTemplateTests
     {
         var html = VerificationEmailTemplate.Render(Model(logo: null)).Html;
         Assert.DoesNotContain("<img", html);
-        Assert.Contains("GCar", html);
+        Assert.Contains("OBD", html);
+        Assert.DoesNotContain("GCar", html);
         Assert.Contains("360", html);
     }
 
@@ -199,7 +200,7 @@ public sealed class VerificationEmailTemplateTests
         Assert.Contains("display:none", html);
         var text = Decode(html);
         Assert.Contains("Your verification code is inside. It expires in 15 minutes.", text);
-        Assert.Contains("If you didn't create a GCar360 account", text);
+        Assert.Contains("If you didn't create a OBD360 account", text);
         Assert.Contains("will never ask for your password by email", text);
     }
 
@@ -207,8 +208,8 @@ public sealed class VerificationEmailTemplateTests
     public void TheFooter_ShowsTheProductAndOnlyTheConfiguredSupportAddress()
     {
         var html = VerificationEmailTemplate.Render(Model("en")).Html;
-        Assert.Contains("GCar360 · Vehicle diagnostics", Decode(html));
-        Assert.Contains("&copy; 2026 GCar360", html);
+        Assert.Contains("OBD360 · Vehicle diagnostics", Decode(html));
+        Assert.Contains("&copy; 2026 OBD360", html);
         Assert.Contains("support@example.test", html);
 
         var noSupport = VerificationEmailTemplate.Render(Model("en", support: null)).Html;
@@ -298,7 +299,7 @@ public sealed class VerificationEmailTemplateTests
 
         foreach (var lang in VerificationEmailTemplate.Languages)
             foreach (var kind in Enum.GetValues<VerificationEmailTemplate.LinkPageKind>())
-                Assert.Contains("GCar360", VerificationEmailTemplate.RenderLinkPage(lang, kind, "T"));
+                Assert.Contains("OBD360", VerificationEmailTemplate.RenderLinkPage(lang, kind, "T"));
     }
 }
 
@@ -688,7 +689,7 @@ public sealed class EmailConfigurationAndWiringTests
         Assert.False(new EmailOptions().IsConfigured);
         var configured = EmailOptions.From(Config(new()));
         Assert.False(configured.IsConfigured);
-        Assert.Equal("gcar360support@gmail.com", configured.SupportEmail);     // the address already on the public support page
+        Assert.Equal("obd360support@gmail.com", configured.SupportEmail);     // the address already on the public support page
 
         var source = File.ReadAllText(Path.Combine(RepositoryRoot(), "Backend/CarScanner.Api/Services/Email/EmailSending.cs"));
         Assert.Contains("\"GCS_SMTP_PASSWORD\"", source);
@@ -706,12 +707,12 @@ public sealed class EmailConfigurationAndWiringTests
             ["Email:Smtp:Password"] = "pw",
             ["Email:Smtp:Ssl"] = "false",
             ["Email:FromAddress"] = "no-reply@example.test",
-            ["Email:FromName"] = "GCar360 Team"
+            ["Email:FromName"] = "OBD360 Team"
         }));
         Assert.True(o.IsConfigured);
         Assert.Equal(2525, o.Port);
         Assert.False(o.UseSsl);
-        Assert.Equal("GCar360 Team", o.FromName);
+        Assert.Equal("OBD360 Team", o.FromName);
     }
 
     [Theory]
@@ -792,7 +793,7 @@ public sealed class VerificationEmailPreview
                 "482915", 15, lang,
                 "https://georgian-car-scanner-api-cyawhhdygecng6bt.germanywestcentral-01.azurewebsites.net/assets/logo.png",
                 "https://georgian-car-scanner-api-cyawhhdygecng6bt.germanywestcentral-01.azurewebsites.net/verify-email?l=" + lang + "&t=PREVIEW_TOKEN_NOT_REAL_PREVIEW_TOKEN_NOT_REAL",
-                "gcar360support@gmail.com", 2026));
+                "obd360support@gmail.com", 2026));
             File.WriteAllText(Path.Combine(dir, $"verify-{lang}.html"), mail.Html);
             File.WriteAllText(Path.Combine(dir, $"verify-{lang}.txt"), mail.PlainText);
         }

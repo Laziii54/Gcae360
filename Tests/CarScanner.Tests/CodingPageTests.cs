@@ -516,19 +516,4 @@ public sealed class GmlanSweepTests
         }, None, null, cts.Token));
     }
 
-    [Fact]
-    public void ForAGmCar_TheBackupExplainsThatIdentificationIsAllItReads_AndPointsToTheExtendedRead()
-    {
-        var gm = new CodingInputs(true, true, true, 0, 0, 0, 0, true, IsGm: true);
-        var other = gm with { IsGm = false };
-        var status = CodingCapabilities.Evaluate(gm).Single(item => item.Feature == CodingFeature.Backup);
-
-        var gmText = CodingTexts.Reason(status, gm, true);
-        var otherText = CodingTexts.Reason(status, other, true);
-
-        Assert.Contains("Extended read", gmText);
-        Assert.Contains("identification blocks only", gmText);
-        Assert.DoesNotContain("Extended read", otherText);
-        Assert.Contains("გაფართოებული წაკითხვა", CodingTexts.Reason(status, gm, false));
-    }
 }

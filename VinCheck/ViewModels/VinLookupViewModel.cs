@@ -27,7 +27,7 @@ public partial class VinLookupViewModel(
     public string SampleHint => VinText.T("SampleHint");
     public string HistoryText => VinText.T("History");
     public string FavoritesText => VinText.T("Favorites");
-    public string LanguageText => LanguageCatalog.Current.Flag;
+    public string LanguageText => LanguageCatalog.Current.Badge;
     public string VinCodeText => VinText.T("VinCode");
     public string TapHintText => VinText.T("TapHint");
     public string ClearText => VinText.T("Clear");
@@ -70,7 +70,7 @@ public partial class VinLookupViewModel(
         VinScanBridge.Request(vin => MainThread.BeginInvokeOnMainThread(() => Vin = vin));
         try
         {
-            await Shell.Current.GoToAsync(nameof(VinScanPage));
+            await CarScanner.Services.SafeNavigation.GoToAsync(nameof(VinScanPage));
         }
         catch
         {
@@ -134,7 +134,7 @@ public partial class VinLookupViewModel(
         {
             var report = await vinService.GetReportAsync(Vin, _searchCts.Token);
             await database.SaveSearchAsync(report);
-            await Shell.Current.GoToAsync(nameof(VinReportPage), new ShellNavigationQueryParameters { { "Report", report } });
+            await CarScanner.Services.SafeNavigation.GoToAsync(nameof(VinReportPage), new ShellNavigationQueryParameters { { "Report", report } });
         }
         catch (OperationCanceledException) { }
         catch (VinServiceException ex)
@@ -157,7 +157,7 @@ public partial class VinLookupViewModel(
     }
 
     [RelayCommand]
-    private Task OpenHistoryAsync() => Shell.Current.GoToAsync(nameof(VinHistoryPage));
+    private Task OpenHistoryAsync() => CarScanner.Services.SafeNavigation.GoToAsync(nameof(VinHistoryPage));
 
     [RelayCommand]
     private async Task ToggleLanguage()
@@ -174,7 +174,7 @@ public partial class VinLookupViewModel(
     }
 
     [RelayCommand]
-    private Task BackAsync() => Shell.Current.GoToAsync("..");
+    private Task BackAsync() => CarScanner.Services.SafeNavigation.GoToAsync("..");
 
     public void Cancel() => _searchCts?.Cancel();
 }

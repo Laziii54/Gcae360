@@ -7,13 +7,13 @@ namespace CarScanner.Services.Localization;
 /// <param name="DisplayName">Native name. This exact text is what gets stored in Preferences["language"], which keeps
 /// existing installs working ("ქართული" and "English" are unchanged).</param>
 /// <param name="EnglishName">Used for the AI prompt ("Respond in German").</param>
-/// <param name="Flag">Emoji shown on the Home language button.</param>
+/// <param name="Badge">Short upper-case code shown on the language button and in the picker (no flag emoji).</param>
 /// <param name="Culture">Culture used only for upper-casing translated headings.</param>
 public sealed record AppLanguage(
     string Code,
     string DisplayName,
     string EnglishName,
-    string Flag,
+    string Badge,
     string Culture);
 
 public static class LanguageCatalog
@@ -23,15 +23,15 @@ public static class LanguageCatalog
 
     public static readonly IReadOnlyList<AppLanguage> All = new[]
     {
-        new AppLanguage("ka", GeorgianName, "Georgian", "🇬🇪", "ka-GE"),
-        new AppLanguage("en", "English",    "English",  "🇬🇧", "en-US"),
-        new AppLanguage("tr", "Türkçe",     "Turkish",  "🇹🇷", "tr-TR"),
-        new AppLanguage("de", "Deutsch",    "German",   "🇩🇪", "de-DE"),
-        new AppLanguage("pl", "Polski",     "Polish",   "🇵🇱", "pl-PL"),
-        new AppLanguage("es", "Español",    "Spanish",  "🇪🇸", "es-ES"),
-        new AppLanguage("pt", "Português",  "Portuguese", "🇧🇷", "pt-BR"),
-        new AppLanguage("fr", "Français",   "French",   "🇫🇷", "fr-FR"),
-        new AppLanguage("it", "Italiano",   "Italian",  "🇮🇹", "it-IT"),
+        new AppLanguage("ka", GeorgianName, "Georgian", "KA", "ka-GE"),
+        new AppLanguage("en", "English",    "English",  "EN", "en-US"),
+        new AppLanguage("tr", "Türkçe",     "Turkish",  "TR", "tr-TR"),
+        new AppLanguage("de", "Deutsch",    "German",   "DE", "de-DE"),
+        new AppLanguage("pl", "Polski",     "Polish",   "PL", "pl-PL"),
+        new AppLanguage("es", "Español",    "Spanish",  "ES", "es-ES"),
+        new AppLanguage("pt", "Português",  "Portuguese", "PT", "pt-BR"),
+        new AppLanguage("fr", "Français",   "French",   "FR", "fr-FR"),
+        new AppLanguage("it", "Italiano",   "Italian",  "IT", "it-IT"),
     };
 
     public static AppLanguage Georgian => All[0];

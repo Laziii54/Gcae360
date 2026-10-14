@@ -65,7 +65,7 @@
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
                     <BoxView WidthRequest="10" HeightRequest="10" CornerRadius="5" Color="{Binding StatusColor}" VerticalOptions="Center" />
                     <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                        <Label Text="კავშირის სტატუსი" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                        <Label Text="კავშირის სტატუსი" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                         <Label
                             AutomationId="ConnectionStatusLabel"
                             Text="{Binding Status}"

@@ -246,11 +246,11 @@ public sealed class FuelPresenterTests
     [Fact]
     public void Marks_DistinguishReportedEstimatedMissingAndUnavailable()
     {
-        Assert.Equal("✓", FuelPresenter.Mark(EnergySupport.DirectlySupported));
-        Assert.Equal("✓", FuelPresenter.Mark(EnergySupport.CalculatedFromAvailableData));
-        Assert.Equal("≈", FuelPresenter.Mark(EnergySupport.Estimated));
-        Assert.Equal("·", FuelPresenter.Mark(EnergySupport.InsufficientData));
-        Assert.Equal("✕", FuelPresenter.Mark(EnergySupport.Unsupported));
+        Assert.Equal("check", FuelPresenter.Mark(EnergySupport.DirectlySupported));
+        Assert.Equal("check", FuelPresenter.Mark(EnergySupport.CalculatedFromAvailableData));
+        Assert.Equal("approx", FuelPresenter.Mark(EnergySupport.Estimated));
+        Assert.Equal("circle", FuelPresenter.Mark(EnergySupport.InsufficientData));
+        Assert.Equal("close", FuelPresenter.Mark(EnergySupport.Unsupported));
     }
 
     [Fact]

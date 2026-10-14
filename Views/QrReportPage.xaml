@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:CarScanner.Controls"
              xmlns:vm="clr-namespace:CarScanner.ViewModels"
              x:Class="CarScanner.Views.QrReportPage"
              x:DataType="vm:QrReportViewModel"
@@ -17,7 +18,7 @@
                         <Image Source="{Binding QrImageUrl}" Aspect="AspectFit" WidthRequest="256" HeightRequest="256" />
                     </Border>
                     <Label Text="{Binding ExpiryText}" FontSize="14" FontAttributes="Bold" TextColor="#22C55E" HorizontalTextAlignment="Center" />
-                    <Label Text="{Binding PublicUrl}" FontSize="10" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="CharacterWrap" />
+                    <Label Text="{Binding PublicUrl}" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="CharacterWrap" />
                 </VerticalStackLayout>
             </Border>
 
@@ -32,8 +33,8 @@
 
             <Border Style="{StaticResource ListCardStyle}" Padding="14,12">
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
-                    <Label Text="ⓘ" FontSize="18" TextColor="{DynamicResource Primary}" />
-                    <Label Grid.Column="1" Text="{Binding PrivacyText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    <controls:Icon Kind="info" Tint="{DynamicResource Primary}" WidthRequest="18" HeightRequest="18" VerticalOptions="Start" />
+                    <Label Grid.Column="1" Text="{Binding PrivacyText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                 </Grid>
             </Border>
         </VerticalStackLayout>

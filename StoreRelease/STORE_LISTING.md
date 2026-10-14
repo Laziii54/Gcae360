@@ -1,12 +1,12 @@
-# Store listing — GCar360
+# Store listing — OBD360
 
 App ID (Android package and iOS bundle): `com.gcar360.app`
 
 ## Name
 
-GCar360 — OBD2 car scanner
+OBD360 — OBD2 car scanner
 
-(Apple allows 30 characters: `GCar360: OBD2 Car Scanner`.)
+(Apple allows 30 characters: `OBD360: OBD2 Car Scanner`.)
 
 ## Short description — English (max 80)
 
@@ -18,7 +18,7 @@ OBD2 დიაგნოსტიკა, შეცდომის კოდებ
 
 ## Full description — English
 
-GCar360 turns your phone and an OBD2 adapter into a car scanner. It shows
+OBD360 turns your phone and an OBD2 adapter into a car scanner. It shows
 only what your car and adapter actually report — unsupported values are
 marked as unavailable, never invented.
 
@@ -53,7 +53,7 @@ informational and do not replace a qualified mechanic.
 
 ## სრული აღწერა — ქართული
 
-GCar360 ტელეფონს და OBD2 ადაპტერს მანქანის სკანერად აქცევს. აპი აჩვენებს
+OBD360 ტელეფონს და OBD2 ადაპტერს მანქანის სკანერად აქცევს. აპი აჩვენებს
 მხოლოდ იმას, რასაც მანქანა და ადაპტერი რეალურად აბრუნებს. რაც მიუწვდომელია,
 ასეც მოინიშნება და გამოგონილი ციფრი არასდროს ჩანს.
 
@@ -92,10 +92,10 @@ obd2,obd,car scanner,diagnostic,elm327,check engine,dtc,service,oil,0-100,mileag
 
 ## URLs
 
-- Privacy: `https://georgian-car-scanner-api-cyawhhdygecng6bt.germanywestcentral-01.azurewebsites.net/privacy-policy`
-- Terms: `https://georgian-car-scanner-api-cyawhhdygecng6bt.germanywestcentral-01.azurewebsites.net/terms-of-use`
-- Support: `https://georgian-car-scanner-api-cyawhhdygecng6bt.germanywestcentral-01.azurewebsites.net/support`
-- Support email: `gcar360support@gmail.com`
+- Privacy: `https://obd360.ge/privacy-policy`
+- Terms: `https://obd360.ge/terms-of-use`
+- Support: `https://obd360.ge/support`
+- Support email: `obd360support@gmail.com`
 
 ## In-app products (create with exactly these IDs)
 

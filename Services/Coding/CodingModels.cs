@@ -49,6 +49,23 @@ public sealed class CodingBackup
 
     public List<CodingModuleBackup> Modules { get; set; } = new();
     public int ReadCount => Modules.Sum(m => m.Values.Count(v => v.IsRead));
+
+    // ---- Deep Scan only: populated only when CreateBackupAsync's deepScan parameter is true; empty otherwise.
+    // Unlike the module $22/$1A values above, these do not pass through ObdExchangeTap (Mode 02 and Mode 09 are
+    // not in its observable set — Mode 09 deliberately, since it would include the VIN), so they stay local to
+    // this backup rather than reaching the admin crowd-sourced table.
+
+    /// <summary>Service/maintenance readings (oil-life % etc.) from the existing Service-page infrastructure.</summary>
+    public List<CodingDidValue> ServiceReadings { get; set; } = new();
+
+    /// <summary>The stored freeze frame (Mode 02) trigger DTC, or empty when the car has none.</summary>
+    public string FreezeFrameTrigger { get; set; } = string.Empty;
+
+    /// <summary>Freeze-frame snapshot values (Mode 02), empty when there is no stored frame.</summary>
+    public List<CodingDidValue> FreezeFrameValues { get; set; } = new();
+
+    /// <summary>Mode 09 vehicle-information identifiers beyond VIN (calibration ID, CVN, ECU name, protocol).</summary>
+    public List<CodingDidValue> Mode09Values { get; set; } = new();
 }
 
 /// <summary>A byte that differs between two backups.</summary>

@@ -1,6 +1,6 @@
 # Service / Oil Reset — how other scanner apps do it (research, 2026-09)
 
-Goal for GCar360: a Service page that works on every car the same way it works on
+Goal for OBD360: a Service page that works on every car the same way it works on
 the Chevrolet Volt 2013 (oil %, reset 100% / 50%), plus per-item reminders
 (e.g. Mercedes "Service in X days", BMW CBS items) where the car has them.
 
@@ -32,9 +32,9 @@ the Chevrolet Volt 2013 (oil %, reset 100% / 50%), plus per-item reminders
 | 13 | iCarsoft MB | Mercedes / Sprinter / Smart oil service (ASSYST) | Brand-dedicated device | One device per brand family |
 | 14 | Torque Pro / OBD Fusion | No service reset (live data, codes, PID packs) | — | Reading only |
 
-## Conclusions for GCar360
+## Conclusions for OBD360
 
-1. Identify the car **automatically by VIN** (already works in GCar360).
+1. Identify the car **automatically by VIN** (already works in OBD360).
 2. Keep a **per-brand command list**; send only the command verified for that
    brand/model. Never try unknown commands (a command that resets oil on one
    brand can change a different setting on another).

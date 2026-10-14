@@ -185,7 +185,7 @@ public sealed class FullObdScanService
         {
             notes.Add($"Modules: {UserError.Describe(ex)}");
             modules = new ModuleDtcScanService.ScanOutcome(Array.Empty<ModuleDtcReport>(), 0,
-                "სხვა მოდულების შემოწმება ვერ მოხერხდა.");
+                "სხვა მოდულების შემოწმება ვერ მოხერხდა.") { Executed = false };
         }
 
         progress?.Report(new ModuleScanProgress(100, "Generic OBD-II scan დასრულდა."));
@@ -225,6 +225,7 @@ public sealed class FullObdScanService
             Modules = modules.Modules.ToList(),
             ModulesChecked = modules.ModulesChecked,
             ModuleProbes = modules.Probes,
+            CoreModules = modules.CoreModules(),
             ModuleScanNote = modules.Note,
             Notes = "Generic OBD-II scan. Manufacturer-specific modules require supported OEM profiles. " + adapter.OverallStatus + (voltage == null ? " Battery voltage: unavailable." : $" Battery voltage: {voltage.Value} {voltage.Unit}.") + (notes.Count == 0 ? string.Empty : " | " + string.Join(" | ", notes))
         };

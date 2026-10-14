@@ -171,7 +171,7 @@ public sealed class iOSBillingService : IDisposable
     /// <see cref="CompleteTransaction"/> with the transaction ID.
     /// </summary>
     /// <param name="applicationUsername">
-    /// Optional opaque account id (SHA-256 hex of the GCar360 account id) set on
+    /// Optional opaque account id (SHA-256 hex of the OBD360 account id) set on
     /// <c>SKMutablePayment.ApplicationUsername</c> so the server can bind the
     /// purchase to the account.
     /// </param>

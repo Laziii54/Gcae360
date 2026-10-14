@@ -76,7 +76,7 @@
                                Style="{StaticResource ReportCodeStyle}" />
                         <Label Grid.Column="2" AutomationId="DynamicTextFreezeBadge"
                                Text="{Binding TriggerBadge}"
-                               TextColor="{DynamicResource SubTextColor}" FontSize="11" VerticalOptions="Center" />
+                               TextColor="{DynamicResource SubTextColor}" FontSize="12" VerticalOptions="Center" />
                     </Grid>
 
                     <Label AutomationId="DynamicTextFreezeDtcTitle" Text="{Binding TriggerTitle}"

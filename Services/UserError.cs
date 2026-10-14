@@ -23,6 +23,8 @@ public static class UserError
         return exception switch
         {
             OperationCanceledException => L("შეჩერდა.", "Stopped."),
+            AdapterNotConnectedException => L("ადაპტერი არ არის დაკავშირებული. დააკავშირე და სცადე თავიდან.",
+                                              "The adapter is not connected. Connect it and try again."),
             TimeoutException => L("მანქანამ ან ადაპტერმა დროულად არ უპასუხა. შეამოწმე კავშირი და სცადე თავიდან.",
                                   "The car or adapter did not answer in time. Check the connection and try again."),
             HttpRequestException => L("სერვერთან დაკავშირება ვერ მოხერხდა. შეამოწმე ინტერნეტი და სცადე თავიდან.",

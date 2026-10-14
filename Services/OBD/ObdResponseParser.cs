@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -57,6 +58,27 @@ public static class ObdResponseParser
     public static string DecodeAsciiFromMode09(string raw, byte pid)
     {
         return DecodeAscii(ExtractPayload(raw, 0x49, pid));
+    }
+
+    /// <summary>
+    /// Mode 09 PID 06 (CVN) is a raw 4-byte checksum per ECU, never ASCII text —
+    /// decoding it with <see cref="DecodeAsciiFromMode09"/> keeps only the bytes
+    /// that happen to fall in the printable range and drops the rest, which
+    /// reads as garbage. Shown as hex instead, one value per 4-byte group.
+    /// </summary>
+    public static string DecodeHexFromMode09(string raw, byte pid)
+    {
+        var payload = ExtractPayload(raw, 0x49, pid);
+        if (payload.Length == 0) return string.Empty;
+
+        var values = new List<string>();
+        for (var offset = 0; offset + 4 <= payload.Length; offset += 4)
+        {
+            var hex = string.Concat(payload.Skip(offset).Take(4).Select(b => b.ToString("X2")));
+            if (!values.Contains(hex)) values.Add(hex);
+        }
+
+        return values.Count > 0 ? string.Join(", ", values) : string.Concat(payload.Select(b => b.ToString("X2")));
     }
 
     public static bool IsNegative(string raw)

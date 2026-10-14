@@ -203,11 +203,6 @@ public static class CodingBackupStatus
 /// <summary>Wording for the Coding page capability list (Georgian / English).</summary>
 public static class CodingTexts
 {
-    /// <summary>Why a normal backup of a GM car cannot show where a setting lives, and what the extended read does about it.</summary>
-    public static string GmBackupNote(bool en) => en
-        ? "GM car: the normal backup reads identification blocks only. Use “Extended read” to also read every GMLAN $1A identifier, so that a before/after comparison can show where a setting is stored."
-        : "GM მანქანა: ჩვეულებრივი ასლი მხოლოდ იდენტიფიკაციის ბლოკებს კითხულობს. გამოიყენეთ „გაფართოებული წაკითხვა“, რომ ყველა GMLAN $1A იდენტიფიკატორიც წაიკითხოს — ასე შედარება აჩვენებს, სად ინახება პარამეტრი.";
-
     public static string ExtendedReadTitle(bool en) => en ? "Extended read (GM)" : "გაფართოებული წაკითხვა (GM)";
 
     public static string ExtendedReadHelp(bool en) => en
@@ -239,10 +234,9 @@ public static class CodingTexts
     {
         CodingFeature.Backup => status.State switch
         {
-            CodingFeatureState.Available => (en
+            CodingFeatureState.Available => en
                 ? "Asks the modules that answer for their identification blocks. Nothing is written to the car."
-                : "აკითხავს პასუხიან მოდულებს იდენტიფიკაციის ბლოკებს. მანქანაზე არაფერი იწერება.")
-                + (input.IsGm ? "\n" + CodingTexts.GmBackupNote(en) : string.Empty),
+                : "აკითხავს პასუხიან მოდულებს იდენტიფიკაციის ბლოკებს. მანქანაზე არაფერი იწერება.",
             CodingFeatureState.NotCan => en ? "Module reads need a CAN connection." : "მოდულების წაკითხვას CAN კავშირი სჭირდება.",
             _ => en ? "Connect the adapter and switch the ignition on." : "დააკავშირეთ ადაპტერი და ჩართეთ ანთება."
         },

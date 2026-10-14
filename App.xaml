@@ -11,6 +11,7 @@
             </ResourceDictionary.MergedDictionaries>
             <conv:PercentToProgressConverter x:Key="PercentToProgressConverter" />
             <conv:InverseBoolConverter x:Key="InverseBoolConverter" />
+            <conv:LocalizedTextConverter x:Key="LocalizedTextConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

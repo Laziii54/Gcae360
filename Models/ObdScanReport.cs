@@ -44,6 +44,9 @@ public sealed class ObdScanReport
     /// <summary>One entry per module address that was asked (answered, silent, foreign reply, error).</summary>
     public IReadOnlyList<CarScanner.Services.OemDiagnostics.ModuleProbe> ModuleProbes { get; init; } = Array.Empty<CarScanner.Services.OemDiagnostics.ModuleProbe>();
 
+    /// <summary>One honest status per core module (ABS, transmission, airbag, body, cluster, engine, hybrid battery).</summary>
+    public IReadOnlyList<CarScanner.Services.OemDiagnostics.CoreModuleStatus> CoreModules { get; init; } = Array.Empty<CarScanner.Services.OemDiagnostics.CoreModuleStatus>();
+
     /// <summary>Why modules were not scanned (e.g. car moving, not CAN); empty when scanned.</summary>
     public string ModuleScanNote { get; init; } = string.Empty;
 

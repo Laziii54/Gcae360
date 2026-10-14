@@ -80,7 +80,7 @@ public sealed partial class VehicleJournalService
         var sb = new StringBuilder();
 
         // ---------- header ----------
-        sb.AppendLine("🚗 " + T("მანქანის ანგარიში", "Vehicle report"));
+        sb.AppendLine("" + T("მანქანის ანგარიში", "Vehicle report"));
         sb.AppendLine(now.ToString("dd.MM.yyyy HH:mm", Inv));
         sb.AppendLine();
 
@@ -118,8 +118,8 @@ public sealed partial class VehicleJournalService
 
         sb.AppendLine();
         sb.AppendLine(T(
-            "ℹ️ ციფრები მხოლოდ იმას ითვლის, რაც აპმა თავად ჩაიწერა (ჩართული საწვავის ხარჯი/სკანები/შევსებები). მგზავრობა ≈ ერთი ჩაწერილი გასვლა.",
-            "ℹ️ Figures only count what the app recorded itself (Fuel Consumption sessions, scans, refuels). A trip ≈ one recorded drive."));
+            "ციფრები მხოლოდ იმას ითვლის, რაც აპმა თავად ჩაიწერა (ჩართული საწვავის ხარჯი/სკანები/შევსებები). მგზავრობა ≈ ერთი ჩაწერილი გასვლა.",
+            "Figures only count what the app recorded itself (Fuel Consumption sessions, scans, refuels). A trip ≈ one recorded drive."));
 
         return sb.ToString().TrimEnd();
     }
@@ -175,7 +175,7 @@ public sealed partial class VehicleJournalService
             {
                 problems++;
                 var description = string.IsNullOrWhiteSpace(code.Description) ? string.Empty : " — " + code.Description;
-                sb.AppendLine($"• ⚠️ {code.Code}{description} [{kind}]");
+                sb.AppendLine($"• {code.Code}{description} [{kind}]");
             }
         }
 
@@ -192,34 +192,34 @@ public sealed partial class VehicleJournalService
                 problems++;
                 var title = T(code.TitleKa, code.TitleEn);
                 var state = code.Active ? T("აქტიური", "Active") : code.Pending ? T("მოლოდინში", "Pending") : T("შენახული", "Stored");
-                sb.AppendLine($"• ⚠️ {moduleName}: {code.DisplayCode}{(string.IsNullOrWhiteSpace(title) ? string.Empty : " — " + title)} [{state}]");
+                sb.AppendLine($"• {moduleName}: {code.DisplayCode}{(string.IsNullOrWhiteSpace(title) ? string.Empty : " — " + title)} [{state}]");
             }
         }
 
         if (ecu.Readiness?.MilOn == true)
         {
             problems++;
-            sb.AppendLine("• ⚠️ " + T("Check Engine (MIL) ანთია", "Check Engine (MIL) is on"));
+            sb.AppendLine("• " + T("Check Engine (MIL) ანთია", "Check Engine (MIL) is on"));
         }
 
         foreach (var sensor in ecu.Sensors.Where(x => x.IsProblem))
         {
             problems++;
-            sb.AppendLine($"• ⚠️ {sensor.Name}: {sensor.Value} {sensor.Unit} — {T("დასაშვებ დიაპაზონს გარეთაა", "outside the normal range")}".TrimEnd());
+            sb.AppendLine($"• {sensor.Name}: {sensor.Value} {sensor.Unit} — {T("დასაშვებ დიაპაზონს გარეთაა", "outside the normal range")}".TrimEnd());
         }
 
         if (problems == 0)
         {
-            sb.AppendLine("• ✅ " + T(
+            sb.AppendLine("• " + T(
                 $"ECU-მ პრობლემა არ აჩვენა: DTC 0, MIL გამორთული, {ecu.Sensors.Count} live პარამეტრი ნორმაშია.",
                 $"The ECU reports no problems: 0 DTCs, MIL off, {ecu.Sensors.Count} live values are normal."));
         }
 
         if (ecu.DtcServicesRead < ecu.DtcServicesExpected)
-            sb.AppendLine("• ℹ️ " + T($"DTC სერვისები წაკითხულია {ecu.DtcServicesRead}/{ecu.DtcServicesExpected} — ზოგი ECU-დან მიუწვდომელია.",
+            sb.AppendLine("• " + T($"DTC სერვისები წაკითხულია {ecu.DtcServicesRead}/{ecu.DtcServicesExpected} — ზოგი ECU-დან მიუწვდომელია.",
                 $"DTC services read {ecu.DtcServicesRead}/{ecu.DtcServicesExpected} — some are unavailable from this ECU."));
 
-        sb.AppendLine("• ℹ️ " + (ecu.ModulesChecked > 0
+        sb.AppendLine("• " + (ecu.ModulesChecked > 0
             ? T($"შემოწმდა ძრავის ECU და {ecu.ModulesChecked} სხვა მოდული.",
                 $"Checked: engine ECU and {ecu.ModulesChecked} other module(s).")
             : T("შემოწმდა სტანდარტული OBD-II ძრავის ECU (ABS/SRS/BCM არა).",

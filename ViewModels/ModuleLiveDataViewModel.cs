@@ -28,7 +28,7 @@ public partial class ModuleLiveDataViewModel : BaseViewModel
     [ObservableProperty] private bool hasGroups;
     [ObservableProperty] private string vehicleName = string.Empty;
     [ObservableProperty] private string startButtonText = "დაწყება";
-    [ObservableProperty] private string stopButtonText = "■ გაჩერება";
+    [ObservableProperty] private string stopButtonText = "გაჩერება";
     [ObservableProperty] private bool isRunning;
 
     public bool IsNotRunning => !IsRunning;
@@ -90,7 +90,7 @@ public partial class ModuleLiveDataViewModel : BaseViewModel
     {
         PageTitle = English ? "Module live data" : "მოდულების მონაცემები";
         StartButtonText = (English ? "Start" : "დაწყება") + ProGate.Suffix;
-        StopButtonText = English ? "■ Stop" : "■ გაჩერება";
+        StopButtonText = English ? "Stop" : "გაჩერება";
         if (!string.IsNullOrWhiteSpace(_noteKa) || !string.IsNullOrWhiteSpace(_noteEn))
             StatusText = English ? _noteEn : _noteKa;
         foreach (var group in Groups)

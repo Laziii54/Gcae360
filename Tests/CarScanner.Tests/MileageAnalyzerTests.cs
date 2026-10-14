@@ -293,7 +293,7 @@ public sealed class MileageAnalyzerTests
             MileageTestData.Odo("C", 140_000, "C", "c"));
 
         Assert.Equal(MileageOutcome.Conflicting, analysis.Outcome);
-        Assert.Equal(2, analysis.Conflicts.Count); // A↔C and B↔C
+        Assert.Equal(2, analysis.Conflicts.Count); // AC and BC
         Assert.All(analysis.Conflicts, c => Assert.Equal(40_000, c.DifferenceKm, 6));
         Assert.Null(analysis.Primary);
     }

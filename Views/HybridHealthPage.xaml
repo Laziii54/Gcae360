@@ -36,12 +36,11 @@
                             <Label Text="{Binding ScoreText}" FontSize="26" FontAttributes="Bold" TextColor="{Binding ScoreColor}" HorizontalOptions="Center" VerticalOptions="Center" />
                         </Border>
                         <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
-                            <Label Text="{Binding ScoreCaption}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                            <Label Text="{Binding ScoreCaption}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                             <Label Text="{Binding RatingText}" FontSize="18" FontAttributes="Bold" TextColor="{Binding ScoreColor}" LineBreakMode="WordWrap" />
-                            <Label Text="{Binding PackLabel}" IsVisible="{Binding HasPack}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                            <Label Text="{Binding PackLabel}" IsVisible="{Binding HasPack}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                         </VerticalStackLayout>
                     </Grid>
-                    <Label Text="{Binding SummaryText}" FontSize="13" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" Margin="0,4,0,0" />
                     <Label Text="{Binding PackNote}" IsVisible="{Binding HasPackNote}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
@@ -58,7 +57,7 @@
                                         <DataTemplate x:DataType="vm:HybridBlockBar">
                                             <VerticalStackLayout Spacing="3" WidthRequest="{Binding BarWidth}" VerticalOptions="End">
                                                 <BoxView HeightRequest="{Binding BarHeight}" WidthRequest="{Binding BarWidth}" Color="{Binding Color}" CornerRadius="3" VerticalOptions="End" />
-                                                <Label Text="{Binding Label}" IsVisible="{Binding ShowLabel}" FontSize="9" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                                                <Label Text="{Binding Label}" IsVisible="{Binding ShowLabel}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
                                                 <VerticalStackLayout.GestureRecognizers>
                                                     <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:HybridHealthViewModel}}, Path=SelectBlockCommand}" CommandParameter="{Binding .}" />
                                                 </VerticalStackLayout.GestureRecognizers>
@@ -153,21 +152,13 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- How to read -->
-            <Border IsVisible="{Binding HasResult}" Style="{StaticResource ListCardStyle}" Padding="14,12">
-                <VerticalStackLayout Spacing="4">
-                    <Label Text="{Binding HowToTitle}" FontSize="13" FontAttributes="Bold" />
-                    <Label Text="{Binding HowToText}" Style="{StaticResource CaptionStyle}" LineBreakMode="WordWrap" />
-                </VerticalStackLayout>
-            </Border>
-
             <!-- Technical (collapsed) -->
             <Button IsVisible="False" Text="{Binding TechnicalToggleText}" Command="{Binding ToggleTechnicalCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" FontSize="12" HeightRequest="36" Padding="0" HorizontalOptions="Center" />
             <Border IsVisible="False" Style="{StaticResource ListCardStyle}" Padding="14">
                 <VerticalStackLayout Spacing="7">
                     <Label Text="{Binding ValidationStatus}" FontSize="12" TextColor="#C98A1A" LineBreakMode="WordWrap" />
-                    <Label Text="{Binding EvidenceText}" FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                    <Label IsVisible="{Binding HasRawLog}" Text="{Binding RawLog}" FontSize="10" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding EvidenceText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    <Label IsVisible="{Binding HasRawLog}" Text="{Binding RawLog}" FontSize="11" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                     <Button IsVisible="{Binding HasRawLog}" Text="{Binding CopyLogText}" Command="{Binding CopyLogCommand}" HeightRequest="38" MinimumHeightRequest="38" FontSize="12" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderColor="{DynamicResource Primary}" BorderWidth="1" CornerRadius="10" HorizontalOptions="Start" Padding="12,0" />
                 </VerticalStackLayout>
             </Border>

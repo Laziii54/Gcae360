@@ -1,4 +1,5 @@
 using CarScanner.Models;
+using CarScanner.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -10,6 +11,16 @@ namespace CarScanner.ViewModels;
 /// </summary>
 public partial class ServiceViewModel
 {
+    [ObservableProperty] private bool isPullRefreshing;
+
+    /// <summary>Pull-to-refresh: the same read as the Refresh button, never a second one while one is running.</summary>
+    [RelayCommand]
+    private Task PullRefresh() => PullRefreshRunner.RunAsync(
+        Refresh,
+        () => IsBusy || IsOilResetRunning || IsDiscoveryRunning,
+        value => IsPullRefreshing = value,
+        CarScanner.Helpers.RefreshHaptics.Completed);
+
     [ObservableProperty] private bool showSearch;
     [ObservableProperty] private bool showMenuGuide;
     [ObservableProperty] private string menuGuideText = string.Empty;

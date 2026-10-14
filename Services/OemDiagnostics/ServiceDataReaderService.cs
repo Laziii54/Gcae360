@@ -1190,7 +1190,7 @@ public sealed partial class ServiceDataReaderService
         LearnedOilLifeSource? found = null;
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-        report.AppendLine($"GCar360 oil-life test · {DateTime.Now:yyyy-MM-dd HH:mm} · {(deepScan ? "DEEP" : "QUICK")} · dash {(dashboardPercent?.ToString() ?? "—")}%");
+        report.AppendLine($"OBD360 oil-life test · {DateTime.Now:yyyy-MM-dd HH:mm} · {(deepScan ? "DEEP" : "QUICK")} · dash {(dashboardPercent?.ToString() ?? "—")}%");
         report.AppendLine($"Protocol: {_obd.CurrentProtocolDescription}");
 
         // Control requests: standard OBD (must work) + mode 01 support.
@@ -1237,12 +1237,12 @@ public sealed partial class ServiceDataReaderService
             if (answered)
             {
                 responding.Add(module);
-                report.AppendLine($"✓ {module.Name} 0x{module.Tx:X3}: {string.Join("  ", line)}");
+                report.AppendLine($"{module.Name} 0x{module.Tx:X3}: {string.Join("  ", line)}");
             }
         }
 
         if (responding.Count == 0)
-            report.AppendLine("✗ No module answered direct (physical) 0x22 requests.");
+            report.AppendLine("No module answered direct (physical) 0x22 requests.");
 
         // Raw adapter reply for the ECM VIN request — shows why direct
         // requests fail (NO DATA, CAN ERROR, ?, BUFFER FULL…).
@@ -1270,7 +1270,7 @@ public sealed partial class ServiceDataReaderService
         }
 
         if (!functionalAnswered)
-            report.AppendLine("✗ No answer to broadcast 0x22 requests either.");
+            report.AppendLine("No answer to broadcast 0x22 requests either.");
 
         // GMLAN ReadDataByIdentifier ($1A) — the service older GM Global A
         // modules use instead of $22. Read-only: 1A 90 = VIN.
@@ -1406,7 +1406,7 @@ public sealed partial class ServiceDataReaderService
             // Saved for READING on this VIN only; never used as a write address.
             var saved = SaveLearnedOilLifeSource(found.Value);
             report.AppendLine(
-                $"★ MATCH: 0x{found.Value.Tx:X3} · {found.Value.Service:X2} {found.Value.Did:X4} · byte {found.Value.ByteIndex} · " +
+                $"MATCH: 0x{found.Value.Tx:X3} · {found.Value.Service:X2} {found.Value.Did:X4} · byte {found.Value.ByteIndex} · " +
                 (found.Value.Scale255 ? "A×100/255" : "A = %") +
                 (saved ? " — saved for this VIN (read-only)." : " — not saved (VIN unknown)."));
         }

@@ -23,8 +23,7 @@
         <!-- Top bar -->
         <Grid RowDefinitions="Auto,*,Auto" Padding="18,48,18,40">
             <Grid ColumnDefinitions="Auto,*,Auto">
-                <Button Text="✕" Clicked="OnCloseClicked" BackgroundColor="#66000000" TextColor="White"
-                        FontSize="18" CornerRadius="22" WidthRequest="44" HeightRequest="44" Padding="0" />
+                <controls:IconButton Kind="close" Tint="White" Clicked="OnCloseClicked" BackgroundColor="#66000000" StrokeThickness="0" StrokeShape="RoundRectangle 22" WidthRequest="44" HeightRequest="44" IconSize="20" SemanticProperties.Description="Close" />
                 <Label x:Name="TitleLabel" Grid.Column="1" TextColor="White" FontSize="17" FontAttributes="Bold"
                        HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
                 <Grid Grid.Column="2" WidthRequest="44" HeightRequest="44">

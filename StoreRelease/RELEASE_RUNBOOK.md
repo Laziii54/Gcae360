@@ -1,4 +1,4 @@
-# GCar360 release runbook
+# OBD360 release runbook
 
 Nothing here has been run against production. Steps marked **[APPROVAL]** change production, a store, or the shared GitHub repository, so run them only when you decide to.
 

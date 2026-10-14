@@ -2,6 +2,7 @@
 <ContentPage
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:CarScanner.Controls"
     xmlns:vm="clr-namespace:CarScanner.ViewModels"
     x:Class="CarScanner.Views.AccelerationHistoryPage"
     x:Name="HistoryRoot"
@@ -90,25 +91,13 @@
                                 FontSize="22"
                                 FontAttributes="Bold"
                                 VerticalOptions="Center" />
-                            <Button
-                                Grid.Column="3"
-                                Grid.RowSpan="2"
-                                Text="×"
-                                Command="{Binding x:DataType=vm:AccelerationHistoryViewModel, Source={RelativeSource AncestorType={x:Type vm:AccelerationHistoryViewModel}}, Path=DeleteRunCommand}"
-                                CommandParameter="{Binding .}"
-                                BackgroundColor="Transparent"
-                                TextColor="#B3361F"
-                                BorderWidth="0"
-                                FontSize="20"
-                                Padding="4,0"
-                                WidthRequest="32"
-                                VerticalOptions="Center" />
+                            <controls:IconButton Grid.Column="3" Grid.RowSpan="2" Kind="close" Plain="True" Tint="#B3361F" Command="{Binding x:DataType=vm:AccelerationHistoryViewModel, Source={RelativeSource AncestorType={x:Type vm:AccelerationHistoryViewModel}}, Path=DeleteRunCommand}" CommandParameter="{Binding .}" WidthRequest="44" HeightRequest="44" IconSize="16" SemanticProperties.Description="Delete" />
                             <Label
                                 Grid.Row="1"
                                 Grid.Column="1"
                                 Text="{Binding DateText}"
                                 TextColor="{DynamicResource SubTextColor}"
-                                FontSize="11" />
+                                FontSize="12" />
                             <Label
                                 Grid.Row="2"
                                 Grid.Column="1"
@@ -125,7 +114,7 @@
                                 Grid.ColumnSpan="3"
                                 Text="{Binding DetailsText}"
                                 TextColor="{DynamicResource SubTextColor}"
-                                FontSize="11"
+                                FontSize="12"
                                 LineBreakMode="WordWrap" />
                         </Grid>
                     </Border>

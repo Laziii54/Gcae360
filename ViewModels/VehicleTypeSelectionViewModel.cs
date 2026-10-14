@@ -25,7 +25,7 @@ public partial class VehicleTypeSelectionViewModel : BaseViewModel
         if (!Enum.TryParse<VehicleKind>(kindName, true, out var kind)) return;
         SelectedKind = kind;
         _context.SetVehicleKind(kind);
-        await Shell.Current.GoToAsync("..");
+        await CarScanner.Services.SafeNavigation.GoToAsync("..");
         }
         catch (Exception commandException)
         {

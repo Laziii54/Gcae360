@@ -254,7 +254,7 @@ public sealed partial class VehicleJournalService
             sb.AppendLine($"• {T("ძაბვა (სკანებზე)", "Voltage (scans)")}: {T("ბოლო", "last")} {volts[0]:0.0} V · {T("დიაპაზონი", "range")} {volts.Min():0.0}–{volts.Max():0.0} V ({volts.Count})");
             var low = volts.Count(x => x < 12.0);
             if (low > 0)
-                sb.AppendLine($"• ⚠️ {T($"{low} სკანზე ძაბვა 12.0 V-ზე დაბალი იყო (ძრავა ჩაქრობილზე ეს ნორმალურია)", $"Voltage was below 12.0 V in {low} scan(s) (normal with the engine off)")}");
+                sb.AppendLine($"• {T($"{low} სკანზე ძაბვა 12.0 V-ზე დაბალი იყო (ძრავა ჩაქრობილზე ეს ნორმალურია)", $"Voltage was below 12.0 V in {low} scan(s) (normal with the engine off)")}");
         }
 
         if (d?.MinVoltage is not null)
@@ -270,7 +270,7 @@ public sealed partial class VehicleJournalService
         {
             sb.AppendLine($"• {T("უქმი ბრუნვები", "Idle RPM")}: {idleRpm.Average():0} ({idleRpm.Min():0}–{idleRpm.Max():0}, {idleRpm.Count})");
             if (idleRpm.Count >= 3 && idleRpm.Max() - idleRpm.Min() > 250)
-                sb.AppendLine("• ⚠️ " + T("უქმი ბრუნვები ერთმანეთისგან მკვეთრად განსხვავდება — შეამოწმე დროსელი/ჰაერის გაჟონვა.",
+                sb.AppendLine("• " + T("უქმი ბრუნვები ერთმანეთისგან მკვეთრად განსხვავდება — შეამოწმე დროსელი/ჰაერის გაჟონვა.",
                     "Idle RPM varies a lot between scans — check the throttle body and air leaks."));
         }
 
@@ -305,7 +305,7 @@ public sealed partial class VehicleJournalService
         if (map.Count == 0)
         {
             sb.AppendLine("▌ " + T("შეცდომების ისტორია", "Fault history"));
-            sb.AppendLine("• ✅ " + T($"ბოლო {scans.Count} სკანზე შეცდომის კოდი არც ერთხელ არ დაფიქსირებულა.", $"No fault code was ever recorded in the last {scans.Count} scan(s)."));
+            sb.AppendLine("• " + T($"ბოლო {scans.Count} სკანზე შეცდომის კოდი არც ერთხელ არ დაფიქსირებულა.", $"No fault code was ever recorded in the last {scans.Count} scan(s)."));
             sb.AppendLine();
             return;
         }
@@ -313,7 +313,7 @@ public sealed partial class VehicleJournalService
         sb.AppendLine("▌ " + T("შეცდომების ისტორია", "Fault history"));
         foreach (var (code, entry) in map.OrderByDescending(e => e.Value.InLast).ThenByDescending(e => e.Value.Seen.Count).Take(8))
         {
-            var state = entry.InLast ? T("❗ ჯერ კიდევ აქტიურია", "❗ still present") : T("✔ ბოლო სკანზე აღარ ჩანს", "✔ gone in the last scan");
+            var state = entry.InLast ? T("ჯერ კიდევ აქტიურია", "still present") : T("ბოლო სკანზე აღარ ჩანს", "gone in the last scan");
             var recurring = entry.Seen.Count > 1 ? T($" · {entry.Seen.Count}-ჯერ", $" · seen {entry.Seen.Count}×") : string.Empty;
             var desc = string.IsNullOrWhiteSpace(entry.Description) ? string.Empty : " — " + entry.Description;
             sb.AppendLine($"• {code}{desc}{recurring} · {entry.Seen.Min():dd.MM} → {entry.Seen.Max():dd.MM} · {state}");
@@ -348,7 +348,7 @@ public sealed partial class VehicleJournalService
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         if (calibrations.Count > 1)
-            sb.AppendLine("• ⚠️ " + T("Calibration ID სკანებს შორის შეიცვალა — ECU შეიძლება გადაპროგრამებული იყოს.",
+            sb.AppendLine("• " + T("Calibration ID სკანებს შორის შეიცვალა — ECU შეიძლება გადაპროგრამებული იყოს.",
                 "Calibration ID changed between scans — the ECU may have been reflashed."));
 
         sb.AppendLine();

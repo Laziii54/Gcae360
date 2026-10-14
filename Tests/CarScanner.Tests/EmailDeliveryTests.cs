@@ -82,7 +82,7 @@ public sealed class SmtpDeliveryTests
     public async Task TheRealSender_DeliversAMultipartUtf8Message_ToAnSmtpServer()
     {
         using var sink = new SmtpSink();
-        var options = new EmailOptions { Host = "127.0.0.1", Port = sink.Port, UseSsl = false, FromAddress = "no-reply@example.test", FromName = "GCar360" };
+        var options = new EmailOptions { Host = "127.0.0.1", Port = sink.Port, UseSsl = false, FromAddress = "no-reply@example.test", FromName = "OBD360" };
         var sender = new SmtpEmailSender(options);
         Assert.True(sender.IsConfigured);
 
@@ -166,17 +166,20 @@ public sealed class AppEmailVerificationWiringTests
         Assert.Contains("LanguageCatalog.Current.Code", service);
         Assert.Contains("/api/accounts/email/verify", service);
         Assert.Contains("/api/accounts/email/send-code", service);
-        Assert.Contains("EmailVerificationState = isRegister", service);        // only a registration carries the server's answer
+        Assert.Contains("markEmailVerificationState: isRegister", service);     // only a registration carries the server's answer
     }
 
     [Fact]
-    public void ThePrompt_IsOnlyForANewRegistration_AndCanBeSkipped()
+    public void ThePrompt_IsOnlyForANewRegistration_AndMustBeCompleted()
     {
         var page = Read("Views/AccountPage.xaml.cs");
-        Assert.Matches(@"if \(register\)\s+await HandleRegistrationEmailAsync\(\);", page);
+        Assert.Matches(@"if \(register\)\s*\{\s*var verified = await HandleRegistrationEmailAsync\(\);", page);
         Assert.Contains("case \"sent\":", page);
         Assert.Contains("case \"failed\":", page);
-        Assert.Contains("if (code is null)", Read("Services/EmailVerificationFlow.cs"));   // "Later" leaves the account usable
+        Assert.Contains("if (!verified)", page);
+        Assert.Contains("await _account.LogoutAsync();", page);                            // declining signs the fresh session back out
+        Assert.Contains("if (code is null)", Read("Services/EmailVerificationFlow.cs"));   // dismissing the prompt is still "not verified"
+        Assert.DoesNotContain("\"Later\"", Read("Services/EmailVerificationFlow.cs"));
     }
 
     [Fact]
@@ -186,7 +189,7 @@ public sealed class AppEmailVerificationWiringTests
         Assert.Contains("ExtraRows9", Read("Services/Localization/LanguagePacks.cs"));
 
         var rows = Regex.Matches(source, "R\\(((?:\\s*\"(?:[^\"\\\\]|\\\\.)*\"\\s*,?)+)\\)");
-        Assert.Equal(23, rows.Count);
+        Assert.Equal(22, rows.Count);
         foreach (Match row in rows)
         {
             var literals = Regex.Matches(row.Groups[1].Value, "\"((?:[^\"\\\\]|\\\\.)*)\"").Select(m => m.Groups[1].Value).ToArray();

@@ -18,14 +18,14 @@
 		<Nullable>enable</Nullable>
 		<GenerateDocumentationFile>false</GenerateDocumentationFile>
 
-		<ApplicationTitle>GCar360</ApplicationTitle>
+		<ApplicationTitle>OBD360</ApplicationTitle>
 		<ApplicationId>com.gcar360.app</ApplicationId>
 		<!-- Android and iOS share the same identifier, which must match the
 		     purchase-verification backend (GCS_ANDROID_PACKAGE_NAME / GCS_APPLE_BUNDLE_ID). -->
 		<ApplicationId Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">com.gcar360.app</ApplicationId>
 
 		<ApplicationDisplayVersion>1.0.0</ApplicationDisplayVersion>
-		<ApplicationVersion>57</ApplicationVersion>
+		<ApplicationVersion>61</ApplicationVersion>
 
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
 
@@ -96,11 +96,11 @@
 		<!-- Generate the Apple asset catalog without replacing Android's existing icons. -->
 		<MauiIcon Include="Resources\AppIcon\appicon.png"
           BaseSize="1024,1024"
-          Color="#000817"
+          Color="#000000"
           Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" />
 
-		<MauiSplashScreen Include="Resources\Splash\gcar_splash.png"
-						  Color="#000817"
+		<MauiSplashScreen Include="Resources\Splash\obd360_splash.png"
+						  Color="#000000"
 						  BaseSize="240,240" />
 		<MauiImage Include="Resources\Images\**\*" />
 

@@ -39,16 +39,15 @@ public static class EmailVerificationFlow
             return false;
 
         var title = LT("დაადასტურე ელფოსტა", "Verify your email");
-        var later = LT("მოგვიანებით", "Later");
 
         if (entry == EmailVerificationEntry.Restricted)
         {
-            var go = await page.DisplayAlertAsync(
+            var go = await page.DisplayAlertLocalizedAsync(
                 LT("ამისთვის ელფოსტა უნდა დადასტურდეს", "Verify your email to continue"),
                 LT("ამ მოქმედებისთვის დადასტურებული ელფოსტაა საჭირო. კოდს გამოვგზავნით შენი ანგარიშის მისამართზე.",
                    "This needs a verified email address. We can send a code to the address on your account."),
                 LT("კოდის გაგზავნა", "Send code"),
-                later);
+                cancel: null);
             if (!go)
                 return false;
             entry = EmailVerificationEntry.SendFirst;
@@ -62,11 +61,11 @@ public static class EmailVerificationFlow
             if (failureNote)
             {
                 // The email could not be sent: say so, and let the user retry (never pretend a code is on its way).
-                var again = await page.DisplayAlertAsync(
+                var again = await page.DisplayAlertLocalizedAsync(
                     title,
                     LT("დამადასტურებელი წერილი ვერ გაიგზავნა. სცადე ცოტა ხანში.", "We couldn't send the verification email. Please try again in a moment."),
                     LT("ხელახლა გაგზავნა", "Send again"),
-                    later);
+                    cancel: null);
                 if (!again)
                     return false;
                 failureNote = false;
@@ -79,11 +78,11 @@ public static class EmailVerificationFlow
                 needSend = false;
                 if (!sent.Success)
                 {
-                    var retry = await page.DisplayAlertAsync(
+                    var retry = await page.DisplayAlertLocalizedAsync(
                         title,
                         LocalizationService.T(sent.Message),
                         LT("ხელახლა გაგზავნა", "Send again"),
-                        later);
+                        cancel: null);
                     if (!retry)
                         return false;
                     needSend = true;
@@ -94,24 +93,27 @@ public static class EmailVerificationFlow
                     return true;
             }
 
-            var code = await page.DisplayPromptAsync(
+            var code = await page.DisplayPromptLocalizedAsync(
                 title,
                 LT("ელფოსტაზე გამოგიგზავნეთ 6-ნიშნა კოდი. შეიყვანე აქ მისამართის დასადასტურებლად. წერილში ღილაკიც არის, თუ ბმული გირჩევნია.",
                    "We sent a 6-digit code to your email. Enter it here to verify your address. The email also has a button if you prefer a link."),
                 LT("დადასტურება", "Verify"),
-                later,
-                "123456",
+                // DisplayPromptAsync's "cancel" is not documented as nullable (unlike DisplayAlertAsync's) and
+                // crashes on iOS when null is passed — a real label is required here; code is null below already
+                // treats a dismissed prompt as "not verified", so this does not add a way to skip verification.
+                cancel: LT("გაუქმება", "Cancel"),
+                placeholder: "123456",
                 maxLength: 6,
                 keyboard: Keyboard.Numeric);
 
             if (code is null)
-                return false;                                            // "Later"
+                return false;                                            // dismissed (e.g. system back) without a code
 
             var result = await account.VerifyEmailCodeAsync(code, token);
             if (result.Success)
                 return true;
 
-            var tryAgain = await page.DisplayAlertAsync(
+            var tryAgain = await page.DisplayAlertLocalizedAsync(
                 LT("ელფოსტა არ დადასტურდა", "Email not verified"),
                 LocalizationService.T(result.Message),
                 LT("თავიდან ცდა", "Try again"),

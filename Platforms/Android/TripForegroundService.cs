@@ -47,7 +47,7 @@ public sealed class TripForegroundService : Service
     private const int NotificationId = 4100;
 
     private PowerManager.WakeLock? _wakeLock;
-    private string _title = "GCar360";
+    private string _title = "OBD360";
 
     public static TripForegroundService? Current { get; private set; }
 

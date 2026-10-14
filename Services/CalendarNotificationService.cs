@@ -66,10 +66,10 @@ public sealed class CalendarNotificationService
         await LocalNotificationCenter.Current.Show(new NotificationRequest
         {
             NotificationId = NotificationId(reminder.Id, slot),
-            Title = L("GCar360 · სერვისის კალენდარი", "GCar360 · Service calendar"),
-            Description = tomorrow
+            Title = CarScanner.Services.Localization.LocalizationService.T(L("OBD360 · სერვისის კალენდარი", "OBD360 · Service calendar")),
+            Description = CarScanner.Services.Localization.LocalizationService.T(tomorrow
                 ? L($"ხვალ შესასრულებელია: {reminder.Title}", $"Due tomorrow: {reminder.Title}")
-                : L($"დღეს შესასრულებელია: {reminder.Title}", $"Due today: {reminder.Title}"),
+                : L($"დღეს შესასრულებელია: {reminder.Title}", $"Due today: {reminder.Title}")),
             ReturningData = $"calendar-reminder:{reminder.Id}",
             Schedule = new NotificationRequestSchedule
             {

@@ -2,6 +2,7 @@
 <ContentPage
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:CarScanner.Controls"
     xmlns:vm="clr-namespace:CarScanner.ViewModels"
     xmlns:models="clr-namespace:CarScanner.Models"
     x:Class="CarScanner.Views.RepairCostPage"
@@ -18,8 +19,8 @@
 
             <Border Style="{StaticResource ListCardStyle}" Padding="12" BackgroundColor="{DynamicResource CardBg}">
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
-                    <Label Text="ℹ" FontSize="18" TextColor="#F59E0B" VerticalTextAlignment="Start" />
-                    <Label Grid.Column="1" Text="ფასები სავარაუდოა და მოცემულია დიაპაზონად. ზუსტი თანხა დამოკიდებულია დადასტურებულ მიზეზზე, ნაწილის ბრენდზე და კონკრეტულ ხელოსანზე." FontSize="11" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    <controls:Icon Kind="info" Tint="#F59E0B" WidthRequest="18" HeightRequest="18" VerticalOptions="Start" />
+                    <Label Grid.Column="1" Text="ფასები სავარაუდოა და მოცემულია დიაპაზონად. ზუსტი თანხა დამოკიდებულია დადასტურებულ მიზეზზე, ნაწილის ბრენდზე და კონკრეტულ ხელოსანზე." FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                 </Grid>
             </Border>
 
@@ -37,7 +38,7 @@
                                         <Label Text="{Binding ProblemName}" FontSize="14" FontAttributes="Bold" LineBreakMode="WordWrap" />
                                     </VerticalStackLayout>
                                     <Border Grid.Column="1" Padding="9,4" Stroke="{Binding UrgencyColor}" BackgroundColor="Transparent" StrokeThickness="1" StrokeShape="RoundRectangle 9" VerticalOptions="Start">
-                                        <Label Text="{Binding UrgencyText}" TextColor="{Binding UrgencyColor}" FontSize="10" FontAttributes="Bold" />
+                                        <Label Text="{Binding UrgencyText}" TextColor="{Binding UrgencyColor}" FontSize="12" FontAttributes="Bold" />
                                     </Border>
                                 </Grid>
 
@@ -62,7 +63,7 @@
                                 </Grid>
                                 <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" />
                                 <Label Text="{Binding Reason}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
-                                <Label Text="{Binding Source}" IsVisible="False" FontSize="10" TextColor="{DynamicResource SubTextColor}" />
+                                <Label Text="{Binding Source}" IsVisible="False" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                             </VerticalStackLayout>
                         </Border>
                     </DataTemplate>

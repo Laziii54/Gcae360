@@ -131,7 +131,7 @@
                                     HorizontalOptions="Center" />
 
                                 <Label
-                                    Text="GCar360 AI"
+                                    Text="OBD360 AI"
                                     FontSize="17"
                                     FontAttributes="Bold"
                                     TextColor="{DynamicResource TextColor}"

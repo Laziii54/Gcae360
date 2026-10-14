@@ -45,7 +45,7 @@ public sealed class VehicleJournalPage : ContentPage
         _scan.SetDynamicResource(Button.BackgroundColorProperty, "Primary");
         _scan.Clicked += async (_, _) => await ScanAsync();
 
-        _save = new Button { Text = "💾  " + T("შენახვა", "Save"), HeightRequest = 54, CornerRadius = 16, FontAttributes = FontAttributes.Bold, IsVisible = false, BorderWidth = 1 };
+        _save = new Button { Text = T("შენახვა", "Save"), HeightRequest = 54, CornerRadius = 16, FontAttributes = FontAttributes.Bold, IsVisible = false, BorderWidth = 1 };
         _save.SetDynamicResource(Button.BackgroundColorProperty, "ButtonBg");
         _save.SetDynamicResource(Button.TextColorProperty, "ButtonTextColor");
         _save.SetDynamicResource(Button.BorderColorProperty, "BorderColor");
@@ -135,7 +135,7 @@ public sealed class VehicleJournalPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync(T("შეცდომა", "Error"), ex.Message, "OK");
+            await this.DisplayAlertLocalizedAsync(T("შეცდომა", "Error"), ex.Message, "OK");
         }
     }
 }

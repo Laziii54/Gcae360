@@ -56,10 +56,10 @@
                 <Border Style="{StaticResource ListCardStyle}" Padding="14,12" Margin="16,0">
                     <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10" RowSpacing="2">
                         <Label AutomationId="DynamicTextPidName" Text="{Binding DisplayName}" TextColor="{DynamicResource SubTextColor}" FontSize="13" VerticalOptions="Center" LineBreakMode="TailTruncation" />
-                        <Button AutomationId="DynamicTextFavorite" Grid.Column="1" Text="{Binding FavoriteGlyph}" TextColor="{Binding FavoriteColor}" Command="{Binding x:DataType=vm:LiveDataViewModel, Source={RelativeSource AncestorType={x:Type vm:LiveDataViewModel}}, Path=ToggleFavoriteCommand}" CommandParameter="{Binding .}" BackgroundColor="Transparent" BorderWidth="0" FontSize="22" WidthRequest="40" HeightRequest="36" MinimumHeightRequest="36" Padding="0" VerticalOptions="Center" />
+                        <controls:IconButton AutomationId="DynamicTextFavorite" Grid.Column="1" Kind="star" Filled="{Binding IsFavorite}" Tint="{Binding FavoriteColor}" Plain="True" Command="{Binding x:DataType=vm:LiveDataViewModel, Source={RelativeSource AncestorType={x:Type vm:LiveDataViewModel}}, Path=ToggleFavoriteCommand}" CommandParameter="{Binding .}" WidthRequest="40" HeightRequest="36" IconSize="20" VerticalOptions="Center" SemanticProperties.Description="Favorite" />
                         <Label AutomationId="DynamicTextPidValue" Grid.Row="1" Text="{Binding ValueText}" TextColor="{DynamicResource TextColor}" FontSize="28" FontAttributes="Bold" />
                         <Label AutomationId="DynamicTextPidHealth" Grid.Row="1" Grid.Column="1" Text="{Binding HealthText}" TextColor="{Binding HealthColor}" FontSize="12" FontAttributes="Bold" HorizontalTextAlignment="End" VerticalOptions="Center" />
-                        <Label AutomationId="DynamicTextPidStats" Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding StatisticsText}" TextColor="{DynamicResource SubTextColor}" FontSize="11" LineBreakMode="TailTruncation" />
+                        <Label AutomationId="DynamicTextPidStats" Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding StatisticsText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="TailTruncation" />
                     </Grid>
                 </Border>
             </DataTemplate>
@@ -73,9 +73,9 @@
                         <Path Data="M4,19 L20,19 M4,19 L4,5 M7,15 L11,10 L14,13 L19,7" Style="{StaticResource RowIconStyle}" />
                         <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
                             <Label Text="Graph Studio-ში გახსნა" TextColor="{DynamicResource TextColor}" FontSize="15" FontAttributes="Bold" />
-                            <Label Text="ცალკე ფანჯრები, შედარება, ბადე, X–Y, ჩაწერა" TextColor="{DynamicResource SubTextColor}" FontSize="11.5" />
+                            <Label Text="ცალკე ფანჯრები, შედარება, ბადე, X–Y, ჩაწერა" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
                         </VerticalStackLayout>
-                        <Label Grid.Column="2" Text="›" Style="{StaticResource RowChevronStyle}" />
+                        <controls:Icon Grid.Column="2" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                     </Grid>
                 </Border>
                 <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" />

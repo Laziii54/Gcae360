@@ -34,6 +34,9 @@ public sealed class OBDService
     private AdapterCapabilitySnapshot? _lastAdapterCapabilitySnapshot;
 
     public bool IsInitialized => _protocol.IsInitialized;
+
+    /// <summary>The transport link (Bluetooth or Wi-Fi) is up. Not the same as an initialised adapter.</summary>
+    public bool IsAdapterConnected => _bluetooth.IsConnected;
     public ObdProtocol CurrentProtocol => _protocol.CurrentProtocol;
     public string CurrentProtocolDescription => _protocol.CurrentProtocolDescription ?? _protocol.CurrentProtocol.ToString();
     public IReadOnlyCollection<SupportedPid> SupportedPids => _supported.Values.OrderBy(x => x.Pid).ToArray();
@@ -63,7 +66,7 @@ public sealed class OBDService
         await _initializationGate.WaitAsync(token).ConfigureAwait(false);
         try
         {
-            if (!_bluetooth.IsConnected) throw new InvalidOperationException("OBD2 ადაპტერი არ არის დაკავშირებული. ჯერ დააკავშირე Bluetooth adapter.");
+            if (!_bluetooth.IsConnected) throw new AdapterNotConnectedException("OBD2 ადაპტერი არ არის დაკავშირებული. ჯერ დააკავშირე Bluetooth adapter.");
             await _protocol.InitializeAsync(token).ConfigureAwait(false);
             await DiscoverSupportedPidsAsync(token).ConfigureAwait(false);
         }
@@ -78,7 +81,7 @@ public sealed class OBDService
         await _pidGate.WaitAsync(token).ConfigureAwait(false);
         try
         {
-            if (!_bluetooth.IsConnected) throw new InvalidOperationException("OBD2 ადაპტერი არ არის დაკავშირებული.");
+            if (!_bluetooth.IsConnected) throw new AdapterNotConnectedException("OBD2 ადაპტერი არ არის დაკავშირებული.");
             if (_supported.Count > 0) return SupportedPids;
             // Standard Mode 01 support bitmaps. A response bit 0 indicates that the next 0x20 block is supported.
             // The app's generic dashboard only decodes standard PIDs through
@@ -190,9 +193,14 @@ public sealed class OBDService
             .ThenBy(definition => definition.Pid)
             .ToArray();
 
+        // Status-type and raw PIDs are read after the decodable ones. The total covers both parts from the first
+        // report on, so the counter never jumps (33 / 33 and then 34 / 38) and the bar never moves backwards.
+        var others = _advertisedOther.Values.OrderBy(definition => definition.Pid).ToArray();
+        var grandTotal = definitions.Length + others.Length;
+
         var values = new List<SensorValue>();
         var failed = 0;
-        progress?.Report(new SensorScanProgress(0, definitions.Length, "სენსორების მომზადება…"));
+        progress?.Report(new SensorScanProgress(0, grandTotal, "სენსორების მომზადება…"));
 
         for (var index = 0; index < definitions.Length; index++)
         {
@@ -232,13 +240,12 @@ public sealed class OBDService
             }
             finally
             {
-                progress?.Report(new SensorScanProgress(index + 1, definitions.Length, definition.Name));
+                progress?.Report(new SensorScanProgress(index + 1, grandTotal, definition.Name));
             }
         }
 
         // Status-type PIDs as text and PIDs without a decoder as raw data, so
         // the list shows everything the ECU advertises.
-        var others = _advertisedOther.Values.OrderBy(definition => definition.Pid).ToArray();
         for (var index = 0; index < others.Length; index++)
         {
             token.ThrowIfCancellationRequested();
@@ -266,7 +273,7 @@ public sealed class OBDService
             }
             finally
             {
-                progress?.Report(new SensorScanProgress(definitions.Length + index + 1, definitions.Length + others.Length, definition.Name));
+                progress?.Report(new SensorScanProgress(definitions.Length + index + 1, grandTotal, definition.Name));
             }
         }
 
@@ -274,7 +281,7 @@ public sealed class OBDService
             values,
             new PidScanStats
             {
-                Advertised = definitions.Length + others.Length,
+                Advertised = grandTotal,
                 Decoded = values.Count,
                 Failed = failed,
                 UnsupportedDecoder = 0
@@ -1362,7 +1369,7 @@ public sealed class OBDService
         _ => $"საწვავის კოდი {code}"
     };
 
-    public void EnsureInitialized() { if (!_protocol.IsInitialized) throw new InvalidOperationException("ჯერ დააკავშირე OBD2 adapter და დაიწყე ინიციალიზაცია."); }
+    public void EnsureInitialized() { if (!_protocol.IsInitialized) throw new AdapterNotConnectedException("ჯერ დააკავშირე OBD2 adapter და დაიწყე ინიციალიზაცია."); }
 
     private async Task<string> SendTrackedAsync(string command, CancellationToken token, TimeSpan timeout, int retries, bool negativeIsError)
     {

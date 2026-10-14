@@ -75,7 +75,7 @@ public partial class AccelerationLeaderboardViewModel : BaseViewModel
     [ObservableProperty] private string myPlaceTime = string.Empty;
     [ObservableProperty] private string myPlaceDetail = string.Empty;
 
-    // Filter sheet (opened with the ☰ button).
+    // Filter sheet (opened with the button).
     [ObservableProperty] private bool isFilterOpen;
     [ObservableProperty] private bool verifiedOnly;
     [ObservableProperty] private int activeFilterCount;
@@ -104,7 +104,10 @@ public partial class AccelerationLeaderboardViewModel : BaseViewModel
         _testId = units.IsImperial ? "0-60mph" : "0-100";
         BuildOptions();
         UpdateTexts();
-        _localization.LanguageChanged += (_, _) => { BuildOptions(); UpdateTexts(); ApplyFilter(); };
+        WeakEventRelay.Attach(this, _localization,
+            static (service, handler) => service.LanguageChanged += handler,
+            static (service, handler) => service.LanguageChanged -= handler,
+            static viewModel => { viewModel.BuildOptions(); viewModel.UpdateTexts(); viewModel.ApplyFilter(); });
     }
 
     private bool En => _localization.IsEnglish;
@@ -342,7 +345,7 @@ public partial class AccelerationLeaderboardViewModel : BaseViewModel
 
     private AccelerationLeaderboardRow ToRow(AccelerationLeaderboardEntry entry, int rank, bool isMine)
     {
-        var name = string.IsNullOrWhiteSpace(entry.UserName) ? "GCar360 Driver" : entry.UserName.Trim();
+        var name = string.IsNullOrWhiteSpace(entry.UserName) ? "OBD360 Driver" : entry.UserName.Trim();
         return new AccelerationLeaderboardRow
         {
             IsMine = isMine,
@@ -358,7 +361,7 @@ public partial class AccelerationLeaderboardViewModel : BaseViewModel
             SecondsUnit = L("წმ", "s"),
             DateText = entry.FinishedAt.ToLocalTime().ToString("dd.MM.yyyy", CultureInfo.InvariantCulture),
             VerificationText = entry.IsDemo ? "DEMO"
-                : entry.Status == "Verified" ? L("✓ დადასტურებული", "✓ VERIFIED")
+                : entry.Status == "Verified" ? L("დადასტურებული", "VERIFIED")
                 : entry.Status == "Pending" ? L("მოწმდება", "UNDER REVIEW")
                 : string.Empty,
             VerificationColor = entry.IsDemo ? "#C98A1A"

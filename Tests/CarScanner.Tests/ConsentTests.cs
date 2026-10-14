@@ -495,41 +495,6 @@ public sealed class ConsentGatedCollectionTests : IDisposable
         Assert.Equal(0, queue.Count);
     }
 
-    [Fact]
-    public async Task ManualCapture_StaysLocal_EvenWithConsent_AndNeverFeedsTheUploader()
-    {
-        var (policy, pipe, queue, up) = Create();
-        var capture = new LocalCaptureSession();
-        capture.Start(null, () => new CaptureVehicle("CHEVROLET", "VOLT", "2013", "CAN"), _clock.Read);
-
-        // consent NOT given: the recording still works, the pipeline stays empty
-        capture.Observe(Module());
-        pipe.Observe(Module());
-        await pipe.DrainAsync();
-        Assert.Equal(1, capture.ItemCount);
-        Assert.Equal(0, queue.Count);
-
-        // consent given: exporting or sharing the file does not upload it
-        policy.Grant();
-        var json = capture.BuildJson("1.0.0");
-        Assert.NotEmpty(json);
-        await pipe.FlushAsync(CancellationToken.None, force: true);
-        Assert.Equal(0, up.UploadCalls);
-        Assert.Empty(up.Uploaded);
-    }
-
-    [Fact]
-    public void TheManualCaptureCode_HasNoPathToTheNetworkOrTheUploadQueue()
-    {
-        var root = RepositoryRoot();
-        foreach (var file in new[] { "Services/DataCollection/LocalCaptureSession.cs", "Services/DataCollection/LocalCaptureService.cs" })
-        {
-            var source = File.ReadAllText(Path.Combine(root, file));
-            foreach (var forbidden in new[] { "ICollectionUploader", "CollectionPipeline", "CollectionQueue", "HttpClient", "PostAsync", "SendAsync(" })
-                Assert.DoesNotContain(forbidden, source);
-        }
-    }
-
     private static string RepositoryRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
@@ -633,10 +598,10 @@ public sealed class ConsentTextTests
     public void Georgian_UsesTheRequestedTitleAndButtons()
     {
         var ka = ConsentTexts.For("ka");
-        Assert.Equal("გავაუმჯობესოთ GCar360 ერთად! 🚗", ka.Title);
+        Assert.Equal("გავაუმჯობესოთ OBD360 ერთად!", ka.Title);
         Assert.Equal("თანახმა ვარ", ka.Agree);
         Assert.Equal("ახლა არა", ka.NotNow);
-        Assert.StartsWith("GCar360-ს სურს ავტომობილის დიაგნოსტიკის ტექნიკური მონაცემების შეგროვება", ka.Body);
+        Assert.StartsWith("OBD360-ს სურს ავტომობილის დიაგნოსტიკის ტექნიკური მონაცემების შეგროვება", ka.Body);
     }
 
     [Fact]

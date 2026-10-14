@@ -156,8 +156,8 @@ public static class MaintenanceText
     public static string SubText(PartStatus status, PartInterval interval, bool english) => status.State switch
     {
         _ when status.FromCar => (english
-            ? (status.CarPercent is not null ? "● Oil life from the car" : "● Distance to service from the car")
-            : (status.CarPercent is not null ? "● ზეთის რესურსი მანქანიდან" : "● სერვისამდე მანძილი მანქანიდან"))
+            ? (status.CarPercent is not null ? "Oil life from the car" : "Distance to service from the car")
+            : (status.CarPercent is not null ? "ზეთის რესურსი მანქანიდან" : "სერვისამდე მანძილი მანქანიდან"))
             + (LastText(status, english) is { Length: > 0 } last ? " · " + last : string.Empty),
         PartState.Unknown when status.LastDate is null && status.LastKm is null =>
             english ? $"When was it changed? Tap · {IntervalText(interval, english)}" : $"როდის შეიცვალა? დააჭირე · {IntervalText(interval, english)}",

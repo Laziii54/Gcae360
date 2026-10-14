@@ -8,7 +8,7 @@ using Microsoft.Data.Sqlite;
 namespace CarScanner.Api.Services;
 
 /// <summary>
-/// Card payments on the GCar360 web page through a Georgian bank:
+/// Card payments on the OBD360 web page through a Georgian bank:
 ///  • TBC  – TBC Checkout (tpay),
 ///  • BOG  – Bank of Georgia Payments.
 /// The bank is chosen with Payments:Provider (tbc / bog). Credentials

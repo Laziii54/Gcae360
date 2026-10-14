@@ -121,12 +121,12 @@ public partial class VinScanPage : ContentPage
         _done = true;
         ScanFrame.Stroke = Color.FromArgb("#22C55E");
         StatusPill.BackgroundColor = Color.FromArgb("#E616A34A");
-        ShowMessage("✓ " + vin, spinning: false);
+        ShowMessage("" + vin, spinning: false);
         try { HapticFeedback.Default.Perform(HapticFeedbackType.LongPress); } catch { }
 
         VinScanBridge.Publish(vin);
         await Task.Delay(700);
-        try { await Shell.Current.GoToAsync(".."); } catch { }
+        try { await CarScanner.Services.SafeNavigation.GoToAsync(".."); } catch { }
     }
 
     private void ShowMessage(string text, bool spinning)
@@ -154,7 +154,7 @@ public partial class VinScanPage : ContentPage
 
     private async void OnCloseClicked(object? sender, EventArgs e)
     {
-        try { await Shell.Current.GoToAsync(".."); } catch { }
+        try { await CarScanner.Services.SafeNavigation.GoToAsync(".."); } catch { }
     }
 
     private void OnSettingsClicked(object? sender, EventArgs e)

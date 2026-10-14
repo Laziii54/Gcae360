@@ -28,8 +28,8 @@ public sealed class PurchaseService
     /// <summary>User text for <see cref="PurchasesNotAvailableOnAndroid"/>.</summary>
     public static string PurchasesNotAvailableOnAndroidMessage =>
         ObdLang.L(
-            "Android აპში შეძენა არ არის ხელმისაწვდომი. თუ შენს GCar360 ანგარიშზე PRO უკვე აქტიურია, შედი ანგარიშზე ან დააჭირე „PRO-ს აღდგენას“.",
-            "Purchases are not available in the Android app. If PRO is already active on your GCar360 account, sign in or tap Restore PRO.");
+            "Android აპში შეძენა არ არის ხელმისაწვდომი. თუ შენს OBD360 ანგარიშზე PRO უკვე აქტიურია, შედი ანგარიშზე ან დააჭირე „PRO-ს აღდგენას“.",
+            "Purchases are not available in the Android app. If PRO is already active on your OBD360 account, sign in or tap Restore PRO.");
 
     private readonly ProService _pro;
     private readonly AccountService _account;

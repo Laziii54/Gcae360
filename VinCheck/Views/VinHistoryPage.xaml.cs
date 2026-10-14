@@ -27,6 +27,6 @@ public partial class VinHistoryPage : ContentPage
 
     private async void BackClicked(object? sender, EventArgs e)
     {
-        try { await Shell.Current.GoToAsync(".."); } catch { }
+        try { await CarScanner.Services.SafeNavigation.GoToAsync(".."); } catch { }
     }
 }

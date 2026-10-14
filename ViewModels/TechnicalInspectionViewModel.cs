@@ -37,6 +37,10 @@ public partial class TechnicalInspectionViewModel : BaseViewModel
     // ---------- verdict / OBD (existing bindings) ----------
     [ObservableProperty] private bool hasResult;
     [ObservableProperty] private bool hasIssues;
+    [ObservableProperty] private bool showIssues;
+
+    [RelayCommand]
+    private void ToggleIssues() => ShowIssues = !ShowIssues;
     [ObservableProperty] private string pageHeading = string.Empty;
     [ObservableProperty] private string pageSubtitle = string.Empty;
     [ObservableProperty] private string checkButtonText = string.Empty;
@@ -99,7 +103,10 @@ public partial class TechnicalInspectionViewModel : BaseViewModel
         _pro = pro;
         _modules = modules;
         _answers = InspectionAnswerStore.Load();
-        _localization.LanguageChanged += OnLanguageChanged;
+        WeakEventRelay.Attach(this, _localization,
+            static (service, handler) => service.LanguageChanged += handler,
+            static (service, handler) => service.LanguageChanged -= handler,
+            static viewModel => viewModel.OnLanguageChanged(null, EventArgs.Empty));
         UpdateLanguage();
         RebuildAll();
     }
@@ -135,7 +142,7 @@ public partial class TechnicalInspectionViewModel : BaseViewModel
         {
             _lastResult = null;
             _obdFailed = true;
-            StatusText = ex.Message;
+            StatusText = CarScanner.Services.UserError.Describe(ex);
         }
         finally
         {
@@ -199,7 +206,6 @@ public partial class TechnicalInspectionViewModel : BaseViewModel
         var section = new CarScanner.Services.Reports.ReportSectionItem
         {
             Kind = "inspection",
-            Icon = "✓",
             Title = En ? "Technical inspection (OBD)" : "ტექდათვალიერება (OBD)",
             Status = result.Verdict switch
             {
@@ -235,7 +241,7 @@ public partial class TechnicalInspectionViewModel : BaseViewModel
         try
         {
             var route = _pro.HasObd ? nameof(Views.ModuleScanPage) : nameof(Views.ProPage);
-            await Shell.Current.GoToAsync(route);
+            await CarScanner.Services.SafeNavigation.GoToAsync(route);
         }
         catch
         {

@@ -1,3 +1,4 @@
+using CarScanner.Services;
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -42,7 +43,7 @@ public partial class VinHistoryViewModel(IVinHistoryDatabaseService database) : 
         VinReport? report = null;
         try { report = JsonSerializer.Deserialize<VinReport>(json, Json); } catch { }
         if (report is not null)
-            await Shell.Current.GoToAsync(nameof(VinReportPage), new ShellNavigationQueryParameters { { "Report", report } });
+            await CarScanner.Services.SafeNavigation.GoToAsync(nameof(VinReportPage), new ShellNavigationQueryParameters { { "Report", report } });
     }
 
     [RelayCommand]
@@ -64,7 +65,7 @@ public partial class VinHistoryViewModel(IVinHistoryDatabaseService database) : 
     {
         try
         {
-        if (await Shell.Current.DisplayAlertAsync(Title, ClearText + "?", VinText.T("Yes"), VinText.T("No")))
+        if (await Shell.Current.DisplayAlertLocalizedAsync(Title, ClearText + "?", VinText.T("Yes"), VinText.T("No")))
         {
             await database.ClearHistoryAsync();
             History.Clear();

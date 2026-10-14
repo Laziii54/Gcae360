@@ -21,9 +21,7 @@
 
             <Grid WidthRequest="44" HeightRequest="44" SemanticProperties.Description="{Binding CloseText}">
                 <BoxView Color="{DynamicResource CardBg}" Opacity="0.8" CornerRadius="22" />
-                <Label AutomationId="DynamicTextPvClose" Text="✕" FontSize="18" FontAttributes="Bold"
-                       TextColor="{DynamicResource TextColor}"
-                       HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                <controls:Icon AutomationId="DynamicTextPvClose" Kind="close" WidthRequest="18" HeightRequest="18" StrokeThickness="2" />
                 <Grid.GestureRecognizers>
                     <TapGestureRecognizer Command="{Binding CloseCommand}" />
                 </Grid.GestureRecognizers>
@@ -80,7 +78,7 @@
             <!-- Hint -->
             <Grid IsVisible="{Binding HasHint}" HorizontalOptions="Center">
                 <BoxView Color="{DynamicResource CardBg}" Opacity="0.7" CornerRadius="12" />
-                <Label AutomationId="DynamicTextPvHint" Text="{Binding HintText}" Padding="12,6" FontSize="11"
+                <Label AutomationId="DynamicTextPvHint" Text="{Binding HintText}" Padding="12,6" FontSize="12"
                        TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
             </Grid>
 
@@ -90,25 +88,25 @@
                 <Grid ColumnDefinitions="*,Auto,*,Auto,*,Auto,*" Padding="6,8">
 
                     <VerticalStackLayout Grid.Column="0" Spacing="1" VerticalOptions="Center">
-                        <Label AutomationId="DynamicTextPvSplitLabel0" Text="{Binding Splits[0].Label}" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                        <Label AutomationId="DynamicTextPvSplitLabel0" Text="{Binding Splits[0].Label}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
                         <Label AutomationId="DynamicTextPvSplitValue0" Text="{Binding Splits[0].ValueText}" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource Primary}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                     <BoxView Grid.Column="1" WidthRequest="1" Margin="0,6" Color="{DynamicResource BorderColor}" />
 
                     <VerticalStackLayout Grid.Column="2" Spacing="1" VerticalOptions="Center">
-                        <Label AutomationId="DynamicTextPvSplitLabel1" Text="{Binding Splits[1].Label}" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                        <Label AutomationId="DynamicTextPvSplitLabel1" Text="{Binding Splits[1].Label}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
                         <Label AutomationId="DynamicTextPvSplitValue1" Text="{Binding Splits[1].ValueText}" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource Primary}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                     <BoxView Grid.Column="3" WidthRequest="1" Margin="0,6" Color="{DynamicResource BorderColor}" />
 
                     <VerticalStackLayout Grid.Column="4" Spacing="1" VerticalOptions="Center">
-                        <Label AutomationId="DynamicTextPvSplitLabel2" Text="{Binding Splits[2].Label}" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                        <Label AutomationId="DynamicTextPvSplitLabel2" Text="{Binding Splits[2].Label}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
                         <Label AutomationId="DynamicTextPvSplitValue2" Text="{Binding Splits[2].ValueText}" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource Primary}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                     <BoxView Grid.Column="5" WidthRequest="1" Margin="0,6" Color="{DynamicResource BorderColor}" />
 
                     <VerticalStackLayout Grid.Column="6" Spacing="1" VerticalOptions="Center">
-                        <Label AutomationId="DynamicTextPvSplitLabel3" Text="{Binding Splits[3].Label}" FontSize="11" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                        <Label AutomationId="DynamicTextPvSplitLabel3" Text="{Binding Splits[3].Label}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
                         <Label AutomationId="DynamicTextPvSplitValue3" Text="{Binding Splits[3].ValueText}" FontSize="17" FontAttributes="Bold" TextColor="{DynamicResource Primary}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
 

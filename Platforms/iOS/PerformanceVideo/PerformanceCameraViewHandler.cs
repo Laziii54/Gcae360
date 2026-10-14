@@ -1,6 +1,7 @@
 #if IOS
 using CarScanner.Controls;
 using Microsoft.Maui.Handlers;
+using ObjCRuntime;
 using UIKit;
 
 namespace CarScanner.Platforms.iOS.PerformanceVideo;
@@ -38,6 +39,18 @@ public sealed class PerformanceCameraViewHandler : ViewHandler<PerformanceCamera
 
 public sealed class CameraPreviewView : UIView
 {
+    public CameraPreviewView()
+    {
+    }
+
+    /// <summary>
+    /// Constructor used by the Objective-C runtime when UIKit hands back a native view whose managed wrapper was
+    /// collected. Without it that call fails with <c>ObjCRuntime.Runtime.MissingCtor</c>.
+    /// </summary>
+    public CameraPreviewView(NativeHandle handle) : base(handle)
+    {
+    }
+
     public AVFoundation.AVCaptureVideoPreviewLayer? PreviewLayer { get; set; }
 
     public override void LayoutSubviews()

@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     x:Class="CarScanner.Views.AccountPage"
     BackgroundColor="{DynamicResource PageBg}"
-    Title="GCar360">
+    Title="OBD360">
 
     <ScrollView>
         <VerticalStackLayout Padding="16,14,16,32" Spacing="12">
@@ -46,7 +46,7 @@
                         <Label x:Name="RepeatPasswordLabel" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" Margin="0,8,0,0" />
                         <Entry x:Name="RepeatPasswordEntry" IsPassword="True" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" FontSize="14" />
                         <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" />
-                        <Label x:Name="NewPasswordHintLabel" FontSize="11" TextColor="{DynamicResource SubTextColor}" Margin="0,2,0,0" />
+                        <Label x:Name="NewPasswordHintLabel" FontSize="12" TextColor="{DynamicResource SubTextColor}" Margin="0,2,0,0" />
                         <Button x:Name="SavePasswordButton" Clicked="OnSavePasswordClicked" Margin="0,10,0,0"
                                 Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" />
                         <Button x:Name="CancelPasswordButton" Clicked="OnCancelPasswordClicked"
@@ -87,7 +87,7 @@
                     <Label x:Name="PasswordLabel" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" Margin="0,8,0,0" />
                     <Entry x:Name="PasswordEntry" IsPassword="True" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" FontSize="14" />
                     <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" />
-                    <Label x:Name="PasswordHintLabel" FontSize="11" TextColor="{DynamicResource SubTextColor}" Margin="0,2,0,0" />
+                    <Label x:Name="PasswordHintLabel" FontSize="12" TextColor="{DynamicResource SubTextColor}" Margin="0,2,0,0" />
 
                     <Button x:Name="LoginButton" Clicked="OnLoginClicked" Margin="0,10,0,0"
                             Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" />

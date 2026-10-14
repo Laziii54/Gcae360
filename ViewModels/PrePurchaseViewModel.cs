@@ -62,13 +62,13 @@ public partial class PrePurchaseViewModel : BaseViewModel
 
     // Texts that depend on the language.
     [ObservableProperty] private string pageTitle = "ყიდვისწინა შემოწმება";
-    [ObservableProperty] private string startButtonText = "▶ სრული შემოწმება";
-    [ObservableProperty] private string stopButtonText = "■ გაჩერება";
+    [ObservableProperty] private string startButtonText = "სრული შემოწმება";
+    [ObservableProperty] private string stopButtonText = "გაჩერება";
     [ObservableProperty] private string runningTitle = "მიმდინარეობს შემოწმება";
     [ObservableProperty] private string aiButtonText = "AI კონსულტაცია";
     [ObservableProperty] private string pdfButtonText = "PDF ანგარიში";
     [ObservableProperty] private string accelerationButtonText = "აჩქარების ტესტი (არასავალდებულო)";
-    [ObservableProperty] private string againButtonText = "↻ თავიდან შემოწმება";
+    [ObservableProperty] private string againButtonText = "თავიდან შემოწმება";
 
     public PrePurchaseViewModel(
         PrePurchaseCheckService check,
@@ -131,12 +131,12 @@ public partial class PrePurchaseViewModel : BaseViewModel
     {
         PageTitle = English ? "Pre-purchase check" : "ყიდვისწინა შემოწმება";
         StartButtonText = (English ? "Full check" : "სრული შემოწმება") + ProGate.Suffix;
-        StopButtonText = English ? "■ Stop" : "■ გაჩერება";
+        StopButtonText = English ? "Stop" : "გაჩერება";
         RunningTitle = English ? "Checking the car" : "მიმდინარეობს შემოწმება";
         AiButtonText = English ? "AI consultation" : "AI კონსულტაცია";
         PdfButtonText = English ? "PDF report" : "PDF ანგარიში";
         AccelerationButtonText = English ? "Acceleration test (optional)" : "აჩქარების ტესტი (არასავალდებულო)";
-        AgainButtonText = English ? "↻ Check again" : "↻ თავიდან შემოწმება";
+        AgainButtonText = English ? "Check again" : "თავიდან შემოწმება";
         UpdateSteps(Percent);
         if (_result is not null)
             ShowResult(_result);
@@ -264,7 +264,7 @@ public partial class PrePurchaseViewModel : BaseViewModel
             return;
         if (!await ProGate.EnsureAsync(_pro, "AI კონსულტაცია", "AI consultation"))
             return;
-        await Shell.Current.GoToAsync(nameof(Views.PrePurchaseAiPage));
+        await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.PrePurchaseAiPage));
         }
         catch (Exception commandException)
         {
@@ -302,7 +302,7 @@ public partial class PrePurchaseViewModel : BaseViewModel
             var path = await _pdf.ExportPrePurchaseAsync(_result.Report, summary);
             await Share.Default.RequestAsync(new ShareFileRequest
             {
-                Title = english ? "GCar360 pre-purchase check" : "GCar360 ყიდვისწინა შემოწმება",
+                Title = english ? "OBD360 pre-purchase check" : "OBD360 ყიდვისწინა შემოწმება",
                 File = new ShareFile(path)
             });
         }
@@ -319,7 +319,7 @@ public partial class PrePurchaseViewModel : BaseViewModel
     }
 
     [RelayCommand]
-    private Task OpenAcceleration() => Shell.Current.GoToAsync(nameof(Views.AccelerationPage));
+    private Task OpenAcceleration() => CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.AccelerationPage));
 
     // ------------------------------------------------------------------
 
@@ -356,7 +356,6 @@ public partial class PrePurchaseViewModel : BaseViewModel
         var section = new CarScanner.Services.Reports.ReportSectionItem
         {
             Kind = "prepurchase",
-            Icon = "🔍",
             Title = english ? "Pre-purchase check" : "ყიდვისწინა შემოწმება",
             Score = result.Score,
             Status = result.Score >= 85 ? CarScanner.Services.Reports.ReportStatus.Ok

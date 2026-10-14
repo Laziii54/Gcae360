@@ -74,7 +74,7 @@ public interface IVinHistoryService
 }
 
 /// <summary>
-/// Real VIN history through the GCar360 backend. The provider key stays on
+/// Real VIN history through the OBD360 backend. The provider key stays on
 /// the server; the server also counts the monthly VIN allowance.
 /// </summary>
 public sealed class VinHistoryService(CarScanner.Services.AccountService account) : IVinHistoryService

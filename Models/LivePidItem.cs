@@ -45,12 +45,10 @@ public sealed partial class LivePidItem : ObservableObject
         : $"{Name} · PID 01{Pid:X2}";
     public string UnitText => string.IsNullOrWhiteSpace(Unit) ? string.Empty : Unit;
     public string StatisticsText => $"MIN {MinimumText}   |   AVG {AverageText}   |   MAX {MaximumText}";
-    public string FavoriteGlyph => IsFavorite ? "★" : "☆";
     public string FavoriteColor => IsFavorite ? "#FBBF24" : "#94A3B8";
 
     partial void OnIsFavoriteChanged(bool value)
     {
-        OnPropertyChanged(nameof(FavoriteGlyph));
         OnPropertyChanged(nameof(FavoriteColor));
     }
 

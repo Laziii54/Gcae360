@@ -9,10 +9,14 @@ namespace CarScanner.Services.Energy;
 public static class FuelSignalMapper
 {
     /// <summary>PIDs read for fuel analytics: the direct fuel rate when the ECU has it, otherwise air flow (and λ for diesels).</summary>
-    public static int[] AnalyticsPids(bool fuelRateSupported, bool lambdaSupported, bool wantLambda)
+    public static int[] AnalyticsPids(bool fuelRateSupported, bool lambdaSupported, bool wantLambda, bool fuelMassRateSupported = false)
     {
         if (fuelRateSupported)
             return new[] { EnergyCompatibility.PidFuelRate, EnergyCompatibility.PidFuelLevel, 0x51 };
+
+        // PID 9D (fuel mass flow, g/s) is the car's own fuel reading too; it beats an air-flow estimate.
+        if (fuelMassRateSupported)
+            return new[] { EnergyCompatibility.PidEngineFuelRate, EnergyCompatibility.PidFuelLevel, 0x51 };
 
         return wantLambda && lambdaSupported
             ? new[] { EnergyCompatibility.PidMaf, 0x24, EnergyCompatibility.PidFuelLevel, 0x51 }
@@ -29,6 +33,7 @@ public static class FuelSignalMapper
             0x11 => FuelSignal.ThrottlePercent,
             0x04 => FuelSignal.LoadPercent,
             0x5E => FuelSignal.DirectFuelRateLph,
+            0x9D => FuelSignal.EngineFuelRateGramsPerSecond,
             0x10 => FuelSignal.MafGramsPerSecond,
             0x24 or 0x34 => FuelSignal.EquivalenceRatio,   // wide-band sensor 1 (bank 1)
             0x2F => FuelSignal.FuelLevelPercent,

@@ -107,7 +107,9 @@ public partial class AppShell : Shell
                 Navigation.NavigationStack.Count <= 1 &&
                 Navigation.ModalStack.Count == 0)
             {
-                _ = GoToAsync("//StartPage");
+                // Never throws (SafeNavigation reports failures itself), so the unobserved task cannot end up as an
+                // AggregateException in the crash report.
+                _ = CarScanner.Services.SafeNavigation.GoToAsync("//StartPage");
                 return true;
             }
         }
@@ -146,7 +148,7 @@ public partial class AppShell : Shell
             return;
         }
 
-        var openActivation = await DisplayAlertAsync(
+        var openActivation = await this.DisplayAlertLocalizedAsync(
             CarScanner.Services.Localization.LocalizationService.T("PRO ფუნქცია"),
             CarScanner.Services.Localization.LocalizationService.T("ეს შესაძლებლობა ხელმისაწვდომია მხოლოდ აქტიური PRO ვერსიით."),
             CarScanner.Services.Localization.LocalizationService.T("გააქტიურება"),

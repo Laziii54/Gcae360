@@ -33,6 +33,7 @@ public partial class FuelViewModel
     [ObservableProperty] private bool isHybridMode;
     [ObservableProperty] private bool isElectricMode;
     [ObservableProperty] private bool showEnergy;
+    [ObservableProperty] private bool showEnergyCard;
     [ObservableProperty] private bool showFuel = true;
     [ObservableProperty] private bool showPower;
     [ObservableProperty] private bool hasHeadUnits;
@@ -75,6 +76,8 @@ public partial class FuelViewModel
     [ObservableProperty] private string energyPerKmCaption = "";
 
     private string L(string ka, string en) => _localization.IsEnglish ? en : ka;
+
+    partial void OnHasTripHistoryChanged(bool value) => OnPropertyChanged(nameof(ShowTripHistoryList));
 
     private string? CurrentVin()
     {
@@ -190,6 +193,13 @@ public partial class FuelViewModel
         IsElectricMode = mode == EnergyMode.Electric;
         ShowEnergy = mode != EnergyMode.Fuel;
         ShowFuel = mode != EnergyMode.Electric;
+        // The energy-use summary card repeats what the drive-split card already
+        // shows in Hybrid, so it is kept for Electric only.
+        ShowEnergyCard = ShowEnergy && mode != EnergyMode.Hybrid;
+        // RefreshDashboard() below only runs when ShowEnergy is true, so it never clears ShowDriveSplit on its
+        // own in Fuel mode: without this, a prior Hybrid visit leaves the drive-split card stuck on screen.
+        if (!ShowEnergy)
+            ShowDriveSplit = false;
         UpdateFuelKind();
         RefreshPresentation();
     }
@@ -349,7 +359,7 @@ public partial class FuelViewModel
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 EnergySourceTitle = L("ბატარეის მონაცემი შეწყდა", "Battery data stopped");
-                EnergySourceText = ex.Message;
+                EnergySourceText = CarScanner.Services.UserError.Describe(ex);
                 EnergySourceColor = WarnColor;
             });
         }
@@ -529,7 +539,7 @@ public partial class FuelViewModel
         else if (_evSource is { } source)
         {
             EnergySourceTitle = L("მონაცემის წყარო", "Data source");
-            EnergySourceText = $"● {source.Label}\n" + (source.IsStandard
+            EnergySourceText = $"{source.Label}\n" + (source.IsStandard
                 ? L("სტანდარტული OBD · ძაბვა × დენი, წამში ერთხელ", "Standard OBD · voltage × current, once per second")
                 : L("მარკის კოდი · ძაბვა × დენი, ყოველ 2 წამში", "Brand identifier · voltage × current, every 2 seconds"))
                 + (_ev.IsSignConfirmed

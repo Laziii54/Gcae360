@@ -136,7 +136,7 @@ public partial class ProViewModel
         if (page is null)
             return;
 
-        var ok = await page.DisplayAlertAsync(
+        var ok = await page.DisplayAlertLocalizedAsync(
             L("გავაუქმო გამოწერა?", "Cancel the subscription?"),
             L("PRO დარჩება გადახდილი პერიოდის ბოლომდე. ამის მერე თანხა აღარ ჩამოიჭრება და შენახული ბარათი წაიშლება.",
               "PRO stays on until the paid period ends. After that nothing is charged and the saved card is deleted."),
@@ -197,10 +197,10 @@ public partial class ProViewModel
             await LocalNotificationCenter.Current.Show(new NotificationRequest
             {
                 NotificationId = RenewReminderId,
-                Title = "GCar360",
-                Description = price.Length > 0
+                Title = "OBD360",
+                Description = CarScanner.Services.Localization.LocalizationService.T(price.Length > 0
                     ? L($"3 დღეში {name} განახლდება: {price}.", $"{name} renews in 3 days: {price}.")
-                    : L($"3 დღეში {name} განახლდება.", $"{name} renews in 3 days."),
+                    : L($"3 დღეში {name} განახლდება.", $"{name} renews in 3 days.")),
                 Schedule = new NotificationRequestSchedule { NotifyTime = when },
                 ReturningData = "web-renewal"
             });

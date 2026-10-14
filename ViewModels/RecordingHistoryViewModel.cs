@@ -125,7 +125,7 @@ public partial class RecordingHistoryViewModel : BaseViewModel
         if (session is null)
             return;
 
-        var confirmed = await Shell.Current.DisplayAlertAsync(
+        var confirmed = await Shell.Current.DisplayAlertLocalizedAsync(
             CarScanner.Services.Localization.LocalizationService.T("სესიის წაშლა"),
             CarScanner.Services.Localization.LocalizationService.T($"წაიშალოს {session.DateText} ჩანაწერი? ეს მოქმედება ვერ დაბრუნდება."),
             CarScanner.Services.Localization.LocalizationService.T("წაშლა"),

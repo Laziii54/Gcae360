@@ -40,7 +40,7 @@ public static class ProGate
 
         try
         {
-            await MainThread.InvokeOnMainThreadAsync(() => Shell.Current.GoToAsync(nameof(Views.ProPage)));
+            await MainThread.InvokeOnMainThreadAsync(() => CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.ProPage)));
         }
         catch (Exception exception)
         {

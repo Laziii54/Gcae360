@@ -46,7 +46,7 @@ public sealed partial class GraphChannelOption : ObservableObject
 }
 
 /// <summary>One-tap set of parameters.</summary>
-public sealed record GraphPreset(string Icon, string Title, string Subtitle, int[] Pids);
+public sealed record GraphPreset(string Title, string Subtitle, int[] Pids);
 
 /// <summary>A saved recording (CSV in the app folder).</summary>
 public sealed record GraphRecording(string Path, string Title, string Detail);
@@ -115,6 +115,12 @@ public partial class GraphStudioViewModel : BaseViewModel
     [ObservableProperty] private int gridSize = 8;
     [ObservableProperty] private GraphChannel? expandedChannel;
     [ObservableProperty] private bool hasExpandedChannel;
+
+    /// <summary>An enlarged graph is shown above the separate and the grid views; the compare and X–Y views have their own chart.</summary>
+    public bool ShowExpandedChannel => HasExpandedChannel && (IsSeparateView || IsGridView);
+    partial void OnHasExpandedChannelChanged(bool value) => OnPropertyChanged(nameof(ShowExpandedChannel));
+    partial void OnIsSeparateViewChanged(bool value) => OnPropertyChanged(nameof(ShowExpandedChannel));
+    partial void OnIsGridViewChanged(bool value) => OnPropertyChanged(nameof(ShowExpandedChannel));
     [ObservableProperty] private GraphChannel? xChannel;
     [ObservableProperty] private GraphChannel? yChannel;
     [ObservableProperty] private IReadOnlyList<Point> xyPoints = Array.Empty<Point>();
@@ -134,7 +140,8 @@ public partial class GraphStudioViewModel : BaseViewModel
     partial void OnStatusTextChanged(string value) => OnPropertyChanged(nameof(HasStatus));
     public double ChartHeight => IsFullScreen ? 520 : 300;
     public double WindowChartHeight => IsFullScreen ? 240 : 96;
-    public string PauseButtonText => IsPaused ? "▶" : "⏸";
+    /// <summary>Icon kind (Controls/IconCatalog) of the pause / resume button.</summary>
+    public string PauseIconKind => IsPaused ? "play" : "pause";
     public bool IsWindow10 => Math.Abs(WindowSeconds - 10) < 0.5;
     public bool IsWindow30 => Math.Abs(WindowSeconds - 30) < 0.5;
     public bool IsWindow60 => Math.Abs(WindowSeconds - 60) < 0.5;
@@ -153,7 +160,7 @@ public partial class GraphStudioViewModel : BaseViewModel
         OnPropertyChanged(nameof(WindowChartHeight));
     }
 
-    partial void OnIsPausedChanged(bool value) => OnPropertyChanged(nameof(PauseButtonText));
+    partial void OnIsPausedChanged(bool value) => OnPropertyChanged(nameof(PauseIconKind));
 
     partial void OnWindowSecondsChanged(double value)
     {
@@ -360,14 +367,14 @@ public partial class GraphStudioViewModel : BaseViewModel
                 oldest = _history.Values.Where(l => l.Count > 0).Select(l => l[0].Time).DefaultIfEmpty(pausedAt).Min();
             ScrollBackMaximum = Math.Max(1, (pausedAt - oldest).TotalSeconds - WindowSeconds);
             PauseText = ScrollBackSeconds >= 1
-                ? $"⏸ −{TimeSpan.FromSeconds(ScrollBackSeconds):mm\\:ss}"
-                : L("⏸ პაუზა", "⏸ paused");
+                ? $"−{TimeSpan.FromSeconds(ScrollBackSeconds):mm\\:ss}"
+                : L("პაუზა", "paused");
         }
 
         AnalysisText = BuildAnalysis(start, end);
         RefreshXy(start, end);
         RecordingText = IsRecording && _recordStart is { } since
-            ? $"● {(DateTime.Now - since):mm\\:ss}"
+            ? $"REC {(DateTime.Now - since):mm\\:ss}"
             : string.Empty;
     }
 
@@ -552,7 +559,7 @@ public partial class GraphStudioViewModel : BaseViewModel
     private void AddMarker()
     {
         var time = CursorTime ?? (IsPaused ? VisibleEnd() : DateTime.Now);
-        _markers.Add(new ChartMarker(time, $"⚑ {time:HH:mm:ss}", Color.FromArgb("#1E8A4C")));
+        _markers.Add(new ChartMarker(time, $"{time:HH:mm:ss}", Color.FromArgb("#1E8A4C")));
         QueueRefresh();
     }
 
@@ -580,7 +587,7 @@ public partial class GraphStudioViewModel : BaseViewModel
     private Task OpenChannels()
     {
         BuildOptions();
-        return Shell.Current.GoToAsync(nameof(Views.GraphChannelsPage));
+        return CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.GraphChannelsPage));
     }
 
     // =========================================================
@@ -591,11 +598,11 @@ public partial class GraphStudioViewModel : BaseViewModel
     {
         Presets = new[]
         {
-            new GraphPreset("⚙", L("ძრავის ჯანმრთელობა", "Engine health"), L("ბრუნები · დატვირთვა · კორექციები · MAF", "RPM · load · fuel trims · MAF"), new[] { 0x0C, 0x04, 0x06, 0x07, 0x10 }),
-            new GraphPreset("🌡", L("ტემპერატურები", "Temperatures"), L("გამაგრილებელი · ზეთი · ჰაერი · კატალიზატორი", "Coolant · oil · intake air · catalyst"), new[] { 0x05, 0x5C, 0x0F, 0x46, 0x3C }),
-            new GraphPreset("⛽", L("საწვავი და ჟანგბადი", "Fuel and oxygen"), L("MAF · O2 სენსორები · მოკლე/გრძელი კორექცია", "MAF · O2 sensors · short/long trim"), new[] { 0x10, 0x14, 0x15, 0x06, 0x07 }),
-            new GraphPreset("⚡", L("ბატარეა და ძაბვა", "Battery and voltage"), L("ძაბვა · ჰიბრიდული ბატარეის % · დატვირთვა", "Voltage · hybrid battery % · load"), new[] { 0x42, 0x5B, 0x04, 0x0D }),
-            new GraphPreset("🏁", L("აჩქარება", "Acceleration"), L("სიჩქარე · ბრუნები · დროსელი", "Speed · RPM · throttle"), new[] { 0x0D, 0x0C, 0x11 })
+            new GraphPreset(L("ძრავის ჯანმრთელობა", "Engine health"), L("ბრუნები · დატვირთვა · კორექციები · MAF", "RPM · load · fuel trims · MAF"), new[] { 0x0C, 0x04, 0x06, 0x07, 0x10 }),
+            new GraphPreset(L("ტემპერატურები", "Temperatures"), L("გამაგრილებელი · ზეთი · ჰაერი · კატალიზატორი", "Coolant · oil · intake air · catalyst"), new[] { 0x05, 0x5C, 0x0F, 0x46, 0x3C }),
+            new GraphPreset(L("საწვავი და ჟანგბადი", "Fuel and oxygen"), L("MAF · O2 სენსორები · მოკლე/გრძელი კორექცია", "MAF · O2 sensors · short/long trim"), new[] { 0x10, 0x14, 0x15, 0x06, 0x07 }),
+            new GraphPreset(L("ბატარეა და ძაბვა", "Battery and voltage"), L("ძაბვა · ჰიბრიდული ბატარეის % · დატვირთვა", "Voltage · hybrid battery % · load"), new[] { 0x42, 0x5B, 0x04, 0x0D }),
+            new GraphPreset(L("აჩქარება", "Acceleration"), L("სიჩქარე · ბრუნები · დროსელი", "Speed · RPM · throttle"), new[] { 0x0D, 0x0C, 0x11 })
         };
     }
 
@@ -654,7 +661,7 @@ public partial class GraphStudioViewModel : BaseViewModel
         var supported = _obd.SupportedPids.Select(pid => pid.Pid).ToHashSet();
         var pids = supported.Count == 0 ? preset.Pids : preset.Pids.Where(pid => supported.Contains(pid) || pid is 0x0C or 0x0D or 0x05 or 0x04 or 0x11 or 0x42).ToArray();
         ApplyChannels(pids.Length > 0 ? pids : preset.Pids);
-        await Shell.Current.GoToAsync("..");
+        await CarScanner.Services.SafeNavigation.GoToAsync("..");
     }
 
     [RelayCommand]
@@ -670,7 +677,7 @@ public partial class GraphStudioViewModel : BaseViewModel
         }
 
         ApplyChannels(Options.Where(o => o.IsSelected).Select(o => o.Pid));
-        await Shell.Current.GoToAsync("..");
+        await CarScanner.Services.SafeNavigation.GoToAsync("..");
     }
 
     // =========================================================
@@ -726,9 +733,9 @@ public partial class GraphStudioViewModel : BaseViewModel
         if (csv is null)
             return;
 
-        var path = Path.Combine(FileSystem.CacheDirectory, $"gcar360_graph_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
+        var path = Path.Combine(FileSystem.CacheDirectory, $"obd360_graph_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
         File.WriteAllText(path, csv, Encoding.UTF8);
-        await Share.Default.RequestAsync(new ShareFileRequest { Title = "GCar360 Graph Studio", File = new ShareFile(path) });
+        await Share.Default.RequestAsync(new ShareFileRequest { Title = "OBD360 Graph Studio", File = new ShareFile(path) });
     }
 
     /// <summary>CSV: time + one column per parameter (values on a shared time line).</summary>
@@ -789,7 +796,7 @@ public partial class GraphStudioViewModel : BaseViewModel
     private Task ShareRecording(GraphRecording? recording) =>
         recording is null
             ? Task.CompletedTask
-            : Share.Default.RequestAsync(new ShareFileRequest { Title = "GCar360 Graph Studio", File = new ShareFile(recording.Path) });
+            : Share.Default.RequestAsync(new ShareFileRequest { Title = "OBD360 Graph Studio", File = new ShareFile(recording.Path) });
 
     [RelayCommand]
     private void DeleteRecording(GraphRecording? recording)
@@ -851,7 +858,7 @@ public partial class GraphStudioViewModel : BaseViewModel
         IsPaused = true;
         ScrollBackSeconds = 0;
         ApplyChannels(pids.Where(pid => pid >= 0));
-        await Shell.Current.GoToAsync("..");
+        await CarScanner.Services.SafeNavigation.GoToAsync("..");
     }
 
     [RelayCommand]

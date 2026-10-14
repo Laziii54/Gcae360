@@ -183,8 +183,8 @@ public partial class HybridHealthViewModel : BaseViewModel
         if (string.IsNullOrWhiteSpace(RawLog)) return;
         try
         {
-            await Clipboard.Default.SetTextAsync($"GCar360 HV battery log\n{VehicleName}\n{RawLog}");
-            CopyLogText = L("დაკოპირდა ✓", "Copied ✓");
+            await Clipboard.Default.SetTextAsync($"OBD360 HV battery log\n{VehicleName}\n{RawLog}");
+            CopyLogText = L("დაკოპირდა", "Copied");
         }
         catch
         {
@@ -298,7 +298,7 @@ public partial class HybridHealthViewModel : BaseViewModel
         {
             LoadResultColor = "#B3361F";
             LoadResultTitle = L("ტესტი ვერ შესრულდა", "Test failed");
-            LoadResultText = ex.Message;
+            LoadResultText = CarScanner.Services.UserError.Describe(ex);
             HasLoadResult = true;
         }
         finally
@@ -351,7 +351,6 @@ public partial class HybridHealthViewModel : BaseViewModel
         var section = new CarScanner.Services.Reports.ReportSectionItem
         {
             Kind = "battery",
-            Icon = "⚡",
             Title = L("ჰიბრიდის / EV ბატარეა", "Hybrid / EV battery"),
             Status = result.Score is { } score
                 ? score >= 80 ? CarScanner.Services.Reports.ReportStatus.Ok
@@ -598,7 +597,7 @@ public partial class HybridHealthViewModel : BaseViewModel
         LoadResultColor = ColorFor(HvPackAssessment.Score(outcome.MaxSpread, lithium, underLoad: true));
         LoadResultTitle = verdict switch
         {
-            HvPackAssessment.Verdict.Good => L("✓ დატვირთვაზე ბლოკები თანაბრად მუშაობს", "✓ Blocks stay even under load"),
+            HvPackAssessment.Verdict.Good => L("დატვირთვაზე ბლოკები თანაბრად მუშაობს", "Blocks stay even under load"),
             HvPackAssessment.Verdict.Watch => L("დატვირთვაზე სხვაობა გაიზარდა — დააკვირდი", "The spread grows under load — keep an eye on it"),
             HvPackAssessment.Verdict.Weak => L("სუსტი ბლოკი დატვირთვაზე", "Weak block under load"),
             _ => L("ბატარეა დატვირთვას ვერ უძლებს", "The pack does not hold up under load")

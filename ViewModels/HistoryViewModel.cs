@@ -69,7 +69,7 @@ public partial class HistoryViewModel : BaseViewModel
 
             if (items.Count == 0 && sessions.Count == 0)
             {
-                await Shell.Current.DisplayAlertAsync(
+                await Shell.Current.DisplayAlertLocalizedAsync(
                     CarScanner.Services.Localization.LocalizationService.T("ექსპორტი"),
                     CarScanner.Services.Localization.LocalizationService.T("ისტორია ცარიელია."),
                     CarScanner.Services.Localization.LocalizationService.T("კარგი"));
@@ -110,13 +110,13 @@ public partial class HistoryViewModel : BaseViewModel
             await Share.Default.RequestAsync(
                 new ShareFileRequest
                 {
-                    Title = "Car Scanner History",
+                    Title = "OBD360 History",
                     File = new ShareFile(path)
                 });
         }
         catch (Exception ex)
         {
-            await Shell.Current.DisplayAlertAsync(
+            await Shell.Current.DisplayAlertLocalizedAsync(
                 CarScanner.Services.Localization.LocalizationService.T("ექსპორტის შეცდომა"),
                 CarScanner.Services.UserError.Describe(ex),
                 CarScanner.Services.Localization.LocalizationService.T("კარგი"));
@@ -131,7 +131,7 @@ public partial class HistoryViewModel : BaseViewModel
     {
         try
         {
-        var confirm = await Shell.Current.DisplayAlertAsync(
+        var confirm = await Shell.Current.DisplayAlertLocalizedAsync(
             CarScanner.Services.Localization.LocalizationService.T("დადასტურება"),
             CarScanner.Services.Localization.LocalizationService.T("წაიშლება ყველა შენახული სკანი, DTC, სენსორის მონაცემი, readiness, ECU ინფორმაცია და freeze frame. გსურთ გაგრძელება?"),
             CarScanner.Services.Localization.LocalizationService.T("დიახ"),

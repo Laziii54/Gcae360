@@ -1,3 +1,4 @@
+using CarScanner.Services;
 using CarScanner.Services.Localization;
 using CarScanner.Services.PerformanceVideo;
 using CarScanner.ViewModels;
@@ -22,8 +23,8 @@ public partial class AccelerationPage : ContentPage
         PageTitleView.BindingContext = Shell.Current?.BindingContext;
         SemanticProperties.SetDescription(CameraButton, PerformanceVideoText.Get(PerformanceVideoText.OpenCamera));
         SafetyWarningLabel.Text = L(
-            "⚠ გაზომე მხოლოდ დახურულ ტრასაზე ან ცარიელ, ლეგალურ ადგილას. დაიცავი მოძრაობის წესები.",
-            "⚠ Measure only on a closed track or an empty, legal place. Obey traffic laws.");
+            "გაზომე მხოლოდ დახურულ ტრასაზე ან ცარიელ, ლეგალურ ადგილას. დაიცავი მოძრაობის წესები.",
+            "Measure only on a closed track or an empty, legal place. Obey traffic laws.");
 
         // One-time safety acknowledgement before the first measurement.
         if (!await EnsureSafetyAcknowledgedAsync())
@@ -60,7 +61,7 @@ public partial class AccelerationPage : ContentPage
         _askingSafety = true;
         try
         {
-            var accepted = await DisplayAlertAsync(
+            var accepted = await this.DisplayAlertLocalizedAsync(
                 L("უსაფრთხოება", "Safety"),
                 L("გაზომე მხოლოდ დახურულ ტრასაზე ან ცარიელ, ლეგალურ ადგილას. დაიცავი მოძრაობის წესები. შენს უსაფრთხოებაზე პასუხისმგებელი შენ ხარ.",
                   "Measure only on a closed track or an empty, legal place. Obey traffic laws. You are responsible for your safety."),
@@ -75,7 +76,7 @@ public partial class AccelerationPage : ContentPage
             }
 
             if (Shell.Current is { } shell)
-                await shell.GoToAsync("..");
+                await CarScanner.Services.SafeNavigation.GoToAsync("..");
             return false;
         }
         finally
@@ -91,14 +92,14 @@ public partial class AccelerationPage : ContentPage
             var exporter = Application.Current?.Handler?.MauiContext?.Services.GetService<IPerformanceVideoExporter>();
             if (exporter is null || !exporter.IsSupported)
             {
-                await DisplayAlertAsync(
+                await this.DisplayAlertLocalizedAsync(
                     PerformanceVideoText.Get(PerformanceVideoText.Title),
                     PerformanceVideoText.Get(PerformanceVideoText.NotSupported),
                     PerformanceVideoText.Get(PerformanceVideoText.Close));
                 return;
             }
 
-            await Shell.Current.GoToAsync(nameof(PerformanceVideoPage));
+            await CarScanner.Services.SafeNavigation.GoToAsync(nameof(PerformanceVideoPage));
         }
         catch
         {
@@ -115,14 +116,15 @@ public partial class AccelerationPage : ContentPage
             if (shot is null)
                 return;
 
-            var path = Path.Combine(FileSystem.CacheDirectory, $"gcar360-0-100-{DateTime.Now:yyyyMMdd-HHmmss}.png");
+            var label = (BindingContext as HomeViewModel)?.AccelerationHeadline ?? "0–100";
+            var path = Path.Combine(FileSystem.CacheDirectory, $"obd360-{label.Replace(" ", "").Replace("–", "-").Replace("/", "")}-{DateTime.Now:yyyyMMdd-HHmmss}.png");
             await using (var source = await shot.OpenReadAsync(ScreenshotFormat.Png))
             await using (var target = File.Create(path))
                 await source.CopyToAsync(target);
 
             await Share.Default.RequestAsync(new ShareFileRequest
             {
-                Title = "GCar360 0–100",
+                Title = "OBD360 " + label,
                 File = new ShareFile(path)
             });
         }

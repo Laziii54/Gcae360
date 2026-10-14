@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:CarScanner.Controls"
              xmlns:vm="clr-namespace:CarScanner.ViewModels"
              x:Class="CarScanner.Views.AccelerationLeaderboardPage"
              x:DataType="vm:AccelerationLeaderboardViewModel"
@@ -37,10 +38,10 @@
             <VerticalStackLayout Padding="16,14,16,32" Spacing="14">
 
                 <!-- Safety notice (Georgian literal, translated by LocalizationService.Apply) -->
-                <Label Text="⚠ გაზომე მხოლოდ დახურულ ტრასაზე ან ცარიელ, ლეგალურ ადგილას. დაიცავი მოძრაობის წესები."
-                       TextColor="#F59E0B" FontSize="11" FontAttributes="Bold" LineBreakMode="WordWrap" />
+                <Label Text="გაზომე მხოლოდ დახურულ ტრასაზე ან ცარიელ, ლეგალურ ადგილას. დაიცავი მოძრაობის წესები."
+                       TextColor="#F59E0B" FontSize="12" FontAttributes="Bold" LineBreakMode="WordWrap" />
 
-                <!-- ===== Title + filter (☰) button ===== -->
+                <!-- ===== Title + filter () button ===== -->
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                     <VerticalStackLayout Spacing="2" VerticalOptions="Center">
                         <Label Text="{Binding Heading}" Style="{StaticResource PageTitleStyle}" />
@@ -59,7 +60,7 @@
                         <Border IsVisible="{Binding HasActiveFilters}" WidthRequest="20" HeightRequest="20" StrokeThickness="0"
                                 StrokeShape="RoundRectangle 10" BackgroundColor="{DynamicResource Primary}"
                                 HorizontalOptions="End" VerticalOptions="Start" Margin="0,-6,-6,0" InputTransparent="True">
-                            <Label Text="{Binding ActiveFilterCount}" FontSize="11" FontAttributes="Bold" TextColor="White"
+                            <Label Text="{Binding ActiveFilterCount}" FontSize="12" FontAttributes="Bold" TextColor="White"
                                    HorizontalOptions="Center" VerticalOptions="Center" />
                         </Border>
                     </Grid>
@@ -88,7 +89,7 @@
                                     <FormattedString>
                                         <Span Text="{Binding Second.TimeText}" FontSize="19" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
                                         <Span Text=" " />
-                                        <Span Text="{Binding Second.SecondsUnit}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                        <Span Text="{Binding Second.SecondsUnit}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                                     </FormattedString>
                                 </Label.FormattedText>
                             </Label>
@@ -118,7 +119,7 @@
                                     <FormattedString>
                                         <Span Text="{Binding First.TimeText}" FontSize="23" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
                                         <Span Text=" " />
-                                        <Span Text="{Binding First.SecondsUnit}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                        <Span Text="{Binding First.SecondsUnit}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                                     </FormattedString>
                                 </Label.FormattedText>
                             </Label>
@@ -148,7 +149,7 @@
                                     <FormattedString>
                                         <Span Text="{Binding Third.TimeText}" FontSize="19" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
                                         <Span Text=" " />
-                                        <Span Text="{Binding Third.SecondsUnit}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                        <Span Text="{Binding Third.SecondsUnit}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                                     </FormattedString>
                                 </Label.FormattedText>
                             </Label>
@@ -167,7 +168,7 @@
                             <Label Text="{Binding MyPlaceRank}" FontSize="17" FontAttributes="Bold" TextColor="White"
                                    HorizontalOptions="Center" VerticalOptions="Center" />
                         </Border>
-                        <Label Grid.Column="1" Text="{Binding MyPlaceCaption}" FontSize="11" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
+                        <Label Grid.Column="1" Text="{Binding MyPlaceCaption}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
                         <Label Grid.Column="2" Text="{Binding MyPlaceTime}" FontSize="18" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
                         <Label Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding MyPlaceDetail}" FontSize="12"
                                TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
@@ -213,7 +214,7 @@
                                             <Label Text="{Binding UserName}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
                                                    LineBreakMode="TailTruncation" />
                                             <Label Text="{Binding VehicleModel}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
-                                            <Label Text="{Binding VerificationText}" IsVisible="{Binding HasVerification}" FontSize="10"
+                                            <Label Text="{Binding VerificationText}" IsVisible="{Binding HasVerification}" FontSize="12"
                                                    FontAttributes="Bold" TextColor="{Binding VerificationColor}" />
                                         </VerticalStackLayout>
                                         <VerticalStackLayout Grid.Column="3" Spacing="1" VerticalOptions="Center">
@@ -222,11 +223,11 @@
                                                     <FormattedString>
                                                         <Span Text="{Binding TimeText}" FontSize="18" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
                                                         <Span Text=" " />
-                                                        <Span Text="{Binding SecondsUnit}" FontSize="11" TextColor="{DynamicResource SubTextColor}" />
+                                                        <Span Text="{Binding SecondsUnit}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                                                     </FormattedString>
                                                 </Label.FormattedText>
                                             </Label>
-                                            <Label Text="{Binding DateText}" FontSize="10" TextColor="{DynamicResource SubTextColor}" HorizontalOptions="End" />
+                                            <Label Text="{Binding DateText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalOptions="End" />
                                         </VerticalStackLayout>
                                     </Grid>
                                     <BoxView Style="{StaticResource RowDividerStyle}" Margin="94,0,0,0" />
@@ -238,7 +239,6 @@
 
                 <Border IsVisible="{Binding HasAnyResult, Converter={StaticResource InverseBoolConverter}}" Style="{StaticResource ListCardStyle}" Padding="16,22">
                     <VerticalStackLayout Spacing="6">
-                        <Label Text="🏁" FontSize="28" HorizontalOptions="Center" />
                         <Label Text="{Binding EmptyText}" FontSize="13" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                 </Border>
@@ -252,9 +252,9 @@
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
                             <Path Data="M12,3 L20,6 L20,12 C20,17 16.5,20 12,21 C7.5,20 4,17 4,12 L4,6 Z" Style="{StaticResource RowIconStyle}" VerticalOptions="Center" />
                             <Label Grid.Column="1" Text="{Binding RulesTitle}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
-                            <Label Grid.Column="2" Text="⌄" FontSize="16" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
+                            <controls:Icon Grid.Column="2" Kind="chevron-down" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" />
                         </Grid>
-                        <Label IsVisible="{Binding IsRulesOpen}" Text="{Binding RulesText}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                        <Label IsVisible="{Binding IsRulesOpen}" Text="{Binding RulesText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                     </VerticalStackLayout>
                 </Border>
             </VerticalStackLayout>
@@ -295,7 +295,7 @@
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                         <VerticalStackLayout Spacing="2" VerticalOptions="Center">
                             <Label Text="{Binding VerifiedOnlyText}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
-                            <Label Text="{Binding VerifiedOnlyHint}" FontSize="11.5" TextColor="{DynamicResource SubTextColor}" />
+                            <Label Text="{Binding VerifiedOnlyHint}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                         </VerticalStackLayout>
                         <Switch Grid.Column="1" IsToggled="{Binding VerifiedOnly}" OnColor="{DynamicResource Primary}" VerticalOptions="Center" />
                     </Grid>

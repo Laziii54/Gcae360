@@ -5,10 +5,10 @@ using CarScanner.Services.PerformanceVideo;
 
 namespace CarScanner.Droid.PerformanceVideo;
 
-/// <summary>Android: burns the overlay into the video and saves files to Movies/GCar360.</summary>
+/// <summary>Android: burns the overlay into the video and saves files to Movies/OBD360.</summary>
 public sealed class AndroidPerformanceVideoExporter : IPerformanceVideoExporter
 {
-    private const string AlbumFolder = "GCar360";
+    private const string AlbumFolder = "OBD360";
 
     public bool IsSupported => true;
 

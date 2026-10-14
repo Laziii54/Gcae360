@@ -24,8 +24,10 @@ public sealed class VehicleInfoService
     /// <summary>Raised after a real OBD vehicle profile has been read.</summary>
     public event EventHandler<VehicleInfo>? VehicleInfoUpdated;
 
-    /// <summary>Most recent real vehicle identity, shared by read-only views.</summary>
-    public VehicleInfo? CurrentVehicle { get; private set; }
+    private readonly VehicleSessionIdentity _session = new();
+
+    /// <summary>Identity of the vehicle connected in THIS session (null when disconnected or not identified). Saved history is separate.</summary>
+    public VehicleInfo? CurrentVehicle => _session.Current;
 
     public VehicleInfoService(
         OBDService obd,
@@ -110,7 +112,6 @@ public sealed class VehicleInfoService
 
     private readonly object _identityTaskLock = new();
     private Task<VehicleInfo>? _identityTask;
-    private int _connectionGeneration;
 
     /// <summary>
     /// True while the connection-time identity read is running. Home uses it
@@ -143,7 +144,7 @@ public sealed class VehicleInfoService
             if (!forceVinRefresh && current is not null && IsIdentityComplete(current))
                 return Task.FromResult(current);
 
-            var generation = _connectionGeneration;
+            var generation = _session.Generation;
             _identityTask = Task.Run(() => ReadIdentityProgressiveAsync(generation));
             return _identityTask;
         }
@@ -167,10 +168,9 @@ public sealed class VehicleInfoService
         {
             // Any read still running belongs to the previous connection and
             // must not publish into the next one.
-            _connectionGeneration++;
+            _session.Invalidate();
             _identityTask = null;
             TrimUnavailableReason = TrimUnavailableReasonKind.None;
-            CurrentVehicle = null;
         }
     }
 
@@ -295,7 +295,7 @@ public sealed class VehicleInfoService
 
             Publish(info, generation);
 
-            if (VinResponseParser.IsValidVin(info.VIN) && generation == Volatile.Read(ref _connectionGeneration))
+            if (VinResponseParser.IsValidVin(info.VIN) && generation == _session.Generation)
             {
                 SaveIdentityCache(info);
                 await SaveDatabaseCacheAsync(info).ConfigureAwait(false);
@@ -322,12 +322,12 @@ public sealed class VehicleInfoService
         VehicleInfo snapshot;
         lock (_identityTaskLock)
         {
-            if (generation != _connectionGeneration)
+            if (generation != _session.Generation)
                 return;
 
             snapshot = Clone(info);
             if (!notifyOnly)
-                CurrentVehicle = snapshot;
+                _session.TrySet(generation, snapshot);
         }
 
         try { _profileResolver.Resolve(snapshot); } catch { }
@@ -525,6 +525,7 @@ public sealed class VehicleInfoService
 
     public async Task<VehicleInfo> ReadVehicleInfoAsync(CancellationToken token = default)
     {
+        var generation = _session.Generation;
         var previous = CurrentVehicle;
         var vin = await ReadVinAsync(token).ConfigureAwait(false);
         if (!VinResponseParser.IsValidVin(vin) && VinResponseParser.IsValidVin(previous?.VIN))
@@ -636,7 +637,11 @@ public sealed class VehicleInfoService
             }).ConfigureAwait(false);
         }
 
-        CurrentVehicle = info;
+        // An answer that arrives after the adapter was disconnected (or after a new connection began) belongs to the earlier
+        // session: the caller still gets it, but it is neither stored as the current vehicle nor announced.
+        if (!_session.TrySet(generation, info))
+            return info;
+
         _profileResolver.Resolve(info);
         VehicleInfoUpdated?.Invoke(this, info);
         return info;
@@ -650,6 +655,7 @@ public sealed class VehicleInfoService
     /// </summary>
     public async Task<VehicleInfo> ReadVehicleInfoQuickAsync(CancellationToken token = default)
     {
+        var generation = _session.Generation;
         var previous = CurrentVehicle;
         var vin = await ReadVinAsync(token).ConfigureAwait(false);
         if (!VinResponseParser.IsValidVin(vin) && VinResponseParser.IsValidVin(previous?.VIN))
@@ -743,7 +749,11 @@ public sealed class VehicleInfoService
             }
         }
 
-        CurrentVehicle = info;
+        // An answer that arrives after the adapter was disconnected (or after a new connection began) belongs to the earlier
+        // session: the caller still gets it, but it is neither stored as the current vehicle nor announced.
+        if (!_session.TrySet(generation, info))
+            return info;
+
         _profileResolver.Resolve(info);
         VehicleInfoUpdated?.Invoke(this, info);
         return info;

@@ -3,11 +3,11 @@
     <Shell.TitleView>
         <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="0" Padding="0,0,8,0">
             <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="0">
-                <Label Text="GCar360" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" LineBreakMode="TailTruncation" />
-                <Label Text="{Binding VehicleTypeText}" TextColor="#94A3B8" FontSize="9" />
+                <Label Text="OBD360" TextColor="{DynamicResource TextColor}" FontSize="13" FontAttributes="Bold" LineBreakMode="TailTruncation" />
+                <Label Text="{Binding VehicleTypeText}" TextColor="#94A3B8" FontSize="12" />
             </VerticalStackLayout>
         </Grid>
     </Shell.TitleView>
-    <ShellContent Title="GCar360" Shell.NavBarIsVisible="False" ContentTemplate="{DataTemplate views:StartPage}" Route="StartPage" />
+    <ShellContent Title="OBD360" Shell.NavBarIsVisible="False" ContentTemplate="{DataTemplate views:StartPage}" Route="StartPage" />
     <ShellContent Title="მთავარი" Shell.NavBarIsVisible="False" ContentTemplate="{DataTemplate views:HomePage}" Route="HomePage" />
 </Shell>

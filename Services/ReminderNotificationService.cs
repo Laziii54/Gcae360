@@ -91,10 +91,10 @@ public sealed class ReminderNotificationService
         await LocalNotificationCenter.Current.Show(new NotificationRequest
         {
             NotificationId = NotificationId,
-            Title = "Georgian Car Scanner",
-            Description = CarScanner.Services.OBD.ObdLang.IsEnglish
+            Title = "OBD360",
+            Description = CarScanner.Services.Localization.LocalizationService.T(CarScanner.Services.OBD.ObdLang.IsEnglish
                 ? "It has been 2 weeks since your last scan. Time for a new OBD-II check."
-                : "უკვე 2 კვირაა მანქანა არ დაგისკანერებიათ. დროა ახალი OBD-II სკანირება ჩაატაროთ.",
+                : "უკვე 2 კვირაა მანქანა არ დაგისკანერებიათ. დროა ახალი OBD-II სკანირება ჩაატაროთ."),
             Schedule = new NotificationRequestSchedule { NotifyTime = notifyAt.ToLocalTime() },
             ReturningData = "scan-reminder"
         });

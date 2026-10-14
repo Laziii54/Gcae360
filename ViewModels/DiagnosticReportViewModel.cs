@@ -198,7 +198,7 @@ public partial class DiagnosticReportViewModel : BaseViewModel
             var path = await _reports.ExportPdfAsync(_report);
             await Share.Default.RequestAsync(new ShareFileRequest
             {
-                Title = "GCar360 — " + L("დიაგნოსტიკური ანგარიში", "Diagnostic report"),
+                Title = "OBD360 — " + L("დიაგნოსტიკური ანგარიში", "Diagnostic report"),
                 File = new ShareFile(path)
             });
         }
@@ -228,7 +228,7 @@ public partial class DiagnosticReportViewModel : BaseViewModel
         {
             await Share.Default.RequestAsync(new ShareTextRequest
             {
-                Title = "GCar360 — " + L("დიაგნოსტიკური ანგარიში", "Diagnostic report"),
+                Title = "OBD360 — " + L("დიაგნოსტიკური ანგარიში", "Diagnostic report"),
                 Text = _reports.BuildText(_report)
             });
         }
@@ -257,7 +257,7 @@ public partial class DiagnosticReportViewModel : BaseViewModel
             .Where(value => !IsUnknown(value))
             .Distinct(StringComparer.OrdinalIgnoreCase);
 
-        // Same limits as the server (QrReportStore); an unknown vehicle is "GCar360".
+        // Same limits as the server (QrReportStore); an unknown vehicle is "OBD360".
         static string Clip(string? text, int max)
         {
             text = (text ?? string.Empty).Trim();
@@ -267,7 +267,7 @@ public partial class DiagnosticReportViewModel : BaseViewModel
         var vehicleName = string.Join(" ", display);
         _qrSession.Set(new QrReportDraft
         {
-            Vehicle = Clip(string.IsNullOrWhiteSpace(vehicleName) ? "GCar360" : vehicleName, 160),
+            Vehicle = Clip(string.IsNullOrWhiteSpace(vehicleName) ? "OBD360" : vehicleName, 160),
             Vin = vehicle.VIN ?? string.Empty,
             CheckedAt = _report.FinishedAt,
             Status = Clip(ReportState, 120),
@@ -276,7 +276,7 @@ public partial class DiagnosticReportViewModel : BaseViewModel
             ReadinessSummary = Clip(EmissionsSummary, 4000),
             ServiceHistory = Clip(BuildServiceHistoryText(vehicle), 4000)
         });
-        await Shell.Current.GoToAsync(nameof(Views.QrReportPage));
+        await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.QrReportPage));
         }
         catch (Exception commandException)
         {
@@ -285,7 +285,7 @@ public partial class DiagnosticReportViewModel : BaseViewModel
     }
 
     [RelayCommand]
-    private Task StartNewScan() => Shell.Current.GoToAsync(nameof(Views.ModuleScanPage));
+    private Task StartNewScan() => CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.ModuleScanPage));
 
     /// <summary>Owner-entered service history for the QR report (one line per item).</summary>
     private string BuildServiceHistoryText(VehicleInfo vehicle)

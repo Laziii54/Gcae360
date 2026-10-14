@@ -10,7 +10,15 @@ public sealed class WifiObdTransport : IObdTransport, IDisposable
     private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(4);
     private static readonly TimeSpan DefaultCommandTimeout = TimeSpan.FromSeconds(5);
 
+    /// <summary>
+    /// A timeout after which the adapter does not even answer the resync carriage return means the link is dead (adapter
+    /// unplugged, phone left the adapter network, half-open TCP). This many in a row end the connection instead of leaving
+    /// the app "connected" while every command times out. A slow command whose adapter still answers never counts.
+    /// </summary>
+    internal const int SilentTimeoutLimit = 3;
+
     private readonly SemaphoreSlim _commandGate = new(1, 1);
+    private int _silentTimeouts;
     private TcpClient? _client;
     private NetworkStream? _stream;
     private CancellationTokenSource? _connectionLifetime;
@@ -56,6 +64,7 @@ public sealed class WifiObdTransport : IObdTransport, IDisposable
             _client = client;
             _stream = client.GetStream();
             _connectionLifetime = new CancellationTokenSource();
+            Volatile.Write(ref _silentTimeouts, 0);
             ConnectedDeviceName = $"Wi-Fi ELM327 ({address}:{options.Port})";
 
             try
@@ -136,6 +145,11 @@ public sealed class WifiObdTransport : IObdTransport, IDisposable
             CloseConnection(notify: true);
             throw new ObdConnectionLostException("Wi-Fi OBD connection was lost.", ex);
         }
+        catch (LinkSilentException ex)
+        {
+            CloseConnection(notify: true);
+            throw new ObdConnectionLostException("The Wi-Fi OBD adapter stopped answering.", ex);
+        }
         finally
         {
             _commandGate.Release();
@@ -170,7 +184,11 @@ public sealed class WifiObdTransport : IObdTransport, IDisposable
             await stream.FlushAsync(token).ConfigureAwait(false);
 
             if (isMonitor)
-                return await MonitorAsync(stream, monitorMilliseconds, token).ConfigureAwait(false);
+            {
+                var monitored = await MonitorAsync(stream, monitorMilliseconds, token).ConfigureAwait(false);
+                Volatile.Write(ref _silentTimeouts, 0);
+                return monitored;
+            }
 
             var response = new StringBuilder();
             var buffer = new byte[1024];
@@ -183,16 +201,25 @@ public sealed class WifiObdTransport : IObdTransport, IDisposable
 
                 response.Append(Encoding.ASCII.GetString(buffer, 0, read));
                 if (response.ToString().Contains('>'))
+                {
+                    Volatile.Write(ref _silentTimeouts, 0);
                     return response.ToString();
+                }
             }
         }
         catch (OperationCanceledException) when (!lifetimeToken.IsCancellationRequested)
         {
             // Timed out or cancelled while the adapter may still be busy:
             // stop it and throw away the rest of its answer.
-            await ResyncAsync(stream, lifetimeToken).ConfigureAwait(false);
+            var adapterAnswered = await ResyncAsync(stream, lifetimeToken).ConfigureAwait(false);
+            var timedOut = timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested;
 
-            if (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            if (adapterAnswered)
+                Volatile.Write(ref _silentTimeouts, 0);
+            else if (timedOut && Interlocked.Increment(ref _silentTimeouts) >= SilentTimeoutLimit)
+                throw new LinkSilentException();
+
+            if (timedOut)
                 throw new TimeoutException("The Wi-Fi OBD adapter is not responding.");
             throw;
         }
@@ -222,7 +249,7 @@ public sealed class WifiObdTransport : IObdTransport, IDisposable
     /// is still processing), reads until the '>' prompt for at most ~500 ms and
     /// discards everything. Never throws; a lost link is detected by the next command.
     /// </summary>
-    private static async Task ResyncAsync(NetworkStream stream, CancellationToken lifetimeToken)
+    private static async Task<bool> ResyncAsync(NetworkStream stream, CancellationToken lifetimeToken)
     {
         using var resyncCts = CancellationTokenSource.CreateLinkedTokenSource(lifetimeToken);
         resyncCts.CancelAfter(TimeSpan.FromMilliseconds(500));
@@ -237,10 +264,10 @@ public sealed class WifiObdTransport : IObdTransport, IDisposable
             {
                 var read = await stream.ReadAsync(buffer, resyncCts.Token).ConfigureAwait(false);
                 if (read == 0)
-                    return;
+                    return false;
                 seen.Append(Encoding.ASCII.GetString(buffer, 0, read));
                 if (seen.ToString().Contains('>'))
-                    return;
+                    return true;
             }
         }
         catch (OperationCanceledException)
@@ -255,6 +282,14 @@ public sealed class WifiObdTransport : IObdTransport, IDisposable
         catch (ObjectDisposedException)
         {
         }
+
+        return false;
+    }
+
+    /// <summary>Internal signal: the adapter stayed silent through several timeouts and resyncs.</summary>
+    private sealed class LinkSilentException : Exception
+    {
+        public LinkSilentException() : base("The Wi-Fi OBD adapter stopped answering.") { }
     }
 
     /// <summary>Collects monitored frames for a fixed time, then stops monitoring.</summary>

@@ -329,10 +329,8 @@ public partial class LiveDataViewModel : BaseViewModel
         Protocol = _obd.IsInitialized ? _obd.CurrentProtocolDescription : "OBD პროტოკოლი იტვირთება…";
 
         var vehicle = _vehicle.CurrentVehicle;
-        VehicleName = vehicle is null || string.IsNullOrWhiteSpace(vehicle.Manufacturer) || vehicle.Manufacturer == "Unknown"
-            ? _brand.Current.DisplayName
-            : string.Join(" ", new[] { vehicle.Manufacturer, vehicle.Model, vehicle.Year }
-                .Where(value => !string.IsNullOrWhiteSpace(value) && value != "Unknown"));
+        // Only what this session identified; the brand picked earlier is a preference and is not shown as the vehicle.
+        VehicleName = CarScanner.Services.VehicleIdentityText.Name(vehicle, CarScanner.Services.OBD.ObdLang.IsEnglish);
         Vin = vehicle?.VIN is { Length: 17 } knownVin ? knownVin : "VIN ECU-დან ჯერ არ მოსულა";
         EcuName = vehicle?.ECUName is { Length: > 0 } ecu && ecu != "Unknown"
             ? ecu
@@ -728,7 +726,7 @@ public partial class LiveDataViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            StatusMessage = ex.Message;
+            StatusMessage = CarScanner.Services.UserError.Describe(ex);
         }
         finally
         {
@@ -762,7 +760,7 @@ public partial class LiveDataViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            StatusMessage = ex.Message;
+            StatusMessage = CarScanner.Services.UserError.Describe(ex);
         }
         finally
         {
@@ -829,7 +827,7 @@ public partial class LiveDataViewModel : BaseViewModel
         }
         catch (Exception exception)
         {
-            SourceMessage = exception.Message;
+            SourceMessage = CarScanner.Services.UserError.Describe(exception);
             StatusMessage = "OEM Live Data ვერ დაიწყო; გამოგონილი მონაცემი არ გამოჩნდება.";
         }
         finally
@@ -886,7 +884,7 @@ public partial class LiveDataViewModel : BaseViewModel
 
     [RelayCommand]
     // Recordings now live in Graph Studio (old RecordingHistoryPage removed).
-    private Task OpenRecordingHistory() => Shell.Current.GoToAsync(nameof(Views.GraphStudioPage));
+    private Task OpenRecordingHistory() => CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.GraphStudioPage));
 
     public IReadOnlyList<ObdTelemetrySample> GetRecording()
     {

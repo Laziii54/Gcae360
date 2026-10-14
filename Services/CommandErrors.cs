@@ -50,7 +50,7 @@ public static class CommandErrors
                 // only messages the app itself wrote for the user.
                 var detail = UserError.Describe(exception);
                 var generic = UserError.Describe(null);
-                await page.DisplayAlertAsync(
+                await page.DisplayAlertLocalizedAsync(
                     LocalizationService.T("რაღაც ვერ შესრულდა"),
                     LocalizationService.T("მოქმედება ვერ დასრულდა. შეამოწმე კავშირი და სცადე თავიდან.") +
                     (string.IsNullOrWhiteSpace(detail) || string.Equals(detail, generic, StringComparison.Ordinal)

@@ -30,7 +30,7 @@ public partial class VinPhotoGalleryPage : ContentPage, IQueryAttributable
 
     private async void CloseClicked(object? sender, EventArgs e)
     {
-        try { await Shell.Current.GoToAsync(".."); } catch { }
+        try { await CarScanner.Services.SafeNavigation.GoToAsync(".."); } catch { }
     }
 
     private void PreviousClicked(object? sender, EventArgs e)
