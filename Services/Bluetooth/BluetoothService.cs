@@ -85,6 +85,17 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
     private int _reconnecting;
     private readonly SemaphoreSlim _connectGate = new(1, 1);
 
+    /// <summary>
+    /// Upper bound on a single connect attempt. Some BLE stacks and cheap ELM327 clones never answer
+    /// <c>ConnectToDeviceAsync</c>/the classic <c>BluetoothSocket.Connect()</c> again once the attempt is
+    /// interrupted (for example by the user leaving the page right after tapping Connect) — and the classic
+    /// path's blocking socket call ignores cancellation entirely once started. Without this bound, such a
+    /// stuck attempt holds <see cref="_connectGate"/> forever, so every later connect AND every disconnect
+    /// (it needs the same kind of gate one layer up, in ObdConnectionService) hangs too: the whole OBD layer
+    /// freezes app-wide and only a force-kill recovers. See <see cref="ConnectAsync"/>.
+    /// </summary>
+    private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(20);
+
     /// <summary>True while the app is reconnecting after the link dropped.</summary>
     public bool IsReconnecting => Volatile.Read(ref _reconnecting) == 1;
 
@@ -325,7 +336,33 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         await _connectGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            await ConnectCoreAsync(item, cancellationToken).ConfigureAwait(false);
+            var timeoutSource = new CancellationTokenSource();
+            var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutSource.Token);
+            var connectTask = ConnectCoreAsync(item, linkedSource.Token);
+            var delayTask = Task.Delay(ConnectTimeout);
+
+            if (await Task.WhenAny(connectTask, delayTask).ConfigureAwait(false) != connectTask)
+            {
+                // The native call ignored cancellation (the classic socket path cannot be interrupted once
+                // Connect() is blocking): stop waiting on it so the gate is released, and let it finish on its
+                // own in the background instead of hanging this call — and the whole app with it — forever.
+                // Disposal of the two sources is deferred to whenever that background attempt actually settles.
+                timeoutSource.Cancel();
+                ObserveAbandonedConnectAttempt(connectTask, item, linkedSource, timeoutSource);
+                cancellationToken.ThrowIfCancellationRequested();
+                throw new TimeoutException("OBD ადაპტერთან დაკავშირების ვადა ამოეწურა.");
+            }
+
+            try
+            {
+                await connectTask.ConfigureAwait(false);
+            }
+            finally
+            {
+                linkedSource.Dispose();
+                timeoutSource.Dispose();
+            }
+
             _lastDevice = item;
             _userDisconnect = false;
             _failedAdapterChecks = 0;
@@ -334,6 +371,31 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         {
             _connectGate.Release();
         }
+    }
+
+    /// <summary>
+    /// After giving up on a connect attempt that ignored its timeout, the native call may still finish on its
+    /// own in the background. This only observes the result so it never surfaces as an unobserved task
+    /// exception, and releases the cancellation sources once it does — it deliberately does not try to undo a
+    /// late success, since the device may simply have taken longer than <see cref="ConnectTimeout"/> and is now
+    /// genuinely connected and usable.
+    /// </summary>
+    private void ObserveAbandonedConnectAttempt(Task connectTask, BleDeviceItem item, CancellationTokenSource linkedSource, CancellationTokenSource timeoutSource)
+    {
+        _ = connectTask.ContinueWith(
+            task =>
+            {
+                if (task.IsFaulted)
+                    _logger.LogDebug(task.Exception, "Abandoned connect attempt to {Device} finished with an error after the timeout.", item.DisplayName);
+                else if (task.IsCompletedSuccessfully)
+                    _logger.LogWarning("Abandoned connect attempt to {Device} succeeded after the timeout had already given up on it.", item.DisplayName);
+
+                linkedSource.Dispose();
+                timeoutSource.Dispose();
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     private async Task ConnectCoreAsync(
@@ -1324,8 +1386,12 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
 
         try
         {
+            // A plain await here can hang forever: Stream.ReadAsync on some Android InputStream bridges
+            // blocks on the native read and only checks the token before starting, same as the classic
+            // socket Connect() call above. Bounding this wait keeps a disconnect (and the ObdConnectionService
+            // gate it runs under) from freezing the app when the adapter stops answering mid-read.
             if (_classicReadTask != null)
-                await _classicReadTask
+                await Task.WhenAny(_classicReadTask, Task.Delay(TimeSpan.FromSeconds(3)))
                     .ConfigureAwait(false);
         }
         catch

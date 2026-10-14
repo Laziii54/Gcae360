@@ -41,6 +41,9 @@ public sealed class CodingService
     private readonly LiveDataEngine _engine;
     private readonly LocalizationService _localization;
     private readonly VehicleBrandProfileService _brandProfiles;
+    private readonly FreezeFrameReaderService _freezeFrame;
+    private readonly CarScanner.Services.OemDiagnostics.ServiceDataReaderService _serviceData;
+    private readonly AdvancedDiagnosticService _advancedDiagnostic;
     private readonly SemaphoreSlim _busy = new(1, 1);
     private readonly IsoTpReassembler _isoTp = new();
 
@@ -52,7 +55,10 @@ public sealed class CodingService
         VehicleInfoService vehicle,
         LiveDataEngine engine,
         LocalizationService localization,
-        VehicleBrandProfileService brandProfiles)
+        VehicleBrandProfileService brandProfiles,
+        FreezeFrameReaderService freezeFrame,
+        CarScanner.Services.OemDiagnostics.ServiceDataReaderService serviceData,
+        AdvancedDiagnosticService advancedDiagnostic)
     {
         _brandProfiles = brandProfiles;
         _obd = obd;
@@ -60,6 +66,9 @@ public sealed class CodingService
         _vehicle = vehicle;
         _engine = engine;
         _localization = localization;
+        _freezeFrame = freezeFrame;
+        _serviceData = serviceData;
+        _advancedDiagnostic = advancedDiagnostic;
     }
 
     private string L(string ka, string en) => _localization.IsEnglish ? en : ka;
@@ -295,7 +304,15 @@ public sealed class CodingService
     /// GM only: after the normal identification reads, sweeps the GMLAN $1A identifiers 00–FF of every GMLAN module that
     /// answered (read-only), so that a before/after comparison can show where a setting lives.
     /// </param>
-    public async Task<CodingBackup> CreateBackupAsync(string note, IProgress<(double Fraction, string Text)>? progress, CancellationToken token, bool extendedGmRead = false)
+    /// <param name="deepScan">
+    /// Admin-only Deep Scan. On top of <paramref name="extendedGmRead"/> (unchanged, GM/$1A only), this also: sweeps
+    /// the UDS $22 identifier space of every answering module regardless of brand/protocol (<see cref="UdsDidSweep"/>);
+    /// reads the service/maintenance values (oil-life % etc.) already exposed by the Service page's own infrastructure;
+    /// reads the stored freeze frame (Mode 02); and reads the Mode 09 identifiers beyond VIN (calibration ID, CVN, ECU
+    /// name). All of it read-only. The freeze-frame and Mode 09 values are not in ObdExchangeTap's observable set
+    /// (Mode 09 deliberately, since it would include the VIN) so they stay local to this backup only.
+    /// </param>
+    public async Task<CodingBackup> CreateBackupAsync(string note, IProgress<(double Fraction, string Text)>? progress, CancellationToken token, bool extendedGmRead = false, bool deepScan = false)
     {
         if (!_obd.IsInitialized)
             throw new InvalidOperationException(L("ჯერ OBD ადაპტერს დაუკავშირდით.", "Connect to the OBD adapter first."));
@@ -398,6 +415,28 @@ public sealed class CodingService
                         (string.IsNullOrEmpty(sweep.Stopped) ? string.Empty : L($" · შეჩერდა: {sweep.Stopped}", $" · stopped: {sweep.Stopped}"));
                 }
 
+                // Deep Scan only: the $22 space, on every answering module regardless of brand/protocol (unlike the
+                // $1A sweep above, which is GM-specific). A module already identified via $22 (every non-GMLAN
+                // module) skips the DIDs it already has; a GMLAN module has none yet, since it was read via $1A.
+                if (deepScan && item.Status == CodingBackupStatus.Read)
+                {
+                    progress?.Report((0.4 + 0.6 * i / modules.Count, L($"ვკითხულობ ყველა $22 იდენტიფიკატორს: {name}", $"Reading every $22 identifier: {name}")));
+                    var alreadyRead22 = string.Equals(module.Protocol, "GMLAN", StringComparison.OrdinalIgnoreCase)
+                        ? new HashSet<int>()
+                        : StandardDids.Concat(brandDids).Distinct().ToHashSet();
+                    var address = AddressOf(module);
+                    var sweep22 = await UdsDidSweep.RunAsync(
+                        did => ReadDidAsync(address, did, token),
+                        alreadyRead22,
+                        progress: null,
+                        token).ConfigureAwait(false);
+                    item.Values.AddRange(sweep22.Values);
+                    var sweep22Note = L($"$22 გაფართოებული წაკითხვა: {sweep22.Values.Count} ახალი მნიშვნელობა {sweep22.Requests} მოთხოვნიდან",
+                        $"$22 extended read: {sweep22.Values.Count} more value(s) from {sweep22.Requests} requests") +
+                        (string.IsNullOrEmpty(sweep22.Stopped) ? string.Empty : L($" · შეჩერდა: {sweep22.Stopped}", $" · stopped: {sweep22.Stopped}"));
+                    item.Note = string.IsNullOrEmpty(item.Note) ? sweep22Note : item.Note + " · " + sweep22Note;
+                }
+
                 backup.Modules.Add(item);
             }
 
@@ -411,6 +450,60 @@ public sealed class CodingService
                         $"{module.Name}: the module refused the read ({module.Note})"),
                     _ => L($"{module.Name}: პასუხი არ დააბრუნა", $"{module.Name}: did not answer")
                 });
+            }
+
+            // Deep Scan only: vehicle-level reads that are not per-module DID lookups, so they live outside the
+            // module loop above. Each is independently best-effort — one failing must never lose what the module
+            // loop already found, so every read here is wrapped on its own.
+            if (deepScan)
+            {
+                progress?.Report((0.95, L("ვკითხულობ სერვისისა და დამატებით მონაცემებს", "Reading service and extra data")));
+
+                try
+                {
+                    var vehicleInfo = _vehicle.CurrentVehicle ?? new VehicleInfo();
+                    var serviceRead = await _serviceData.ReadResearchAsync(vehicleInfo, token).ConfigureAwait(false);
+                    foreach (var reading in serviceRead.Values)
+                    {
+                        backup.ServiceReadings.Add(new CodingDidValue
+                        {
+                            Did = reading.Kind.ToString(),
+                            Hex = $"{reading.NumericValue:0.##} {reading.Unit}".Trim()
+                        });
+                    }
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+                catch { /* best effort: the rest of Deep Scan's result is still saved */ }
+
+                try
+                {
+                    var frame = await _freezeFrame.ReadAsync(progress: null, token).ConfigureAwait(false);
+                    if (frame.HasFrame)
+                    {
+                        backup.FreezeFrameTrigger = frame.TriggerCode;
+                        foreach (var value in frame.Values)
+                        {
+                            backup.FreezeFrameValues.Add(new CodingDidValue
+                            {
+                                Did = $"02:{value.Pid:X2}",
+                                Hex = value.Text ?? (value.Number is { } number ? $"{number:0.##} {value.MetricUnit}".Trim() : string.Empty)
+                            });
+                        }
+                    }
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+                catch { }
+
+                try
+                {
+                    // includeVin: false — the VIN is already known separately (backup.Vin); it must never be
+                    // duplicated into this generic list, the same exclusion ObdExchangeTap itself applies to Mode 09.
+                    var identifiers = await _advancedDiagnostic.ReadIdentifiersAsync(includeVin: false, token: token).ConfigureAwait(false);
+                    foreach (var identifier in identifiers.Where(item => item.Available))
+                        backup.Mode09Values.Add(new CodingDidValue { Did = identifier.Name, Hex = identifier.Value });
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+                catch { }
             }
 
             // A "backup" with nothing in it would only look like one.

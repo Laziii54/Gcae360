@@ -412,3 +412,52 @@ public sealed class AndroidNativeGuardTests
         Assert.True(offenders.Count == 0, "app code that names AppBarLayout: " + string.Join(", ", offenders));
     }
 }
+
+/// <summary>
+/// Regression tests for the reported freeze where rapid page entry/exit — especially starting a connection and leaving
+/// right away — left the app on a blank screen that only a force-kill recovered from. Root cause: a connect attempt can
+/// block forever in the native BLE/classic-socket call (the classic socket's Connect() ignores cancellation once it has
+/// started), which held BluetoothService's own connect gate, and the ObdConnectionService gate one layer up, for ever —
+/// so every later connect AND every disconnect (it needs the same gate) hung too. BluetoothService.cs has heavy MAUI/BLE
+/// dependencies and cannot run in a unit test, so these read the source to confirm the bounding structure is present.
+/// </summary>
+public sealed class BluetoothConnectTimeoutTests
+{
+    private static string Source() =>
+        File.ReadAllText(Path.Combine(AppContext.BaseDirectory.Split("Tests")[0], "Services", "Bluetooth", "BluetoothService.cs"));
+
+    [Fact]
+    public void ConnectAsync_RacesTheNativeCallAgainstATimeBudget_InsteadOfAwaitingItDirectly()
+    {
+        var code = Source();
+        var method = code[code.IndexOf("public async Task ConnectAsync(", StringComparison.Ordinal)..];
+        method = method[..method.IndexOf("\n    private void ObserveAbandonedConnectAttempt", StringComparison.Ordinal)];
+
+        Assert.Contains("Task.WhenAny(connectTask, delayTask)", method);
+        Assert.Contains("Task.Delay(ConnectTimeout)", method);
+        // A plain "await ConnectCoreAsync(...)" with no race would reintroduce the hang this guards against.
+        Assert.DoesNotContain("await ConnectCoreAsync(", method);
+    }
+
+    [Fact]
+    public void AnAbandonedConnectAttempt_IsObserved_NotLeftToCrashAsUnobserved()
+    {
+        var code = Source();
+        Assert.Contains("ObserveAbandonedConnectAttempt(connectTask, item, linkedSource, timeoutSource)", code);
+
+        var observer = code[code.IndexOf("private void ObserveAbandonedConnectAttempt(", StringComparison.Ordinal)..];
+        observer = observer[..Math.Min(observer.Length, 900)];
+        Assert.Contains("ContinueWith(", observer);
+    }
+
+    [Fact]
+    public void DisconnectClassicAsync_NeverAwaitsTheReadLoopUnbounded()
+    {
+        var code = Source();
+        var method = code[code.IndexOf("private async Task DisconnectClassicAsync()", StringComparison.Ordinal)..];
+        method = method[..Math.Min(method.Length, 900)];
+
+        Assert.Contains("Task.WhenAny(_classicReadTask, Task.Delay(", method);
+        Assert.DoesNotContain("await _classicReadTask\n", method);
+    }
+}

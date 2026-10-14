@@ -61,6 +61,7 @@
     <Compile Include="../../Services/Coding/CodingReplyParser.cs" Link="CodingReplyParser.cs" />
     <Compile Include="../../Services/Coding/CodingCapabilities.cs" Link="CodingCapabilities.cs" />
     <Compile Include="../../Services/Coding/GmlanSweep.cs" Link="GmlanSweep.cs" />
+    <Compile Include="../../Services/Coding/UdsDidSweep.cs" Link="UdsDidSweep.cs" />
     <Compile Include="../../Services/LiveDataStartPolicy.cs" Link="LiveDataStartPolicy.cs" />
     <Compile Include="../../Services/NavigationGate.cs" Link="NavigationGate.cs" />
     <Compile Include="../../Services/CrashExceptionFlattener.cs" Link="CrashExceptionFlattener.cs" />

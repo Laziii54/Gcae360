@@ -128,8 +128,11 @@
                                    FontSize="26" FontAttributes="Bold" VerticalOptions="Center" />
                         </Grid>
                         <ProgressBar Progress="{Binding PercentFraction}" ProgressColor="{DynamicResource Primary}" HeightRequest="5" />
-                        <Label AutomationId="DynamicTextPrePurchaseDetail" Text="{Binding ProgressDetail}"
-                               TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="TailTruncation" />
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <ActivityIndicator IsRunning="{Binding IsRunning}" Color="{DynamicResource Primary}" WidthRequest="16" HeightRequest="16" VerticalOptions="Center" />
+                            <Label Grid.Column="1" AutomationId="DynamicTextPrePurchaseDetail" Text="{Binding ProgressDetail}"
+                                   TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="TailTruncation" VerticalOptions="Center" />
+                        </Grid>
                     </VerticalStackLayout>
                 </Border>
 

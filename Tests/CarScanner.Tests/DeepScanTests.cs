@@ -174,6 +174,52 @@ public sealed class DeepScanWiringTests
         var deepScan = vm.IndexOf("private Task DeepScan()", StringComparison.Ordinal);
         var backupAsync = vm.IndexOf("private async Task BackupAsync(", StringComparison.Ordinal);
         Assert.True(deepScan > 0 && backupAsync > deepScan);
-        Assert.Contains("_coding.CreateBackupAsync(note.Trim(), progress, _cts.Token, extended);", vm);
+        Assert.Contains("_coding.CreateBackupAsync(note.Trim(), progress, _cts.Token, extended, deepScan: isDeepScan);", vm);
+    }
+
+    /// <summary>
+    /// The Deep Scan additions (wider $22 sweep on every brand, service/oil-life, freeze frame, Mode 09 extras)
+    /// are gated on CreateBackupAsync's own deepScan parameter — never on extendedGmRead alone, so the regular
+    /// "Create Extended Backup" button (available to every PRO user, not just admins) keeps its original,
+    /// faster, GM-only behavior and does not silently grow much slower for everyone.
+    /// </summary>
+    [Fact]
+    public void TheRegularExtendedBackupButton_IsUnaffectedByDeepScansNewReads()
+    {
+        var service = File.ReadAllText(Path.Combine(RepositoryRoot(), "Services/Coding/CodingService.cs"));
+        var method = service[service.IndexOf("public async Task<CodingBackup> CreateBackupAsync(", StringComparison.Ordinal)..];
+
+        var gmSweep = method.IndexOf("extendedGmRead && item.Status", StringComparison.Ordinal);
+        var udsSweep = method.IndexOf("if (deepScan && item.Status", StringComparison.Ordinal);
+        var vehicleLevel = method.IndexOf("if (deepScan)", StringComparison.Ordinal);
+        Assert.True(gmSweep > 0, "the existing GM-only $1A sweep must still be gated on extendedGmRead");
+        Assert.True(udsSweep > gmSweep, "the new $22 sweep must be gated on deepScan, not extendedGmRead");
+        Assert.True(vehicleLevel > udsSweep, "service/freeze-frame/Mode 09 reads must also be gated on deepScan");
+    }
+
+    /// <summary>
+    /// Deep Scan's Mode 09 extras (calibration ID, CVN, ECU name) must never carry the VIN — the same exclusion
+    /// ObdExchangeTap itself applies to Mode 09 ("Never true for 04 (clear), 09 (VIN) ...").
+    /// </summary>
+    [Fact]
+    public void DeepScan_NeverReadsTheVinIntoTheGenericMode09List()
+    {
+        var service = File.ReadAllText(Path.Combine(RepositoryRoot(), "Services/Coding/CodingService.cs"));
+        Assert.Contains("_advancedDiagnostic.ReadIdentifiersAsync(includeVin: false, token: token)", service);
+    }
+
+    /// <summary>
+    /// The freeze-frame and Mode 09 values are local-only (they do not pass through ObdExchangeTap, since Mode 02
+    /// and Mode 09 are outside its observable set) — CodingBackup's doc comments must say so, so this is never
+    /// mistaken for a server-side gap later.
+    /// </summary>
+    [Fact]
+    public void TheNewBackupFields_AreDocumentedAsLocalOnly()
+    {
+        var models = File.ReadAllText(Path.Combine(RepositoryRoot(), "Services/Coding/CodingModels.cs"));
+        Assert.Contains("ServiceReadings", models);
+        Assert.Contains("FreezeFrameValues", models);
+        Assert.Contains("Mode09Values", models);
+        Assert.Contains("stay local to", models);
     }
 }

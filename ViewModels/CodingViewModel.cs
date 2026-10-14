@@ -432,7 +432,7 @@ public partial class CodingViewModel : BaseViewModel
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
             var progress = new Progress<(double Fraction, string Text)>(p => Report(p.Fraction, p.Text));
-            var backup = await _coding.CreateBackupAsync(note.Trim(), progress, _cts.Token, extended);
+            var backup = await _coding.CreateBackupAsync(note.Trim(), progress, _cts.Token, extended, deepScan: isDeepScan);
             await RefreshAsync();
             Report(1, L($"შენახულია: {backup.Modules.Count} მოდული, {backup.ReadCount} მნიშვნელობა. მანქანაზე არაფერი შეცვლილა.",
                 $"Saved: {backup.Modules.Count} modules, {backup.ReadCount} values. Nothing was changed on the car."));
