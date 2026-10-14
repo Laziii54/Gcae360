@@ -3039,180 +3039,11 @@ static async Task<IResult> GenerateGeminiAsync(
 
     var client =
         clients.CreateClient();
+    var logger = http.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Gemini");
 
-    client.Timeout =
-        TimeSpan.FromSeconds(60);
-
-    string? raw = null;
-    int providerStatus =
-        StatusCodes.Status503ServiceUnavailable;
-    string? lastErrorBody = null;
-    var gemini = http.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Gemini");
-    var transportFailure = false;
-
-    // At most two models per request (the chosen one + one fallback).
-    foreach (var candidateModel in
-             AppConfig.GetModelFallbackOrder(model).Take(2))
-    {
-        var uri =
-            $"https://generativelanguage.googleapis.com/v1beta/models/" +
-            $"{Uri.EscapeDataString(candidateModel)}:generateContent";
-
-        using var outbound =
-            new HttpRequestMessage(
-                HttpMethod.Post,
-                uri);
-
-        outbound.Headers
-            .TryAddWithoutValidation(
-                "x-goog-api-key",
-                apiKey);
-
-        outbound.Content =
-            JsonContent.Create(
-                new
-                {
-                    systemInstruction =
-                        new
-                        {
-                            parts =
-                                new[]
-                                {
-                                    new
-                                    {
-                                        text = AppConfig.AiSafetyInstruction
-                                    }
-                                }
-                        },
-
-                    contents =
-                        new[]
-                        {
-                            new
-                            {
-                                role = "user",
-                                parts =
-                                    new[]
-                                    {
-                                        new
-                                        {
-                                            text =
-                                                request.Prompt
-                                        }
-                                    }
-                            }
-                        },
-
-                    generationConfig =
-                        new
-                        {
-                            // Cost cap. Newer Gemini models spend part of this budget on
-                            // internal reasoning (1800 cut chat answers off mid-sentence).
-                            maxOutputTokens = 2048,
-                            temperature = 0.3
-                        }
-                });
-
-        HttpResponseMessage response;
-        string candidateRaw;
-        try
-        {
-            response =
-                await client.SendAsync(
-                    outbound,
-                    http.RequestAborted);
-            candidateRaw =
-                await response.Content
-                    .ReadAsStringAsync(
-                        http.RequestAborted);
-        }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !http.RequestAborted.IsCancellationRequested)
-        {
-            // Network failure or the provider timed out: not a "server error" of this app, and not hidden as one.
-            gemini.LogWarning("Gemini request to {Model} failed: {Error}", candidateModel, ex.GetType().Name);
-            transportFailure = ex is TaskCanceledException;
-            providerStatus = ex is TaskCanceledException ? 504 : 503;
-            lastErrorBody = null;
-            continue;
-        }
-
-        using (response)
-        {
-            providerStatus =
-                (int)response.StatusCode;
-
-            if (response.IsSuccessStatusCode)
-            {
-                raw = candidateRaw;
-                break;
-            }
-
-            lastErrorBody = candidateRaw;
-            var (googleStatus, googleMessage) = AiProviderErrors.ReadProviderError(candidateRaw);
-            gemini.LogWarning("Gemini {Model} answered HTTP {Status} {GoogleStatus}: {Message}", candidateModel, providerStatus, googleStatus, googleMessage);
-
-            if (!AppConfig.IsFallbackStatus(
-                    response.StatusCode))
-            {
-                break;
-            }
-        }
-    }
-
-    if (raw is null)
-    {
-        var (lastGoogleStatus, _) = AiProviderErrors.ReadProviderError(lastErrorBody);
-        var failure = transportFailure && lastErrorBody is null
-            ? AiProviderErrors.Timeout
-            : AiProviderErrors.Map(providerStatus, lastGoogleStatus);
-        return Results.Json(AiProviderErrors.Body(failure, providerStatus), statusCode: failure.HttpStatus);
-    }
-
-    try
-    {
-        using var doc =
-            JsonDocument.Parse(raw);
-
-        // Join every answer part (a reply can arrive in several parts);
-        // internal "thought" parts are never shown to the user.
-        var candidate =
-            doc.RootElement
-                .GetProperty("candidates")[0];
-
-        var builder = new StringBuilder();
-        if (candidate.TryGetProperty("content", out var content) &&
-            content.TryGetProperty("parts", out var parts))
-        {
-            foreach (var part in parts.EnumerateArray())
-            {
-                if (part.TryGetProperty("thought", out var thought) &&
-                    thought.ValueKind == JsonValueKind.True)
-                {
-                    continue;
-                }
-
-                if (part.TryGetProperty("text", out var piece))
-                    builder.Append(piece.GetString());
-            }
-        }
-
-        string? text = builder.ToString().Trim();
-        if (text.Length == 0)
-            text = null;
-
-        return Results.Text(
-            text ??
-            "AI-მ პასუხი ვერ დააბრუნა.",
-            "text/plain",
-            Encoding.UTF8);
-    }
-    catch
-    {
-        return Results.Problem(
-            "AI response parse failed.",
-            statusCode: 502);
-    }
+    return await GeminiClient.CallWithFallbackAsync(client, apiKey, model, request.Prompt, logger, http.RequestAborted);
 }
+
 
 // ============================================================
 // VIN REPORT
@@ -3867,12 +3698,15 @@ You are an automotive diagnostic assistant. Treat all measurements and DTCs in t
     public const string DefaultModel =
         "gemini-3.8-flash";
 
+    // gemini-2.5-flash is deliberately NOT listed: Google now answers it with 404 "no longer
+    // available to new users" for this key (confirmed in production logs, 2026-10-14). Both
+    // models below are confirmed Stable on ai.google.dev/gemini-api/docs/models as of this
+    // writing, with 3.5-flash-lite explicitly recommended for new projects.
     public static readonly string[] AllowedModels =
     [
         DefaultModel,
-        "gemini-2.5-flash",
-        "gemini-3.1-flash-lite",
-        "gemini-3.5-flash-lite"
+        "gemini-3.5-flash-lite",
+        "gemini-3.1-flash-lite"
     ];
 
     public static IEnumerable<string> GetModelFallbackOrder(
@@ -3892,17 +3726,48 @@ You are an automotive diagnostic assistant. Treat all measurements and DTCs in t
         }
     }
 
-    public static bool IsFallbackStatus(
+    public enum FailureKind
+    {
+        /// <summary>Overloaded / rate-limited / a passing server hiccup: worth retrying the SAME model after a short wait.</summary>
+        Transient,
+
+        /// <summary>This specific model is unknown/unavailable to this key: a genuinely different model may still work.</summary>
+        ModelUnavailable,
+
+        /// <summary>Bad request, bad key, or no permission: not specific to any model, so switching models will not help either.</summary>
+        Blocked
+    }
+
+    /// <summary>
+    /// 429 (quota) and 5xx (overload, internal error, timeout) are Transient — Google's own wording for a 503 is
+    /// "usually temporary", so the right response is a short wait and the SAME model, not giving up on it.
+    /// 404 is ModelUnavailable — this exact model id is unknown/deprecated for this key; a different model is the
+    /// only useful move. 400/401/403 are Blocked — the request or the key itself is the problem, which affects
+    /// every model equally, so neither retrying nor switching models will help.
+    /// </summary>
+    public static FailureKind ClassifyFailure(
         System.Net.HttpStatusCode statusCode)
     {
-        return statusCode is
-            System.Net.HttpStatusCode.NotFound or
+        if (statusCode is
             System.Net.HttpStatusCode.TooManyRequests or
             System.Net.HttpStatusCode.InternalServerError or
             System.Net.HttpStatusCode.BadGateway or
             System.Net.HttpStatusCode.ServiceUnavailable or
-            System.Net.HttpStatusCode.GatewayTimeout;
+            System.Net.HttpStatusCode.GatewayTimeout)
+        {
+            return FailureKind.Transient;
+        }
+
+        if (statusCode is System.Net.HttpStatusCode.NotFound)
+            return FailureKind.ModelUnavailable;
+
+        // 400, 401, 403, and anything else unexpected: treated as Blocked, the conservative choice —
+        // never worth spending a second attempt on model-switching for an error that is not about the model.
+        return FailureKind.Blocked;
     }
+
+    /// <summary>Wait before retrying the same model after a Transient failure.</summary>
+    public static readonly TimeSpan TransientRetryDelay = TimeSpan.FromSeconds(1.5);
 }
 
 // ============================================================
@@ -4152,4 +4017,236 @@ static class EmailThrottle
 
     public static void Failed(string? email) =>
         RateWindow.TryConsume(Key(email), DateTimeOffset.UtcNow, MaxFailures, Window);
+}
+
+/// <summary>
+/// The actual outbound call(s) to Gemini, with model fallback — a real class (not a Program.cs local function,
+/// which would be invisible to tests) so it can be exercised directly against a stubbed HttpClient, without
+/// reconstructing accounts/entitlements/rate limits (which live in GenerateGeminiAsync and are untouched here).
+/// </summary>
+static class GeminiClient
+{
+public static async Task<IResult> CallWithFallbackAsync(
+    HttpClient client,
+    string apiKey,
+    string model,
+    string prompt,
+    ILogger logger,
+    CancellationToken cancellationToken)
+{
+    // Short enough that two attempts plus the transient-retry wait still finish inside the
+    // mobile app's own 60s request budget (AIConfig.MaxRequestSeconds).
+    client.Timeout =
+        TimeSpan.FromSeconds(25);
+
+    string? raw = null;
+    int providerStatus =
+        StatusCodes.Status503ServiceUnavailable;
+    string? lastErrorBody = null;
+    var gemini = logger;
+    var transportFailure = false;
+
+    // At most two outbound calls per request. A Transient failure (overloaded / rate-limited) retries the
+    // SAME model once, after a short wait — Google's own wording for a 503 is "usually temporary". A
+    // ModelUnavailable failure (404: this model id is unknown to this key) moves on to the next, distinct
+    // model instead. A Blocked failure (400/401/403: the request or the key itself) stops immediately —
+    // it is not specific to this model, so neither retrying nor switching models would help.
+    var fallbackModel = AppConfig.GetModelFallbackOrder(model).Skip(1).FirstOrDefault();
+    var candidateModel = model;
+    var usedFallbackModel = false;
+
+    for (var attempt = 1; attempt <= 2; attempt++)
+    {
+        var uri =
+            $"https://generativelanguage.googleapis.com/v1beta/models/" +
+            $"{Uri.EscapeDataString(candidateModel)}:generateContent";
+
+        using var outbound =
+            new HttpRequestMessage(
+                HttpMethod.Post,
+                uri);
+
+        outbound.Headers
+            .TryAddWithoutValidation(
+                "x-goog-api-key",
+                apiKey);
+
+        outbound.Content =
+            JsonContent.Create(
+                new
+                {
+                    systemInstruction =
+                        new
+                        {
+                            parts =
+                                new[]
+                                {
+                                    new
+                                    {
+                                        text = AppConfig.AiSafetyInstruction
+                                    }
+                                }
+                        },
+
+                    contents =
+                        new[]
+                        {
+                            new
+                            {
+                                role = "user",
+                                parts =
+                                    new[]
+                                    {
+                                        new
+                                        {
+                                            text =
+                                                prompt
+                                        }
+                                    }
+                            }
+                        },
+
+                    generationConfig =
+                        new
+                        {
+                            // Cost cap. Newer Gemini models spend part of this budget on
+                            // internal reasoning (1800 cut chat answers off mid-sentence).
+                            maxOutputTokens = 2048,
+                            temperature = 0.3
+                        }
+                });
+
+        HttpResponseMessage response;
+        string candidateRaw;
+        try
+        {
+            response =
+                await client.SendAsync(
+                    outbound,
+                    cancellationToken);
+            candidateRaw =
+                await response.Content
+                    .ReadAsStringAsync(
+                        cancellationToken);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !cancellationToken.IsCancellationRequested)
+        {
+            // Network failure or the provider timed out: not a "server error" of this app, and not hidden as one.
+            // Not specific to the model, so a retry stays on the same model rather than switching.
+            gemini.LogWarning("Gemini request to {Model} failed: {Error}", candidateModel, ex.GetType().Name);
+            transportFailure = ex is TaskCanceledException;
+            providerStatus = ex is TaskCanceledException ? 504 : 503;
+            lastErrorBody = null;
+
+            if (attempt < 2)
+                await Task.Delay(AppConfig.TransientRetryDelay, cancellationToken);
+
+            continue;
+        }
+
+        using (response)
+        {
+            providerStatus =
+                (int)response.StatusCode;
+
+            if (response.IsSuccessStatusCode)
+            {
+                raw = candidateRaw;
+                break;
+            }
+
+            lastErrorBody = candidateRaw;
+            transportFailure = false;
+            var (googleStatus, googleMessage) = AiProviderErrors.ReadProviderError(candidateRaw);
+
+            // Diagnostic only, never used to change retry timing: on a 429, a server-supplied Retry-After
+            // header is Google's own signal that this is a short, bounded throttle rather than a harder,
+            // longer-lived quota exhaustion (which would not carry one). Logged so an admin reading the
+            // log stream can tell the two apart; the original error for THIS model is preserved here even
+            // if a later attempt (same or fallback model) later overwrites providerStatus/lastErrorBody.
+            var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds;
+            gemini.LogWarning(
+                "Gemini {Model} answered HTTP {Status} {GoogleStatus} (retryAfter={RetryAfter}): {Message}",
+                candidateModel, providerStatus, googleStatus, retryAfter?.ToString("0.#") ?? "none", googleMessage);
+
+            if (attempt == 2)
+                break;
+
+            var kind = AppConfig.ClassifyFailure(response.StatusCode);
+            if (kind == AppConfig.FailureKind.Transient)
+            {
+                // Overloaded / rate-limited: Google's own wording calls this "usually temporary" — wait, then
+                // retry the SAME model rather than spending the last attempt on an unrelated one.
+                await Task.Delay(AppConfig.TransientRetryDelay, cancellationToken);
+            }
+            else if (kind == AppConfig.FailureKind.ModelUnavailable && !usedFallbackModel && fallbackModel is not null)
+            {
+                // This exact model id is unknown/unavailable to this key: a different model may still work.
+                candidateModel = fallbackModel;
+                usedFallbackModel = true;
+            }
+            else
+            {
+                // Blocked (400/401/403): the request or the key is the problem, not this model — neither
+                // retrying nor switching models would help, so stop instead of wasting the last attempt.
+                // Also reached when ModelUnavailable has no distinct fallback left to try.
+                break;
+            }
+        }
+    }
+
+    if (raw is null)
+    {
+        var (lastGoogleStatus, _) = AiProviderErrors.ReadProviderError(lastErrorBody);
+        var failure = transportFailure && lastErrorBody is null
+            ? AiProviderErrors.Timeout
+            : AiProviderErrors.Map(providerStatus, lastGoogleStatus);
+        return Results.Json(AiProviderErrors.Body(failure, providerStatus), statusCode: failure.HttpStatus);
+    }
+
+    try
+    {
+        using var doc =
+            JsonDocument.Parse(raw);
+
+        // Join every answer part (a reply can arrive in several parts);
+        // internal "thought" parts are never shown to the user.
+        var candidate =
+            doc.RootElement
+                .GetProperty("candidates")[0];
+
+        var builder = new StringBuilder();
+        if (candidate.TryGetProperty("content", out var content) &&
+            content.TryGetProperty("parts", out var parts))
+        {
+            foreach (var part in parts.EnumerateArray())
+            {
+                if (part.TryGetProperty("thought", out var thought) &&
+                    thought.ValueKind == JsonValueKind.True)
+                {
+                    continue;
+                }
+
+                if (part.TryGetProperty("text", out var piece))
+                    builder.Append(piece.GetString());
+            }
+        }
+
+        string? text = builder.ToString().Trim();
+        if (text.Length == 0)
+            text = null;
+
+        return Results.Text(
+            text ??
+            "AI-მ პასუხი ვერ დააბრუნა.",
+            "text/plain",
+            Encoding.UTF8);
+    }
+    catch
+    {
+        return Results.Problem(
+            "AI response parse failed.",
+            statusCode: 502);
+    }
+}
 }

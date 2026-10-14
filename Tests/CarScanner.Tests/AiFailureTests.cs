@@ -100,10 +100,16 @@ public sealed class AiFailureTests
 
         Assert.True(method.IndexOf("AiProviderErrors.NotConfigured", StringComparison.Ordinal) < method.IndexOf("TryConsumeDailyAsync", StringComparison.Ordinal),
             "a missing server key must not use up the person's daily AI requests");
-        Assert.Contains("AiProviderErrors.Map(providerStatus", method);
-        Assert.DoesNotContain("statusCode:\n                providerStatus is >= 400", method);
-        Assert.Contains("catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException", method);   // a provider timeout is no longer an unhandled 500
-        Assert.DoesNotContain("api" + "Key}", method);                              // the key is never interpolated into a log or message
+
+        // The outbound-call/error-mapping logic now lives in GeminiClient.CallWithFallbackAsync — a real class
+        // (not a Program.cs local function) at the end of the file, so it can be exercised directly in
+        // GeminiRetryRuntimeTests against a stubbed HttpClient.
+        var geminiClient = program.Substring(program.IndexOf("static class GeminiClient", StringComparison.Ordinal));
+
+        Assert.Contains("AiProviderErrors.Map(providerStatus", geminiClient);
+        Assert.DoesNotContain("statusCode:\n                providerStatus is >= 400", geminiClient);
+        Assert.Contains("catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException", geminiClient);   // a provider timeout is no longer an unhandled 500
+        Assert.DoesNotContain("api" + "Key}", geminiClient);                        // the key is never interpolated into a log or message
         Assert.Contains("AiFailureText.FromBody", File.ReadAllText(Path.Combine(Root, "AI", "AiDiagnosticService.cs")));
     }
 }
