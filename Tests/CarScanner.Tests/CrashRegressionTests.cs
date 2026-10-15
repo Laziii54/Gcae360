@@ -461,3 +461,41 @@ public sealed class BluetoothConnectTimeoutTests
         Assert.DoesNotContain("await _classicReadTask\n", method);
     }
 }
+
+/// <summary>
+/// Regression test for a real Chevrolet Volt 2013 test on the admin-only Research page: ignition and engine on,
+/// yet every module came back "did not answer" (sent 11, positive 0, no reply 11, skipped 162). Root cause:
+/// the discovery loop wrote a module off as silent after its very first unanswered DID and never tried that
+/// module's other, possibly-working DIDs again — safe for the already-reviewed (debug=0) catalog, but research
+/// (debug=1) catalogs such as OBDb's Volt repo share one signal file across two very different generations
+/// (2011-2015 vs 2016-2019, per generations.yaml), so the first DID tried for a module is easily one that exact
+/// car's generation never supported. ModuleLiveDataService.cs has heavy MAUI/SQLite dependencies and cannot run
+/// in a unit test, so this reads the source to confirm the retry-budget structure is present.
+/// </summary>
+public sealed class ModuleLiveDataResearchRetryTests
+{
+    private static string Source() =>
+        File.ReadAllText(Path.Combine(AppContext.BaseDirectory.Split("Tests")[0], "Services", "OemDiagnostics", "ModuleLiveDataService.cs"));
+
+    [Fact]
+    public void ResearchMode_GivesAModuleSeveralMissesBeforeWritingItOffAsSilent()
+    {
+        var code = Source();
+        var method = code[code.IndexOf("await _obd.RunDtcModuleSessionAsync(async session =>", StringComparison.Ordinal)..];
+        method = method[..Math.Min(method.Length, 2600)];
+
+        Assert.Contains("var maxMissesPerModule = debugOnly ? 5 : 1;", method);
+        Assert.Contains("misses.GetValueOrDefault(module) + 1", method);
+        Assert.Contains("if (count >= maxMissesPerModule)", method);
+        // A reply of any kind (including a negative response code) un-silences the module for its own later DIDs.
+        Assert.Contains("misses.Remove(module)", method);
+    }
+
+    [Fact]
+    public void TheAlreadyReviewedCatalog_KeepsTheOriginalOneMissBehaviour()
+    {
+        // debugOnly defaults to false, so every existing caller (the normal Module Live Data page) is unaffected.
+        var code = Source();
+        Assert.Contains("bool debugOnly = false", code);
+    }
+}

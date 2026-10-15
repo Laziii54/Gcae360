@@ -216,6 +216,13 @@ public sealed class ModuleLiveDataService
             var working = new List<RequestDef>();
             var silent = new HashSet<string>(StringComparer.Ordinal);
             var alive = new HashSet<string>(StringComparer.Ordinal);
+            var misses = new Dictionary<string, int>(StringComparer.Ordinal);
+            // Research (debug=1) signals are largely unverified for this exact car: catalogs such as OBDb's Volt
+            // repo share one signal file across both generations (2011-2015 and 2016-2019, very different
+            // electronics — confirmed against generations.yaml), so the first DID tried for a module can easily be
+            // one the car's actual generation never supported. One miss must not write off a module that answers
+            // plenty of OTHER requests, the way it safely can for the already-reviewed (debug=0) signals below.
+            var maxMissesPerModule = debugOnly ? 5 : 1;
             var stats = new ReadStats();
             for (var i = 0; i < requests.Count; i++)
             {
@@ -225,7 +232,7 @@ public sealed class ModuleLiveDataService
                 var request = requests[i];
                 var module = $"{request.Tx:X}|{request.Ext29}|{request.Ext}";
 
-                // A module that did not answer at all is not asked again.
+                // A module that did not answer at all (maxMissesPerModule times in a row) is not asked again.
                 if (silent.Contains(module))
                 {
                     stats.SkippedSilent++;
@@ -234,9 +241,17 @@ public sealed class ModuleLiveDataService
 
                 var (data, anyReply) = await ReadAsync(session, request, token, stats).ConfigureAwait(false);
                 if (anyReply)
+                {
                     alive.Add(module);
+                    misses.Remove(module);
+                }
                 else if (!alive.Contains(module))
-                    silent.Add(module);
+                {
+                    var count = misses.GetValueOrDefault(module) + 1;
+                    misses[module] = count;
+                    if (count >= maxMissesPerModule)
+                        silent.Add(module);
+                }
 
                 if (data is null)
                     continue;
