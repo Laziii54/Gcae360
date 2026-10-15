@@ -28,6 +28,7 @@ public partial class HomePage : ContentPage
         {
             viewModel.StartServicePreview();
             await viewModel.RefreshConnectionSummaryAsync(forceVinRefresh: true);
+            await viewModel.RefreshIsAdminAsync();
         }
         }
         catch (Exception commandException)

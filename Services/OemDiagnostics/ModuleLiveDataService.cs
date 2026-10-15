@@ -165,11 +165,17 @@ public sealed class ModuleLiveDataService
     // Run: discover, then read continuously until cancelled
     // ------------------------------------------------------------------
 
+    /// <param name="debugOnly">
+    /// False (default, the normal "module live data" page): only catalog entries already reviewed (debug = 0).
+    /// True: only the NOT-yet-reviewed research entries (debug = 1) — nothing this returns has been confirmed
+    /// against a real car, so it must never be shown on the normal page or to a non-admin caller.
+    /// </param>
     public async Task RunAsync(
         VehicleInfo vehicle,
         Func<DiscoveryResult, Task> onDiscovered,
         IProgress<double>? progress,
-        CancellationToken token)
+        CancellationToken token,
+        bool debugOnly = false)
     {
         if (!_obd.IsInitialized)
         {
@@ -195,7 +201,7 @@ public sealed class ModuleLiveDataService
             or ObdProtocol.ISO_15765_4_CAN_29BIT_250K;
 
         await EnsureNamesLoadedAsync().ConfigureAwait(false);
-        var requests = await LoadRequestsAsync(vehicle, is29BitCar, token).ConfigureAwait(false);
+        var requests = await LoadRequestsAsync(vehicle, is29BitCar, debugOnly, token).ConfigureAwait(false);
         if (requests.Count == 0)
         {
             await onDiscovered(new DiscoveryResult(Array.Empty<ModuleLiveGroup>(),
@@ -380,7 +386,7 @@ public sealed class ModuleLiveDataService
     // Loading definitions
     // ------------------------------------------------------------------
 
-    private async Task<List<RequestDef>> LoadRequestsAsync(VehicleInfo vehicle, bool is29BitCar, CancellationToken token)
+    private async Task<List<RequestDef>> LoadRequestsAsync(VehicleInfo vehicle, bool is29BitCar, bool debugOnly, CancellationToken token)
     {
         var makes = CatalogMakes(vehicle);
         if (makes.Length == 0)
@@ -389,6 +395,7 @@ public sealed class ModuleLiveDataService
         await _catalog.EnsureLoadedAsync(token).ConfigureAwait(false);
         var connection = new SQLiteAsyncConnection(_catalog.DatabasePath, SQLiteOpenFlags.ReadOnly);
         var rows = new List<PidRow>();
+        var wantedDebug = debugOnly ? 1 : 0;
         try
         {
             foreach (var make in makes)
@@ -411,9 +418,9 @@ public sealed class ModuleLiveDataService
                     FROM pid_definitions p
                     WHERE lower(p.make) = lower(?)
                       AND p.pid IN ('22', '21')
-                      AND p.debug = 0;
+                      AND p.debug = ?;
                     """,
-                    make).ConfigureAwait(false));
+                    make, wantedDebug).ConfigureAwait(false));
             }
         }
         finally

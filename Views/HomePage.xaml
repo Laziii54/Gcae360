@@ -144,6 +144,14 @@
                         <Label Grid.Row="2" Text="ოდომეტრის შედარება მოდულებთან" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                     </Grid>
                 </Border>
+                <Border Style="{StaticResource ListCardStyle}" Padding="12,11" IsVisible="{Binding IsAdmin}">
+                    <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToResearchCommand}" /></Border.GestureRecognizers>
+                    <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="4">
+                        <Path Data="M11,19 A8,8 0 1 1 11,3 A8,8 0 0 1 11,19 M16.65,16.65 L21,21" Style="{StaticResource RowIconStyle}" Stroke="{DynamicResource Primary}" HorizontalOptions="Start" />
+                        <Label Grid.Row="1" Text="კვლევა" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" Margin="0,4,0,0" />
+                        <Label Grid.Row="2" Text="დაუდასტურებელი სიგნალების შემოწმება" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                    </Grid>
+                </Border>
                 <Border Style="{StaticResource ListCardStyle}" Padding="12,11">
                     <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToFuelCommand}" /></Border.GestureRecognizers>
                     <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="4">

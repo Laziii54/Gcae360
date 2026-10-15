@@ -197,7 +197,7 @@ public sealed class VehicleSessionIdentityTests
         "GoToLiveDataCommand", "GoToSensorsCommand", "GoToEmissionsCommand", "GoToFreezeFrameCommand", "GoToEcuCommand",
         "GoToHybridHealthCommand", "GoToBatteryCommand", "GoToGraphStudioCommand", "GoToCodingCommand", "GoToAccelerationCommand",
         "GoToServiceCommand", "GoToDiagnosticReportCommand", "GoToTechnicalInspectionCommand", "GoToAdapterCenterCommand",
-        "GoToCapabilitiesCommand", "GoToSettingsCommand"
+        "GoToCapabilitiesCommand", "GoToSettingsCommand", "GoToResearchCommand"
     };
 
     [Fact]
@@ -208,10 +208,14 @@ public sealed class VehicleSessionIdentityTests
             Assert.Contains("Command=\"{Binding " + command + "}\"", xaml);
         Assert.Contains("OnPrePurchaseTapped", xaml);
 
-        // muted (opacity) while disconnected, but no tile is collapsed or disabled by IsConnected
+        // muted (opacity) while disconnected, but no tile is collapsed or disabled by IsConnected. The one exception
+        // is the admin-only Research tile: it is hidden for a different, unrelated reason (not a PRO/non-PRO or
+        // disconnected account), so it alone is allowed an IsVisible bound to IsAdmin, never to IsConnected.
         var tileBorders = Regex.Matches(xaml, @"<Border [^>]*ListCardStyle[^>]*Padding=""(12,11|6,12,6,10)""[^>]*>").Select(match => match.Value).ToList();
-        Assert.Equal(22, tileBorders.Count);
-        Assert.All(tileBorders, border =>
+        Assert.Equal(23, tileBorders.Count);
+        var adminTiles = tileBorders.Where(border => border.Contains("IsVisible=\"{Binding IsAdmin}\"")).ToList();
+        Assert.Single(adminTiles);
+        Assert.All(tileBorders.Except(adminTiles), border =>
         {
             Assert.DoesNotContain("IsVisible=", border);
             Assert.DoesNotContain("IsEnabled=", border);

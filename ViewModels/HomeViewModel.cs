@@ -28,6 +28,7 @@ public partial class HomeViewModel : BaseViewModel
     private readonly AccelerationMeasurementService _acceleration;
     private readonly LocalizationService _localization;
     private readonly UnitSystemService _units;
+    private readonly AccountService _account;
 
     private const string AccelerationMiniHistoryKey = "acceleration_mini_history_v1";
 
@@ -237,6 +238,19 @@ public partial class HomeViewModel : BaseViewModel
     }
 
 
+    /// <summary>
+    /// True only for the server-confirmed admin account (listed e-mail AND a completed 2-step /admin sign-in —
+    /// never a local e-mail match). Gates the "Research" tile so a regular account never even sees it.
+    /// </summary>
+    [ObservableProperty] private bool isAdmin;
+
+    /// <summary>Called from HomePage.OnAppearing. Safe to call for every account: defaults to false and never throws.</summary>
+    public async Task RefreshIsAdminAsync()
+    {
+        try { IsAdmin = await _account.IsAdminAsync(); }
+        catch { IsAdmin = false; }
+    }
+
     /// <summary>PRO marks on the home tiles: shown only while PRO is not active.</summary>
     public bool ShowProBadges => ProGate.IsLocked;
 
@@ -300,7 +314,8 @@ public partial class HomeViewModel : BaseViewModel
         AppDatabase database,
         LocalizationService localization,
         UnitSystemService units,
-        ServiceDataReaderService serviceDataReader)
+        ServiceDataReaderService serviceDataReader,
+        AccountService account)
     {
         _bluetooth = bluetooth;
         _obd = obd;
@@ -316,6 +331,7 @@ public partial class HomeViewModel : BaseViewModel
         _acceleration = acceleration;
         _localization = localization;
         _units = units;
+        _account = account;
 
         SelectedPerformanceTest = CarScanner.Models.PerformanceTests.Default(_units);
 
@@ -1703,6 +1719,26 @@ public partial class HomeViewModel : BaseViewModel
         }
     }
 
+
+    [RelayCommand]
+    private async Task GoToResearch()
+    {
+        try
+        {
+        // Server-confirmed admin only — mirrors the re-check inside ResearchDataViewModel.Start().
+        if (!IsAdmin)
+            return;
+        if (!await RequireObdConnectionAsync())
+            return;
+
+        await CarScanner.Services.SafeNavigation.GoToAsync(
+            nameof(Views.ResearchDataPage));
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToResearch");
+        }
+    }
 
     [RelayCommand]
     private async Task GoToPro()

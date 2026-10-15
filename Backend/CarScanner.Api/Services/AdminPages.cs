@@ -66,13 +66,21 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
     /// <summary>
     /// The only script on admin pages. Static (no user data); allowed by its
     /// SHA-256 hash in the CSP (AdminService.SecureHeaders). Forms that need a
-    /// confirmation carry the HTML-attribute-encoded text in data-confirm.
+    /// confirmation carry the HTML-attribute-encoded text in data-confirm. A
+    /// button with data-copy-target="someId" copies the text of the element
+    /// with that id (its .value for a textarea/input, else its text) to the
+    /// clipboard — the data itself lives in the page's HTML, never in this script.
     /// </summary>
     public const string ConfirmScript =
-        "document.addEventListener('submit',function(e){var f=e.target;if(f&&f.getAttribute){var m=f.getAttribute('data-confirm');if(m&&!window.confirm(m)){e.preventDefault();}}},true);";
+        "document.addEventListener('submit',function(e){var f=e.target;if(f&&f.getAttribute){var m=f.getAttribute('data-confirm');if(m&&!window.confirm(m)){e.preventDefault();}}},true);" +
+        "document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-copy-target]');if(!b)return;var src=document.getElementById(b.getAttribute('data-copy-target'));if(!src)return;var text=src.value!==undefined?src.value:src.textContent;navigator.clipboard.writeText(text).then(function(){var old=b.textContent;b.textContent='დაკოპირდა';setTimeout(function(){b.textContent=old;},1200);});},true);";
 
     /// <summary>Attribute-encoded data-confirm="…" for a form.</summary>
     private static string Confirm(string message) => " data-confirm=\"" + H(message) + "\"";
+
+    /// <summary>A hidden textarea holding plain text, and a ghost button that copies it to the clipboard via data-copy-target.</summary>
+    private static string CopyButton(string id, string label, string plainText) =>
+        $"<textarea id=\"{id}\" hidden>{H(plainText)}</textarea><button type=\"button\" class=\"ghost\" data-copy-target=\"{id}\">{H(label)}</button>";
 
     private static string Page(string title, string body) => $$"""
 <!doctype html><html lang="ka"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
@@ -601,6 +609,28 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
 """;
         }
 
+        static string RowText(EcuObservationRow r) =>
+            $"{r.TxCanId:X}→{r.RxCanId:X}{(r.Ext29 ? " ·29b" : "")} | {r.Request} → {r.Response} | {r.Kind} · {r.Status} | {r.SourceCount} წყარო · {r.SeenCount}× | {r.Reliability} | {r.LastSeen}";
+
+        string PlainText(IEnumerable<EcuObservationRow> items)
+        {
+            var text = new System.Text.StringBuilder();
+            foreach (var vehicle in items.GroupBy(r => (r.Make, r.Model, r.Year))
+                         .OrderByDescending(g => g.Max(r => r.SourceCount)).ThenByDescending(g => g.Count()))
+            {
+                text.Append(vehicle.Key.Make).Append(' ').Append(vehicle.Key.Model).Append(' ').Append(vehicle.Key.Year).Append('\n');
+                foreach (var category in vehicle.GroupBy(r => { var c = EcuCategory(r); return string.IsNullOrEmpty(c) ? Unclassified : c; })
+                             .OrderBy(c => c.Key == Unclassified ? 1 : 0).ThenByDescending(c => c.Count()))
+                {
+                    text.Append("  [").Append(category.Key).Append("]\n");
+                    foreach (var row in category.OrderByDescending(r => r.SourceCount).ThenBy(r => r.Request, StringComparer.Ordinal))
+                        text.Append("    ").Append(RowText(row)).Append('\n');
+                }
+                text.Append('\n');
+            }
+            return text.ToString().TrimEnd();
+        }
+
         string CategorySection(string label, IEnumerable<EcuObservationRow> items)
         {
             var list = items.ToList();
@@ -616,20 +646,24 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
 
         var body = vehicles.Count == 0
             ? "<div class=\"panel muted\">მონაცემები ჯერ არ არის — ჩაირთვება, როცა მომხმარებლები დათანხმდებიან მონაცემების გაზიარებას.</div>"
-            : string.Concat(vehicles.Select(g =>
+            : string.Concat(vehicles.Select((g, vIndex) =>
             {
                 var categories = g
                     .GroupBy(r => { var c = EcuCategory(r); return string.IsNullOrEmpty(c) ? Unclassified : c; })
                     .OrderBy(c => c.Key == Unclassified ? 1 : 0).ThenByDescending(c => c.Count());
                 var sectionsHtml = string.Concat(categories.Select(c => CategorySection(c.Key, c)));
                 var verified = g.Count(r => r.Review == "verified");
+                var copyVehicle = CopyButton($"ecu-copy-{vIndex}", "ამ მანქანის კოპირება", PlainText(g));
                 return $"""
 <details class="panel" style="margin-bottom:10px">
 <summary><b>{H(g.Key.Make)} {H(g.Key.Model)} {H(g.Key.Year)}</b> · {N(g.Count())} განსხვავებული პასუხი{(verified > 0 ? $" · <span class=\"pill p-acc\">{N(verified)} დამოწმებული</span>" : "")} · ბოლო აქტივობა {H(g.Max(r => r.LastSeen))}</summary>
+<div style="margin:8px 0 0 10px">{copyVehicle}</div>
 {sectionsHtml}
 </details>
 """;
             }));
+
+        var copyAll = vehicles.Count == 0 ? "" : CopyButton("ecu-copy-all", "ყველას კოპირება (ყველა მანქანა)", PlainText(rows));
 
         var content = $"""
 <div class="grid" style="margin-bottom:12px">
@@ -639,6 +673,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
 {Kpi("დადასტურებული (3+)", N(rows.Count(r => r.Reliability == "corroborated")), "3+ დამოუკიდებელი წყარო")}
 </div>
 <p class="muted">თითო ჯერზე მომხმარებელი აგზავნის მხოლოდ წაკითხვის პასუხებს (VIN და სერიული ნომრები გაფილტრულია) — თანხმობის შემდეგ ფონურად, ხელით არაფერი არ ჩაწერია. ყველა მანქანა დაჯგუფებულია მარკა → მოდელი → წელი → სისტემა (ABS, ძრავი, ჰიბრიდი და ა.შ.) მიხედვით — კატეგორია დგინდება ცნობილი მისამართების ცხრილით, არა გამოცნობით; რაც ცხრილში არ არის, „დაუჯგუფებელშია“. „დამოწმება“ = შემოწმებულია დოკუმენტაციასთან/რეალურ ტესტთან და შეიძლება მასზე ფუნქციის გაშენება.</p>
+<div style="margin-bottom:10px">{copyAll}</div>
 {body}
 """;
         return Layout(s, "ecu", "ECU მონაცემები", "მარკა/მოდელი/წლისა და სისტემის მიხედვით დაჯგუფებული, თანხმობით შემოსული დიაგნოსტიკური პასუხები", content, message, ok);
