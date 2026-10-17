@@ -41,6 +41,14 @@ public sealed class SimulatedElm327 : IBluetoothService
     public int FaultAfter { get; set; }
     public SimFault Fault { get; set; } = SimFault.None;
 
+    /// <summary>
+    /// Commands (e.g. "0100") that time out on their very next send, then answer normally afterwards — a real
+    /// ECU was observed doing exactly this on one admin capture, answering a PID "valid" on one read and with
+    /// no data at all moments later. Lets a test prove a retry recovers from one transient miss, as opposed to
+    /// <see cref="Fault"/>/<see cref="FaultAfter"/>, which fail every attempt from a point on, retries included.
+    /// </summary>
+    public HashSet<string> TimeoutOnNextSend { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>OBD mode/PID answers as an ATH0/ATS1 adapter prints them, e.g. "010C" → "41 0C 1A F8".</summary>
     public Dictionary<string, string> ObdAnswers { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -105,6 +113,12 @@ public sealed class SimulatedElm327 : IBluetoothService
         var upper = cmd.Replace(" ", string.Empty).ToUpperInvariant();
         if (upper.StartsWith("AT", StringComparison.Ordinal))
             return AtResponse(upper);
+
+        if (TimeoutOnNextSend.Remove(upper))
+        {
+            await Task.Delay(timeout ?? TimeSpan.FromMilliseconds(50), cancellationToken).ConfigureAwait(false);
+            throw new TimeoutException("Simulated adapter did not answer.");
+        }
 
         // A data command from here on.
         var count = _dataCommands++;

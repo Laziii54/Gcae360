@@ -499,3 +499,39 @@ public sealed class ModuleLiveDataResearchRetryTests
         Assert.Contains("bool debugOnly = false", code);
     }
 }
+
+/// <summary>
+/// Regression test for admin crowd-sourced captures (Chevrolet Volt, Ford Escape, Toyota Prius, 2026-10-16): the
+/// exact same standard PID answered "valid" on one read and "no data"/timeout moments later with a newly bought
+/// adapter. Root cause: OBDService.DiscoverSupportedPidsAsync asked each of its 7 support-bitmap blocks with zero
+/// retries, so one missed block broke the whole scan and cached whatever few PIDs it had found as final for the
+/// rest of the connected session (DiscoverSupportedPidsAsync returns the cache immediately once it is non-empty)
+/// — the only recovery was a full disconnect/reconnect, matching "All Sensors showed almost nothing until I
+/// reconnected the adapter" and the Prius showing "0 information" despite the car answering plenty of PIDs.
+/// </summary>
+public sealed class SupportedPidDiscoveryRetryTests
+{
+    private static async Task<OBDService> CreateAsync(Action<SimulatedElm327> configure)
+    {
+        var sim = new SimulatedElm327();
+        configure(sim);
+        var elm = new Elm327Protocol(sim, NullLogger<Elm327Protocol>.Instance);
+        var obd = new OBDService(elm, new PIDDecoder(), new DTCDecoder(), sim, NullLogger<OBDService>.Instance);
+        await sim.ConnectAsync(new BleDeviceItem());
+        await obd.InitializeAsync();
+        return obd;
+    }
+
+    [Fact]
+    public async Task ATransientTimeoutOnOneSupportBlock_NoLongerBreaksTheWholeDiscovery()
+    {
+        // "0100" (the very first of the 7 support-bitmap blocks) times out once, exactly like the real adapter
+        // did, then answers normally — simulating the retry this fix adds, not a persistently broken ECU.
+        var obd = await CreateAsync(s => s.TimeoutOnNextSend.Add("0100"));
+
+        // PID 0x0C (RPM) is advertised by the default "0100" bitmap (BE 3F A8 13) and decodable — reaching it
+        // proves the block's PIDs were actually recorded, not just that discovery limped past the miss.
+        Assert.True(obd.IsPidSupported(0x0C));
+        Assert.NotEmpty(obd.SupportedPids);
+    }
+}

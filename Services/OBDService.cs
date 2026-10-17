@@ -88,9 +88,15 @@ public sealed class OBDService
             // 0x5F.  Probing every theoretical OBD-II bitmap can add many
             // seconds on low-cost ELM327 clones, so stop after the useful
             // generic range.
+            //
+            // Each block gets a real retry (was 1 attempt, 0 retries): a real car's ECU was observed answering the
+            // exact same PID "valid" on one read and "no data"/timeout on the next (admin crowd-sourced captures,
+            // 2026-10-16) — a single missed block here used to break the loop and cache whatever few PIDs had been
+            // found so far as final, since line 85 above then skips discovery for the rest of the connected
+            // session. The only previous recovery was a full disconnect/reconnect, which clears _supported.
             foreach (var basePid in new[] { 0x00, 0x20, 0x40, 0x60, 0x80, 0xA0, 0xC0 })
             {
-                var raw = await SendTrackedAsync($"01{basePid:X2}", token, TimeSpan.FromMilliseconds(900), 1, false).ConfigureAwait(false);
+                var raw = await SendTrackedAsync($"01{basePid:X2}", token, TimeSpan.FromMilliseconds(900), 2, false).ConfigureAwait(false);
                 var bytes = PIDDecoder.ParseHexBytes(raw);
 
                 // Several modules can answer (e.g. engine + hybrid control on a Volt):
