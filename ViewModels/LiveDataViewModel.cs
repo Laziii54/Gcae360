@@ -488,6 +488,17 @@ public partial class LiveDataViewModel : BaseViewModel
         }
     }
 
+    /// <summary>Taps a live value to open its own live-updating chart (Graphic Datastream).</summary>
+    [RelayCommand]
+    private Task OpenGraph(LivePidItem? item)
+    {
+        if (item is null)
+            return Task.CompletedTask;
+
+        var parameters = new Dictionary<string, object> { ["item"] = item };
+        return CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.SensorGraphPage), parameters);
+    }
+
     private void SaveGlobalFavorites()
     {
         var keys = Pids.Where(item => item.IsFavorite).Select(FavoriteKey).Distinct().ToArray();

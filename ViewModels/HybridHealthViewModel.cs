@@ -25,6 +25,21 @@ public partial class HybridHealthViewModel : BaseViewModel
     private const int LoadSeconds = 30;
     private const double ChartHeight = 92;
     private const double ChartWidth = 280;
+    private const double ExpandedChartHeight = 190;
+    private const int ExpandedBarsPerRow = 12;
+    // A tap on a bar and a tap on the chart around it must not both act on one touch (a parent's recogniser
+    // may fire as well as the child's), so whichever comes second within this window is ignored.
+    private static readonly TimeSpan TapGuard = TimeSpan.FromMilliseconds(350);
+    private DateTime _lastBarTapUtc = DateTime.MinValue;
+
+    /// <summary>Spread between the best and worst block while the load test runs — the one live signal on this page.</summary>
+    private readonly LiveSensorSource _spreadSensor = new();
+
+    // So tapping the chart to expand it can rebuild the same bars at a bigger size without new ECU data.
+    private IReadOnlyList<double> _lastBlocks = Array.Empty<double>();
+    private bool _lastLithium;
+    private int? _lastWeakest;
+    private bool _lastUnderLoad;
 
     private readonly HybridHealthService _health;
     private readonly VehicleInfoService _vehicles;
@@ -47,6 +62,7 @@ public partial class HybridHealthViewModel : BaseViewModel
     [ObservableProperty] private string blocksTitle = "";
     [ObservableProperty] private string blocksCaption = "";
     [ObservableProperty] private string selectedBlockText = "";
+    [ObservableProperty] private bool isBlocksExpanded;
 
     // Detail rows
     [ObservableProperty] private string spreadTitle = "";
@@ -171,8 +187,44 @@ public partial class HybridHealthViewModel : BaseViewModel
     [RelayCommand]
     private void SelectBlock(HybridBlockBar? bar)
     {
-        if (bar is not null)
-            SelectedBlockText = bar.ValueText;
+        if (bar is null)
+            return;
+
+        // Tapping a bar always shows its exact voltage; the first tap also opens the chart up so the
+        // neighbouring cells are easier to hit. Collapsing is done by tapping the chart around the bars.
+        _lastBarTapUtc = DateTime.UtcNow;
+        SelectedBlockText = bar.ValueText;
+        if (!IsBlocksExpanded)
+            SetBlocksExpanded(true);
+    }
+
+    /// <summary>Taps the cell-voltage chart to see it larger — rebuilds the same bars, just bigger.</summary>
+    [RelayCommand]
+    private void ToggleBlocksExpanded()
+    {
+        if (DateTime.UtcNow - _lastBarTapUtc < TapGuard)
+            return;
+
+        SetBlocksExpanded(!IsBlocksExpanded);
+    }
+
+    private void SetBlocksExpanded(bool expanded)
+    {
+        IsBlocksExpanded = expanded;
+        if (_lastBlocks.Count > 0)
+            BuildBars(_lastBlocks, _lastLithium, _lastWeakest, _lastUnderLoad);
+    }
+
+    /// <summary>Taps the live load-test reading to see the spread as a graph.</summary>
+    [RelayCommand]
+    private Task OpenSpreadGraph()
+    {
+        if (_spreadSensor.Value is null)
+            return Task.CompletedTask;
+
+        _spreadSensor.Name = L("ბლოკების სხვაობა (დატვირთვის ტესტი)", "Block spread (load test)");
+        _spreadSensor.Unit = "V";
+        return CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.SensorGraphPage), new Dictionary<string, object> { ["item"] = _spreadSensor });
     }
 
     [RelayCommand]
@@ -275,8 +327,10 @@ public partial class HybridHealthViewModel : BaseViewModel
 
         try
         {
+            _spreadSensor.Value = null;
             var progress = new Progress<HybridLoadProgress>(state =>
             {
+                _spreadSensor.Value = state.Spread;
                 LoadProgress = state.TotalSeconds == 0 ? 0 : (double)state.Seconds / state.TotalSeconds;
                 var current = state.CurrentA is { } a ? L($" · დენი {a:0} A", $" · current {a:0} A") : "";
                 LoadLiveText = L(
@@ -532,6 +586,11 @@ public partial class HybridHealthViewModel : BaseViewModel
 
     private void BuildBars(IReadOnlyList<double> blocks, bool lithium, int? weakest, bool underLoad = false)
     {
+        _lastBlocks = blocks;
+        _lastLithium = lithium;
+        _lastWeakest = weakest;
+        _lastUnderLoad = underLoad;
+
         BarRows.Clear();
         if (blocks.Count == 0)
         {
@@ -544,6 +603,8 @@ public partial class HybridHealthViewModel : BaseViewModel
         var max = blocks.Max();
         var spread = max - min;
         BlocksTitle = lithium ? L("უჯრედების ძაბვა", "Cell voltages") : L("ბლოკების ძაბვა", "Block voltages");
+        if (underLoad)
+            BlocksTitle = L($"{BlocksTitle} · დატვირთვის პიკზე", $"{BlocksTitle} · at peak load");
         BlocksCaption = L($"სხვაობა {Volts(spread, lithium)} · ნორმა < {Volts(good, lithium)} · შეეხე სვეტს",
                           $"spread {Volts(spread, lithium)} · normal < {Volts(good, lithium)} · tap a bar");
 
@@ -551,10 +612,15 @@ public partial class HybridHealthViewModel : BaseViewModel
         // healthy pack looks calm and a weak block stands out.
         var range = Math.Max(spread, watch) * 1.25;
         var bottom = max - range;
-        var rows = blocks.Count <= 24 ? 1 : (int)Math.Ceiling(blocks.Count / 32.0);
+        // Expanded: fewer bars per row, so every bar is wider, taller and labelled with its number.
+        var rows = IsBlocksExpanded
+            ? (int)Math.Ceiling(blocks.Count / (double)ExpandedBarsPerRow)
+            : blocks.Count <= 24 ? 1 : (int)Math.Ceiling(blocks.Count / 32.0);
         var perRow = (int)Math.Ceiling(blocks.Count / (double)rows);
+        var chartHeight = IsBlocksExpanded ? ExpandedChartHeight : ChartHeight;
         var width = Math.Max(4, Math.Floor(ChartWidth / perRow) - 4);
-        var height = rows == 1 ? ChartHeight : 54;
+        var height = rows == 1 ? chartHeight : IsBlocksExpanded ? 90 : 54;
+        var showLabels = rows == 1 || IsBlocksExpanded;
         var median = HvPackAssessment.Median(blocks);
         var unit = lithium ? L("უჯრედი", "Cell") : L("ბლოკი", "Block");
 
@@ -572,7 +638,7 @@ public partial class HybridHealthViewModel : BaseViewModel
                 Math.Clamp(barHeight, 6, height),
                 width,
                 color,
-                rows == 1,
+                showLabels,
                 lithium
                     ? $"{unit} {number}: {value:0.000} V ({(value - median) * 1000:+0;-0;0} mV)"
                     : $"{unit} {number}: {value:0.00} V ({value - median:+0.00;-0.00;0.00} V)"));
@@ -620,9 +686,7 @@ public partial class HybridHealthViewModel : BaseViewModel
 
         if (outcome.WorstBlocks.Count >= 3)
         {
-            var title = lithium ? L("უჯრედების ძაბვა", "Cell voltages") : L("ბლოკების ძაბვა", "Block voltages");
             BuildBars(outcome.WorstBlocks, lithium, outcome.WeakestBlock, underLoad: true);
-            BlocksTitle = L($"{title} · დატვირთვის პიკზე", $"{title} · at peak load");
         }
     }
 }

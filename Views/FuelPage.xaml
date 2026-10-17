@@ -126,7 +126,8 @@
                     <Grid WidthRequest="92" HeightRequest="92" VerticalOptions="Center">
                         <controls:RingGaugeView Progress="{Binding SocProgress}" RingColor="{Binding SocRingColor}" TrackColor="{DynamicResource BorderColor}" Thickness="9" />
                         <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="0">
-                            <Label AutomationId="DynamicTextSocBig" Text="{Binding SocBigText}" TextColor="{DynamicResource TextColor}" FontSize="21" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                            <Label AutomationId="DynamicTextSocBig" Text="{Binding SocBigText}" TextColor="{DynamicResource TextColor}" FontSize="21" FontAttributes="Bold" HorizontalTextAlignment="Center">
+                            <Label.GestureRecognizers><TapGestureRecognizer Command="{Binding OpenSensorGraphCommand}" CommandParameter="soc" /></Label.GestureRecognizers></Label>
                             <Label AutomationId="DynamicTextRange" Text="{Binding RangeText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
                     </Grid>
@@ -135,7 +136,8 @@
                             <Label AutomationId="DynamicTextDriveBadge" Text="{Binding DriveBadgeText}" TextColor="{Binding DriveBadgeColor}" FontSize="12" FontAttributes="Bold" />
                         </Border>
                         <HorizontalStackLayout Spacing="5">
-                            <Label AutomationId="DynamicTextHeroValue" Text="{Binding HeroValueText}" TextColor="{Binding HeroValueColor}" FontSize="26" FontAttributes="Bold" VerticalOptions="End" />
+                            <Label AutomationId="DynamicTextHeroValue" Text="{Binding HeroValueText}" TextColor="{Binding HeroValueColor}" FontSize="26" FontAttributes="Bold" VerticalOptions="End">
+                            <Label.GestureRecognizers><TapGestureRecognizer Command="{Binding OpenSensorGraphCommand}" CommandParameter="power" /></Label.GestureRecognizers></Label>
                             <Label AutomationId="DynamicTextHeroUnit" Text="{Binding HeroUnitText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" FontAttributes="Bold" VerticalOptions="End" Margin="0,0,0,4" />
                         </HorizontalStackLayout>
                         <VerticalStackLayout Spacing="2" IsVisible="{Binding ShowHeroPowerBar}">
@@ -157,7 +159,11 @@
                         <Label AutomationId="DynamicTextPowerHistoryCaption" Text="{Binding PowerHistoryCaption}" TextColor="{DynamicResource SubTextColor}" FontSize="12" FontAttributes="Bold" />
                         <Label Grid.Column="1" Text="kW" TextColor="{DynamicResource SubTextColor}" FontSize="12" />
                     </Grid>
-                    <controls:PowerHistoryView Samples="{Binding PowerHistory}" HeightRequest="72" LineColor="{DynamicResource BorderColor}" />
+                    <controls:PowerHistoryView Samples="{Binding PowerHistory}" HeightRequest="{Binding PowerHistoryHeightRequest}" LineColor="{DynamicResource BorderColor}">
+                        <controls:PowerHistoryView.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding TogglePowerHistoryCommand}" />
+                        </controls:PowerHistoryView.GestureRecognizers>
+                    </controls:PowerHistoryView>
                     <Grid ColumnDefinitions="*,*">
                         <Label Text="ხარჯი" TextColor="{DynamicResource WarnTitle}" FontSize="12" />
                         <Label Grid.Column="1" Text="დამუხტვა" TextColor="{DynamicResource OkText}" FontSize="12" HorizontalTextAlignment="End" />
@@ -270,7 +276,8 @@
                     <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,8">
                         <Label Text="ძაბვა · დენი" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
-                        <Label Grid.Column="1" AutomationId="DynamicTextVoltageCurrent" Text="{Binding VoltageCurrentText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" HorizontalTextAlignment="End" />
+                        <Label Grid.Column="1" AutomationId="DynamicTextVoltageCurrent" Text="{Binding VoltageCurrentText}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" HorizontalTextAlignment="End">
+                            <Label.GestureRecognizers><TapGestureRecognizer Command="{Binding OpenSensorGraphCommand}" CommandParameter="voltage" /></Label.GestureRecognizers></Label>
                     </Grid>
                     <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,2">
@@ -333,13 +340,15 @@
                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" IsVisible="{Binding ShowFuel}">
                         <Path Data="M12,4 C12,4 6,11 6,15 C6,18 9,20 12,20 C15,20 18,18 18,15 C18,11 12,4 12,4 Z" Style="{StaticResource RowIconStyle}" />
                         <Label Grid.Column="1" Text="Fuel Rate" Style="{StaticResource RowTitleStyle}" />
-                        <Label Grid.Column="2" AutomationId="DynamicTextFuelRate" Text="{Binding FuelRate}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
+                        <Label Grid.Column="2" AutomationId="DynamicTextFuelRate" Text="{Binding FuelRate}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center">
+                            <Label.GestureRecognizers><TapGestureRecognizer Command="{Binding OpenSensorGraphCommand}" CommandParameter="fuelRate" /></Label.GestureRecognizers></Label>
                     </Grid>
                     <BoxView Style="{StaticResource RowDividerStyle}" IsVisible="{Binding ShowFuel}" />
                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13" IsVisible="{Binding ShowFuel}">
                         <Path Data="M7,3 L17,3 L17,21 L7,21 Z M7,13 L17,13" Style="{StaticResource RowIconStyle}" />
                         <Label Grid.Column="1" Text="საწვავის დონე" Style="{StaticResource RowTitleStyle}" />
-                        <Label Grid.Column="2" AutomationId="DynamicTextFuelLevel" Text="{Binding FuelLevel}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
+                        <Label Grid.Column="2" AutomationId="DynamicTextFuelLevel" Text="{Binding FuelLevel}" TextColor="{DynamicResource TextColor}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center">
+                            <Label.GestureRecognizers><TapGestureRecognizer Command="{Binding OpenSensorGraphCommand}" CommandParameter="fuelLevel" /></Label.GestureRecognizers></Label>
                     </Grid>
                     <BoxView Style="{StaticResource RowDividerStyle}" />
                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,13">

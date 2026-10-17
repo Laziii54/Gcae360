@@ -55,6 +55,9 @@
                                         <DataTemplate x:DataType="m:ModuleLiveSignal">
                                             <VerticalStackLayout Spacing="0">
                                                 <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6" Padding="14,12">
+                                                    <Grid.GestureRecognizers>
+                                                        <TapGestureRecognizer Command="{Binding x:DataType=vm:ModuleLiveDataViewModel, Source={RelativeSource AncestorType={x:Type vm:ModuleLiveDataViewModel}}, Path=OpenGraphCommand}" CommandParameter="{Binding .}" />
+                                                    </Grid.GestureRecognizers>
                                                     <Label AutomationId="DynamicTextModuleLiveName" Text="{Binding Name}"
                                                            TextColor="{DynamicResource TextColor}" FontSize="14"
                                                            LineBreakMode="WordWrap" VerticalOptions="Center" />

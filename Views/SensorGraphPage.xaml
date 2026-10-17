@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    xmlns:controls="clr-namespace:CarScanner.Controls"
+    x:Class="CarScanner.Views.SensorGraphPage"
+    x:DataType="vm:SensorGraphViewModel"
+    BackgroundColor="{DynamicResource PageBg}"
+    Title="{Binding Title}">
+
+    <VerticalStackLayout Padding="16,18" Spacing="16">
+
+        <Label Text="{Binding SubtitleText}" FontSize="16" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+
+        <Border Style="{StaticResource ListCardStyle}" Padding="10,8">
+            <VerticalStackLayout Spacing="0">
+                <controls:MultiChartView
+                    Series="{Binding Series}"
+                    HeightRequest="320"
+                    WindowSeconds="{Binding WindowSeconds}"
+                    EndTime="{Binding EndTime}"
+                    ShowTooltip="True"
+                    GridColor="{DynamicResource BorderColor}"
+                    LabelColor="{DynamicResource SubTextColor}"
+                    CursorColor="{DynamicResource TextColor}" />
+                <Label Text="ECU-დან მონაცემი ჯერ არ მოსულა — სურათი გამოჩნდება პირველივე პასუხზე."
+                       IsVisible="{Binding HasAnyData, Converter={StaticResource InverseBoolConverter}}"
+                       FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" Margin="0,8,0,0" LineBreakMode="WordWrap" />
+            </VerticalStackLayout>
+        </Border>
+
+        <Grid ColumnDefinitions="*,*,*">
+            <VerticalStackLayout HorizontalOptions="Center" Spacing="3">
+                <Label Text="{Binding CurrentText}" FontSize="24" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" />
+                <Label Text="მიმდინარე" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+            <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" Spacing="3">
+                <Label Text="{Binding MaximumText}" FontSize="24" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" />
+                <Label Text="მაქსიმუმი" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+            <VerticalStackLayout Grid.Column="2" HorizontalOptions="Center" Spacing="3">
+                <Label Text="{Binding MinimumText}" FontSize="24" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" />
+                <Label Text="მინიმუმი" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+        </Grid>
+
+    </VerticalStackLayout>
+</ContentPage>

@@ -158,6 +158,17 @@ public partial class ResearchDataViewModel : BaseViewModel
         _cts?.Cancel();
     }
 
+    /// <summary>Taps a live signal to open its own live-updating chart (Graphic Datastream).</summary>
+    [RelayCommand]
+    private Task OpenGraph(ModuleLiveSignal? signal)
+    {
+        if (signal is null)
+            return Task.CompletedTask;
+
+        var parameters = new Dictionary<string, object> { ["item"] = signal };
+        return SafeNavigation.GoToAsync(nameof(Views.SensorGraphPage), parameters);
+    }
+
     private void SetNote(string ka, string en)
     {
         _noteKa = ka;

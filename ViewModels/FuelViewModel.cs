@@ -332,6 +332,7 @@ public partial class FuelViewModel : BaseViewModel
         RebuildSupportRows();
 
         Distance = _units.FormatDistance(_distanceMeters / 1000d);
+        _fuelLevelSensor.Value = _latestFuelLevelPercent;
         FuelLevel = _latestFuelLevelPercent.HasValue
             ? $"{_latestFuelLevelPercent.Value:0}%"
             : _localization.IsEnglish ? "Unavailable from ECU" : "ECU-დან მიუწვდომელია";

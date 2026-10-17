@@ -364,6 +364,7 @@ public static class MauiProgram
         builder.Services.AddTransient<ModuleScanViewModel>();
         builder.Services.AddTransient<ModuleLiveDataViewModel>();
         builder.Services.AddTransient<ResearchDataViewModel>();
+        builder.Services.AddTransient<SensorGraphViewModel>();
         builder.Services.AddTransient<PrePurchaseViewModel>();
         builder.Services.AddTransient<FreezeFrameViewModel>();
         builder.Services.AddTransient<PerformanceVideoViewModel>();
@@ -463,6 +464,7 @@ public static class MauiProgram
         builder.Services.AddTransient<ModuleScanPage>();
         builder.Services.AddTransient<ModuleLiveDataPage>();
         builder.Services.AddTransient<ResearchDataPage>();
+        builder.Services.AddTransient<SensorGraphPage>();
         builder.Services.AddTransient<PrePurchasePage>();
         builder.Services.AddTransient<PrePurchaseAiPage>();
         builder.Services.AddTransient<CapabilityCenterPage>();

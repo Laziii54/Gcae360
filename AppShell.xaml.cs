@@ -72,6 +72,7 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(ModuleScanPage), typeof(ModuleScanPage));
         Routing.RegisterRoute(nameof(ModuleLiveDataPage), typeof(ModuleLiveDataPage));
         Routing.RegisterRoute(nameof(ResearchDataPage), typeof(ResearchDataPage));
+        Routing.RegisterRoute(nameof(SensorGraphPage), typeof(SensorGraphPage));
         Routing.RegisterRoute(nameof(PrePurchasePage), typeof(PrePurchasePage));
         Routing.RegisterRoute(nameof(PrePurchaseAiPage), typeof(PrePurchaseAiPage));
         Routing.RegisterRoute(nameof(FreezeFramePage), typeof(FreezeFramePage));

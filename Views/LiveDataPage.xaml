@@ -61,6 +61,9 @@
         <CollectionView.ItemTemplate>
             <DataTemplate x:DataType="m:LivePidItem">
                 <Border Style="{StaticResource ListCardStyle}" Padding="14,12" Margin="16,0">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding x:DataType=vm:LiveDataViewModel, Source={RelativeSource AncestorType={x:Type vm:LiveDataViewModel}}, Path=OpenGraphCommand}" CommandParameter="{Binding .}" />
+                    </Border.GestureRecognizers>
                     <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10" RowSpacing="2">
                         <Label AutomationId="DynamicTextPidName" Text="{Binding DisplayName}" TextColor="{DynamicResource SubTextColor}" FontSize="13" VerticalOptions="Center" LineBreakMode="TailTruncation" />
                         <controls:IconButton AutomationId="DynamicTextFavorite" Grid.Column="1" Kind="star" Filled="{Binding IsFavorite}" Tint="{Binding FavoriteColor}" Plain="True" Command="{Binding x:DataType=vm:LiveDataViewModel, Source={RelativeSource AncestorType={x:Type vm:LiveDataViewModel}}, Path=ToggleFavoriteCommand}" CommandParameter="{Binding .}" WidthRequest="40" HeightRequest="36" IconSize="20" VerticalOptions="Center" SemanticProperties.Description="Favorite" />

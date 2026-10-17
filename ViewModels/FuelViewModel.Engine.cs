@@ -184,6 +184,7 @@ public partial class FuelViewModel
         Instant = instant.IsAvailable && instant.Value != "—" ? $"{instant.Value} {instant.Unit}" : "—";
         InstantNote = instant.Note;
         FuelUsed = FuelPresenter.FuelUsed(trip, unit);
+        _fuelRateSensor.Value = _fuel.Instant.LitersPerHour;
         FuelRate = _fuel.Instant.LitersPerHour is { } flow ? _units.FormatFuelRate(flow, _fuel.Instant.IsEstimate) : "—";
 
         var quality = _fuel.Instant.Quality;

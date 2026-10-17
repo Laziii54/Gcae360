@@ -48,8 +48,15 @@
             <!-- Block / cell chart -->
             <Border IsVisible="{Binding HasBars}" Style="{StaticResource ListCardStyle}" Padding="14,12">
                 <VerticalStackLayout Spacing="8">
-                    <Label Text="{Binding BlocksTitle}" FontSize="14" FontAttributes="Bold" />
+                    <Label Text="{Binding BlocksTitle}" FontSize="14" FontAttributes="Bold">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ToggleBlocksExpandedCommand}" />
+                        </Label.GestureRecognizers>
+                    </Label>
                     <VerticalStackLayout BindableLayout.ItemsSource="{Binding BarRows}" Spacing="4">
+                        <VerticalStackLayout.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ToggleBlocksExpandedCommand}" />
+                        </VerticalStackLayout.GestureRecognizers>
                         <BindableLayout.ItemTemplate>
                             <DataTemplate x:DataType="vm:HybridBarRow">
                                 <HorizontalStackLayout BindableLayout.ItemsSource="{Binding Bars}" HorizontalOptions="Center" Spacing="3">
@@ -82,7 +89,11 @@
                     <Button Text="{Binding LoadStartText}" Command="{Binding StartLoadTestCommand}" IsVisible="{Binding ShowLoadStart}" IsEnabled="{Binding CanLoadTest}" HeightRequest="44" CornerRadius="12" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderColor="{DynamicResource Primary}" BorderWidth="1.5" />
                     <VerticalStackLayout IsVisible="{Binding IsLoadTesting}" Spacing="8">
                         <ProgressBar Progress="{Binding LoadProgress}" ProgressColor="{DynamicResource Primary}" />
-                        <Label Text="{Binding LoadLiveText}" FontSize="13" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                        <Label Text="{Binding LoadLiveText}" FontSize="13" FontAttributes="Bold" HorizontalTextAlignment="Center">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding OpenSpreadGraphCommand}" />
+                            </Label.GestureRecognizers>
+                        </Label>
                         <Button Text="{Binding LoadStopText}" Command="{Binding StopLoadTestCommand}" HeightRequest="40" CornerRadius="12" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" />
                     </VerticalStackLayout>
                     <VerticalStackLayout IsVisible="{Binding HasLoadResult}" Spacing="3" Margin="0,2,0,0">

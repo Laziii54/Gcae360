@@ -62,6 +62,19 @@ public partial class FuelViewModel
     // Power history
     [ObservableProperty] private IReadOnlyList<double> powerHistory = Array.Empty<double>();
     [ObservableProperty] private string powerHistoryCaption = "";
+    [ObservableProperty] private bool isPowerHistoryExpanded;
+    [ObservableProperty] private double powerHistoryHeightRequest = PowerHistoryCollapsedHeight;
+
+    private const double PowerHistoryCollapsedHeight = 72;
+    private const double PowerHistoryExpandedHeight = 220;
+
+    // Live readings behind the labels on this page. Each is written from the same refresh that updates its label, so a
+    // graph opened from a tap listens to the existing stream instead of reading the ECU again.
+    private readonly CarScanner.Models.LiveSensorSource _socSensor = new();
+    private readonly CarScanner.Models.LiveSensorSource _voltageSensor = new();
+    private readonly CarScanner.Models.LiveSensorSource _powerSensor = new();
+    private readonly CarScanner.Models.LiveSensorSource _fuelLevelSensor = new();
+    private readonly CarScanner.Models.LiveSensorSource _fuelRateSensor = new();
 
     // Energy card
     [ObservableProperty] private GridLength consumedStar = new(1, GridUnitType.Star);
@@ -190,6 +203,35 @@ public partial class FuelViewModel
     [RelayCommand]
     private void CloseTripSummary() => IsTripSummaryVisible = false;
 
+    /// <summary>Taps the power-history chart to see it larger — same control, same data, just bigger.</summary>
+    [RelayCommand]
+    private void TogglePowerHistory()
+    {
+        IsPowerHistoryExpanded = !IsPowerHistoryExpanded;
+        PowerHistoryHeightRequest = IsPowerHistoryExpanded ? PowerHistoryExpandedHeight : PowerHistoryCollapsedHeight;
+    }
+
+    /// <summary>Taps a live value on this page to open its own live graph (Graphic Datastream).</summary>
+    [RelayCommand]
+    private Task OpenSensorGraph(string? key)
+    {
+        var (sensor, ka, en, unit) = key switch
+        {
+            "soc" => (_socSensor, "ბატარეის მუხტი", "Battery charge", "%"),
+            "voltage" => (_voltageSensor, "ბატარეის ძაბვა", "Battery voltage", "V"),
+            "power" => (_powerSensor, "ბატარეის სიმძლავრე", "Battery power", "kW"),
+            "fuelLevel" => (_fuelLevelSensor, "საწვავის დონე", "Fuel level", "%"),
+            "fuelRate" => (_fuelRateSensor, "საწვავის ხარჯი", "Fuel flow", "L/h"),
+            _ => (null, "", "", "")
+        };
+        if (sensor is null || sensor.Value is null)
+            return Task.CompletedTask;
+
+        sensor.Name = L(ka, en);
+        sensor.Unit = unit;
+        return CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.SensorGraphPage), new Dictionary<string, object> { ["item"] = sensor });
+    }
+
     [RelayCommand]
     private async Task StartNewTrip()
     {
@@ -232,6 +274,9 @@ public partial class FuelViewModel
 
         // ---- Ring: state of charge + electric range
         SocProgress = _socNow is { } soc ? Math.Clamp(soc / 100d, 0, 1) : 0;
+        _socSensor.Value = _socNow;
+        _voltageSensor.Value = exact ? _ev.LastVolts : null;
+        _powerSensor.Value = exact ? _ev.PowerKw : null;
         SocBigText = _socNow is { } socValue ? $"{socValue.ToString("0", invariant)}%" : "—";
         SocRingColor = _socNow is < 20 ? OrangeColor : GreenColor;
         var perKm = (exact ? EvEnergyAccumulator.KWhPer100Km(_ev.NetKWh, EnergyKm(km)) : approxKWh is { } a ? EvEnergyAccumulator.KWhPer100Km(a, EnergyKm(km)) : null);
