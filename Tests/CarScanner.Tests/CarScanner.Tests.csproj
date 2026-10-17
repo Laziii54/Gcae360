@@ -85,6 +85,7 @@
     <Compile Include="../../Services/OemDiagnostics/ServiceResetVerificationService.cs" Link="ServiceResetVerificationService.cs" />
     <Compile Include="../../Services/OemDiagnostics/ServiceDiagnosticTrace.cs" Link="ServiceDiagnosticTrace.cs" />
     <None Include="../../Resources/Raw/manufacturer_definitions.json" Link="manufacturer_definitions.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../Resources/Raw/DtcCatalog.sqlite.br" Link="DtcCatalog.sqlite.br" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../DtcCatalog/ka/generic/*.yaml" Link="DtcCatalog/ka/generic/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>

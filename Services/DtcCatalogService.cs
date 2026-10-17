@@ -32,7 +32,7 @@ public sealed class DtcCatalogService
 
     // Changes whenever the bundled catalog content is updated, so a phone
     // with the same app version still unpacks the new file.
-    private const string CatalogRevision = "obdb-2026-10-17";
+    private const string CatalogRevision = "obdb-2026-10-17-autodiag2-psa-quarantined";
 
     private readonly VehicleBrandProfileService _brands;
     private readonly VehicleProfileResolverService _vehicleProfiles;
