@@ -3099,6 +3099,7 @@ static async Task<IResult> GenerateGeminiAsync(
 
     // Cost control: requests per account and UTC day (GCS_AI_DAILY_LIMIT,
     // default 60), stored in SQLite so restarts do not reset it.
+    var dailyKey = (string?)null;
     if (!AdminAccess.HasPerks(account.AccountId, account.Email))
     {
         var dailyLimit =
@@ -3119,6 +3120,8 @@ static async Task<IResult> GenerateGeminiAsync(
                 },
                 statusCode: StatusCodes.Status429TooManyRequests);
         }
+
+        dailyKey = "ai:" + account.AccountId;
     }
 
     var model =
@@ -3133,7 +3136,16 @@ static async Task<IResult> GenerateGeminiAsync(
         clients.CreateClient();
     var logger = http.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Gemini");
 
-    return await GeminiClient.CallWithFallbackAsync(client, apiKey, model, request.Prompt, logger, http.RequestAborted);
+    var outcome = await GeminiClient.CallWithFallbackAsync(client, apiKey, model, request.Prompt, logger, http.RequestAborted);
+
+    // A request the AI provider could not answer must not use up the person's daily allowance.
+    if (dailyKey is not null && outcome is Microsoft.AspNetCore.Http.IStatusCodeHttpResult { StatusCode: >= 400 })
+    {
+        try { await usage.RefundDailyAsync(dailyKey, CancellationToken.None); }
+        catch (Exception ex) { logger.LogWarning(ex, "Could not refund the daily AI allowance."); }
+    }
+
+    return outcome;
 }
 
 
@@ -3864,7 +3876,7 @@ You are an automotive diagnostic assistant. Treat all measurements and DTCs in t
     }
 
     /// <summary>Wait before retrying the same model after a Transient failure.</summary>
-    public static readonly TimeSpan TransientRetryDelay = TimeSpan.FromSeconds(1.5);
+    public static readonly TimeSpan TransientRetryDelay = TimeSpan.FromSeconds(0.5);
 }
 
 // ============================================================
@@ -4123,6 +4135,10 @@ static class EmailThrottle
 /// </summary>
 static class GeminiClient
 {
+// Reliability model: one attempt per allowed model (primary first, then the other confirmed models). Overload,
+// rate limit, a timeout, an unknown model or an empty / blocked reply all move on to the NEXT model; only a bad
+// request or a bad key (400/401/403) stops at once, because no other model could help. The worst case is
+// models.Length * request timeout + the short waits, which stays inside the mobile app's 90 s budget.
 public static async Task<IResult> CallWithFallbackAsync(
     HttpClient client,
     string apiKey,
@@ -4131,29 +4147,23 @@ public static async Task<IResult> CallWithFallbackAsync(
     ILogger logger,
     CancellationToken cancellationToken)
 {
-    // Short enough that two attempts plus the transient-retry wait still finish inside the
-    // mobile app's own 60s request budget (AIConfig.MaxRequestSeconds).
     client.Timeout =
         TimeSpan.FromSeconds(25);
 
-    string? raw = null;
+    string? answer = null;
     int providerStatus =
         StatusCodes.Status503ServiceUnavailable;
     string? lastErrorBody = null;
     var gemini = logger;
     var transportFailure = false;
 
-    // At most two outbound calls per request. A Transient failure (overloaded / rate-limited) retries the
-    // SAME model once, after a short wait — Google's own wording for a 503 is "usually temporary". A
-    // ModelUnavailable failure (404: this model id is unknown to this key) moves on to the next, distinct
-    // model instead. A Blocked failure (400/401/403: the request or the key itself) stops immediately —
-    // it is not specific to this model, so neither retrying nor switching models would help.
-    var fallbackModel = AppConfig.GetModelFallbackOrder(model).Skip(1).FirstOrDefault();
-    var candidateModel = model;
-    var usedFallbackModel = false;
+    var models = AppConfig.GetModelFallbackOrder(model).ToArray();
 
-    for (var attempt = 1; attempt <= 2; attempt++)
+    for (var attempt = 0; attempt < models.Length; attempt++)
     {
+        var candidateModel = models[attempt];
+        var isLast = attempt == models.Length - 1;
+
         var uri =
             $"https://generativelanguage.googleapis.com/v1beta/models/" +
             $"{Uri.EscapeDataString(candidateModel)}:generateContent";
@@ -4206,9 +4216,9 @@ public static async Task<IResult> CallWithFallbackAsync(
                     generationConfig =
                         new
                         {
-                            // Cost cap. Newer Gemini models spend part of this budget on
-                            // internal reasoning (1800 cut chat answers off mid-sentence).
-                            maxOutputTokens = 2048,
+                            // Cost cap. Newer Gemini models spend part of this budget on internal
+                            // reasoning, so it is generous enough for a full multi-code diagnosis.
+                            maxOutputTokens = 4096,
                             temperature = 0.3
                         }
                 });
@@ -4229,13 +4239,12 @@ public static async Task<IResult> CallWithFallbackAsync(
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !cancellationToken.IsCancellationRequested)
         {
             // Network failure or the provider timed out: not a "server error" of this app, and not hidden as one.
-            // Not specific to the model, so a retry stays on the same model rather than switching.
             gemini.LogWarning("Gemini request to {Model} failed: {Error}", candidateModel, ex.GetType().Name);
             transportFailure = ex is TaskCanceledException;
             providerStatus = ex is TaskCanceledException ? 504 : 503;
             lastErrorBody = null;
 
-            if (attempt < 2)
+            if (!isLast)
                 await Task.Delay(AppConfig.TransientRetryDelay, cancellationToken);
 
             continue;
@@ -4248,51 +4257,45 @@ public static async Task<IResult> CallWithFallbackAsync(
 
             if (response.IsSuccessStatusCode)
             {
-                raw = candidateRaw;
-                break;
-            }
+                var (reply, finishReason) = ExtractReply(candidateRaw);
+                if (reply is not null)
+                {
+                    if (!string.Equals(finishReason, "STOP", StringComparison.OrdinalIgnoreCase))
+                        gemini.LogWarning("Gemini {Model} finished with {FinishReason}; the reply was kept.", candidateModel, finishReason ?? "none");
+                    answer = reply;
+                    break;
+                }
 
-            lastErrorBody = candidateRaw;
-            transportFailure = false;
-            var (googleStatus, googleMessage) = AiProviderErrors.ReadProviderError(candidateRaw);
-
-            // Diagnostic only, never used to change retry timing: on a 429, a server-supplied Retry-After
-            // header is Google's own signal that this is a short, bounded throttle rather than a harder,
-            // longer-lived quota exhaustion (which would not carry one). Logged so an admin reading the
-            // log stream can tell the two apart; the original error for THIS model is preserved here even
-            // if a later attempt (same or fallback model) later overwrites providerStatus/lastErrorBody.
-            var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds;
-            gemini.LogWarning(
-                "Gemini {Model} answered HTTP {Status} {GoogleStatus} (retryAfter={RetryAfter}): {Message}",
-                candidateModel, providerStatus, googleStatus, retryAfter?.ToString("0.#") ?? "none", googleMessage);
-
-            if (attempt == 2)
-                break;
-
-            var kind = AppConfig.ClassifyFailure(response.StatusCode);
-            if (kind == AppConfig.FailureKind.Transient)
-            {
-                // Overloaded / rate-limited: Google's own wording calls this "usually temporary" — wait, then
-                // retry the SAME model rather than spending the last attempt on an unrelated one.
-                await Task.Delay(AppConfig.TransientRetryDelay, cancellationToken);
-            }
-            else if (kind == AppConfig.FailureKind.ModelUnavailable && !usedFallbackModel && fallbackModel is not null)
-            {
-                // This exact model id is unknown/unavailable to this key: a different model may still work.
-                candidateModel = fallbackModel;
-                usedFallbackModel = true;
+                // HTTP 200 but nothing to show (safety block, only internal reasoning, cut off before any text):
+                // another model usually answers the same prompt.
+                gemini.LogWarning("Gemini {Model} returned an empty reply (finishReason={FinishReason}).", candidateModel, finishReason ?? "none");
+                transportFailure = false;
+                lastErrorBody = null;
+                providerStatus = StatusCodes.Status503ServiceUnavailable;
             }
             else
             {
-                // Blocked (400/401/403): the request or the key is the problem, not this model — neither
-                // retrying nor switching models would help, so stop instead of wasting the last attempt.
-                // Also reached when ModelUnavailable has no distinct fallback left to try.
-                break;
+                lastErrorBody = candidateRaw;
+                transportFailure = false;
+                var (googleStatus, googleMessage) = AiProviderErrors.ReadProviderError(candidateRaw);
+
+                // Diagnostic only: a Retry-After header marks a short throttle rather than an exhausted quota.
+                var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds;
+                gemini.LogWarning(
+                    "Gemini {Model} answered HTTP {Status} {GoogleStatus} (retryAfter={RetryAfter}): {Message}",
+                    candidateModel, providerStatus, googleStatus, retryAfter?.ToString("0.#") ?? "none", googleMessage);
+
+                // Blocked (400/401/403): the request or the key is the problem, not this model.
+                if (AppConfig.ClassifyFailure(response.StatusCode) == AppConfig.FailureKind.Blocked)
+                    break;
             }
         }
+
+        if (!isLast)
+            await Task.Delay(AppConfig.TransientRetryDelay, cancellationToken);
     }
 
-    if (raw is null)
+    if (answer is null)
     {
         var (lastGoogleStatus, _) = AiProviderErrors.ReadProviderError(lastErrorBody);
         var failure = transportFailure && lastErrorBody is null
@@ -4301,20 +4304,41 @@ public static async Task<IResult> CallWithFallbackAsync(
         return Results.Json(AiProviderErrors.Body(failure, providerStatus), statusCode: failure.HttpStatus);
     }
 
+    return Results.Text(
+        answer,
+        "text/plain",
+        Encoding.UTF8);
+}
+
+/// <summary>
+/// The visible answer of a Gemini reply (every answer part joined, internal "thought" parts skipped) and its
+/// finishReason. The answer is null when there is no usable text, for example a blocked prompt, a reply made only of
+/// reasoning, or a body that is not the expected JSON.
+/// </summary>
+internal static (string? Text, string? FinishReason) ExtractReply(string raw)
+{
     try
     {
         using var doc =
             JsonDocument.Parse(raw);
 
-        // Join every answer part (a reply can arrive in several parts);
-        // internal "thought" parts are never shown to the user.
-        var candidate =
-            doc.RootElement
-                .GetProperty("candidates")[0];
+        if (!doc.RootElement.TryGetProperty("candidates", out var candidates) ||
+            candidates.ValueKind != JsonValueKind.Array ||
+            candidates.GetArrayLength() == 0)
+        {
+            return (null, null);
+        }
+
+        var candidate = candidates[0];
+        var finishReason =
+            candidate.TryGetProperty("finishReason", out var finish) && finish.ValueKind == JsonValueKind.String
+                ? finish.GetString()
+                : null;
 
         var builder = new StringBuilder();
         if (candidate.TryGetProperty("content", out var content) &&
-            content.TryGetProperty("parts", out var parts))
+            content.TryGetProperty("parts", out var parts) &&
+            parts.ValueKind == JsonValueKind.Array)
         {
             foreach (var part in parts.EnumerateArray())
             {
@@ -4324,26 +4348,17 @@ public static async Task<IResult> CallWithFallbackAsync(
                     continue;
                 }
 
-                if (part.TryGetProperty("text", out var piece))
+                if (part.TryGetProperty("text", out var piece) && piece.ValueKind == JsonValueKind.String)
                     builder.Append(piece.GetString());
             }
         }
 
-        string? text = builder.ToString().Trim();
-        if (text.Length == 0)
-            text = null;
-
-        return Results.Text(
-            text ??
-            "AI-მ პასუხი ვერ დააბრუნა.",
-            "text/plain",
-            Encoding.UTF8);
+        var text = builder.ToString().Trim();
+        return (text.Length == 0 ? null : text, finishReason);
     }
-    catch
+    catch (JsonException)
     {
-        return Results.Problem(
-            "AI response parse failed.",
-            statusCode: 502);
+        return (null, null);
     }
 }
 }

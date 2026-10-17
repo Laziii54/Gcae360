@@ -8,5 +8,5 @@ public static class AIConfig
     public const string DiagnosePath = "/api/ai/diagnose";
     public const string ChatPath = "/api/ai/chat";
     public const string DefaultModel = "gemini-3.8-flash";
-    public const int MaxRequestSeconds = 60;
+    public const int MaxRequestSeconds = 90;
 }

@@ -94,57 +94,27 @@ public sealed class AiModelFallbackTests
     }
 
     [Fact]
-    public void ABoundedAttemptBudget_StillCapsAtTwoOutboundCalls()
+    public void TheAttemptBudget_IsOneCallPerAllowedModel()
     {
         var method = GeminiMethod(Program());
-        Assert.Contains("for (var attempt = 1; attempt <= 2; attempt++)", method);
+        Assert.Contains("var models = AppConfig.GetModelFallbackOrder(model).ToArray();", method);
+        Assert.Contains("for (var attempt = 0; attempt < models.Length; attempt++)", method);
+        Assert.Equal(3, AppConfig.AllowedModels.Length);
     }
 
     [Fact]
-    public void ATransientFailure_RetriesTheSameModel_AndDoesNotSwitchModels()
+    public void OnlyABlockedFailure_StopsTheLoopEarly()
     {
         var method = GeminiMethod(Program());
-        var transientBranch = method.IndexOf("kind == AppConfig.FailureKind.Transient)", StringComparison.Ordinal);
-        var elseIfBranch = method.IndexOf("else if (kind == AppConfig.FailureKind.ModelUnavailable", StringComparison.Ordinal);
-        Assert.True(transientBranch > 0 && elseIfBranch > transientBranch);
-
-        var transientBlock = method[transientBranch..elseIfBranch];
-        Assert.Contains("Task.Delay(AppConfig.TransientRetryDelay", transientBlock);
-        Assert.DoesNotContain("candidateModel = fallbackModel", transientBlock);
+        var blocked = method.IndexOf("FailureKind.Blocked)", StringComparison.Ordinal);
+        Assert.True(blocked > 0, "the Blocked check was not found");
+        Assert.Contains("break;", method[blocked..(blocked + 120)]);
+        // Transient and unknown-model failures wait briefly and fall through to the next model.
+        Assert.Contains("await Task.Delay(AppConfig.TransientRetryDelay, cancellationToken);", method);
     }
 
     [Fact]
-    public void AModelUnavailableFailure_SwitchesToADistinctFallbackModel_OnlyOnce()
-    {
-        var method = GeminiMethod(Program());
-        var modelUnavailableBranch = method.IndexOf("kind == AppConfig.FailureKind.ModelUnavailable", StringComparison.Ordinal);
-        var elseBranch = method.IndexOf("\n            else\n", StringComparison.Ordinal);
-        Assert.True(modelUnavailableBranch > 0 && elseBranch > modelUnavailableBranch);
-
-        var block = method[modelUnavailableBranch..elseBranch];
-        Assert.Contains("candidateModel = fallbackModel;", block);
-        Assert.Contains("usedFallbackModel = true;", block);
-        // Guarded so a second ModelUnavailable (or Blocked) failure gives up rather than looping on it again.
-        Assert.Contains("!usedFallbackModel && fallbackModel is not null", block);
-    }
-
-    [Fact]
-    public void ABlockedFailure_NeitherRetriesNorSwitchesModels_AndStopsImmediately()
-    {
-        var method = GeminiMethod(Program());
-        var elseBranch = method.IndexOf("\n            else\n            {\n", StringComparison.Ordinal);
-        Assert.True(elseBranch > 0, "the 'Blocked' fallthrough branch was not found");
-
-        // The else branch (Blocked: 400/401/403, or ModelUnavailable with nothing left to try) only breaks —
-        // it must never retry the same model or switch to a different one.
-        var block = method[elseBranch..(elseBranch + 500)];
-        Assert.Contains("break;", block);
-        Assert.DoesNotContain("candidateModel = fallbackModel", block);
-        Assert.DoesNotContain("Task.Delay", block);
-    }
-
-    [Fact]
-    public void TheHttpTimeout_LeavesRoomForARetry_InsideTheMobileAppsOwnBudget()
+    public void TheWorstCase_StaysInsideTheMobileAppsBudget()
     {
         var method = GeminiMethod(Program());
         Assert.Contains("client.Timeout =\n        TimeSpan.FromSeconds(25);", method);
@@ -152,10 +122,11 @@ public sealed class AiModelFallbackTests
         var mobile = File.ReadAllText(Path.Combine(Root(), "AI", "AiDiagnosticService.cs"));
         Assert.Contains("Timeout = TimeSpan.FromSeconds(AIConfig.MaxRequestSeconds)", mobile);
         var aiConfig = File.ReadAllText(Path.Combine(Root(), "Services", "AIConfig.cs"));
-        Assert.Contains("MaxRequestSeconds = 60", aiConfig);
+        Assert.Contains("MaxRequestSeconds = 90", aiConfig);
 
-        // Two 25s attempts plus the short transient-retry delay stay comfortably under the mobile app's 60s budget.
-        Assert.True(25 * 2 + 2 < 60);
+        // One 25 s attempt per model plus the short waits between them.
+        var worst = AppConfig.AllowedModels.Length * 25 + (AppConfig.AllowedModels.Length - 1) * AppConfig.TransientRetryDelay.TotalSeconds;
+        Assert.True(worst < 90, $"worst case {worst}s");
     }
 
     [Fact]
@@ -164,5 +135,13 @@ public sealed class AiModelFallbackTests
         var method = GeminiMethod(Program());
         Assert.Contains("catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !cancellationToken.IsCancellationRequested)", method);
         Assert.Contains("await Task.Delay(AppConfig.TransientRetryDelay, cancellationToken);", method);
+    }
+
+    [Fact]
+    public void AFailedAiRequest_GivesTheDailyAllowanceBack()
+    {
+        var program = Program();
+        Assert.Contains("usage.RefundDailyAsync(dailyKey", program);
+        Assert.Contains("IStatusCodeHttpResult { StatusCode: >= 400 }", program);
     }
 }

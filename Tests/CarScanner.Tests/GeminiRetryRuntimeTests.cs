@@ -85,7 +85,7 @@ public sealed class GeminiRetryRuntimeTests
         GeminiClient.CallWithFallbackAsync(client, "test-key", model, "hello", NullLogger.Instance, ct);
 
     [Fact]
-    public async Task PrimaryModel503_ThenSucceedsOnRetry_UsingTheSameModelBothTimes()
+    public async Task PrimaryModel503_ThenTheNextModelAnswers()
     {
         var handler = new ScriptedGeminiHandler(
             _ => Json(HttpStatusCode.ServiceUnavailable, Overloaded503),
@@ -97,7 +97,7 @@ public sealed class GeminiRetryRuntimeTests
         Assert.Equal(200, status);
         Assert.Contains("Hello from Gemini", body);
         Assert.Equal(2, handler.RequestedUris.Count);
-        Assert.Equal(handler.RequestedUris[0], handler.RequestedUris[1]);           // retried the SAME model
+        Assert.NotEqual(handler.RequestedUris[0], handler.RequestedUris[1]);        // overload moves on to ANOTHER model
         Assert.Contains("gemini-3.8-flash", handler.RequestedUris[0]);
     }
 
@@ -121,22 +121,23 @@ public sealed class GeminiRetryRuntimeTests
     }
 
     [Fact]
-    public async Task BothAttemptsFail_ReturnsTheMappedFailure_AndMakesNoThirdCall()
+    public async Task EveryModelFails_ReturnsTheMappedFailure_AfterOneAttemptPerModel()
     {
         var handler = new ScriptedGeminiHandler(
+            _ => Json(HttpStatusCode.ServiceUnavailable, Overloaded503),
             _ => Json(HttpStatusCode.ServiceUnavailable, Overloaded503),
             _ => Json(HttpStatusCode.ServiceUnavailable, Overloaded503));
         using var client = new HttpClient(handler);
 
         var (status, body) = await ExecuteAsync(await CallAsync(client));
 
-        Assert.Equal(2, handler.RequestedUris.Count);                              // budget respected: never a third call
+        Assert.Equal(AppConfig.AllowedModels.Length, handler.RequestedUris.Count);  // each allowed model once, never more
         Assert.Equal(503, status);
         Assert.Contains("AI_PROVIDER_UNAVAILABLE", body);
     }
 
     [Fact]
-    public async Task ATemporaryRateLimit_RecoversOnRetry_OfTheSameModel()
+    public async Task ATemporaryRateLimit_RecoversOnTheNextModel()
     {
         var handler = new ScriptedGeminiHandler(
             _ => Json(HttpStatusCode.TooManyRequests, RateLimited429),
@@ -147,13 +148,14 @@ public sealed class GeminiRetryRuntimeTests
 
         Assert.Equal(200, status);
         Assert.Equal(2, handler.RequestedUris.Count);
-        Assert.Equal(handler.RequestedUris[0], handler.RequestedUris[1]);          // 429 retries, does not switch model
+        Assert.NotEqual(handler.RequestedUris[0], handler.RequestedUris[1]);       // 429 on one model: the next model is asked
     }
 
     [Fact]
     public async Task APersistentRateLimit_SurfacesAsAQuotaFailure_DistinctFromAGenericError()
     {
         var handler = new ScriptedGeminiHandler(
+            _ => Json(HttpStatusCode.TooManyRequests, RateLimited429),
             _ => Json(HttpStatusCode.TooManyRequests, RateLimited429),
             _ => Json(HttpStatusCode.TooManyRequests, RateLimited429));
         using var client = new HttpClient(handler);
@@ -162,7 +164,7 @@ public sealed class GeminiRetryRuntimeTests
 
         Assert.Equal(429, status);
         Assert.Contains("AI_PROVIDER_QUOTA", body);                                // the body names it as quota, not a generic failure
-        Assert.Equal(2, handler.RequestedUris.Count);
+        Assert.Equal(3, handler.RequestedUris.Count);
     }
 
     [Fact]
@@ -204,6 +206,7 @@ public sealed class GeminiRetryRuntimeTests
     {
         var handler = new ScriptedGeminiHandler(
             _ => Json(HttpStatusCode.NotFound, ModelGone404),
+            _ => Json(HttpStatusCode.ServiceUnavailable, Overloaded503),
             _ => Json(HttpStatusCode.ServiceUnavailable, Overloaded503));
         using var client = new HttpClient(handler);
         var logger = new CapturingLogger();
@@ -211,8 +214,8 @@ public sealed class GeminiRetryRuntimeTests
         var (status, body) = await ExecuteAsync(
             await GeminiClient.CallWithFallbackAsync(client, "test-key", AppConfig.DefaultModel, "hello", logger, CancellationToken.None));
 
-        Assert.Equal(2, handler.RequestedUris.Count);
-        // The response the client sees reflects the LAST attempt (the fallback model's 503)...
+        Assert.Equal(3, handler.RequestedUris.Count);
+        // The response the client sees reflects the LAST attempt (the last model's 503)...
         Assert.Equal(503, status);
         Assert.Contains("AI_PROVIDER_UNAVAILABLE", body);
         // ...but the original 404 on the primary model is not lost: it is still a distinct, separate log line.
@@ -257,5 +260,67 @@ public sealed class GeminiRetryRuntimeTests
         Assert.Equal(200, status);                                                 // same retry policy — no behavior change
         Assert.Equal(2, handler.RequestedUris.Count);
         Assert.Contains(logger.Messages, m => m.Contains("retryAfter=none"));      // no hint: possibly a harder quota, not just a blip
+    }
+
+    private static string Reply(string parts, string finish = "STOP") =>
+        "{\"candidates\":[{\"content\":{\"parts\":" + parts + "},\"finishReason\":\"" + finish + "\"}]}";
+
+    [Fact]
+    public async Task ABlockedPromptWithNoCandidates_TriesTheNextModel_InsteadOfFailingWithAParseError()
+    {
+        var handler = new ScriptedGeminiHandler(
+            _ => Json(HttpStatusCode.OK, """{"promptFeedback":{"blockReason":"OTHER"}}"""),
+            _ => Json(HttpStatusCode.OK, SuccessBody));
+        using var client = new HttpClient(handler);
+
+        var (status, body) = await ExecuteAsync(await CallAsync(client));
+
+        Assert.Equal(200, status);
+        Assert.Contains("Hello from Gemini", body);
+        Assert.Equal(2, handler.RequestedUris.Count);
+    }
+
+    [Fact]
+    public async Task AReplyMadeOnlyOfReasoning_IsNotShown_AndTheNextModelIsAsked()
+    {
+        var handler = new ScriptedGeminiHandler(
+            _ => Json(HttpStatusCode.OK, Reply("[{\"text\":\"internal\",\"thought\":true}]", "MAX_TOKENS")),
+            _ => Json(HttpStatusCode.OK, SuccessBody));
+        using var client = new HttpClient(handler);
+
+        var (status, body) = await ExecuteAsync(await CallAsync(client));
+
+        Assert.Equal(200, status);
+        Assert.DoesNotContain("internal", body);
+        Assert.Contains("Hello from Gemini", body);
+    }
+
+    [Fact]
+    public async Task EveryModelReturningNothing_IsReportedAsUnavailable_NotAsASuccessfulEmptyAnswer()
+    {
+        var handler = new ScriptedGeminiHandler(
+            _ => Json(HttpStatusCode.OK, Reply("[]")),
+            _ => Json(HttpStatusCode.OK, Reply("[]")),
+            _ => Json(HttpStatusCode.OK, Reply("[]")));
+        using var client = new HttpClient(handler);
+
+        var (status, body) = await ExecuteAsync(await CallAsync(client));
+
+        Assert.Equal(503, status);
+        Assert.Contains("AI_PROVIDER_UNAVAILABLE", body);
+    }
+
+    [Fact]
+    public async Task ACutOffReplyThatHasText_IsKept()
+    {
+        var handler = new ScriptedGeminiHandler(
+            _ => Json(HttpStatusCode.OK, Reply("[{\"text\":\"Partial answer\"}]", "MAX_TOKENS")));
+        using var client = new HttpClient(handler);
+
+        var (status, body) = await ExecuteAsync(await CallAsync(client));
+
+        Assert.Equal(200, status);
+        Assert.Contains("Partial answer", body);
+        Assert.Single(handler.RequestedUris);
     }
 }

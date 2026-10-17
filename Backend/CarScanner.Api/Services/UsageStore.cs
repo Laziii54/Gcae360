@@ -97,6 +97,24 @@ SELECT Count FROM DailyCounters WHERE CounterKey=$k AND Day=$d;";
         finally { _gate.Release(); }
     }
 
+    /// <summary>Gives back one use of today's counter (a request that could not be served). Never goes below zero.</summary>
+    public async Task RefundDailyAsync(string key, CancellationToken ct)
+    {
+        var day = DateTime.UtcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        await _gate.WaitAsync(ct);
+        try
+        {
+            await using var c = new SqliteConnection(_connectionString);
+            await c.OpenAsync(ct);
+            await using var cmd = c.CreateCommand();
+            cmd.CommandText = "UPDATE DailyCounters SET Count=Count-1 WHERE CounterKey=$k AND Day=$d AND Count>0";
+            cmd.Parameters.AddWithValue("$k", key);
+            cmd.Parameters.AddWithValue("$d", day);
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+        finally { _gate.Release(); }
+    }
+
     /// <summary>Account deletion: installations lose the account link; its counters go.</summary>
     public async Task ForgetAccountAsync(string accountId, CancellationToken ct)
     {
