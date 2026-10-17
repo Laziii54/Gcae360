@@ -460,6 +460,21 @@ public sealed class BluetoothConnectTimeoutTests
         Assert.Contains("Task.WhenAny(_classicReadTask, Task.Delay(", method);
         Assert.DoesNotContain("await _classicReadTask\n", method);
     }
+
+    [Fact]
+    public void AutoReconnect_NeverPermanentlyGivesUp()
+    {
+        // User report, 2026-10-17: a real BLE link drop while driving outlasted the old fixed 7-attempt backoff
+        // (~52s total), and the app then needed a manual reconnect even though the adapter would have come back
+        // on its own. StartAutoReconnect's loop must keep retrying (at the longest backoff step) until it
+        // reconnects, the user disconnects, or the service is disposed — never fall out of the loop on its own.
+        var code = Source();
+        var method = code[code.IndexOf("private void StartAutoReconnect()", StringComparison.Ordinal)..];
+        method = method[..method.IndexOf("private void DetachCharacteristics()", StringComparison.Ordinal)];
+
+        Assert.Contains("for (var round = 0; ; round++)", method);
+        Assert.DoesNotContain("foreach (var seconds in new[]", method);
+    }
 }
 
 /// <summary>

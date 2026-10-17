@@ -1818,8 +1818,15 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         {
             try
             {
-                foreach (var seconds in new[] { 1, 2, 3, 5, 8, 13, 20 })
+                // Escalating 1-20s backoff for the first 7 rounds, then repeats at 20s forever: a real BLE OBD
+                // link can drop for longer than the old fixed 7-attempt sequence's ~52s total while driving
+                // (radio interference, the cable moving under the dash), and giving up permanently after that
+                // left the app needing a manual reconnect even though the adapter would have come back on its
+                // own. This now only stops when it reconnects, the user disconnects, or the app is disposed.
+                var backoffSeconds = new[] { 1, 2, 3, 5, 8, 13, 20 };
+                for (var round = 0; ; round++)
                 {
+                    var seconds = backoffSeconds[Math.Min(round, backoffSeconds.Length - 1)];
                     await Task.Delay(TimeSpan.FromSeconds(seconds)).ConfigureAwait(false);
                     if (_disposed || _userDisconnect || IsConnected)
                         return;
