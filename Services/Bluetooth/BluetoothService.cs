@@ -49,6 +49,18 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
     private CancellationTokenSource? _classicReadCts;
     private Task? _classicReadTask;
 
+    /// <summary>
+    /// Bumped once per classic connection attempt. ClassicReadLoopAsync captures the value current
+    /// when it started and checks it again before ever touching shared session state (_pendingResponse,
+    /// _responseBuffer). A read loop whose generation no longer matches has been superseded by a newer
+    /// connection — most likely because its one native read never returned when the old connection was
+    /// torn down (see DisconnectClassicAsync) — and must not let a late answer complete the new
+    /// session's pending command or declare the new session's link lost on the old session's behalf.
+    /// This is what actually prevents a stale/abandoned reader from corrupting a fresh connection; it
+    /// does not and cannot make the old native read itself return any sooner.
+    /// </summary>
+    private int _classicGeneration;
+
     private ClassicDiscoveryReceiver? _classicReceiver;
     private bool _classicDiscoveryRegistered;
 
@@ -336,32 +348,7 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         await _connectGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var timeoutSource = new CancellationTokenSource();
-            var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutSource.Token);
-            var connectTask = ConnectCoreAsync(item, linkedSource.Token);
-            var delayTask = Task.Delay(ConnectTimeout);
-
-            if (await Task.WhenAny(connectTask, delayTask).ConfigureAwait(false) != connectTask)
-            {
-                // The native call ignored cancellation (the classic socket path cannot be interrupted once
-                // Connect() is blocking): stop waiting on it so the gate is released, and let it finish on its
-                // own in the background instead of hanging this call — and the whole app with it — forever.
-                // Disposal of the two sources is deferred to whenever that background attempt actually settles.
-                timeoutSource.Cancel();
-                ObserveAbandonedConnectAttempt(connectTask, item, linkedSource, timeoutSource);
-                cancellationToken.ThrowIfCancellationRequested();
-                throw new TimeoutException("OBD ადაპტერთან დაკავშირების ვადა ამოეწურა.");
-            }
-
-            try
-            {
-                await connectTask.ConfigureAwait(false);
-            }
-            finally
-            {
-                linkedSource.Dispose();
-                timeoutSource.Dispose();
-            }
+            await ConnectCoreBoundedAsync(item, ConnectTimeout, cancellationToken).ConfigureAwait(false);
 
             _lastDevice = item;
             _userDisconnect = false;
@@ -370,6 +357,46 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         finally
         {
             _connectGate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Runs ConnectCoreAsync bounded by <paramref name="timeout"/>, abandoning (not cancelling — the
+    /// classic socket Connect() call ignores cancellation once blocking, same as its read) a native
+    /// call that does not return in time instead of waiting on it indefinitely. Every caller that can
+    /// reach ConnectCoreAsync must go through this, not call it directly, or a single stuck native
+    /// connect attempt holds _connectGate forever and freezes every future connect/disconnect too —
+    /// this was previously true for StartAutoReconnect's own retry loop.
+    /// Assumes the caller already holds (or, for the one-shot try in StartAutoReconnect, has itself
+    /// decided not to need) <see cref="_connectGate"/>; this method does not take it.
+    /// </summary>
+    private async Task ConnectCoreBoundedAsync(BleDeviceItem item, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        var timeoutSource = new CancellationTokenSource();
+        var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutSource.Token);
+        var connectTask = ConnectCoreAsync(item, linkedSource.Token);
+        var delayTask = Task.Delay(timeout);
+
+        if (await Task.WhenAny(connectTask, delayTask).ConfigureAwait(false) != connectTask)
+        {
+            // The native call ignored cancellation (the classic socket path cannot be interrupted once
+            // Connect() is blocking): stop waiting on it so the gate is released, and let it finish on its
+            // own in the background instead of hanging this call — and the whole app with it — forever.
+            // Disposal of the two sources is deferred to whenever that background attempt actually settles.
+            timeoutSource.Cancel();
+            ObserveAbandonedConnectAttempt(connectTask, item, linkedSource, timeoutSource);
+            cancellationToken.ThrowIfCancellationRequested();
+            throw new TimeoutException("OBD ადაპტერთან დაკავშირების ვადა ამოეწურა.");
+        }
+
+        try
+        {
+            await connectTask.ConfigureAwait(false);
+        }
+        finally
+        {
+            linkedSource.Dispose();
+            timeoutSource.Dispose();
         }
     }
 
@@ -1095,8 +1122,13 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
 
         StopClassicDiscovery();
 
+        // Bumps _classicGeneration as part of tearing down whatever was there before (see
+        // DisconnectClassicAsync), so any reader left over from it — classic-to-classic reconnect or
+        // not — is already retired by the time a new one is created below.
         await DisconnectClassicAsync()
             .ConfigureAwait(false);
+
+        var generation = Volatile.Read(ref _classicGeneration);
 
         try
         {
@@ -1134,7 +1166,8 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
             _classicReadTask =
                 Task.Run(
                     () => ClassicReadLoopAsync(
-                        _classicReadCts.Token));
+                        _classicReadCts.Token,
+                        generation));
 
             IsConnected = true;
 
@@ -1282,7 +1315,8 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
 
 
     private async Task ClassicReadLoopAsync(
-        CancellationToken token)
+        CancellationToken token,
+        int generation)
     {
         var input =
             _classicInput;
@@ -1292,6 +1326,12 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
 
         var buffer =
             new byte[1024];
+
+        // True once this loop has detected it was superseded by a newer connection. From that point
+        // on it must not touch _pendingResponse/_responseBuffer (they belong to the new session) and
+        // must not report link loss on the new session's behalf — it only keeps draining its own
+        // stream, harmlessly, until cancelled or the old stream itself ends.
+        bool Retired() => Volatile.Read(ref _classicGeneration) != generation;
 
         try
         {
@@ -1304,6 +1344,14 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
                         buffer.Length,
                         token)
                         .ConfigureAwait(false);
+
+                if (Retired())
+                {
+                    _logger.LogDebug(
+                        "Classic read loop (generation {Generation}) got data after being superseded; discarding.",
+                        generation);
+                    return;
+                }
 
                 if (count <= 0)
                 {
@@ -1344,6 +1392,12 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         }
         catch (Exception ex)
         {
+            if (Retired())
+            {
+                _logger.LogDebug(ex, "Classic read loop (generation {Generation}) ended after being superseded; not reported.", generation);
+                return;
+            }
+
             _logger.LogDebug(
                 ex,
                 "Classic Bluetooth read loop ended.");
@@ -1354,6 +1408,9 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
                         "OBD2 Bluetooth კავშირი გაითიშა.",
                         ex));
         }
+
+        if (Retired())
+            return;
 
         // The socket closed by itself (adapter unplugged, out of range …).
         if (!token.IsCancellationRequested && !_userDisconnect)
@@ -1384,12 +1441,33 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         {
         }
 
+        // Retires whatever classic read loop was running, unconditionally — not only when a new
+        // classic connection follows. Its one native read may still be blocked past this point (see
+        // the Close() comment below); this is what stops it from ever touching _pendingResponse or
+        // _responseBuffer again once it does return, regardless of what connects next (another
+        // classic session, a BLE session, or nothing).
+        Interlocked.Increment(ref _classicGeneration);
+
+        // Fail any command still waiting on this session immediately, instead of making its caller
+        // wait out the rest of its own timeout. Harmless if nothing is pending (TrySetException is a
+        // no-op then) and safe to do before the stream teardown below, since SendClassicCommandAsync
+        // only ever reads _pendingResponse.Task, never the stream directly.
+        try
+        {
+            _pendingResponse?.TrySetException(new IOException("OBD2 Bluetooth კავშირი გაითიშა."));
+        }
+        catch
+        {
+        }
+
         try
         {
             // A plain await here can hang forever: Stream.ReadAsync on some Android InputStream bridges
             // blocks on the native read and only checks the token before starting, same as the classic
             // socket Connect() call above. Bounding this wait keeps a disconnect (and the ObdConnectionService
-            // gate it runs under) from freezing the app when the adapter stops answering mid-read.
+            // gate it runs under) from freezing the app when the adapter stops answering mid-read. It is a
+            // best-effort wait, not a guarantee the read loop actually stops within it — see _classicGeneration
+            // for how a read that outlives this wait is kept from corrupting whatever connects next.
             if (_classicReadTask != null)
                 await Task.WhenAny(_classicReadTask, Task.Delay(TimeSpan.FromSeconds(3)))
                     .ConfigureAwait(false);
@@ -1416,6 +1494,11 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
 
         try
         {
+            // Close() is documented to unblock a thread blocked in a read on this socket's streams,
+            // but this has not been verified against every Android version/OEM Bluetooth stack this
+            // app runs on, and the existing _classicGeneration guard does not depend on it being true:
+            // if the native read is still blocked past this point, it is simply left running and its
+            // eventual result (if any) is discarded by ClassicReadLoopAsync's own generation check.
             _classicSocket?.Close();
             _classicSocket?.Dispose();
         }
@@ -1836,8 +1919,11 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
 
                     try
                     {
-                        using var attempt = new CancellationTokenSource(TimeSpan.FromSeconds(12));
-                        await ConnectCoreAsync(device, attempt.Token).ConfigureAwait(false);
+                        // ConnectCoreBoundedAsync, not ConnectCoreAsync directly: a reconnect attempt can hit
+                        // the exact same stuck-native-Connect() risk as a manual one, and without this bound
+                        // that would hold _connectGate forever, silently killing this retry loop AND blocking
+                        // the user from ever manually reconnecting again.
+                        await ConnectCoreBoundedAsync(device, TimeSpan.FromSeconds(12), CancellationToken.None).ConfigureAwait(false);
                         _userDisconnect = false;
                         _failedAdapterChecks = 0;
                         _logger.LogInformation("OBD adapter reconnected.");

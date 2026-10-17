@@ -45,6 +45,15 @@ public sealed class LiveDataEngine : IAsyncDisposable
     public LiveDataHealth Health { get; private set; } = LiveDataHealth.Healthy;
     public event EventHandler<LiveDataHealth>? HealthChanged;
 
+    /// <summary>
+    /// Reads the user's polling-speed preference. A static seam, not a constructor dependency,
+    /// purely so this file can be linked into a plain unit-test project with no usable
+    /// Microsoft.Maui.Storage.Preferences implementation (and no reference to it at all). Defaults
+    /// to "Balanced" so a test that never touches this still gets the loop's normal timing;
+    /// MauiProgram.cs points it at the real Preferences store once, at app startup.
+    /// </summary>
+    internal static Func<string> PollingProfileProvider { get; set; } = () => "Balanced";
+
     // Round-robin cursor over every PID the ECU has advertised as supported.
     // Rebuilt whenever the supported-PID set changes (e.g. after a fresh
     // DiscoverSupportedPidsAsync following a new connection).
@@ -381,7 +390,7 @@ public sealed class LiveDataEngine : IAsyncDisposable
                 // itself is the rate limit (speed is read on every tick).
                 var performanceFloor = TimeSpan.FromMilliseconds(10);
 
-                var profile = Preferences.Default.Get("polling", "Balanced");
+                var profile = PollingProfileProvider();
                 var fast = isPerformancePolling
                     ? performanceFloor
                     : profile == "Fast" ? TimeSpan.FromMilliseconds(650) : profile == "Low power" ? TimeSpan.FromMilliseconds(1600) : FastPollInterval;

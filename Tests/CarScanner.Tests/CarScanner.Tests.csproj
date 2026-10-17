@@ -147,6 +147,7 @@
     <Compile Include="../../Models/LiveDataModel.cs" Link="Obd/LiveDataModel.cs" />
     <Compile Include="../../Models/LiveDataHealth.cs" Link="Obd/LiveDataHealth.cs" />
     <Compile Include="../../Services/LiveDataHealthMonitor.cs" Link="Obd/LiveDataHealthMonitor.cs" />
+    <Compile Include="../../Services/LiveDataEngine.cs" Link="Obd/LiveDataEngine.cs" />
     <Compile Include="../../Models/ReadinessInfo.cs" Link="Obd/ReadinessInfo.cs" />
   </ItemGroup>
   <ItemGroup>

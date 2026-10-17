@@ -490,6 +490,10 @@ builder.Services.AddSingleton<
 
         var app = builder.Build();
 
+        // LiveDataEngine.cs has no reference to Microsoft.Maui.Storage so it can be linked into the
+        // plain unit-test project; this is the one place that gives it the real preference store.
+        CarScanner.Services.LiveDataEngine.PollingProfileProvider = () => Preferences.Default.Get("polling", "Balanced");
+
         // Start listening for (opted-in) data collection. A failure here must never stop the app.
         try { app.Services.GetRequiredService<CarScanner.Services.DataCollection.DataCollectionService>(); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Data collection init failed: {ex.Message}"); }

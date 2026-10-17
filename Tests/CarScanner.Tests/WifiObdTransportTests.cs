@@ -363,4 +363,84 @@ public sealed class WifiObdTransportTests
 
         Assert.False(transport.IsConnected);
     }
+
+    [Fact]
+    public async Task RepeatedDisconnectReconnectCycles_NeverLeaveTheTransportInAStuckState()
+    {
+        // Priority 2 of the live-data audit: a single lost-link-then-reconnect was already covered
+        // (AfterALostLink_TheSameTransportCanConnectAgain); this proves the transport survives several
+        // such cycles in a row, not just the first one, with a fresh, independent connection each time.
+        var transport = new WifiObdTransport();
+        var events = new List<bool>();
+        transport.ConnectionChanged += (_, connected) => events.Add(connected);
+
+        for (var cycle = 0; cycle < 4; cycle++)
+        {
+            await using var server = new FakeElmServer();
+            var cycleTag = $"OK-{cycle}";
+            server.Responder = line => Task.FromResult<string?>(line == "ATI" ? "ELM327 v1.5\r\r>" : $"{cycleTag}\r\r>");
+
+            await transport.ConnectAsync(ObdTransportConnectionOptions.ForWifi("127.0.0.1", server.Port));
+            Assert.True(transport.IsConnected);
+            Assert.Contains(cycleTag, await transport.SendCommandAsync("0100", Short));
+
+            await transport.DisconnectAsync();
+            Assert.False(transport.IsConnected);
+        }
+
+        // 4 cycles -> 4 true/false pairs, never two "true"s or two "false"s in a row (no stuck state).
+        Assert.Equal(8, events.Count);
+        for (var i = 0; i < events.Count; i++)
+            Assert.Equal(i % 2 == 0, events[i]);
+    }
+
+    [Fact]
+    public async Task MalformedBytesMixedWithAValidFrame_StillYieldsTheRealReply_OnTheNextCommand()
+    {
+        await using var server = new FakeElmServer();
+        server.Responder = line => Task.FromResult<string?>(line switch
+        {
+            "ATI" => "ELM327 v1.5\r\r>",
+            // Null bytes and unprintable control characters ahead of a real, valid frame — some cheap
+            // clones and bad radio links produce exactly this, and it must not corrupt the next command.
+            "0100" => "\u0000\u0001�\u0007" + "41 00 BE 3F A8 13\r\r>",
+            "010C" => "41 0C 1A F8\r\r>",
+            _ => "?\r\r>"
+        });
+        var transport = await ConnectedAsync(server);
+
+        var garbled = await transport.SendCommandAsync("0100", Short);
+        Assert.Contains("41 00 BE 3F A8 13", garbled);
+
+        var clean = await transport.SendCommandAsync("010C", Short);
+        Assert.Contains("41 0C 1A F8", clean);
+        Assert.DoesNotContain("41 00", clean); // no leftover from the garbled frame bleeding into this one
+
+        await transport.DisconnectAsync();
+    }
+
+    [Fact]
+    public async Task ProlongedPolling_ManyConsecutiveCommands_NeverDegradesOrHangs()
+    {
+        await using var server = new FakeElmServer();
+        server.Responder = line => Task.FromResult<string?>(line switch
+        {
+            "ATI" => "ELM327 v1.5\r\r>",
+            "010C" => "41 0C 1A F8\r\r>",
+            _ => "?\r\r>"
+        });
+        var transport = await ConnectedAsync(server);
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        for (var i = 0; i < 200; i++)
+        {
+            var reply = await transport.SendCommandAsync("010C", Short);
+            Assert.Contains("41 0C 1A F8", reply);
+        }
+        sw.Stop();
+
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(10), $"200 ticks took {sw.Elapsed} — looks stuck, not just slow.");
+        Assert.True(transport.IsConnected);
+        await transport.DisconnectAsync();
+    }
 }

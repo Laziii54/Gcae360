@@ -427,15 +427,41 @@ public sealed class BluetoothConnectTimeoutTests
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory.Split("Tests")[0], "Services", "Bluetooth", "BluetoothService.cs"));
 
     [Fact]
-    public void ConnectAsync_RacesTheNativeCallAgainstATimeBudget_InsteadOfAwaitingItDirectly()
+    public void ConnectAsync_DelegatesToTheBoundedHelper_InsteadOfAwaitingConnectCoreDirectly()
     {
         var code = Source();
         var method = code[code.IndexOf("public async Task ConnectAsync(", StringComparison.Ordinal)..];
+        method = method[..method.IndexOf("private async Task ConnectCoreBoundedAsync(", StringComparison.Ordinal)];
+
+        Assert.Contains("ConnectCoreBoundedAsync(item, ConnectTimeout, cancellationToken)", method);
+        // A plain "await ConnectCoreAsync(...)" with no race would reintroduce the hang this guards against.
+        Assert.DoesNotContain("await ConnectCoreAsync(", method);
+    }
+
+    [Fact]
+    public void ConnectCoreBoundedAsync_RacesTheNativeCallAgainstATimeBudget_InsteadOfAwaitingItDirectly()
+    {
+        var code = Source();
+        var method = code[code.IndexOf("private async Task ConnectCoreBoundedAsync(", StringComparison.Ordinal)..];
         method = method[..method.IndexOf("\n    private void ObserveAbandonedConnectAttempt", StringComparison.Ordinal)];
 
         Assert.Contains("Task.WhenAny(connectTask, delayTask)", method);
-        Assert.Contains("Task.Delay(ConnectTimeout)", method);
-        // A plain "await ConnectCoreAsync(...)" with no race would reintroduce the hang this guards against.
+        Assert.Contains("Task.Delay(timeout)", method);
+        Assert.DoesNotContain("await ConnectCoreAsync(", method);
+    }
+
+    [Fact]
+    public void StartAutoReconnect_AlsoGoesThroughTheBoundedHelper_NotConnectCoreDirectly()
+    {
+        // Regression for a real gap: the retry loop used to await ConnectCoreAsync directly, so a
+        // reconnect attempt that hit the same stuck-native-Connect() risk as a manual connect would
+        // hold _connectGate forever — silently killing this loop AND blocking the user from ever
+        // manually reconnecting again.
+        var code = Source();
+        var method = code[code.IndexOf("private void StartAutoReconnect()", StringComparison.Ordinal)..];
+        method = method[..method.IndexOf("private void DetachCharacteristics()", StringComparison.Ordinal)];
+
+        Assert.Contains("ConnectCoreBoundedAsync(device, TimeSpan.FromSeconds(12), CancellationToken.None)", method);
         Assert.DoesNotContain("await ConnectCoreAsync(", method);
     }
 
@@ -455,7 +481,7 @@ public sealed class BluetoothConnectTimeoutTests
     {
         var code = Source();
         var method = code[code.IndexOf("private async Task DisconnectClassicAsync()", StringComparison.Ordinal)..];
-        method = method[..Math.Min(method.Length, 900)];
+        method = method[..Math.Min(method.Length, 2600)];
 
         Assert.Contains("Task.WhenAny(_classicReadTask, Task.Delay(", method);
         Assert.DoesNotContain("await _classicReadTask\n", method);
@@ -474,6 +500,55 @@ public sealed class BluetoothConnectTimeoutTests
 
         Assert.Contains("for (var round = 0; ; round++)", method);
         Assert.DoesNotContain("foreach (var seconds in new[]", method);
+    }
+
+    [Fact]
+    public void ClassicConnect_BumpsAGeneration_AfterTearingDownTheOldSession()
+    {
+        // The read loop's one native read cannot be reliably cancelled (see DisconnectClassicAsync's own
+        // comment), so a prior connection's reader can still be running when a new one starts. Without a
+        // generation to compare against, a late answer from that old reader could complete the new
+        // session's pending command or declare the new session's link lost on the old session's behalf.
+        var code = Source();
+        var method = code[code.IndexOf("private async Task ConnectClassicAsync(", StringComparison.Ordinal)..];
+        method = method[..method.IndexOf("private static async Task EnsureClassicPairingAsync", StringComparison.Ordinal)];
+
+        Assert.Contains("await DisconnectClassicAsync()", method);
+        Assert.Contains("Volatile.Read(ref _classicGeneration)", method);
+        Assert.Contains("ClassicReadLoopAsync(", method);
+        Assert.Contains("_classicReadCts.Token,", method);
+        Assert.Contains("generation));", method);
+
+        // The actual bump lives in DisconnectClassicAsync, not here — so that every teardown retires
+        // the outgoing reader unconditionally, not only a classic-to-classic reconnect.
+        var disconnect = code[code.IndexOf("private async Task DisconnectClassicAsync()", StringComparison.Ordinal)..];
+        disconnect = disconnect[..Math.Min(disconnect.Length, 2600)];
+        Assert.Contains("Interlocked.Increment(ref _classicGeneration)", disconnect);
+    }
+
+    [Fact]
+    public void ClassicReadLoop_NeverTouchesSharedStateOnceSupersededByANewerConnection()
+    {
+        var code = Source();
+        var method = code[code.IndexOf("private async Task ClassicReadLoopAsync(", StringComparison.Ordinal)..];
+        method = method[..method.IndexOf("private async Task HandleClassicLinkLostAsync()", StringComparison.Ordinal)];
+
+        Assert.Contains("int generation", method);
+        Assert.Contains("Volatile.Read(ref _classicGeneration) != generation", method);
+        // Checked both on the success path (after a read returns) and in the catch block, before any
+        // _pendingResponse/HandleClassicLinkLostAsync call — not only at the very top of the loop, since
+        // the whole point is a read that is already in flight when superseded.
+        Assert.Contains("if (Retired())", method);
+    }
+
+    [Fact]
+    public void DisconnectClassicAsync_FailsAnyPendingCommandImmediately_InsteadOfLeavingItToTimeOut()
+    {
+        var code = Source();
+        var method = code[code.IndexOf("private async Task DisconnectClassicAsync()", StringComparison.Ordinal)..];
+        method = method[..Math.Min(method.Length, 2600)];
+
+        Assert.Contains("_pendingResponse?.TrySetException(", method);
     }
 }
 
