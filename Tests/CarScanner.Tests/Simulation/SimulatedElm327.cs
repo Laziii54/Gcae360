@@ -14,9 +14,13 @@ public enum SimFault
     Garbage,         // random bytes / unprintable text instead of an answer
     Truncated,       // answer cut off in the middle of a byte
     Noise,           // valid answer with junk lines mixed in
-    Timeout,         // adapter never answers
+    Timeout,         // adapter never answers (but a Task.Delay(timeout, token) still unblocks the caller)
     Disconnect,      // link drops: IsConnected=false, send throws
-    BufferFull       // "BUFFER FULL" in monitor mode
+    BufferFull,      // "BUFFER FULL" in monitor mode
+    HangForever      // simulates a native Android InputStream.Read() that a CancellationToken cannot
+                      // interrupt: the returned Task never completes and ignores the token entirely,
+                      // unlike Timeout above. Only an independent watchdog racing this from the outside
+                      // (not the token passed into this call) can ever move on.
 }
 
 /// <summary>
@@ -126,6 +130,14 @@ public sealed class SimulatedElm327 : IBluetoothService
         {
             switch (Fault)
             {
+                case SimFault.HangForever:
+                    // Deliberately ignores cancellationToken: a caller must race this from the
+                    // outside (e.g. Task.WhenAny with its own independent timer) to ever move on.
+                    // Bounded at 30s (not literally forever) purely so a test that does NOT race
+                    // this from the outside cannot wedge the rest of a shared test run — the real
+                    // native Android read this models has no such ceiling.
+                    await Task.Delay(TimeSpan.FromSeconds(30), CancellationToken.None).ConfigureAwait(false);
+                    break;
                 case SimFault.Disconnect:
                     Drop();
                     throw new ObdConnectionLostException("Simulated link dropped.");

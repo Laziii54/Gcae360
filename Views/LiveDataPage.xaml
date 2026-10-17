@@ -40,6 +40,13 @@
                     </VerticalStackLayout>
                 </Border>
 
+                <!-- Connection-health banner: hidden while healthy, shown only when the polling
+                     loop has not completed a tick recently — so the dashboard below cannot keep
+                     showing frozen numbers as if they were still live without any indication. -->
+                <Border Style="{StaticResource ListCardStyle}" IsVisible="{Binding IsStaleBannerVisible}" Padding="14,10">
+                    <Label Text="{Binding StaleBannerText}" TextColor="{Binding StaleBannerColor}" FontSize="13" FontAttributes="Bold" LineBreakMode="WordWrap" />
+                </Border>
+
                 <!-- Controls: start (primary) · pause / stop (outlined) -->
                 <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
                     <Button Text="დაწყება" Command="{Binding StartLiveDataCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="48" />

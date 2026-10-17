@@ -31,6 +31,20 @@ public sealed class LiveDataEngine : IAsyncDisposable
     private Task? _task;
     private bool _disposed;
 
+    // Independent freeze detector. LoopAsync updates these two timestamps from inside its own
+    // await chain, so if a single awaited call never returns (e.g. a native Bluetooth read that
+    // ignores its CancellationToken — see BluetoothService's own comments on this), the loop
+    // itself can never notice. _healthTimer runs on its own thread, outside that await chain, and
+    // only reads these fields (via the dependency-free LiveDataHealthMonitor), so it keeps
+    // working even while the loop is completely wedged.
+    private Timer? _healthTimer;
+    private long _tickStartedUtcTicks;
+    private long _lastTickCompletedUtcTicks;
+    private LiveDataHealth _lastReportedHealth = LiveDataHealth.Healthy;
+
+    public LiveDataHealth Health { get; private set; } = LiveDataHealth.Healthy;
+    public event EventHandler<LiveDataHealth>? HealthChanged;
+
     // Round-robin cursor over every PID the ECU has advertised as supported.
     // Rebuilt whenever the supported-PID set changes (e.g. after a fresh
     // DiscoverSupportedPidsAsync following a new connection).
@@ -163,9 +177,36 @@ public sealed class LiveDataEngine : IAsyncDisposable
                 await _obd.InitializeAsync(token).ConfigureAwait(false);
             _cts = CancellationTokenSource.CreateLinkedTokenSource(token);
             IsRunning = true;
+            var nowTicks = DateTime.UtcNow.Ticks;
+            Interlocked.Exchange(ref _tickStartedUtcTicks, nowTicks);
+            Interlocked.Exchange(ref _lastTickCompletedUtcTicks, nowTicks);
+            SetHealth(LiveDataHealth.Healthy);
             _task = Task.Run(() => LoopAsync(_cts.Token), CancellationToken.None);
+            _healthTimer ??= new Timer(_ => CheckHealth(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
         }
         finally { _gate.Release(); }
+    }
+
+    private void CheckHealth()
+    {
+        if (!IsRunning)
+            return;
+
+        var health = LiveDataHealthMonitor.Classify(
+            DateTime.UtcNow,
+            new DateTime(Interlocked.Read(ref _tickStartedUtcTicks), DateTimeKind.Utc),
+            new DateTime(Interlocked.Read(ref _lastTickCompletedUtcTicks), DateTimeKind.Utc));
+
+        SetHealth(health);
+    }
+
+    private void SetHealth(LiveDataHealth health)
+    {
+        if (health == _lastReportedHealth)
+            return;
+        _lastReportedHealth = health;
+        Health = health;
+        HealthChanged?.Invoke(this, health);
     }
 
     /// <summary>
@@ -218,8 +259,27 @@ public sealed class LiveDataEngine : IAsyncDisposable
         {
             if (!IsRunning) return;
             _cts?.Cancel();
-            if (_task != null) try { await _task.ConfigureAwait(false); } catch (OperationCanceledException) { }
+            if (_task != null)
+            {
+                // A cancelled-but-truly-stuck tick (an awaited call that ignores its token, e.g. a
+                // native Bluetooth read some Android bridges never interrupt) must not turn this
+                // into a hang too: a page's OnDisappearing/Dispose calling StopAsync would otherwise
+                // freeze navigation itself. Give the loop a bounded chance to unwind and move on
+                // regardless; the abandoned task is leaked but harmless — it holds no lock this
+                // class still needs, and a fresh StartAsync creates its own, independent state.
+                var finished = await Task.WhenAny(_task, Task.Delay(TimeSpan.FromSeconds(3))).ConfigureAwait(false);
+                if (finished == _task)
+                {
+                    try { await _task.ConfigureAwait(false); } catch (OperationCanceledException) { }
+                }
+                else
+                {
+                    _logger.LogWarning("Live data loop did not stop within 3s of cancellation; abandoning it.");
+                }
+            }
             _cts?.Dispose(); _cts = null; _task = null; IsRunning = false;
+            _healthTimer?.Dispose(); _healthTimer = null;
+            SetHealth(LiveDataHealth.Healthy);
         }
         finally { _gate.Release(); }
     }
@@ -231,6 +291,7 @@ public sealed class LiveDataEngine : IAsyncDisposable
             while (!token.IsCancellationRequested)
             {
                 var started = DateTime.UtcNow;
+                Interlocked.Exchange(ref _tickStartedUtcTicks, started.Ticks);
                 try
                 {
                     // After the adapter reconnected by itself it must be set up again.
@@ -291,14 +352,22 @@ public sealed class LiveDataEngine : IAsyncDisposable
                         values.AddRange(extraValues.Where(x => values.All(current => current.Pid != x.Pid)));
                     }
 
-                    CurrentData = data;
-                    LastSuccessfulPidCount = values.Count;
-                    DataRate = values.Count / Math.Max((DateTime.UtcNow - started).TotalSeconds, 0.001);
-                    LiveDataUpdated?.Invoke(this, data);
-                    LiveValuesUpdated?.Invoke(this, values);
+                    // A tick abandoned by StopAsync's bounded wait (see there) can still be
+                    // in-flight if the call it was awaiting ignored cancellation and only now
+                    // returned. Publishing it would overwrite a newer session's state with a
+                    // stale answer, so a cancelled tick's result is simply dropped here.
+                    if (!token.IsCancellationRequested)
+                    {
+                        CurrentData = data;
+                        LastSuccessfulPidCount = values.Count;
+                        DataRate = values.Count / Math.Max((DateTime.UtcNow - started).TotalSeconds, 0.001);
+                        LiveDataUpdated?.Invoke(this, data);
+                        LiveValuesUpdated?.Invoke(this, values);
+                    }
                 }
                 catch (OperationCanceledException) { throw; }
                 catch (Exception ex) { _logger.LogDebug(ex, "Live data poll failed; retrying."); }
+                Interlocked.Exchange(ref _lastTickCompletedUtcTicks, DateTime.UtcNow.Ticks);
                 var elapsed = DateTime.UtcNow - started;
                 bool isPerformancePolling;
                 bool isSpeedOnlyPolling;

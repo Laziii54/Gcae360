@@ -62,6 +62,9 @@ public partial class LiveDataViewModel : BaseViewModel
     [ObservableProperty] private bool hasSelectedPid;
     [ObservableProperty] private string selectedPidStatus = "აირჩიე მხარდაჭერილი PID.";
     [ObservableProperty] private string selectedPidStatusColor = "#94A3B8";
+    [ObservableProperty] private bool isStaleBannerVisible;
+    [ObservableProperty] private string staleBannerText = string.Empty;
+    [ObservableProperty] private string staleBannerColor = "#D0701F";
 
     // A graph refresh is a single snapshot assignment.  Rebuilding an
     // ObservableCollection one item at a time caused hundreds of redraws on
@@ -105,6 +108,7 @@ public partial class LiveDataViewModel : BaseViewModel
 
         _engine.LiveDataUpdated += OnLiveDataUpdated;
         _engine.LiveValuesUpdated += OnLiveValuesUpdated;
+        _engine.HealthChanged += OnLiveDataHealthChanged;
         _bluetooth.ConnectionChanged += OnConnectionChanged;
         _vehicle.VehicleInfoUpdated += OnVehicleInfoUpdated;
         _brand.Changed += (_, __) => MainThread.BeginInvokeOnMainThread(UpdateHeader);
@@ -203,6 +207,28 @@ public partial class LiveDataViewModel : BaseViewModel
             }
         });
     }
+
+    private void OnLiveDataHealthChanged(object? sender, LiveDataHealth health) =>
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            switch (health)
+            {
+                case LiveDataHealth.Frozen:
+                    IsStaleBannerVisible = true;
+                    StaleBannerText = "ECU-სთან კავშირი იკარგება — მონაცემები შეჩერებულია, ეკრანზე ჩვენებული მნიშვნელობები მოძველებული შეიძლება იყოს.";
+                    StaleBannerColor = "#B3361F";
+                    break;
+                case LiveDataHealth.Stale:
+                    IsStaleBannerVisible = true;
+                    StaleBannerText = "ECU ცოტა ხანია არ პასუხობს — მონაცემები შეიძლება მოძველებული იყოს.";
+                    StaleBannerColor = "#D0701F";
+                    break;
+                default:
+                    IsStaleBannerVisible = false;
+                    StaleBannerText = string.Empty;
+                    break;
+            }
+        });
 
     private void OnConnectionChanged(object? sender, bool connected) =>
         MainThread.BeginInvokeOnMainThread(() =>
