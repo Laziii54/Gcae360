@@ -211,7 +211,7 @@ public sealed class SeoTests
         foreach (var english in new[] { false, true })
         {
             var html = Home(english);
-            Assert.Matches("<a [^>]*href=\"https://play\\.google\\.com/store/apps/details\\?id=com\\.gcar360\\.app\"", html);
+            Assert.Matches("<a [^>]*href=\"https://play\\.google\\.com/store/apps/details\\?id=com\\.obd360\\.app\"", html);
             Assert.DoesNotContain("apps.apple.com", html);                            // no App Store listing exists in the repository
         }
     }

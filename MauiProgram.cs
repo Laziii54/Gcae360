@@ -152,6 +152,7 @@ public static class MauiProgram
         // ============================================================
 
         builder.Services.AddSingleton<AccountService>();
+        builder.Services.AddSingleton<CarScanner.Services.ExternalSignIn.ExternalSignInService>();
         builder.Services.AddSingleton<AvatarService>();
 
         builder.Services.AddSingleton<ProService>();

@@ -1,10 +1,11 @@
 using CarScanner.Services;
+using CarScanner.Services.ExternalSignIn;
 using CarScanner.Services.Localization;
 
 namespace CarScanner.Views;
 
 /// <summary>
-/// OBD360 account: sign in or create an account (e-mail + password).
+/// OBD360 account: continue with Google / Apple, or sign in / create an account with e-mail + password.
 /// PRO plans and opened VIN histories are kept on the account.
 /// </summary>
 public partial class AccountPage : ContentPage
@@ -13,16 +14,23 @@ public partial class AccountPage : ContentPage
     private readonly ProService _pro;
     private readonly LocalizationService _localization;
     private readonly AvatarService _avatars;
+    private readonly ExternalSignInService _external;
     private bool _busy;
     private bool _hasAvatar;
+    private bool _emailExpanded;
 
-    public AccountPage(AccountService account, ProService pro, LocalizationService localization, AvatarService avatars)
+    /// <summary>A Google / Apple sign-in whose e-mail already has an OBD360 password account: waiting for that account's password.</summary>
+    private sealed record PendingLink(string Ticket, string Email);
+    private PendingLink? _pendingLink;
+
+    public AccountPage(AccountService account, ProService pro, LocalizationService localization, AvatarService avatars, ExternalSignInService external)
     {
         InitializeComponent();
         _account = account;
         _pro = pro;
         _localization = localization;
         _avatars = avatars;
+        _external = external;
     }
 
     private string L(string ka, string en) => _localization.IsEnglish ? en : ka;
@@ -43,6 +51,15 @@ public partial class AccountPage : ContentPage
         LoginButton.Text = L("შესვლა", "Sign in");
         RegisterButton.Text = L("ახალი ანგარიშის შექმნა", "Create a new account");
         ForgotPasswordButton.Text = L("დაგავიწყდა პაროლი?", "Forgot password?");
+        GoogleButton.Text = L("გაგრძელება Google-ით", "Continue with Google");
+        AppleButton.Text = L("გაგრძელება Apple-ით", "Continue with Apple");
+        EmailToggleButton.Text = L("გაგრძელება ელ-ფოსტით", "Continue with Email");
+        OrLabel.Text = L("ან", "or");
+        CancelLinkButton.Text = L("დაკავშირების გაუქმება", "Cancel linking");
+        // Screen readers read the same words the button shows.
+        SemanticProperties.SetDescription(GoogleButton, GoogleButton.Text);
+        SemanticProperties.SetDescription(AppleButton, AppleButton.Text);
+        SemanticProperties.SetDescription(EmailToggleButton, EmailToggleButton.Text);
         DeleteHintLabel.Text = L(
             "ანგარიშის წაშლით სერვერიდან სამუდამოდ წაიშლება ანგარიში, PRO სტატუსი და გახსნილი VIN ისტორიები.",
             "Deleting the account permanently removes the account, its PRO status and opened VIN histories from our server.");
@@ -67,7 +84,7 @@ public partial class AccountPage : ContentPage
         SignedInCard.IsVisible = signedIn;
         DeleteCard.IsVisible = signedIn;
         ChangePasswordCard.IsVisible = signedIn;
-        FormCard.IsVisible = !signedIn;
+        UpdateSignInCards(signedIn);
         EmailValueLabel.Text = _account.Email;
         AccountAvatar.Name = _account.Email;
         if (signedIn)
@@ -323,7 +340,272 @@ public partial class AccountPage : ContentPage
         }
     }
 
-    private Task OnLoginAsync() => AuthenticateAsync(register: false);
+    // ---- Google / Apple ---------------------------------------------------------------------------------------------
+
+    /// <summary>Which of the provider buttons / the e-mail form are on screen. With no provider available (e.g. a Release build without client ids) the page is the plain e-mail form, as before.</summary>
+    private void UpdateSignInCards(bool signedIn)
+    {
+        var google = _external.ShowGoogle;
+        var apple = _external.ShowApple;
+        var providers = google || apple;
+        var linking = _pendingLink is not null;
+
+        ProviderCard.IsVisible = !signedIn && providers && !linking;
+        GoogleButton.IsVisible = google;
+        AppleButton.IsVisible = apple;
+        ProviderDivider.IsVisible = providers;
+        EmailToggleButton.IsVisible = providers && !_emailExpanded;
+        FormCard.IsVisible = !signedIn && (_emailExpanded || !providers || linking);
+
+        LinkHintLabel.IsVisible = linking;
+        EmailEntry.IsReadOnly = linking;
+        RegisterButton.IsVisible = !linking;
+        CancelLinkButton.IsVisible = linking;
+        LoginButton.Text = linking ? L("დაკავშირება და შესვლა", "Link and sign in") : L("შესვლა", "Sign in");
+        if (linking)
+        {
+            LinkHintLabel.Text = string.Format(
+                LT("OBD360 ანგარიში ელ-ფოსტით {0} უკვე არსებობს. ამ შესვლის დასაკავშირებლად შეიყვანე იმ ანგარიშის პაროლი.",
+                   "An OBD360 account with {0} already exists. To link this sign-in to it, enter that account's password."),
+                _pendingLink!.Email);
+        }
+    }
+
+    private void OnEmailToggleClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (_busy)
+                return;
+            _emailExpanded = true;
+            UpdateState();
+            EmailEntry.Focus();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AccountPage.OnEmailToggleClicked");
+        }
+    }
+
+    private async void OnGoogleClicked(object? sender, EventArgs e)
+    {
+        try { await ProviderSignInAsync(google: true); }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AccountPage.OnGoogleClicked");
+        }
+    }
+
+    private async void OnAppleClicked(object? sender, EventArgs e)
+    {
+        try { await ProviderSignInAsync(google: false); }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AccountPage.OnAppleClicked");
+        }
+    }
+
+    private void OnCancelLinkClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (_busy)
+                return;
+            _pendingLink = null;
+            PasswordEntry.Text = "";
+            StatusLabel.Text = "";
+            UpdateState();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AccountPage.OnCancelLinkClicked");
+        }
+    }
+
+    /// <summary>
+    /// One tap on "Continue with Google / Apple": the provider's own sheet, then our server. A first-time person gets an
+    /// account without filling in anything. Closing the sheet is silent. Nothing is signed in unless the server says so.
+    /// </summary>
+    private async Task ProviderSignInAsync(bool google)
+    {
+        if (_busy)
+            return;
+
+        SetBusy(true);
+        try
+        {
+            StatusLabel.Text = "";
+            ProviderCredential? credential;
+            try
+            {
+                credential = google
+                    ? await _external.GetGoogleCredentialAsync()
+                    : await _external.GetAppleCredentialAsync();
+            }
+            catch (ExternalSignInException ex)
+            {
+                ShowStatus(
+                    ex.Failure == ExternalSignInFailure.NotConfigured
+                        ? (google
+                            ? LT("Google-ით შესვლა ამ ვერსიაში ჯერ არ არის მომზადებული.", "Google sign-in is not set up in this version yet.")
+                            : LT("Apple-ით შესვლა ამ მოწყობილობაზე მიუწვდომელია.", "Sign in with Apple is not available on this device."))
+                        : LT("შესვლა ვერ მოხერხდა. სცადე მოგვიანებით.", "Could not sign in. Try again later."),
+                    error: true);
+                return;
+            }
+
+            if (credential is null)
+                return;   // the person closed the sheet: nothing to say
+
+            var result = await _account.SignInWithProviderAsync(credential);
+
+            // The account is on another phone: ask once, then move it here with the same (still unused) credential.
+            if (result.Status == ExternalSignInStatus.DeviceBound)
+            {
+                var move = await this.DisplayAlertLocalizedAsync(
+                    L("ანგარიში სხვა ტელეფონზეა", "Account is on another phone"),
+                    L("ეს ანგარიში სხვა ტელეფონზეა მიბმული. გადმოვიტანოთ ამ ტელეფონზე? ამის შემდეგ ანგარიში ამ ტელეფონზე იმუშავებს ძველის ნაცვლად.",
+                      "This account is linked to another phone. Move it to this phone? It will then work on this phone instead of the other one."),
+                    L("გადმოტანა", "Move here"),
+                    L("გაუქმება", "Cancel"));
+                if (!move)
+                    return;
+
+                result = await _account.SignInWithProviderAsync(credential, moveDevice: true);
+            }
+
+            await HandleProviderResultAsync(result);
+        }
+        catch (Exception ex)
+        {
+            ShowStatus(UserError.Describe(ex), error: true);
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    private async Task HandleProviderResultAsync(ExternalSignInResult result)
+    {
+        switch (result.Status)
+        {
+            case ExternalSignInStatus.SignedIn:
+                await FinishProviderSignInAsync(result.IsNewAccount);
+                break;
+
+            case ExternalSignInStatus.LinkRequired:
+                // Same e-mail as an existing password account. Never joined on the address alone: the person proves they
+                // own that account (its password, then a code e-mailed to it) in the form below.
+                _pendingLink = new PendingLink(result.LinkTicket!, result.Email ?? string.Empty);
+                EmailEntry.Text = result.Email ?? string.Empty;
+                PasswordEntry.Text = "";
+                UpdateState();
+                PasswordEntry.Focus();
+                break;
+
+            case ExternalSignInStatus.DeviceBound:
+                // Linked, but the account is on another phone: signing in again (and confirming the move) finishes it.
+                _pendingLink = null;
+                PasswordEntry.Text = "";
+                UpdateState();
+                ShowStatus(
+                    LT("დაკავშირებულია. ახლა ხელახლა დააჭირე Google/Apple-ით გაგრძელებას და ანგარიში ამ ტელეფონზე გადმოიტანე.",
+                       "Linked. Now tap Continue with Google or Apple again to move the account to this phone."),
+                    error: false);
+                break;
+
+            default:
+                ShowStatus(LocalizationService.T(result.Message), error: true);
+                break;
+        }
+    }
+
+    private async Task FinishProviderSignInAsync(bool isNewAccount)
+    {
+        PasswordEntry.Text = "";
+        _pendingLink = null;
+        // PRO status of the account (also admin / promo plans). Signing in never grants PRO by itself.
+        try { await _pro.LoadAsync(forceServerRefresh: true); } catch { }
+
+        ShowStatus(
+            isNewAccount
+                ? LT("ანგარიში შეიქმნა. კეთილი იყოს შენი მობრძანება!", "Your account was created. Welcome!")
+                : L("შესული ხარ", "Signed in"),
+            error: false);
+        UpdateState();
+
+        await Task.Delay(700);
+        try { await CarScanner.Services.SafeNavigation.GoToAsync(".."); } catch { }
+    }
+
+    /// <summary>Password step of joining a Google / Apple sign-in to an existing account, then the e-mailed code when the server asks for it.</summary>
+    private async Task LinkPendingAsync()
+    {
+        if (_busy || _pendingLink is not { } pending)
+            return;
+
+        var password = PasswordEntry.Text ?? "";
+        if (password.Length == 0)
+        {
+            ShowStatus(LT("შეიყვანე ანგარიშის პაროლი.", "Enter the account's password."), error: true);
+            return;
+        }
+
+        SetBusy(true);
+        try
+        {
+            var result = await _account.LinkProviderAsync(pending.Ticket, password, null);
+            if (result.Status == ExternalSignInStatus.NeedsCode)
+                result = await RunLinkCodeAsync(pending.Ticket, password);
+
+            await HandleProviderResultAsync(result);
+        }
+        catch (Exception ex)
+        {
+            ShowStatus(UserError.Describe(ex), error: true);
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    private async Task<ExternalSignInResult> RunLinkCodeAsync(string ticket, string password)
+    {
+        var page = Shell.Current?.CurrentPage ?? Application.Current?.Windows.FirstOrDefault()?.Page;
+        if (page is null)
+            return new(ExternalSignInStatus.Failed, LT("შესვლა ვერ მოხერხდა.", "Could not sign in."));
+
+        for (var round = 0; round < 3; round++)
+        {
+            var code = await page.DisplayPromptLocalizedAsync(
+                LT("დაკავშირების დადასტურება", "Confirm linking"),
+                LT("უსაფრთხოებისთვის ამ ანგარიშის ელ-ფოსტაზე 6-ნიშნა კოდი გამოგიგზავნეთ. შეიყვანე აქ გასაგრძელებლად.",
+                   "For security, we emailed a 6-digit code to this account's address. Enter it here to continue."),
+                LT("დადასტურება", "Confirm"),
+                cancel: LT("გაუქმება", "Cancel"),
+                placeholder: "123456",
+                maxLength: 6,
+                keyboard: Keyboard.Numeric);
+
+            if (code is null)
+                return new(ExternalSignInStatus.Failed, LT("შესვლა გაუქმდა.", "Sign-in cancelled."));
+
+            var result = await _account.LinkProviderAsync(ticket, password, code);
+            if (result.Status != ExternalSignInStatus.Failed || result.Code != "code")
+                return result;
+
+            await page.DisplayAlertLocalizedAsync(
+                LT("კოდი არასწორია", "Wrong code"),
+                LocalizationService.T(result.Message),
+                "OK");
+        }
+
+        return new(ExternalSignInStatus.Failed, LT("ვერ დადასტურდა. სცადე ხელახლა შესვლა.", "Could not confirm. Try signing in again."));
+    }
+
+    private Task OnLoginAsync() => _pendingLink is not null ? LinkPendingAsync() : AuthenticateAsync(register: false);
 
     private async void OnLoginClicked(object? sender, EventArgs e)
     {
@@ -799,6 +1081,10 @@ public partial class AccountPage : ContentPage
         Busy.IsVisible = busy;
         Busy.IsRunning = busy;
         LoginButton.IsEnabled = !busy;
+        GoogleButton.IsEnabled = !busy;
+        AppleButton.IsEnabled = !busy;
+        EmailToggleButton.IsEnabled = !busy;
+        CancelLinkButton.IsEnabled = !busy;
         RegisterButton.IsEnabled = !busy;
         LogoutButton.IsEnabled = !busy;
         DeleteAccountButton.IsEnabled = !busy;

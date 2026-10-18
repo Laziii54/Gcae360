@@ -18,6 +18,7 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <Compile Include="../../Services/UDS/UdsModels.cs" Link="UdsModels.cs" />
+    <Compile Include="../../Services/ExternalSignIn/ExternalOAuth.cs" Link="ExternalOAuth.cs" />
     <Compile Include="../../Services/UDS/IsoTpReassembler.cs" Link="IsoTpReassembler.cs" />
     <Compile Include="../../Services/OBD/DTCDecoder.cs" Link="DTCDecoder.cs" />
     <Compile Include="../../Services/OBD/ObdResponseParser.cs" Link="ObdResponseParser.cs" />

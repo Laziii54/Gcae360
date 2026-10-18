@@ -10,7 +10,7 @@ namespace CarScanner.Api.Services;
 /// </summary>
 public static class SitePages
 {
-    public const string PlayStoreUrl = "https://play.google.com/store/apps/details?id=com.gcar360.app";
+    public const string PlayStoreUrl = "https://play.google.com/store/apps/details?id=com.obd360.app";
 
     private static string Gel(decimal? value) =>
         (value ?? 0).ToString("0.00", CultureInfo.InvariantCulture);

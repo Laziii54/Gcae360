@@ -19,10 +19,10 @@
 		<GenerateDocumentationFile>false</GenerateDocumentationFile>
 
 		<ApplicationTitle>OBD360</ApplicationTitle>
-		<ApplicationId>com.gcar360.app</ApplicationId>
-		<!-- Android and iOS share the same identifier, which must match the
+		<ApplicationId>com.obd360.app</ApplicationId>
+		<!-- Android (com.obd360.app) and iOS (com.gcar360.app) have different identifiers, which must match the
 		     purchase-verification backend (GCS_ANDROID_PACKAGE_NAME / GCS_APPLE_BUNDLE_ID). -->
-		<ApplicationId Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">com.gcar360.app</ApplicationId>
+		<ApplicationId Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios' Or $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">com.gcar360.app</ApplicationId>
 
 		<ApplicationDisplayVersion>1.0.0</ApplicationDisplayVersion>
 		<ApplicationVersion>61</ApplicationVersion>
@@ -204,6 +204,14 @@
 		<CodesignEntitlements>Platforms\iOS\Entitlements.plist</CodesignEntitlements>
 		<MtouchUseLlvm>true</MtouchUseLlvm>
 		<MtouchLink>SdkOnly</MtouchLink>
+	</PropertyGroup>
+
+	<!-- Sign in with Apple. OFF by default so the current signing keeps working: the entitlement is only valid once the
+	     "Sign in with Apple" capability is enabled on the App ID com.gcar360.app and the provisioning profile is regenerated.
+	     After that, build with -p:EnableAppleSignIn=true (see SIGN_IN_SETUP.md). -->
+	<PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-ios' And '$(EnableAppleSignIn)' == 'true'">
+		<CodesignEntitlements>Platforms\iOS\Entitlements.AppleSignIn.plist</CodesignEntitlements>
+		<DefineConstants>$(DefineConstants);APPLE_SIGNIN</DefineConstants>
 	</PropertyGroup>
 
 

@@ -1,6 +1,6 @@
 # Store listing — OBD360
 
-App ID (Android package and iOS bundle): `com.gcar360.app`
+App ID: Android package `com.obd360.app`, iOS bundle `com.gcar360.app`
 
 ## Name
 

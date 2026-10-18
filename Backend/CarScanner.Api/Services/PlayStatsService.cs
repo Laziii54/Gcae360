@@ -45,7 +45,7 @@ public sealed class PlayStatsService
     }
 
     private string PackageName =>
-        (_config["Stores:Google:PackageName"] ?? Environment.GetEnvironmentVariable("GCS_ANDROID_PACKAGE_NAME") ?? "com.gcar360.app").Trim();
+        (_config["Stores:Google:PackageName"] ?? Environment.GetEnvironmentVariable("GCS_ANDROID_PACKAGE_NAME") ?? "com.obd360.app").Trim();
 
     public async Task<PlayStats> GetAsync(CancellationToken ct)
     {

@@ -48,7 +48,7 @@
 
 - [ ] Create `com.georgiancarscanner.pro.monthly` in Google Play and App Store Connect.
 - [ ] Configure Google Play service-account credentials on the backend.
-- [ ] Verify the backend uses `GCS_ANDROID_PACKAGE_NAME=com.gcar360.app` exactly.
+- [ ] Verify the backend uses `GCS_ANDROID_PACKAGE_NAME=com.obd360.app` exactly.
 - [ ] Configure Apple App Store Server API credentials on the backend.
 - [ ] Deploy and confirm `/health/configuration` reports `readyForStoreRelease: true` without exposing secret values.
 - [ ] Confirm `/health/configuration` reports `persistentStorageConfigured: true`; keep Azure at one instance while the API uses SQLite.

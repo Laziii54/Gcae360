@@ -234,6 +234,18 @@ CREATE TABLE IF NOT EXISTS AccountSessions (
 
 CREATE INDEX IF NOT EXISTS IX_AccountSessions_AccountId
     ON AccountSessions(AccountId);
+
+CREATE TABLE IF NOT EXISTS AccountExternalIdentities (
+    Provider TEXT NOT NULL,
+    Subject TEXT NOT NULL,
+    AccountId TEXT NOT NULL,
+    EmailAtLink TEXT NULL,
+    CreatedAt TEXT NOT NULL,
+    PRIMARY KEY (Provider, Subject)
+);
+
+CREATE INDEX IF NOT EXISTS IX_AccountExternalIdentities_AccountId
+    ON AccountExternalIdentities(AccountId);
 """;
 
         command.ExecuteNonQuery();
@@ -683,6 +695,20 @@ LIMIT 1;
         if (!PasswordMatches(stored, password))
             return null;
 
+        return await CompleteDeviceBoundSignInAsync(stored!, currentDeviceHash, moveDevice, token);
+    }
+
+    /// <summary>
+    /// The device-bound part of a sign-in, after the caller has proved the identity (password, or a verified
+    /// external identity). First sign-in binds the device, another device needs <paramref name="moveDevice"/>
+    /// (once per <see cref="RebindCooldown"/>), the newest session replaces older ones.
+    /// </summary>
+    private async Task<AccountSessionResult?> CompleteDeviceBoundSignInAsync(
+        StoredCredentials stored,
+        string currentDeviceHash,
+        bool moveDevice,
+        CancellationToken token)
+    {
         await _gate.WaitAsync(token);
 
         try
@@ -696,7 +722,7 @@ LIMIT 1;
             using var transaction =
                 connection.BeginTransaction();
 
-            var current = Reread(connection, transaction, stored!);
+            var current = Reread(connection, transaction, stored);
             if (current is null)
             {
                 transaction.Rollback();
@@ -819,6 +845,170 @@ WHERE AccountId=$id;
         finally
         {
             _gate.Release();
+        }
+    }
+
+    // ============================================================
+    // EXTERNAL IDENTITIES (Google / Apple): the provider proves who the person is; device binding, session
+    // length and bans stay exactly as for a password sign-in.
+    // ============================================================
+
+    /// <summary>Signs in an account whose identity was already proved by a verified external identity.</summary>
+    public async Task<AccountSessionResult?> SignInVerifiedAccountAsync(
+        string accountId,
+        string deviceId,
+        bool moveDevice,
+        CancellationToken token)
+    {
+        var deviceHash = HashDeviceId(NormalizeDeviceId(deviceId));
+        var stored = await ReadCredentialsAsync(null, accountId, token);
+        if (stored is null)
+            return null;
+
+        var result = await CompleteDeviceBoundSignInAsync(stored, deviceHash, moveDevice, token);
+        if (result is not null && IsBanned(result.AccountId))
+        {
+            await DropSessionsAsync(result.AccountId, token);
+            return null;
+        }
+
+        return result;
+    }
+
+    /// <summary>The account linked to this provider identity, or null. Provider: "google" or "apple".</summary>
+    public async Task<AccountIdentity?> FindByExternalIdentityAsync(string provider, string subject, CancellationToken token)
+    {
+        await _gate.WaitAsync(token);
+        try
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+            using var query = connection.CreateCommand();
+            query.CommandText = """
+SELECT a.AccountId, a.EmailDisplay
+FROM AccountExternalIdentities i
+JOIN Accounts a ON a.AccountId = i.AccountId
+WHERE i.Provider=$p AND i.Subject=$s
+LIMIT 1;
+""";
+            query.Parameters.AddWithValue("$p", provider);
+            query.Parameters.AddWithValue("$s", subject);
+            using var reader = query.ExecuteReader();
+            return reader.Read() ? new AccountIdentity(reader.GetString(0), reader.GetString(1)) : null;
+        }
+        finally { _gate.Release(); }
+    }
+
+    /// <summary>
+    /// Creates a new account for a first-time external sign-in, linked to the provider identity, in one transaction.
+    /// The account gets a random password nobody knows (it can set one later through the normal password flow), and is
+    /// bound to this device like any new account. Null when the identity or the e-mail address is already taken
+    /// (a concurrent first sign-in): the caller looks the identity up again.
+    /// </summary>
+    public async Task<AccountSessionResult?> CreateExternalAccountAsync(
+        string provider,
+        string subject,
+        string email,
+        string deviceId,
+        CancellationToken token)
+    {
+        var normalized = NormalizeEmail(email);
+        var deviceHash = HashDeviceId(NormalizeDeviceId(deviceId));
+        var accountId = Guid.NewGuid().ToString("N");
+        var salt = RandomNumberGenerator.GetBytes(16);
+        var hash = HashPassword(Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)), salt);
+
+        await _gate.WaitAsync(token);
+        try
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+            using var transaction = connection.BeginTransaction();
+
+            using (var insert = connection.CreateCommand())
+            {
+                insert.Transaction = transaction;
+                insert.CommandText = """
+INSERT INTO Accounts(AccountId, EmailNormalized, EmailDisplay, PasswordSalt, PasswordHash, DeviceHash, CreatedAt)
+VALUES($id, $normalized, $display, $salt, $hash, $device, $created);
+""";
+                insert.Parameters.AddWithValue("$id", accountId);
+                insert.Parameters.AddWithValue("$normalized", normalized);
+                insert.Parameters.AddWithValue("$display", email.Trim());
+                insert.Parameters.AddWithValue("$salt", Convert.ToBase64String(salt));
+                insert.Parameters.AddWithValue("$hash", Convert.ToBase64String(hash));
+                insert.Parameters.AddWithValue("$device", deviceHash);
+                insert.Parameters.AddWithValue("$created", DateTimeOffset.UtcNow.ToString("O"));
+                try
+                {
+                    insert.ExecuteNonQuery();
+                }
+                catch (SqliteException ex) when (ex.SqliteErrorCode == 19)
+                {
+                    transaction.Rollback();
+                    return null;
+                }
+            }
+
+            if (!InsertExternalIdentity(connection, transaction, accountId, provider, subject, email.Trim()))
+            {
+                transaction.Rollback();
+                return null;
+            }
+
+            var result = CreateSession(connection, transaction, accountId, email.Trim(), deviceHash);
+            transaction.Commit();
+            return result;
+        }
+        finally { _gate.Release(); }
+    }
+
+    /// <summary>Links a provider identity to an existing account (after the caller proved control of that account).</summary>
+    public async Task<bool> LinkExternalIdentityAsync(string accountId, string provider, string subject, string? email, CancellationToken token)
+    {
+        await _gate.WaitAsync(token);
+        try
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+            using var transaction = connection.BeginTransaction();
+            var ok = InsertExternalIdentity(connection, transaction, accountId, provider, subject, email);
+            if (ok)
+                transaction.Commit();
+            else
+                transaction.Rollback();
+            return ok;
+        }
+        finally { _gate.Release(); }
+    }
+
+    private static bool InsertExternalIdentity(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string accountId,
+        string provider,
+        string subject,
+        string? email)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+INSERT INTO AccountExternalIdentities(Provider, Subject, AccountId, EmailAtLink, CreatedAt)
+VALUES($p, $s, $a, $e, $c);
+""";
+        command.Parameters.AddWithValue("$p", provider);
+        command.Parameters.AddWithValue("$s", subject);
+        command.Parameters.AddWithValue("$a", accountId);
+        command.Parameters.AddWithValue("$e", (object?)email ?? DBNull.Value);
+        command.Parameters.AddWithValue("$c", DateTimeOffset.UtcNow.ToString("O"));
+        try
+        {
+            command.ExecuteNonQuery();
+            return true;
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 19)
+        {
+            return false;   // this provider identity is already linked to an account
         }
     }
 
@@ -1274,6 +1464,25 @@ WHERE AccountId=$id;
                 accountId);
 
             sessions.ExecuteNonQuery();
+
+            // A deleted account must free its provider identities, otherwise the same Google/Apple user
+            // could never sign up again.
+            using var identities =
+                connection.CreateCommand();
+
+            identities.Transaction =
+                transaction;
+
+            identities.CommandText = """
+DELETE FROM AccountExternalIdentities
+WHERE AccountId=$id;
+""";
+
+            identities.Parameters.AddWithValue(
+                "$id",
+                accountId);
+
+            identities.ExecuteNonQuery();
 
             using var account =
                 connection.CreateCommand();

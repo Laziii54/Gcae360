@@ -2,7 +2,7 @@
 
 ## Fixed identifiers
 
-- App/package/bundle ID: `com.gcar360.app`
+- Package ID (Android): `com.obd360.app` · bundle ID (iOS): `com.gcar360.app`
 - PRO monthly subscription: `com.georgiancarscanner.pro.monthly`
 - Current internal-test version: `0.5.0` (`versionCode` 50)
 - Android target API: 36
@@ -59,7 +59,7 @@ state to a managed database before scaling to multiple API instances.
 
 ## Google Play
 
-1. Create the app with package ID `com.gcar360.app`.
+1. Create the app with package ID `com.obd360.app` (Android; the iOS bundle ID stays `com.gcar360.app`).
 2. Enrol in Play App Signing and create/back up one upload keystore.
 3. Create the monthly auto-renewing subscription with product ID
    `com.georgiancarscanner.pro.monthly` and at least one active base plan.

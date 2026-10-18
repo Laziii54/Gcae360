@@ -26,6 +26,12 @@ builder.Services.AddSingleton<EmailVerificationService>();
 // Sign-in code: a second factor required on every login (not the one-time check above).
 builder.Services.AddSingleton<LoginCodeStore>();
 builder.Services.AddSingleton<LoginCodeService>();
+// Google / Apple sign-in: only public client ids are configured (Auth:Google:ClientIds / Auth:Apple:ClientIds or
+// GCS_GOOGLE_CLIENT_IDS / GCS_APPLE_CLIENT_IDS). With none set the endpoints answer "not configured".
+builder.Services.AddSingleton(sp => ExternalAuthOptions.From(sp.GetRequiredService<IConfiguration>()));
+builder.Services.AddSingleton<IExternalSigningKeys, HttpExternalSigningKeys>();
+builder.Services.AddSingleton<ExternalIdentityVerifier>();
+builder.Services.AddSingleton<ExternalAuthService>();
 // Forgot password: a separate store from the login code above, so the two can never collide for one account.
 builder.Services.AddSingleton<PasswordResetStore>();
 builder.Services.AddSingleton<PasswordResetService>();
@@ -807,6 +813,108 @@ async Task<IResult> FinishLoginAsync(AccountRequest request, HttpContext http, A
     catch (ArgumentException)
     {
         return Results.Unauthorized();
+    }
+}
+
+// ---- Google / Apple sign-in (the app sends the provider's ID token; the server verifies it itself) ----
+
+app.MapGet(
+    "/api/auth/providers",
+    (ExternalAuthService external) => Results.Ok(new
+    {
+        google = external.IsConfigured(ExternalProviders.Google),
+        apple = external.IsConfigured(ExternalProviders.Apple)
+    }));
+
+app.MapPost(
+    "/api/auth/{provider}",
+    async (
+        string provider,
+        ExternalSignInRequest request,
+        HttpContext http,
+        ExternalAuthService external) =>
+    {
+        var normalizedProvider = ExternalProviders.Normalize(provider);
+        if (normalizedProvider is null)
+            return Results.NotFound();
+
+        if (!RateWindow.TryConsume("ext-auth-ip:" + AdminService.ClientIp(http), DateTimeOffset.UtcNow, 20, TimeSpan.FromMinutes(15)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        var outcome = await external.SignInAsync(
+            normalizedProvider,
+            request.IdToken,
+            request.Nonce,
+            http.Request.Headers["X-GCS-Device-Id"].ToString(),
+            request.MoveDevice == true,
+            http.RequestAborted);
+
+        return ExternalOutcomeResult(outcome);
+    });
+
+app.MapPost(
+    "/api/auth/link",
+    async (
+        ExternalLinkRequest request,
+        HttpContext http,
+        ExternalAuthService external) =>
+    {
+        if (!RateWindow.TryConsume("ext-link-ip:" + AdminService.ClientIp(http), DateTimeOffset.UtcNow, 15, TimeSpan.FromMinutes(15)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        var outcome = await external.LinkAsync(
+            request.Ticket,
+            request.Password,
+            request.Code,
+            http.Request.Headers["X-GCS-Device-Id"].ToString(),
+            request.MoveDevice == true,
+            http.Request.Headers["X-GCS-Language"].ToString(),
+            http.RequestAborted);
+
+        return ExternalOutcomeResult(outcome);
+    });
+
+static IResult ExternalOutcomeResult(ExternalAuthOutcome outcome)
+{
+    switch (outcome.Status)
+    {
+        case ExternalAuthStatus.SignedIn:
+            var s = outcome.Session!;
+            return Results.Ok(new
+            {
+                status = "signed_in",
+                s.AccountId,
+                s.Email,
+                s.AccessToken,
+                s.ExpiresAt,
+                isNewAccount = outcome.IsNewAccount
+            });
+        case ExternalAuthStatus.LinkRequired:
+            return Results.Ok(new { status = "link_required", linkTicket = outcome.LinkTicket, email = outcome.Email });
+        case ExternalAuthStatus.NeedsCode:
+            return Results.Ok(new { status = "needs_code" });
+        case ExternalAuthStatus.NotConfigured:
+            return Results.Json(new { status = "not_configured" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+        case ExternalAuthStatus.DeviceBound:
+            return Results.Conflict(new { success = false, code = "DEVICE_ALREADY_BOUND", canMoveDevice = true });
+        case ExternalAuthStatus.AlreadyLinked:
+            return Results.Conflict(new { success = false, code = "IDENTITY_ALREADY_LINKED" });
+        case ExternalAuthStatus.Cooldown:
+            return Results.Json(
+                new
+                {
+                    success = false,
+                    code = "REBIND_COOLDOWN",
+                    nextAllowedAt = outcome.RetryAfter,
+                    retryAfterSeconds = outcome.RetryAfter is { } at
+                        ? Math.Max(1, (int)Math.Ceiling((at - DateTimeOffset.UtcNow).TotalSeconds))
+                        : 60
+                },
+                statusCode: StatusCodes.Status429TooManyRequests);
+        default:
+            return outcome.Reason == "invalid_request"
+                ? Results.BadRequest(new { status = "rejected", reason = outcome.Reason })
+                : Results.Json(new { status = "rejected", reason = outcome.Reason }, statusCode: StatusCodes.Status401Unauthorized);
     }
 }
 
@@ -3927,6 +4035,10 @@ record StoreVerifyRequest(
 record AccountRequest(string? Email, string? Password, bool? MoveDevice = null);
 
 record EmailCodeRequest(string? Code);
+
+record ExternalSignInRequest(string? IdToken, string? Nonce, bool? MoveDevice = null);
+
+record ExternalLinkRequest(string? Ticket, string? Password, string? Code, bool? MoveDevice = null);
 
 record LoginCodeVerifyRequest(string? Email, string? Password, string? Code, bool? MoveDevice = null);
 

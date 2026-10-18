@@ -9,7 +9,7 @@ namespace CarScanner.Api.Services;
 public sealed class StoreVerificationService
 {
     private const string AndroidPackageName =
-        "com.gcar360.app"; // must equal ApplicationId in CarScanner.csproj
+        "com.obd360.app"; // must equal ApplicationId in CarScanner.csproj
 
     private readonly IHttpClientFactory _clients;
     private readonly IConfiguration _config;

@@ -12,7 +12,7 @@ public sealed record ProductionConfigurationStatus(
     IReadOnlyList<string> Issues)
 {
     private const string ExpectedAndroidPackageId =
-        "com.gcar360.app";
+        "com.obd360.app";
 
     private const string ExpectedAppleBundleId =
         "com.gcar360.app";

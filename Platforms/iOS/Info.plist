@@ -67,7 +67,21 @@
 			<string>location</string>
 		</array>
 
-		<key>ITSAppUsesNonExemptEncryption</key>
+		<!-- Google sign-in redirect: "com.googleusercontent.apps." + the iOS OAuth client id without the
+			     ".apps.googleusercontent.com" ending. Must change together with ExternalSignInConfig.GoogleIosClientId. -->
+			<key>CFBundleURLTypes</key>
+			<array>
+				<dict>
+					<key>CFBundleURLName</key>
+					<string>google-sign-in</string>
+					<key>CFBundleURLSchemes</key>
+					<array>
+						<string>com.googleusercontent.apps.892443922366-h9536o1n7read3knpng8hjbgpl91199u</string>
+					</array>
+				</dict>
+			</array>
+
+			<key>ITSAppUsesNonExemptEncryption</key>
 		<false/>
 
 	</dict>

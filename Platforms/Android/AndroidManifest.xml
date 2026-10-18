@@ -43,6 +43,13 @@
 	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 	<uses-feature android:name="android.hardware.camera" android:required="false" />
 
+	<!-- Android 11+ package visibility: lets "Continue with Google" find a browser that supports Custom Tabs. -->
+	<queries>
+		<intent>
+			<action android:name="android.support.customtabs.action.CustomTabsService" />
+		</intent>
+	</queries>
+
 	<application
 		android:allowBackup="false"
 		android:usesCleartextTraffic="false"

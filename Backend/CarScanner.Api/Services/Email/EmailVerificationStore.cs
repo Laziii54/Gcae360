@@ -322,6 +322,24 @@ ON CONFLICT(AccountId) DO UPDATE SET CodeSalt=$s,CodeHash=$ch,LinkHash=$lh,Expir
         finally { _gate.Release(); }
     }
 
+    /// <summary>
+    /// Marks the account's e-mail as verified without a code, for an address that Google/Apple themselves vouch for
+    /// (their signed token says email_verified). No-op when it is already verified.
+    /// </summary>
+    public async Task MarkVerifiedAsync(string accountId, CancellationToken ct)
+    {
+        var now = _clock();
+        await _gate.WaitAsync(ct);
+        try
+        {
+            await using var c = await OpenAsync(ct);
+            await using var tx = (SqliteTransaction)await c.BeginTransactionAsync(ct);
+            await CompleteAsync(c, tx, accountId, now, ct);
+            await tx.CommitAsync(ct);
+        }
+        finally { _gate.Release(); }
+    }
+
     /// <summary>Removes everything about an account (account deletion).</summary>
     public async Task DeleteAsync(string accountId, CancellationToken ct)
     {

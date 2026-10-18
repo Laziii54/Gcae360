@@ -2,7 +2,7 @@
 
 Nothing here has been run against production. Steps marked **[APPROVAL]** change production, a store, or the shared GitHub repository, so run them only when you decide to.
 
-Identifiers: package / bundle `com.gcar360.app` · version 1.0.0 · Android versionCode 55 (`ApplicationVersion`) · iOS build number comes from Codemagic `$BUILD_NUMBER`.
+Identifiers: Android package `com.obd360.app` · iOS bundle `com.gcar360.app` · version 1.0.0 · Android versionCode 55 (`ApplicationVersion`) · iOS build number comes from Codemagic `$BUILD_NUMBER`.
 
 ## 1. Review changes (local)
 ```bash

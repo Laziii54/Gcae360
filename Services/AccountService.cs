@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using CarScanner.Services.ExternalSignIn;
 using CarScanner.Services.OBD;
 
 namespace CarScanner.Services;
@@ -753,6 +754,142 @@ public sealed class AccountService
         }
     }
 
+    // ---- Google / Apple sign-in ------------------------------------------------------------------------------------
+    // The platform gives an ID token (CarScanner.Services.ExternalSignIn); our server verifies it itself, finds or creates
+    // the account and answers with the same app session a password login gets. Nothing the provider sent is stored here:
+    // only the app session token, in SecureStorage, exactly as for e-mail sign-in.
+
+    /// <summary>
+    /// Signs in (or creates the account) with a Google / Apple ID token. <see cref="ExternalSignInStatus.DeviceBound"/> means
+    /// the account is on another phone: ask the person, then call again with <paramref name="moveDevice"/> = true and the
+    /// same credential. <see cref="ExternalSignInStatus.LinkRequired"/> means an e-mail/password account with the same
+    /// address exists and must be proven before the two are joined (<see cref="LinkProviderAsync"/>).
+    /// </summary>
+    public Task<ExternalSignInResult> SignInWithProviderAsync(ProviderCredential credential, bool moveDevice = false, CancellationToken token = default) =>
+        PostExternalAsync(
+            "/api/auth/" + credential.Provider,
+            new { idToken = credential.IdToken, nonce = credential.Nonce, moveDevice },
+            token);
+
+    /// <summary>Joins the provider sign-in from a <see cref="ExternalSignInStatus.LinkRequired"/> answer to the existing account: password first, then the e-mailed code when asked.</summary>
+    public Task<ExternalSignInResult> LinkProviderAsync(string linkTicket, string password, string? code, bool moveDevice = false, CancellationToken token = default) =>
+        PostExternalAsync(
+            "/api/auth/link",
+            new { ticket = linkTicket, password, code = string.IsNullOrWhiteSpace(code) ? null : code.Trim(), moveDevice },
+            token);
+
+    private async Task<ExternalSignInResult> PostExternalAsync(string path, object body, CancellationToken token)
+    {
+        EmailVerificationState = null;
+        try
+        {
+            using var request = await CreateAuthorizedRequestAsync(HttpMethod.Post, path);
+            request.Content = JsonContent.Create(body);
+
+            using var response = await _http.SendAsync(request, token);
+            var text = await ReadBodyAsync(response, token);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var payload = DeserializeBody<AccountResponse>(text);
+                switch (payload?.Status)
+                {
+                    case "link_required" when !string.IsNullOrWhiteSpace(payload.LinkTicket):
+                        return new(ExternalSignInStatus.LinkRequired, string.Empty, LinkTicket: payload.LinkTicket, Email: payload.Email);
+                    case "needs_code":
+                        return new(ExternalSignInStatus.NeedsCode, string.Empty);
+                    case "signed_in" when Guid.TryParse(payload.AccountId, out _) && !string.IsNullOrWhiteSpace(payload.AccessToken):
+                        var applied = await ApplySessionAsync(payload, payload.Email ?? string.Empty, markEmailVerificationState: false);
+                        return new(ExternalSignInStatus.SignedIn, applied.Message, IsNewAccount: payload.IsNewAccount == true);
+                    default:
+                        return new(ExternalSignInStatus.Failed, ExternalFailureMessage(null));
+                }
+            }
+
+            var code = ReadJsonText(text, "code");
+            var reason = ReadJsonText(text, "reason");
+            var statusCode = (int)response.StatusCode;
+
+            if (response.StatusCode == HttpStatusCode.Conflict && string.Equals(code, DeviceAlreadyBoundCode, StringComparison.OrdinalIgnoreCase))
+                return new(ExternalSignInStatus.DeviceBound, string.Empty, DeviceAlreadyBoundCode);
+            if (response.StatusCode == HttpStatusCode.Conflict && string.Equals(code, "IDENTITY_ALREADY_LINKED", StringComparison.OrdinalIgnoreCase))
+                return new(ExternalSignInStatus.Failed, L("ეს შესვლის გზა უკვე სხვა OBD360 ანგარიშზეა მიბმული.", "This sign-in is already linked to another OBD360 account."), code);
+            if (string.Equals(code, RebindCooldownCode, StringComparison.OrdinalIgnoreCase))
+                return new(ExternalSignInStatus.Failed, DescribeFailure(response.StatusCode, code, null, isRegister: false, moveDevice: false).Message, RebindCooldownCode);
+            if (statusCode == 429)
+                return new(ExternalSignInStatus.Failed, L("ძალიან ბევრი მცდელობაა. დაელოდე რამდენიმე წუთს და სცადე თავიდან.", "Too many attempts. Wait a few minutes and try again."), "rate_limited");
+            if (statusCode == 503)
+                return new(ExternalSignInStatus.Failed, L("ამ გზით შესვლა სერვერზე ჯერ არ არის ჩართული.", "Signing in this way is not switched on yet."), "not_configured");
+
+            return new(ExternalSignInStatus.Failed, ExternalFailureMessage(reason), reason);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            return new(ExternalSignInStatus.Failed, L("შეჩერდა.", "Stopped."), "cancelled");
+        }
+        catch
+        {
+            // Network error, timeout, no secure backend. Never include the exception text: it could carry the request.
+            return new(ExternalSignInStatus.Failed, ServerUnavailableMessage(), "network");
+        }
+    }
+
+    private static string ExternalFailureMessage(string? reason) => reason switch
+    {
+        "email_missing" => L("ამ ანგარიშიდან ელ-ფოსტა არ მივიღეთ, ამიტომ ანგარიშს ვერ შევქმნით. შედი სხვა გზით.",
+                             "We did not receive an e-mail address from this account, so we cannot create your account. Sign in another way."),
+        "email_not_verified" => L("ამ ანგარიშის ელ-ფოსტა დადასტურებული არ არის, ამიტომ შესასვლელად ვერ გამოვიყენებთ.",
+                                  "The e-mail address of this account is not verified, so it cannot be used to sign in."),
+        "credentials" => L("ელ-ფოსტა ან პაროლი არასწორია.", "Wrong e-mail or password."),
+        "code" => L("კოდი არასწორია. სცადე თავიდან.", "That code is not correct. Try again."),
+        "ticket" => L("დაკავშირების მოთხოვნას ვადა გაუვიდა. დაიწყე თავიდან.", "The linking request has expired. Start again."),
+        "invalid_token" or "retry" => L("შესვლის დადასტურება ვერ მოხერხდა. სცადე თავიდან.", "The sign-in could not be verified. Try again."),
+        _ => L("შესვლა ვერ მოხერხდა. სცადე მოგვიანებით.", "Could not sign in. Try again later.")
+    };
+
+    private static async Task<string> ReadBodyAsync(HttpResponseMessage response, CancellationToken token)
+    {
+        try
+        {
+            var body = await response.Content.ReadAsStringAsync(token);
+            return body.Length > 16_384 ? string.Empty : body;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return string.Empty;
+        }
+    }
+
+    private static T? DeserializeBody<T>(string text) where T : class
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+        try { return JsonSerializer.Deserialize<T>(text, new JsonSerializerOptions(JsonSerializerDefaults.Web)); }
+        catch (JsonException) { return null; }
+    }
+
+    private static string? ReadJsonText(string text, string name)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+        try
+        {
+            using var document = JsonDocument.Parse(text);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+                return null;
+            foreach (var property in document.RootElement.EnumerateObject())
+            {
+                if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase) && property.Value.ValueKind == JsonValueKind.String)
+                    return property.Value.GetString();
+            }
+        }
+        catch (JsonException)
+        {
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// "Forgot password", step 1: always reports the same success either way, whether or not the e-mail is
     /// registered — the server never confirms which, and this must not either. A code is emailed only when the
@@ -1025,6 +1162,13 @@ public sealed class AccountService
 
         /// <summary>Login only: true when a sign-in code was just emailed and no session was created yet.</summary>
         public bool? NeedsCode { get; set; }
+
+        // Google / Apple sign-in answers: "signed_in", "link_required" or "needs_code".
+        public string? Status { get; set; }
+
+        public string? LinkTicket { get; set; }
+
+        public bool? IsNewAccount { get; set; }
     }
 
     private sealed class MeResponse
@@ -1057,3 +1201,23 @@ public sealed record AccountActionResult(
     bool Success,
     string Message,
     string? Code = null);
+
+public enum ExternalSignInStatus
+{
+    SignedIn,
+    /// <summary>An e-mail/password account with this address exists: the person must prove it is theirs before the sign-ins are joined.</summary>
+    LinkRequired,
+    /// <summary>A code was e-mailed to the existing account; send it with the same link request.</summary>
+    NeedsCode,
+    /// <summary>The account is on another phone; the person may move it here.</summary>
+    DeviceBound,
+    Failed
+}
+
+public sealed record ExternalSignInResult(
+    ExternalSignInStatus Status,
+    string Message,
+    string? Code = null,
+    string? LinkTicket = null,
+    string? Email = null,
+    bool IsNewAccount = false);

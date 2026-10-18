@@ -81,9 +81,37 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Sign in / create account -->
-            <Border x:Name="FormCard" Style="{StaticResource ListCardStyle}" Padding="14,12">
+            <!-- Sign in with Google / Apple, or continue with e-mail. Google is the primary choice; Apple exists on iOS only.
+                 Colors follow the providers' own button rules (Google: white / dark-gray surface with its outline;
+                 Apple: black, or white on a dark page) and are the same in every language. -->
+            <Border x:Name="ProviderCard" Style="{StaticResource ListCardStyle}" Padding="14,14">
+                <VerticalStackLayout Spacing="10">
+                    <Button x:Name="GoogleButton" Clicked="OnGoogleClicked" IsVisible="False"
+                            ImageSource="google_g.png" ContentLayout="Left,12"
+                            HeightRequest="52" CornerRadius="12" FontSize="15" FontAttributes="Bold" BorderWidth="1"
+                            BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#131314}"
+                            TextColor="{AppThemeBinding Light=#1F1F1F, Dark=#E3E3E3}"
+                            BorderColor="{AppThemeBinding Light=#747775, Dark=#8E918F}" />
+                    <Button x:Name="AppleButton" Clicked="OnAppleClicked" IsVisible="False"
+                            ImageSource="{AppThemeBinding Light=apple_logo_white.png, Dark=apple_logo_black.png}" ContentLayout="Left,12"
+                            HeightRequest="52" CornerRadius="12" FontSize="15" FontAttributes="Bold" BorderWidth="0"
+                            BackgroundColor="{AppThemeBinding Light=#000000, Dark=#FFFFFF}"
+                            TextColor="{AppThemeBinding Light=#FFFFFF, Dark=#000000}" />
+                    <Grid x:Name="ProviderDivider" ColumnDefinitions="*,Auto,*" ColumnSpacing="10" Margin="0,2">
+                        <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" VerticalOptions="Center" />
+                        <Label x:Name="OrLabel" Grid.Column="1" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                        <BoxView Grid.Column="2" HeightRequest="1" Color="{DynamicResource DividerColor}" VerticalOptions="Center" />
+                    </Grid>
+                    <Button x:Name="EmailToggleButton" Clicked="OnEmailToggleClicked"
+                            BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}"
+                            BorderColor="{DynamicResource TextColor}" BorderWidth="1.5" CornerRadius="12" HeightRequest="52" FontSize="15" FontAttributes="Bold" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Sign in / create account with e-mail (also the place where an existing account is proven before a Google / Apple sign-in is joined to it) -->
+            <Border x:Name="FormCard" Style="{StaticResource ListCardStyle}" Padding="14,12" IsVisible="False">
                 <VerticalStackLayout Spacing="6">
+                    <Label x:Name="LinkHintLabel" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" IsVisible="False" Margin="0,0,0,6" />
                     <Label x:Name="EmailLabel" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
                     <Entry x:Name="EmailEntry" Keyboard="Email" IsSpellCheckEnabled="False" IsTextPredictionEnabled="False"
                            TextColor="{DynamicResource TextColor}" PlaceholderColor="{DynamicResource SubTextColor}"
@@ -103,6 +131,9 @@
                     <Button x:Name="ForgotPasswordButton" Clicked="OnForgotPasswordClicked"
                             BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" BorderWidth="0"
                             HorizontalOptions="Center" HeightRequest="38" FontSize="13" Padding="8,0" />
+                    <Button x:Name="CancelLinkButton" Clicked="OnCancelLinkClicked" IsVisible="False"
+                            BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" BorderWidth="0"
+                            HorizontalOptions="Center" HeightRequest="44" FontSize="13" Padding="8,0" />
                 </VerticalStackLayout>
             </Border>
 

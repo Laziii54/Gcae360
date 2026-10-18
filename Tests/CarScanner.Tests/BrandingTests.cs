@@ -40,7 +40,9 @@ public sealed class BrandingTests
     {
         var csproj = Read("CarScanner.csproj");
         Assert.Contains("<ApplicationTitle>OBD360</ApplicationTitle>", csproj);
-        Assert.Contains("<ApplicationId>com.gcar360.app</ApplicationId>", csproj);       // never changes
+        Assert.Contains("<ApplicationId>com.obd360.app</ApplicationId>", csproj);        // Android: the Play package, never changes after the Play app exists
+        Assert.Contains("== 'ios'", csproj);
+        Assert.Contains(">com.gcar360.app</ApplicationId>", csproj);                        // iOS bundle id: the App Store Connect record, never changes
         Assert.Contains("obd360_splash.png", csproj);
         Assert.DoesNotContain("gcar_splash", csproj);
     }
