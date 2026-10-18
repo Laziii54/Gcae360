@@ -14,7 +14,7 @@ public sealed class AdvancedDiagnosticService
             .Where(item=>includeVin||item.Item1!=2);
         foreach(var item in items)
         {
-            try{var raw=await _obd.ReadMode09QuickAsync(item.Item1,token);var text=item.Item1==6?ObdResponseParser.DecodeHexFromMode09(raw,(byte)item.Item1):ObdResponseParser.DecodeAsciiFromMode09(raw,(byte)item.Item1);list.Add(new EcuIdentifier{Name=item.Item2,Value=string.IsNullOrWhiteSpace(text)?"მიუწვდომელია":text,Explanation=item.Item3});}
+            try{var raw=await _obd.ReadMode09QuickAsync(item.Item1,token);var text=item.Item1 is 4 or 6 or 10?ObdResponseParser.FormatMode09(raw,(byte)item.Item1):ObdResponseParser.DecodeAsciiFromMode09(raw,(byte)item.Item1);list.Add(new EcuIdentifier{Name=item.Item2,Value=string.IsNullOrWhiteSpace(text)?"მიუწვდომელია":text,Explanation=item.Item3});}
             catch{list.Add(new EcuIdentifier{Name=item.Item2,Value="მიუწვდომელია",Explanation=item.Item3});}
         }
         list.Add(new EcuIdentifier{Name="კავშირის პროტოკოლი",Value=_obd.CurrentProtocolDescription,Explanation="გზა, რომლითაც აპი ECU-სგან მონაცემებს იღებს."});

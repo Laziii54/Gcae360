@@ -1094,71 +1094,7 @@ public sealed class VehicleInfoService
     /// entry per ECU), CAN single frames, and non-CAN frames where every line
     /// repeats "49 PID seq" (those are joined into one entry).
     /// </summary>
-    private static List<byte[]> ExtractMode09Payloads(string? raw, byte pid)
-    {
-        var result = new List<byte[]>();
-        if (string.IsNullOrWhiteSpace(raw))
-            return result;
-
-        List<byte>? multiFrame = null;
-        int multiFrameLength = -1;
-        var singleFrames = new List<byte>();
-
-        void FlushMultiFrame()
-        {
-            if (multiFrame is null)
-                return;
-            var bytes = multiFrameLength > 0 && multiFrame.Count > multiFrameLength
-                ? multiFrame.GetRange(0, multiFrameLength)
-                : multiFrame;
-            if (bytes.Count >= 3 && bytes[0] == 0x49 && bytes[1] == pid)
-                result.Add(bytes.Skip(3).ToArray());
-            multiFrame = null;
-            multiFrameLength = -1;
-        }
-
-        foreach (var rawLine in raw.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
-        {
-            var line = rawLine.Trim().TrimStart('>').Trim();
-            if (line.Length == 0)
-                continue;
-
-            if (line.Length == 3 && System.Text.RegularExpressions.Regex.IsMatch(line, "^[0-9A-Fa-f]{3}$"))
-            {
-                FlushMultiFrame();
-                multiFrame = new List<byte>();
-                multiFrameLength = Convert.ToInt32(line, 16);
-                continue;
-            }
-
-            var continuation = line.Length >= 2 && line[1] == ':' && Uri.IsHexDigit(line[0]);
-            if (continuation)
-                line = line[2..].Trim();
-
-            var bytes = ObdResponseParser.ParseHex(line);
-            if (bytes.Length == 0)
-                continue;
-
-            if (continuation && multiFrame is not null)
-            {
-                multiFrame.AddRange(bytes);
-                continue;
-            }
-
-            for (var i = 0; i + 2 < bytes.Length; i++)
-            {
-                if (bytes[i] != 0x49 || bytes[i + 1] != pid)
-                    continue;
-                singleFrames.AddRange(bytes.Skip(i + 3));
-                break;
-            }
-        }
-
-        FlushMultiFrame();
-        if (singleFrames.Count > 0)
-            result.Add(singleFrames.ToArray());
-        return result;
-    }
+    internal static List<byte[]> ExtractMode09Payloads(string? raw, byte pid) => ObdResponseParser.ExtractMode09Payloads(raw, pid);
 
     private static bool IsValidVin(string vin) => VinResponseParser.IsValidVin(vin);
 

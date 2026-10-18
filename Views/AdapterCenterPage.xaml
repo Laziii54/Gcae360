@@ -29,6 +29,7 @@
             </Border>
 
             <Button Text="TEST" Command="{Binding TestCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" />
+            <Button Text="Copy connection log" Command="{Binding CopyLinkLogCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.2" CornerRadius="12" />
 
             <!-- Test results -->
             <Label Text="Test Results" Style="{StaticResource SectionCaptionStyle}" />

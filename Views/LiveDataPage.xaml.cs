@@ -17,6 +17,11 @@ public partial class LiveDataPage : ContentPage
         try
         {
         ApplyUiLocalization();
+        if (BindingContext is LiveDataViewModel graphVm)
+        {
+            graphVm.GraphRequested -= OnGraphRequested;
+            graphVm.GraphRequested += OnGraphRequested;
+        }
         if (BindingContext is LiveDataViewModel vm) await vm.StartLiveDataCommand.ExecuteAsync(null);
         }
         catch (Exception commandException)
@@ -25,9 +30,25 @@ public partial class LiveDataPage : ContentPage
         }
     }
 
+    private void OnGraphRequested(object item) => GraphSheet.Show(item);
+
+    protected override bool OnBackButtonPressed()
+    {
+        if (GraphSheet.IsOpen)
+        {
+            GraphSheet.Close();
+            return true;
+        }
+
+        return base.OnBackButtonPressed();
+    }
+
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+        GraphSheet.Close();
+        if (BindingContext is LiveDataViewModel graphVm)
+            graphVm.GraphRequested -= OnGraphRequested;
         if (BindingContext is LiveDataViewModel vm) vm.StopLiveDataCommand.Execute(null);
     }
 

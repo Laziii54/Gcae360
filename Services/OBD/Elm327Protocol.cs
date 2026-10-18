@@ -294,6 +294,7 @@ namespace CarScanner.Services.OBD
             await _sessionGate.WaitAsync(token).ConfigureAwait(false);
             try
             {
+                await RecoverIfDueAsync(token).ConfigureAwait(false);
                 if (!IsCanProtocol(_currentProtocol))
                     throw new NotSupportedException(
                         $"Active vehicle protocol '{_currentProtocol}' is not ISO 15765 CAN.");
@@ -391,6 +392,7 @@ namespace CarScanner.Services.OBD
             await _sessionGate.WaitAsync(token).ConfigureAwait(false);
             try
             {
+                await RecoverIfDueAsync(token).ConfigureAwait(false);
                 if (!IsCanProtocol(_currentProtocol))
                     throw new NotSupportedException(
                         $"Active vehicle protocol '{_currentProtocol}' is not ISO 15765 CAN.");
@@ -733,6 +735,24 @@ namespace CarScanner.Services.OBD
                 finally
                 {
                     await session.RestoreAsync().ConfigureAwait(false);
+
+                    // A long scan leaves the adapter with many changed settings and a lot of traffic behind it; cheap adapters
+                    // then drift (the symptom: data stops after several features, until a reconnect). A full reset puts it back
+                    // to the state a fresh connection has. Short sessions do not need it.
+                    if (session.RequestCount >= HygieneResetAfterRequests && _isInitialized)
+                    {
+                        try
+                        {
+                            LinkEventLog.Add($"Module session sent {session.RequestCount} requests: resetting the adapter (ATZ) so later features start clean");
+                            await ResetCoreAsync(CancellationToken.None).ConfigureAwait(false);
+                            await InitializeCoreAsync(CancellationToken.None).ConfigureAwait(false);
+                        }
+                        catch (Exception resetError)
+                        {
+                            _isInitialized = false;
+                            _logger.LogWarning(resetError, "Clean-up reset after a long module session failed.");
+                        }
+                    }
                 }
             }
             finally
@@ -775,6 +795,7 @@ namespace CarScanner.Services.OBD
         {
             private readonly Elm327Protocol _elm;
             private readonly ObdProtocol _originalProtocol;
+            public int RequestCount { get; private set; }
             private bool _is29Bit;
             private bool _protocolSwitched;
             private bool? _caf;
@@ -1005,6 +1026,7 @@ namespace CarScanner.Services.OBD
 
             public async Task<string> SendAsync(int transmitCanId, int receiveCanId, bool extended29Bit, byte[] payload, bool longWait, CancellationToken token, byte? extendedAddress = null)
             {
+                RequestCount++;
                 EnsureReadOrClear(payload);
                 ValidateCanIdentifiers(transmitCanId, receiveCanId, extended29Bit);
                 await ConfigureAsync(transmitCanId, receiveCanId, extended29Bit, caf: true, longWait, token, extendedAddress).ConfigureAwait(false);
@@ -1673,6 +1695,7 @@ namespace CarScanner.Services.OBD
             await _sessionGate.WaitAsync(token).ConfigureAwait(false);
             try
             {
+                await RecoverIfDueAsync(token).ConfigureAwait(false);
                 var trimmed = command.Trim();
                 try
                 {
@@ -2335,7 +2358,101 @@ namespace CarScanner.Services.OBD
 
         #region Command Execution (Retry + Timeout + Cleaning)
 
+        // ---- Adapter self-recovery -------------------------------------------------------------
+        // Cheap adapters (and a long session of module scans) can end up in a state where every data request times out
+        // or is answered with an error word, although the Bluetooth link itself is fine; until now only disconnecting and
+        // reconnecting helped. When data requests keep failing in a row, the next operation first resets the adapter
+        // (ATZ) and initialises it again — the same thing a reconnect does for the adapter's own state. Bounded: a
+        // streak is needed, attempts are spaced out and back off when they do not help (for example ignition off).
+        private const int HygieneResetAfterRequests = 30;
+        private const int FailureStreakThreshold = 6;
+        private static readonly TimeSpan RecoveryMinimumGap = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan RecoveryMaximumGap = TimeSpan.FromMinutes(5);
+        private int _failureStreak;
+        private DateTime _lastRecoveryAt = DateTime.MinValue;
+        private TimeSpan _recoveryGap = RecoveryMinimumGap;
+
+        /// <summary>How many data requests in a row failed at adapter level (timeout, '?', bus/buffer errors).</summary>
+        internal int FailureStreak => Volatile.Read(ref _failureStreak);
+
+        private static bool IsDataRequest(string command) =>
+            command.Length >= 2 && command.All(Uri.IsHexDigit);
+
+        private static bool IsAdapterLevelFailure(string cleaned)
+        {
+            var text = cleaned.Trim().ToUpperInvariant();
+            return text == "?" || text.Contains("BUFFER FULL") || text.Contains("CAN ERROR") || text.Contains("FB ERROR") ||
+                   text.Contains("BUS BUSY") || text.Contains("UNABLE TO CONNECT") || text.Contains("DATA ERROR") ||
+                   text.Contains("STOPPED");
+        }
+
         private async Task<string> SendCommandInternalAsync(
+            string command,
+            TimeSpan timeout,
+            int maxRetries,
+            bool treatNegativeStatusAsError,
+            CancellationToken cancellationToken)
+        {
+            var countable = IsDataRequest(command.Trim());
+            try
+            {
+                var answer = await SendCommandCoreAsync(command, timeout, maxRetries, treatNegativeStatusAsError, cancellationToken).ConfigureAwait(false);
+                if (countable)
+                {
+                    if (IsAdapterLevelFailure(answer))
+                        Interlocked.Increment(ref _failureStreak);
+                    else if (!answer.Contains("NO DATA", StringComparison.OrdinalIgnoreCase))
+                        Interlocked.Exchange(ref _failureStreak, 0);   // a real answer (positive or an ECU refusal): the adapter works
+                }
+
+                return answer;
+            }
+            catch (Elm327TimeoutException)
+            {
+                LinkEventLog.Add($"Timeout: {command.Trim()} (streak {Volatile.Read(ref _failureStreak) + (IsDataRequest(command.Trim()) ? 1 : 0)})");
+                if (countable)
+                    Interlocked.Increment(ref _failureStreak);
+                throw;
+            }
+            catch (Elm327CommandException ex) when (countable && IsAdapterLevelFailure(ex.RawResponse))
+            {
+                Interlocked.Increment(ref _failureStreak);
+                throw;
+            }
+        }
+
+        /// <summary>Runs inside the session gate, before an operation: resets and re-initialises a failing adapter.</summary>
+        private async Task RecoverIfDueAsync(CancellationToken token)
+        {
+            if (Volatile.Read(ref _failureStreak) < FailureStreakThreshold || !_isInitialized)
+                return;
+            if (DateTime.UtcNow - _lastRecoveryAt < _recoveryGap)
+                return;
+
+            _lastRecoveryAt = DateTime.UtcNow;
+            Interlocked.Exchange(ref _failureStreak, 0);
+            LinkEventLog.Add("Recovery: data requests kept failing, resetting the adapter (ATZ) and initialising again");
+            _logger.LogWarning("Adapter stopped answering data requests; resetting and re-initialising it (recovery).");
+            try
+            {
+                await ResetCoreAsync(token).ConfigureAwait(false);
+                await InitializeCoreAsync(token).ConfigureAwait(false);
+                Interlocked.Exchange(ref _failureStreak, 0);
+                _recoveryGap = RecoveryMinimumGap;
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch
+            {
+                // It did not help (car asleep, adapter really gone): wait longer before trying again.
+                _recoveryGap = TimeSpan.FromTicks(Math.Min(_recoveryGap.Ticks * 2, RecoveryMaximumGap.Ticks));
+                throw;
+            }
+        }
+
+        private async Task<string> SendCommandCoreAsync(
             string command,
             TimeSpan timeout,
             int maxRetries,

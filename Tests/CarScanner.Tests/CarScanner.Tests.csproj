@@ -112,6 +112,7 @@
     <Compile Include="../../Services/DataCollection/CollectionPipeline.cs" Link="DataCollection/CollectionPipeline.cs" />
     <Compile Include="../../Services/DataCollection/StandardObdClassifier.cs" Link="DataCollection/StandardObdClassifier.cs" />
     <Compile Include="../../Services/OBD/Elm327Protocol.cs" Link="Obd/Elm327Protocol.cs" />
+    <Compile Include="../../Services/OBD/LinkEventLog.cs" Link="Obd/LinkEventLog.cs" />
     <Compile Include="../../Services/OBD/ObdMonitorCommand.cs" Link="Obd/ObdMonitorCommand.cs" />
     <Compile Include="../../Services/OBD/IObdTransport.cs" Link="Obd/IObdTransport.cs" />
     <Compile Include="../../Services/OBD/WifiObdTransport.cs" Link="Obd/WifiObdTransport.cs" />

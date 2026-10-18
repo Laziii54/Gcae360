@@ -348,7 +348,18 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         await _connectGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            CarScanner.Services.OBD.LinkEventLog.Add($"Connecting to {item.DisplayName} ({(item.IsClassicBluetooth ? "classic" : "BLE")})");
+            try
+            {
             await ConnectCoreBoundedAsync(item, ConnectTimeout, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception connectError)
+            {
+                CarScanner.Services.OBD.LinkEventLog.Add($"Connect failed: {connectError.GetType().Name}");
+                throw;
+            }
+
+            CarScanner.Services.OBD.LinkEventLog.Add("Connected");
 
             _lastDevice = item;
             _userDisconnect = false;
@@ -1419,6 +1430,7 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
 
     private async Task HandleClassicLinkLostAsync()
     {
+        CarScanner.Services.OBD.LinkEventLog.Add("Classic Bluetooth link lost (socket closed or stopped answering)");
         var wasConnected = IsConnected;
         await DisconnectClassicAsync().ConfigureAwait(false);
         IsConnected = false;
@@ -1716,6 +1728,7 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         IDevice? device,
         string reason)
     {
+        CarScanner.Services.OBD.LinkEventLog.Add($"BLE link event: {reason} (was connected: {IsConnected})");
         var activeDevice = _connectedBleDevice;
 
         if (device != null &&
@@ -1799,6 +1812,7 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         if (!IsConnected)
             return;
 
+        CarScanner.Services.OBD.LinkEventLog.Add($"Adapter stopped answering {MaxConsecutiveAdapterFailures} resync checks in a row; treating the link as lost");
         _logger.LogInformation("OBD adapter stopped answering; reconnecting.");
         _failedAdapterChecks = 0;
 #if ANDROID
@@ -1926,11 +1940,13 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
                         await ConnectCoreBoundedAsync(device, TimeSpan.FromSeconds(12), CancellationToken.None).ConfigureAwait(false);
                         _userDisconnect = false;
                         _failedAdapterChecks = 0;
+                        CarScanner.Services.OBD.LinkEventLog.Add("Automatic reconnect succeeded");
                         _logger.LogInformation("OBD adapter reconnected.");
                         return;
                     }
                     catch (Exception ex)
                     {
+                        CarScanner.Services.OBD.LinkEventLog.Add($"Automatic reconnect attempt failed: {ex.GetType().Name}");
                         _logger.LogDebug(ex, "Automatic reconnect attempt failed.");
                     }
                     finally

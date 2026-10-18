@@ -12,7 +12,7 @@ namespace CarScanner.Services;
 /// myparts.ge lists no labour prices, so labour ranges stay in <see cref="RepairCostService"/>.
 ///
 /// To refresh: repeat the search on myparts.ge (/ka/nawilebi/?keyword=...) and edit the rows below; nothing else
-/// in the app needs to change. <see cref="Sample"/> tells how many listings the row is based on — rows with a
+/// in the app needs to change. <c>Sample</c> tells how many listings the row is based on — rows with a
 /// small sample are only a rough guide.
 /// </summary>
 public static class MarketPartPrices

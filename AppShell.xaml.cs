@@ -21,6 +21,7 @@ public partial class AppShell : Shell
         Navigating += OnNavigating;
         Navigated += (_, __) =>
         {
+            _navigationStartedAt = DateTime.MinValue;
             try
             {
                 // Theme once per navigation (cheap: skipped when unchanged);
@@ -121,6 +122,11 @@ public partial class AppShell : Shell
         return base.OnBackButtonPressed();
     }
 
+    // Back button / swipe / tab taps do not go through SafeNavigation. A second one while the first is still being
+    // built is dropped (for at most this long), so two overlapping navigations cannot leave a blank white page.
+    private static readonly TimeSpan OverlapWindow = TimeSpan.FromMilliseconds(900);
+    private DateTime _navigationStartedAt = DateTime.MinValue;
+
     private void OnNavigating(object? sender, ShellNavigatingEventArgs e)
     {
         var destination = e.Target.Location.OriginalString;
@@ -128,8 +134,17 @@ public partial class AppShell : Shell
         if (_allowVerifiedProNavigation)
         {
             _allowVerifiedProNavigation = false;
+            _navigationStartedAt = DateTime.UtcNow;
             return;
         }
+
+        if (e.CanCancel && DateTime.UtcNow - _navigationStartedAt < OverlapWindow)
+        {
+            e.Cancel();
+            return;
+        }
+
+        _navigationStartedAt = DateTime.UtcNow;
 
         if (!e.CanCancel || !IsProFeatureRoute(destination))
             return;

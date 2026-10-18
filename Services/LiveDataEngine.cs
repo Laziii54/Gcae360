@@ -25,6 +25,7 @@ public sealed class LiveDataEngine : IAsyncDisposable
     private bool _performanceMode;
     private bool _performanceSpeedOnly;
     private bool _fuelAnalyticsEnabled;
+    private bool _fullRotation;
     private bool _fuelAnalyticsLambda;
     private int[] _graphPids = Array.Empty<int>();
     private CancellationTokenSource? _cts;
@@ -166,6 +167,17 @@ public sealed class LiveDataEngine : IAsyncDisposable
     {
         lock (_dashboardGate)
             _fuelAnalyticsLambda = enabled;
+    }
+
+    /// <summary>
+    /// Also read a rotating slice of every ECU-advertised PID on each tick (6 extra requests per tick). Only the live-data
+    /// list needs that; every other user of the engine (trips, graphs, dashboards) polls just what it uses, which
+    /// halves the traffic a cheap adapter has to carry.
+    /// </summary>
+    public void SetFullRotation(bool enabled)
+    {
+        lock (_dashboardGate)
+            _fullRotation = enabled;
     }
 
     /// <summary>Enables the few standard PIDs needed by Fuel Analytics only while that page is active.</summary>
@@ -383,6 +395,7 @@ public sealed class LiveDataEngine : IAsyncDisposable
                     bool performanceMode;
                     bool performanceSpeedOnly;
                     bool fuelAnalyticsEnabled;
+                    bool fullRotation;
                     int[] extras;
                     int? focusedPid;
                     int[] graphPids;
@@ -391,6 +404,7 @@ public sealed class LiveDataEngine : IAsyncDisposable
                         performanceMode = _performanceMode;
                         performanceSpeedOnly = _performanceSpeedOnly;
                         fuelAnalyticsEnabled = _fuelAnalyticsEnabled;
+                        fullRotation = _fullRotation;
                         extras = _dashboardExtras;
                         focusedPid = _focusedPid;
                         graphPids = _graphPids;
@@ -419,7 +433,7 @@ public sealed class LiveDataEngine : IAsyncDisposable
                     // successive ticks instead of only ever reading the
                     // priority set above. Skipped in performance mode so the
                     // 0-60 measurement loop stays speed-first.
-                    var rotationBatch = performanceMode || graphMode
+                    var rotationBatch = performanceMode || graphMode || !fullRotation
                         ? Array.Empty<int>()
                         : NextRotationBatch(priorityPids);
 
@@ -552,5 +566,5 @@ public sealed class LiveDataEngine : IAsyncDisposable
         Value = value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)
     };
 
-    public async ValueTask DisposeAsync() { if (_disposed) return; _disposed = true; ArmTripWatchdog(false); await StopAsync(force: true).ConfigureAwait(false); _gate.Dispose(); }
+    public async ValueTask DisposeAsync() { if (_disposed) return; ArmTripWatchdog(false); await StopAsync(force: true).ConfigureAwait(false); _disposed = true; _gate.Dispose(); }
 }

@@ -12,6 +12,7 @@
     <!-- CollectionView is the page's own scroll container (it cannot nest
          inside a ScrollView); everything above/below the PID list lives in
          Header/Footer. Flat style A: white list cards, 1px borders. -->
+    <Grid>
     <CollectionView
         ItemsSource="{Binding VisiblePids}"
         BackgroundColor="{DynamicResource PageBg}">
@@ -92,4 +93,6 @@
             </VerticalStackLayout>
         </CollectionView.Footer>
     </CollectionView>
+    <controls:SensorGraphSheet x:Name="GraphSheet" />
+    </Grid>
 </ContentPage>

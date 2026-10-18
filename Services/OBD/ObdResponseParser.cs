@@ -206,4 +206,103 @@ public static class ObdResponseParser
         }
         return output.Count >= total ? output.Take(total).ToArray() : bytes;
     }
+
+    /// <summary>Data bytes of a Mode 09 reply without the "49 PID count" marker, one entry per ECU (CAN multi-frame with length line and "0:" lines, single frames, non-CAN lines).</summary>
+    public static List<byte[]> ExtractMode09Payloads(string? raw, byte pid)
+    {
+        var result = new List<byte[]>();
+        if (string.IsNullOrWhiteSpace(raw))
+            return result;
+
+        List<byte>? multiFrame = null;
+        int multiFrameLength = -1;
+        var singleFrames = new List<byte>();
+
+        void FlushMultiFrame()
+        {
+            if (multiFrame is null)
+                return;
+            var bytes = multiFrameLength > 0 && multiFrame.Count > multiFrameLength
+                ? multiFrame.GetRange(0, multiFrameLength)
+                : multiFrame;
+            if (bytes.Count >= 3 && bytes[0] == 0x49 && bytes[1] == pid)
+                result.Add(bytes.Skip(3).ToArray());
+            multiFrame = null;
+            multiFrameLength = -1;
+        }
+
+        foreach (var rawLine in raw.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var line = rawLine.Trim().TrimStart('>').Trim();
+            if (line.Length == 0)
+                continue;
+
+            if (line.Length == 3 && Regex.IsMatch(line, "^[0-9A-Fa-f]{3}$"))
+            {
+                FlushMultiFrame();
+                multiFrame = new List<byte>();
+                multiFrameLength = Convert.ToInt32(line, 16);
+                continue;
+            }
+
+            var continuation = line.Length >= 2 && line[1] == ':' && Uri.IsHexDigit(line[0]);
+            if (continuation)
+                line = line[2..].Trim();
+
+            var bytes = ParseHex(line);
+            if (bytes.Length == 0)
+                continue;
+
+            if (continuation && multiFrame is not null)
+            {
+                multiFrame.AddRange(bytes);
+                continue;
+            }
+
+            for (var i = 0; i + 2 < bytes.Length; i++)
+            {
+                if (bytes[i] != 0x49 || bytes[i + 1] != pid)
+                    continue;
+                singleFrames.AddRange(bytes.Skip(i + 3));
+                break;
+            }
+        }
+
+        FlushMultiFrame();
+        if (singleFrames.Count > 0)
+            result.Add(singleFrames.ToArray());
+        return result;
+    }
+
+    /// <summary>
+    /// Mode 09 values for display, one entry per ECU: CVN (PID 06) as 4-byte hex groups, calibration ID (PID 04) as
+    /// 16-byte texts, ECU name (PID 0A) as 20-byte texts. Padding bytes after the announced length are dropped.
+    /// Empty when the reply holds nothing usable.
+    /// </summary>
+    public static string FormatMode09(string? raw, byte pid)
+    {
+        var values = new List<string>();
+        foreach (var payload in ExtractMode09Payloads(raw, pid))
+        {
+            if (pid == 0x06)
+            {
+                for (var offset = 0; offset + 4 <= payload.Length; offset += 4)
+                {
+                    var hex = string.Concat(payload.Skip(offset).Take(4).Select(b => b.ToString("X2")));
+                    if (!values.Contains(hex)) values.Add(hex);
+                }
+
+                continue;
+            }
+
+            var chunk = pid == 0x04 ? 16 : pid == 0x0A ? 20 : payload.Length;
+            for (var offset = 0; offset < payload.Length; offset += Math.Max(1, chunk))
+            {
+                var text = DecodeAscii(payload.Skip(offset).Take(Math.Max(1, chunk)).ToArray());
+                if (!string.IsNullOrWhiteSpace(text) && !values.Contains(text)) values.Add(text);
+            }
+        }
+
+        return string.Join(", ", values);
+    }
 }

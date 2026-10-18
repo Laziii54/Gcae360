@@ -258,7 +258,7 @@ public sealed class LanguagePickerPage : ContentPage
         {
             // Slide the sheet up from the bottom edge.
             _sheet.TranslationY = 420;
-            await _sheet.TranslateTo(0, 0, 220, Easing.CubicOut);
+            await _sheet.TranslateToAsync(0, 0, 220, Easing.CubicOut);
         }
         catch
         {

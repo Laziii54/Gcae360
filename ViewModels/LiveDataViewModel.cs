@@ -489,11 +489,20 @@ public partial class LiveDataViewModel : BaseViewModel
     }
 
     /// <summary>Taps a live value to open its own live-updating chart (Graphic Datastream).</summary>
+    /// <summary>Raised when the user taps a value; the page shows its graph as a bottom sheet (the page keeps running).</summary>
+    public event Action<object>? GraphRequested;
+
     [RelayCommand]
     private Task OpenGraph(LivePidItem? item)
     {
         if (item is null)
             return Task.CompletedTask;
+
+        if (GraphRequested is { } handler)
+        {
+            handler(item);
+            return Task.CompletedTask;
+        }
 
         var parameters = new Dictionary<string, object> { ["item"] = item };
         return CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.SensorGraphPage), parameters);
@@ -559,6 +568,7 @@ public partial class LiveDataViewModel : BaseViewModel
             }
 
             if (!_engine.IsRunning)
+                _engine.SetFullRotation(true);
                 await _engine.StartAsync();
 
             if (!_obd.IsPidSupported(item.Pid))
@@ -756,6 +766,7 @@ public partial class LiveDataViewModel : BaseViewModel
         {
             IsBusy = true;
             await _oemLiveData.StopAsync();
+            _engine.SetFullRotation(true);
             await _engine.StartAsync();
             EnsurePidCatalog();
             IsPaused = false;
@@ -790,6 +801,7 @@ public partial class LiveDataViewModel : BaseViewModel
             StatusMessage = "Live data მიმდინარეობს...";
 
             await _oemLiveData.StopAsync();
+            _engine.SetFullRotation(true);
             await _engine.StartAsync();
             EnsurePidCatalog();
             IsPaused = false;
@@ -815,6 +827,7 @@ public partial class LiveDataViewModel : BaseViewModel
     {
         try
         {
+        _engine.SetFullRotation(false);
         await _engine.StopAsync();
         IsPaused = true;
         StatusMessage = "Live data დაპაუზებულია";
@@ -830,6 +843,7 @@ public partial class LiveDataViewModel : BaseViewModel
     {
         try
         {
+        _engine.SetFullRotation(false);
         await _engine.StopAsync();
         await _oemLiveData.StopAsync();
 
@@ -855,6 +869,7 @@ public partial class LiveDataViewModel : BaseViewModel
         {
             IsBusy = true;
             StatusMessage = "Verified OEM ECU და Live Data DID-ები მოწმდება…";
+            _engine.SetFullRotation(false);
             await _engine.StopAsync();
             var vehicle = _vehicle.CurrentVehicle ?? await _vehicle.IdentifyConnectedVehicleAsync();
             var result = await _oemLiveData.StartAsync(vehicle);

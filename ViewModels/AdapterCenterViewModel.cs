@@ -29,6 +29,21 @@ public partial class AdapterCenterViewModel : BaseViewModel
         Title = "OBD Adapter Center";
     }
 
+    /// <summary>Copies the adapter link diary (connects, losses and why, timeouts, recovery) so a dropout can be explained from facts.</summary>
+    [RelayCommand]
+    private async Task CopyLinkLog()
+    {
+        try
+        {
+            await Clipboard.Default.SetTextAsync(CarScanner.Services.OBD.LinkEventLog.Export());
+            TestStatus = CarScanner.Services.OBD.ObdLang.L("კავშირის ლოგი დაკოპირდა — გამომიგზავნე.", "Connection log copied — send it to me.");
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AdapterCenterViewModel.CopyLinkLog");
+        }
+    }
+
     [RelayCommand]
     private async Task Test()
     {

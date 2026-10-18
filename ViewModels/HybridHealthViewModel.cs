@@ -58,6 +58,18 @@ public partial class HybridHealthViewModel : BaseViewModel
     [ObservableProperty] private string scanStage = "";
     [ObservableProperty] private bool hasResult;
 
+    /// <summary>The idle status line under the Scan button; while scanning the progress card shows the same text, so this one hides.</summary>
+    public bool ShowIdleStage => !HasResult && !IsBusy;
+
+    partial void OnHasResultChanged(bool value) => OnPropertyChanged(nameof(ShowIdleStage));
+
+    protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.PropertyName == nameof(IsBusy))
+            OnPropertyChanged(nameof(ShowIdleStage));
+    }
+
     // Chart
     [ObservableProperty] private string blocksTitle = "";
     [ObservableProperty] private string blocksCaption = "";
