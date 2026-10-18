@@ -180,9 +180,21 @@ public partial class AppShell : Shell
         || route.Contains(nameof(DiagnosticReportPage), StringComparison.Ordinal)
         || route.Contains(nameof(FuelPage), StringComparison.Ordinal);
 
+    // A page must never stay invisible: a fast second navigation can cancel this animation half way, which left the
+    // page at opacity 0 (a blank screen with only the background colour). Whatever happens, it ends fully visible.
     private static async Task FadeInCurrentPageAsync(Page page)
     {
-        page.Opacity = 0;
-        await page.FadeToAsync(1, 180, Easing.CubicOut);
+        try
+        {
+            page.Opacity = 0;
+            await page.FadeToAsync(1, 180, Easing.CubicOut);
+        }
+        catch
+        {
+        }
+        finally
+        {
+            page.Opacity = 1;
+        }
     }
 }

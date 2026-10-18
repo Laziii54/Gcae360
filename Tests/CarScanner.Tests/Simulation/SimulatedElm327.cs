@@ -43,6 +43,9 @@ public sealed class SimulatedElm327 : IBluetoothService
 
     /// <summary>Applies <see cref="Fault"/> from the Nth data command on (0 = from the start).</summary>
     public int FaultAfter { get; set; }
+
+    /// <summary>The next N reads of a module answer "response pending" (7F xx 78) before the real answer.</summary>
+    public int PendingBeforeAnswer { get; set; }
     public SimFault Fault { get; set; } = SimFault.None;
 
     /// <summary>
@@ -232,7 +235,16 @@ public sealed class SimulatedElm327 : IBluetoothService
     private string Answer(string upper)
     {
         if (ModuleAnswers.TryGetValue(_header + "|" + upper, out var module))
+        {
+            if (PendingBeforeAnswer > 0)
+            {
+                PendingBeforeAnswer--;
+                return module[..module.IndexOf(" ", StringComparison.Ordinal)] + " 03 7F " + upper[..2] + " 78";
+            }
+
             return module;
+        }
+
 
         if (HexOnly.IsMatch(upper) && ObdAnswers.TryGetValue(upper, out var obd))
         {

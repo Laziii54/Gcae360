@@ -14,6 +14,8 @@ public partial class EmissionsViewModel : BaseViewModel
     private readonly UnitSystemService _units;
     private readonly LocalizationService _localization;
     private EmissionReadinessReport? _lastReport;
+    private readonly CarScanner.Database.AppDatabase _database;
+    private readonly VehicleInfoService _vehicleInfo;
 
     public ObservableCollection<EmissionMonitorDisplayItem> Monitors { get; } = new();
     public ObservableCollection<EmissionMonitorDisplayItem> NonContinuousMonitors { get; } = new();
@@ -60,6 +62,63 @@ public partial class EmissionsViewModel : BaseViewModel
         get => refreshButtonText;
         private set => SetProperty(ref refreshButtonText, value);
     }
+    // The three test cards on top of the page (Mode 06, Mode 05, pending codes).
+    public string Mode06CardText => _localization.IsEnglish ? "Test results of the monitors" : "მონიტორების ტესტის შედეგები";
+    public string Mode05CardText => _localization.IsEnglish ? "Oxygen sensor test" : "ჟანგბადის სენსორის ტესტი";
+    public string Mode07CardTitle => "MODE 07";
+    public string Mode0ACardTitle => "MODE 0A";
+    public string Mode0ACardText => _localization.IsEnglish ? "Permanent fault codes" : "მუდმივი კოდები";
+    public string Mode07CardText => _localization.IsEnglish ? "Pending fault codes" : "მოლოდინში მყოფი კოდები";
+
+    private string permanentCodesText = "";
+    public string PermanentCodesText
+    {
+        get => permanentCodesText;
+        private set => SetProperty(ref permanentCodesText, value);
+    }
+
+    [RelayCommand]
+    private Task OpenMode0A() =>
+        CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.DiagnosticReportPage));
+
+    private string pendingCodesText = "";
+    public string PendingCodesText
+    {
+        get => pendingCodesText;
+        private set => SetProperty(ref pendingCodesText, value);
+    }
+
+    [RelayCommand]
+    private Task OpenMode07() =>
+        CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.DiagnosticReportPage));
+
+    /// <summary>How many pending codes the last saved scan of this car found (nothing is read from the car here).</summary>
+    private async Task RefreshPendingCodesAsync()
+    {
+        var none = _localization.IsEnglish ? "Run a scan first" : "ჯერ გაუშვი სკანი";
+        try
+        {
+            var vin = _vehicleInfo.CurrentVehicle?.VIN;
+            var sessions = await _database.GetScanSessionsAsync(string.IsNullOrWhiteSpace(vin) ? null : vin);
+            var last = sessions.FirstOrDefault();
+            PendingCodesText = last is null
+                ? none
+                : _localization.IsEnglish
+                    ? $"{last.PendingDtcCount} pending · last scan {last.StartedAt:dd.MM}"
+                    : $"{last.PendingDtcCount} კოდი მოლოდინში · ბოლო სკანი {last.StartedAt:dd.MM}";
+            PermanentCodesText = last is null
+                ? none
+                : _localization.IsEnglish
+                    ? $"{last.PermanentDtcCount} permanent · last scan {last.StartedAt:dd.MM}"
+                    : $"{last.PermanentDtcCount} კოდი მუდმივი · ბოლო სკანი {last.StartedAt:dd.MM}";
+        }
+        catch
+        {
+            PendingCodesText = none;
+            PermanentCodesText = none;
+        }
+    }
+
     private string mode05ButtonText = "MODE 05";
     public string Mode05ButtonText
     {
@@ -202,8 +261,12 @@ public partial class EmissionsViewModel : BaseViewModel
     public EmissionsViewModel(
         EmissionService service,
         UnitSystemService units,
-        LocalizationService localization)
+        LocalizationService localization,
+        CarScanner.Database.AppDatabase database,
+        VehicleInfoService vehicleInfo)
     {
+        _database = database;
+        _vehicleInfo = vehicleInfo;
         _service = service;
         _units = units;
         _localization = localization;
@@ -211,6 +274,7 @@ public partial class EmissionsViewModel : BaseViewModel
         Attach();
 
         UpdateLanguageTexts();
+        _ = RefreshPendingCodesAsync();
         RefreshReportPresentation();
     }
 
@@ -332,6 +396,7 @@ public partial class EmissionsViewModel : BaseViewModel
             ReadinessMonitors.Clear();
 
             _lastReport = await _service.ReadAsync();
+            await RefreshPendingCodesAsync();
 
             RebuildMonitorLists();
             RefreshReportPresentation();

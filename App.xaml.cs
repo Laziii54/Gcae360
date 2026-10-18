@@ -95,6 +95,10 @@ public partial class App : Application
 
     private void OnWindowResumed(object? sender, EventArgs e)
     {
+        // Safety net for a page left invisible by an interrupted fade.
+        if (Shell.Current?.CurrentPage is { Opacity: < 1 } hidden)
+            hidden.Opacity = 1;
+
         // A trip that records in the background: the app is visible again, so a background service the system
         // dropped (or refused while the app was hidden) can be started again, and the iOS location answer is read.
         CarScanner.Services.Background.TripKeepAlive.Recheck();

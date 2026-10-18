@@ -201,10 +201,7 @@ public partial class AdapterCenterViewModel : BaseViewModel
         {
             "can.headers",
             "can.auto-format",
-            "can.flow-control",
             "can.set-header",
-            "can.receive-filter-command",
-            "can.receive-filter-verified",
             "can.generic-request"
         };
         var requiredCanUnavailable = diagnostic.CapabilitySnapshot?.Checks.Any(

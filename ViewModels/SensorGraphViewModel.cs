@@ -119,9 +119,13 @@ public partial class SensorGraphViewModel : BaseViewModel
         }
     }
 
+    // The technical code ("· PID 0121") means nothing to a driver; the graph shows the plain name.
+    private static string PlainName(string name) =>
+        System.Text.RegularExpressions.Regex.Replace(name, @"\s*[·\-–]\s*PID\s*[0-9A-Fa-f]{2,4}\s*$", string.Empty);
+
     private static (string Name, string Unit) NameAndUnit(object item) => item switch
     {
-        LivePidItem pid => (pid.DisplayName, pid.Unit),
+        LivePidItem pid => (PlainName(pid.DisplayName), pid.Unit),
         ModuleLiveSignal signal => (signal.Name, signal.Unit),
         LiveSensorSource source => (source.Name, source.Unit),
         EcuPidReading reading => (reading.Name, reading.Unit),

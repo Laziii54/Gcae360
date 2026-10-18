@@ -203,7 +203,7 @@ namespace CarScanner.Services.OBD
                 await SendInitCommandAsync(CMD_SPACES_ON, "keep spaces in responses", cancellationToken).ConfigureAwait(false);
                 await SendInitCommandAsync(CMD_HEADERS_OFF, "disable headers", cancellationToken).ConfigureAwait(false);
                 await SendInitCommandAsync(CMD_SET_PROTOCOL_AUTO, "set protocol auto", cancellationToken).ConfigureAwait(false);
-                await SendInitCommandAsync(CMD_ADAPTIVE_TIMING_2, "adaptive timing 2", cancellationToken).ConfigureAwait(false);
+                _adaptiveTimingAccepted = await SendInitCommandAsync(CMD_ADAPTIVE_TIMING_2, "adaptive timing 2", cancellationToken).ConfigureAwait(false);
 
                 string? probeResponse = null;
                 Elm327TimeoutException? probeTimeout = null;
@@ -303,22 +303,26 @@ namespace CarScanner.Services.OBD
                     throw new NotSupportedException(
                         $"Requested {(extended29Bit ? "29-bit" : "11-bit")} addressing does not match active protocol '{_currentProtocol}'.");
 
+                var rejectedSetup = new List<string>();
+                var receiveFilter = PhysicalFilterState.None;
+
                 try
                 {
-                    await ConfigureCanCoreAsync(
+                    receiveFilter = await ConfigureCanCoreAsync(
                         transmitCanId,
                         receiveCanId,
                         extended29Bit,
                         automaticFormatting: true,
+                        rejectedSetup,
                         token).ConfigureAwait(false);
 
                     var command = string.Concat(payload.ToArray().Select(b => b.ToString("X2")));
-                    var answer = await SendCommandInternalAsync(
-                        command,
-                        timeout,
-                        maxRetries: 1,
-                        treatNegativeStatusAsError: false,
-                        token).ConfigureAwait(false);
+                    var answer = await SendReadRequestAsync(command, timeout, receiveCanId, payload.Span[0], token).ConfigureAwait(false);
+
+                    // No hardware filter on this adapter: keep only the asked module frames, as a hardware filter would.
+                    if ((receiveFilter & PhysicalFilterState.Hardware) == 0)
+                        answer = KeepOnlyFramesFrom(answer, receiveCanId, extended29Bit);
+
                     ObserveModule(transmitCanId, receiveCanId, extended29Bit, command, payload.Span[0], answer);
                     return answer;
                 }
@@ -326,7 +330,25 @@ namespace CarScanner.Services.OBD
                 {
                     // Never expose a manufacturer-specific physical header or
                     // receive filter to the next generic OBD request.
-                    await RestoreGenericCanSettingsCoreAsync(CancellationToken.None).ConfigureAwait(false);
+                    if ((receiveFilter & PhysicalFilterState.NeedsClear) != 0 &&
+                        !await TryResetReceiveFilterAsync(CancellationToken.None).ConfigureAwait(false))
+                    {
+                        _isInitialized = false;
+                    }
+
+                    if (_isInitialized)
+                    {
+                        try
+                        {
+                            await RestoreGenericCanSettingsCoreAsync(CancellationToken.None).ConfigureAwait(false);
+                        }
+                        catch (Exception restoreError)
+                        {
+                            _logger.LogWarning(restoreError, "Could not restore the generic CAN settings after an ISO-TP read.");
+                        }
+                    }
+
+                    _lastPhysicalReadSetupNote = DescribePhysicalSetup(rejectedSetup, receiveFilter);
                 }
             }
             finally
@@ -430,6 +452,7 @@ namespace CarScanner.Services.OBD
                     await RequireOkInternalAsync("ATCAF1", token).ConfigureAwait(false);
                     await TrySetupAsync("ATCFC1", rejectedSetup, token).ConfigureAwait(false);
                     await TrySetupAsync("ATD0", rejectedSetup, token).ConfigureAwait(false);
+                    await WidenAnswerWindowIfNeededAsync(rejectedSetup, token).ConfigureAwait(false);
 
                     if (extendedAddress.HasValue)
                     {
@@ -458,12 +481,7 @@ namespace CarScanner.Services.OBD
                     var command = string.Concat(
                         payload.ToArray().Select(value => value.ToString("X2")));
 
-                    var answer = await SendCommandInternalAsync(
-                        command,
-                        timeout,
-                        maxRetries: 1,
-                        treatNegativeStatusAsError: false,
-                        token).ConfigureAwait(false);
+                    var answer = await SendReadRequestAsync(command, timeout, receiveCanId, payload.Span[0], token).ConfigureAwait(false);
 
                     // No hardware filter on this adapter: keep the frames of the asked module only, exactly as the
                     // adapter would have delivered them, so no caller ever sees another module's frames.
@@ -1345,8 +1363,9 @@ namespace CarScanner.Services.OBD
                         90,
                         IsAffirmativeAtResponse).ConfigureAwait(false);
 
-                    if (headers.Passed && spaces.Passed && dlc.Passed &&
-                        formatting.Passed && flow.Passed && header.Passed && filterReset.Passed)
+                    // Spacing, DLC display, flow-control switch and the receive-filter command are defaults or have fallbacks in the
+                    // app (older chips answer "?"); only headers, automatic formatting and the transmit header are needed to test the bus.
+                    if (headers.Passed && formatting.Passed && header.Passed)
                     {
                         string firstProbeRaw = string.Empty;
                         var successfulVehicleQueries = 0;
@@ -1845,11 +1864,12 @@ namespace CarScanner.Services.OBD
             }
         }
 
-        private async Task ConfigureCanCoreAsync(
+        private async Task<PhysicalFilterState> ConfigureCanCoreAsync(
             int transmitCanId,
             int receiveCanId,
             bool extended29Bit,
             bool automaticFormatting,
+            List<string> rejectedSetup,
             CancellationToken token)
         {
             // Per the ELM327 data sheet: CAF1 creates the outgoing PCI byte;
@@ -1857,15 +1877,22 @@ namespace CarScanner.Services.OBD
             // response PCI bytes so the app can independently validate and
             // reassemble every segment.
             await RequireOkInternalAsync("ATL0", token).ConfigureAwait(false);
-            await RequireOkInternalAsync("ATS1", token).ConfigureAwait(false);
+            // S1, D0 and (with automatic formatting) CFC1 are the adapter defaults, and ATS/ATD only exist from firmware 1.3
+            // on (Elm Electronics version history): a chip that answers "?" keeps working with its default. CAF and the
+            // explicit CFC0 are real choices and stay required.
+            await TrySetupAsync("ATS1", rejectedSetup, token).ConfigureAwait(false);
             await RequireOkInternalAsync("ATH1", token).ConfigureAwait(false);
             await RequireOkInternalAsync(automaticFormatting ? "ATCAF1" : "ATCAF0", token).ConfigureAwait(false);
-            await RequireOkInternalAsync(automaticFormatting ? "ATCFC1" : "ATCFC0", token).ConfigureAwait(false);
-            await RequireOkInternalAsync("ATD0", token).ConfigureAwait(false);
+            if (automaticFormatting)
+                await TrySetupAsync("ATCFC1", rejectedSetup, token).ConfigureAwait(false);
+            else
+                await RequireOkInternalAsync("ATCFC0", token).ConfigureAwait(false);
+            await TrySetupAsync("ATD0", rejectedSetup, token).ConfigureAwait(false);
+            await WidenAnswerWindowIfNeededAsync(rejectedSetup, token).ConfigureAwait(false);
 
             var width = extended29Bit ? 8 : 3;
             await RequireOkInternalAsync($"ATSH{transmitCanId.ToString($"X{width}")}", token).ConfigureAwait(false);
-            await RequireOkInternalAsync($"ATCRA{receiveCanId.ToString($"X{width}")}", token).ConfigureAwait(false);
+            return await SetPhysicalReceiveFilterAsync(transmitCanId, receiveCanId, extended29Bit, width, rejectedSetup, token).ConfigureAwait(false);
         }
 
         private async Task RequireOkInternalAsync(string command, CancellationToken token)
@@ -1925,6 +1952,7 @@ namespace CarScanner.Services.OBD
         {
             try
             {
+                await RestoreAnswerWindowAsync(token).ConfigureAwait(false);
                 // Clones that reject ATCRA never had a receive address set by
                 // it, so a rejection here is not a reason to distrust the adapter.
                 await TryResetReceiveFilterAsync(token).ConfigureAwait(false);
@@ -2037,7 +2065,7 @@ namespace CarScanner.Services.OBD
 
         #region Initialization Helpers
 
-        private async Task SendInitCommandAsync(string command, string description, CancellationToken cancellationToken)
+        private async Task<bool> SendInitCommandAsync(string command, string description, CancellationToken cancellationToken)
         {
             _logger.LogDebug("Init step: {Description} ({Command})", description, command);
 
@@ -2056,6 +2084,8 @@ namespace CarScanner.Services.OBD
                         "Init step '{Description}' ({Command}) returned unexpected response: '{Response}'. Continuing.",
                         description, command, response);
                 }
+
+                return IsAffirmativeAtResponse(response);
             }
             catch (Elm327TimeoutException ex)
             {
@@ -2358,6 +2388,51 @@ namespace CarScanner.Services.OBD
 
         #region Command Execution (Retry + Timeout + Cleaning)
 
+
+        // ---- Older-microcode clones: answer window and "response pending" ------------------------------------------
+        // Elm Electronics' command table: adaptive timing (ATAT) first appears in v1.2 and the chip handling "response
+        // pending" (7F xx 78) by itself in v2.1. An older chip therefore waits a fixed, short time (about 200 ms) and
+        // hands a pending frame to the app. Both are read-only fixes: a wider window for this one read, and one repeat
+        // of the same read request when the only thing that came back was "pending".
+        private bool _adaptiveTimingAccepted = true;
+        private bool _answerWindowWidened;
+
+        private async Task WidenAnswerWindowIfNeededAsync(List<string> rejectedSetup, CancellationToken token)
+        {
+            if (_adaptiveTimingAccepted)
+                return;
+
+            if (await TrySetupAsync("ATST64", rejectedSetup, token).ConfigureAwait(false))
+                _answerWindowWidened = true;   // 0x64 x 4 ms = 400 ms
+        }
+
+        private async Task RestoreAnswerWindowAsync(CancellationToken token)
+        {
+            if (!_answerWindowWidened)
+                return;
+
+            _answerWindowWidened = false;
+            await TryOkInternalAsync("ATST32", token).ConfigureAwait(false);   // the default, 200 ms
+        }
+
+        private static bool IsResponsePendingOnly(string answer, int? receiveCanId, byte service)
+        {
+            var frames = ObdResponseParser.ParseCanFrames(answer, receiveCanId);
+            return frames.Count > 0 && frames.All(frame =>
+                frame.Length >= 4 && (frame[0] >> 4) == 0 && frame[1] == 0x7F && frame[2] == service && frame[3] == 0x78);
+        }
+
+        /// <summary>Sends one read request; if only "response pending" came back, asks once more with a longer wait.</summary>
+        private async Task<string> SendReadRequestAsync(string command, TimeSpan timeout, int? receiveCanId, byte service, CancellationToken token)
+        {
+            var answer = await SendCommandInternalAsync(command, timeout, maxRetries: 1, treatNegativeStatusAsError: false, token).ConfigureAwait(false);
+            if (!IsResponsePendingOnly(answer, receiveCanId, service))
+                return answer;
+
+            LinkEventLog.Add($"Response pending for {command}: asking once more with a longer wait");
+            await Task.Delay(400, token).ConfigureAwait(false);
+            return await SendCommandInternalAsync(command, timeout + timeout, maxRetries: 1, treatNegativeStatusAsError: false, token).ConfigureAwait(false);
+        }
         // ---- Adapter self-recovery -------------------------------------------------------------
         // Cheap adapters (and a long session of module scans) can end up in a state where every data request times out
         // or is answered with an error word, although the Bluetooth link itself is fine; until now only disconnecting and

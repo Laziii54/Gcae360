@@ -48,10 +48,7 @@ public sealed class OemTransportReadinessService
             {
                 "can.headers",
                 "can.auto-format",
-                "can.flow-control",
                 "can.set-header",
-                "can.receive-filter-command",
-                "can.receive-filter-verified",
                 "can.generic-request"
             };
             var missingCheckId = requiredTransportChecks

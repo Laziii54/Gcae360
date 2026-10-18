@@ -19,6 +19,50 @@
             </VerticalStackLayout>
 
             <Button Text="{Binding RefreshButtonText}" Command="{Binding LoadCommand}" Style="{StaticResource PrimaryButtonStyle}" />
+            <!-- Test rows: Mode 06, Mode 05, pending (07) and permanent (0A) codes, in the same flat list style as the other pages -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="0">
+                <VerticalStackLayout>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,12">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding OpenMode06Command}" /></Grid.GestureRecognizers>
+                        <VerticalStackLayout Spacing="1" VerticalOptions="Center">
+                            <Label Text="{Binding Mode06ButtonText}" TextColor="{DynamicResource TextColor}" FontSize="15" FontAttributes="Bold" />
+                            <Label Text="{Binding Mode06CardText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                        <controls:Icon Grid.Column="1" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" VerticalOptions="Center" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,12">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding OpenMode05Command}" /></Grid.GestureRecognizers>
+                        <VerticalStackLayout Spacing="1" VerticalOptions="Center">
+                            <Label Text="{Binding Mode05ButtonText}" TextColor="{DynamicResource TextColor}" FontSize="15" FontAttributes="Bold" />
+                            <Label Text="{Binding Mode05CardText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                        <controls:Icon Grid.Column="1" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" VerticalOptions="Center" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,12">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding OpenMode07Command}" /></Grid.GestureRecognizers>
+                        <VerticalStackLayout Spacing="1" VerticalOptions="Center">
+                            <Label Text="{Binding Mode07CardTitle}" TextColor="{DynamicResource TextColor}" FontSize="15" FontAttributes="Bold" />
+                            <Label Text="{Binding Mode07CardText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                            <Label Text="{Binding PendingCodesText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                        <controls:Icon Grid.Column="1" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" VerticalOptions="Center" />
+                    </Grid>
+                    <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="14,12">
+                        <Grid.GestureRecognizers><TapGestureRecognizer Command="{Binding OpenMode0ACommand}" /></Grid.GestureRecognizers>
+                        <VerticalStackLayout Spacing="1" VerticalOptions="Center">
+                            <Label Text="{Binding Mode0ACardTitle}" TextColor="{DynamicResource TextColor}" FontSize="15" FontAttributes="Bold" />
+                            <Label Text="{Binding Mode0ACardText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                            <Label Text="{Binding PermanentCodesText}" TextColor="{DynamicResource SubTextColor}" FontSize="12" LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                        <controls:Icon Grid.Column="1" Kind="chevron-right" Tint="{DynamicResource SubTextColor}" WidthRequest="14" HeightRequest="14" VerticalOptions="Center" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+
 
             <!-- Main result -->
             <Border Style="{StaticResource ListCardStyle}" Padding="20,20,20,18">
@@ -120,32 +164,6 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Optional OBD tests remain accessible -->
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                <Button
-                    Text="{Binding Mode05ButtonText}"
-                    Command="{Binding OpenMode05Command}"
-                    HeightRequest="46"
-                    FontSize="13"
-                    FontAttributes="Bold"
-                    CornerRadius="12"
-                    BackgroundColor="Transparent"
-                    TextColor="{DynamicResource TextColor}"
-                    BorderColor="{DynamicResource BorderColor}"
-                    BorderWidth="1" />
-                <Button
-                    Grid.Column="1"
-                    Text="{Binding Mode06ButtonText}"
-                    Command="{Binding OpenMode06Command}"
-                    HeightRequest="46"
-                    FontSize="13"
-                    FontAttributes="Bold"
-                    CornerRadius="12"
-                    BackgroundColor="Transparent"
-                    TextColor="{DynamicResource TextColor}"
-                    BorderColor="{DynamicResource BorderColor}"
-                    BorderWidth="1" />
-            </Grid>
 
             <Border Style="{StaticResource ListCardStyle}" Padding="14,13">
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
