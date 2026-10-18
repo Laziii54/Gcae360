@@ -16,6 +16,7 @@ public partial class HybridHealthPage : ContentPage
         base.OnAppearing();
         var localization = Application.Current?.Handler?.MauiContext?.Services.GetService<LocalizationService>();
         localization?.Apply(this);
+        (BindingContext as HybridHealthViewModel)?.RefreshProState();
     }
 
     protected override void OnDisappearing()

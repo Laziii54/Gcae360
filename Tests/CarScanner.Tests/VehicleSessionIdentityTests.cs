@@ -197,7 +197,7 @@ public sealed class VehicleSessionIdentityTests
         "GoToLiveDataCommand", "GoToSensorsCommand", "GoToEmissionsCommand", "GoToFreezeFrameCommand", "GoToEcuCommand",
         "GoToHybridHealthCommand", "GoToBatteryCommand", "GoToGraphStudioCommand", "GoToCodingCommand", "GoToAccelerationCommand",
         "GoToServiceCommand", "GoToDiagnosticReportCommand", "GoToTechnicalInspectionCommand", "GoToAdapterCenterCommand",
-        "GoToCapabilitiesCommand", "GoToSettingsCommand", "GoToResearchCommand"
+        "GoToCapabilitiesCommand", "GoToSettingsCommand"
     };
 
     [Fact]
@@ -208,28 +208,26 @@ public sealed class VehicleSessionIdentityTests
             Assert.Contains("Command=\"{Binding " + command + "}\"", xaml);
         Assert.Contains("OnPrePurchaseTapped", xaml);
 
-        // muted (opacity) while disconnected, but no tile is collapsed or disabled by IsConnected. The one exception
-        // is the admin-only Research tile: it is hidden for a different, unrelated reason (not a PRO/non-PRO or
-        // disconnected account), so it alone is allowed an IsVisible bound to IsAdmin, never to IsConnected.
+        // muted (opacity) while disconnected, but no tile is collapsed or disabled by IsConnected. (The admin-only
+        // Research tile was removed, so no tile is hidden any more.)
         var tileBorders = Regex.Matches(xaml, @"<Border [^>]*ListCardStyle[^>]*Padding=""(12,11|6,12,6,10)""[^>]*>").Select(match => match.Value).ToList();
-        Assert.Equal(23, tileBorders.Count);
-        var adminTiles = tileBorders.Where(border => border.Contains("IsVisible=\"{Binding IsAdmin}\"")).ToList();
-        Assert.Single(adminTiles);
-        Assert.All(tileBorders.Except(adminTiles), border =>
+        Assert.Equal(22, tileBorders.Count);
+        Assert.All(tileBorders, border =>
         {
             Assert.DoesNotContain("IsVisible=", border);
             Assert.DoesNotContain("IsEnabled=", border);
         });
-        Assert.DoesNotMatch(@"<controls:FlowGrid [^>]*IsEnabled=", xaml);
+        Assert.DoesNotContain("GoToResearch", xaml);        Assert.DoesNotMatch(@"<controls:FlowGrid [^>]*IsEnabled=", xaml);
     }
 
     [Fact]
     public void AfterConnecting_TheSameTilesBecomeOpaque_AndNothingNewIsEnabledAutomatically()
     {
         var xaml = Read("Views", "HomePage.xaml");
-        // 16 car tiles are muted until connected and become opaque on IsConnected - that is all the connection changes on Home
+        // 16 car tiles are muted until connected; 15 of them become opaque on IsConnected - that is all the connection
+        // changes on Home. The 16th, Coding, is switched off for now and stays muted whether connected or not.
         Assert.Equal(16, Regex.Matches(xaml, @"ListCardStyle[^>]*Opacity=""0\.4""").Count);
-        Assert.Equal(17, Regex.Matches(xaml, @"<DataTrigger TargetType=""(Border|controls:FlowGrid)"" Binding=""\{Binding IsConnected\}"" Value=""True"">").Count);   // 16 tiles + the PRO group
+        Assert.Equal(16, Regex.Matches(xaml, @"<DataTrigger TargetType=""(Border|controls:FlowGrid)"" Binding=""\{Binding IsConnected\}"" Value=""True"">").Count);   // 15 tiles + the PRO group
         // each page still decides for itself what it supports; Home has no list of "enabled OEM functions"
         Assert.DoesNotContain("EnableOem", Read("ViewModels", "HomeViewModel.cs"));
     }
@@ -251,7 +249,7 @@ public sealed class VehicleSessionIdentityTests
     public void SettingsAndAdapter_OpenWithoutAConnection()
     {
         var home = Read("ViewModels", "HomeViewModel.cs");
-        foreach (var command in new[] { "GoToAdapterCenter", "GoToSettings", "GoToCoding", "GoToGraphStudio" })
+        foreach (var command in new[] { "GoToAdapterCenter", "GoToSettings", "GoToGraphStudio" })
         {
             var start = home.IndexOf("private async Task " + command + "()", StringComparison.Ordinal);
             Assert.True(start >= 0, command);
@@ -261,6 +259,36 @@ public sealed class VehicleSessionIdentityTests
         }
     }
 
+    [Fact]
+    public void Coding_IsSwitchedOff_NeverOpensThePage_AndSaysComingSoon_EvenWhenConnected()
+    {
+        var home = Read("ViewModels", "HomeViewModel.cs");
+        var start = home.IndexOf("private void GoToCoding()", StringComparison.Ordinal);
+        Assert.True(start >= 0, "GoToCoding must be a plain method that does not navigate");
+        var next = home.IndexOf("[RelayCommand]", start, StringComparison.Ordinal);
+        var body = home.Substring(start, (next < 0 ? home.Length : next) - start);
+        Assert.Contains("ReportToast.Show(", body);
+        Assert.Contains("Coming soon", body);
+        Assert.DoesNotContain("GoToAsync", body);
+        Assert.DoesNotContain("CodingPage", body);
+
+        // the other entry (module scan) is switched off the same way
+        var advanced = Read("ViewModels", "AdvancedViewModels.cs");
+        var scan = advanced.IndexOf("private void OpenCoding()", StringComparison.Ordinal);
+        Assert.True(scan >= 0);
+        Assert.DoesNotContain("CodingPage", advanced.Substring(scan, 600));
+
+        // nothing anywhere navigates to the Coding page
+        foreach (var file in new[] { "ViewModels/HomeViewModel.cs", "ViewModels/AdvancedViewModels.cs" })
+            Assert.DoesNotContain("GoToAsync(nameof(Views.CodingPage))", Read(file.Split('/')));
+
+        // the tile stays dimmed: no IsConnected trigger on it
+        var xaml = Read("Views", "HomePage.xaml");
+        var tap = xaml.IndexOf("Binding GoToCodingCommand", StringComparison.Ordinal);
+        var tile = xaml.LastIndexOf("<Border ", tap, StringComparison.Ordinal);
+        Assert.DoesNotContain("IsConnected", xaml.Substring(tile, tap - tile));
+        Assert.Contains("Opacity=\"0.4\"", xaml.Substring(tile, tap - tile));
+    }
     [Fact]
     public void UnavailableTiles_StillFlowSequentially_WithNoEmptyCell()
     {

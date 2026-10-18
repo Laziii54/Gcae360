@@ -60,6 +60,9 @@ public sealed class SensorValue
 
     public bool HasStatus => Level != SensorLevel.None;
 
+    /// <summary>True when the value is a number, so tapping it can open a live graph.</summary>
+    public bool CanGraph => double.TryParse(Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out _);
+
     private SensorLevel Evaluate()
     {
         var valueForChecks = string.IsNullOrWhiteSpace(CanonicalValue) ? Value : CanonicalValue;

@@ -35,6 +35,7 @@ public partial class EcuIdentifiersPage:ContentPage
     protected override async void OnDisappearing()
     {
         base.OnDisappearing();
+        GraphSheet.Close();
         try
         {
         if (BindingContext is EcuIdentifiersViewModel viewModel)
@@ -47,6 +48,22 @@ public partial class EcuIdentifiersPage:ContentPage
         {
             CarScanner.Services.CommandErrors.Report(commandException, "EcuIdentifiersPage.OnDisappearing");
         }
+    }
+
+    private void OnPidTapped(object? sender, TappedEventArgs e)
+    {
+        if ((sender as BindableObject)?.BindingContext is CarScanner.Models.EcuPidReading reading && reading.CanGraph)
+            GraphSheet.Show(reading);
+    }
+
+    protected override bool OnBackButtonPressed()
+    {
+        if (GraphSheet.IsOpen)
+        {
+            GraphSheet.Close();
+            return true;
+        }
+        return base.OnBackButtonPressed();
     }
 
     private void ApplyUiLocalization()

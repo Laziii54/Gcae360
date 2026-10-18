@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": 9,
+  "catalogVersion": 10,
   "procedures": [
     {
       "id": "acura.rdx.2023.maintenance-minder-reset",
@@ -4778,6 +4778,7 @@
       "descriptionEn": "On Porsche (911, Boxster, Cayenne, Macan, Panamera) the service indicator cannot be reset with the owner's buttons.",
       "executionType": "Manual",
       "oemOperationId": "",
+      "toolRequired": true,
       "steps": [
         {
           "order": 1,
@@ -5622,6 +5623,7 @@
       "descriptionEn": "Haval (e.g. H2) service reminders are cancelled via the diagnostic port with Haval-specific software; no verified owner procedure exists.",
       "executionType": "Manual",
       "oemOperationId": "",
+      "toolRequired": true,
       "steps": [
         {
           "order": 1,
@@ -5656,6 +5658,7 @@
       "descriptionEn": "BYD owner's manuals (Atto 3, Seal U) do not describe an owner reset of the maintenance reminder; the authorised dealer handles service and reminder reset.",
       "executionType": "Manual",
       "oemOperationId": "",
+      "toolRequired": true,
       "steps": [
         {
           "order": 1,
@@ -6415,6 +6418,7 @@
       "descriptionEn": "Many of these models have no service indicator; where they do, no reliable owner method could be confirmed.",
       "executionType": "Manual",
       "oemOperationId": "",
+      "toolRequired": true,
       "steps": [
         {
           "order": 1,
@@ -6707,9 +6711,206 @@
       "verificationMethod": "Dashboard",
       "verificationStatus": "SourceDocumented",
       "source": "erwinsalarda.com — VW (premium display / MFSW); aboutthecars.com — Skoda (steering controls); same menu source as the existing VW-group menu entry"
+    },
+    {
+      "id": "mercedes-benz.sprinter.2007-2018.service-reset-no-steering-controls",
+      "brand": "Mercedes-Benz|Mercedes",
+      "model": "Sprinter",
+      "minimumYear": 2007,
+      "maximumYear": 2018,
+      "category": "Oil Service",
+      "kind": "OilService",
+      "systemName": "ASSYST",
+      "nameKa": "Sprinter — სერვისის ინდიკატორის განულება (საჭის ღილაკების გარეშე)",
+      "nameEn": "Sprinter — service indicator reset (without steering-wheel controls)",
+      "descriptionKa": "Mercedes-Benz Sprinter (906): ASSYST-ის სერვისის ინდიკატორი, დაფის 0 და M ღილაკებით.",
+      "descriptionEn": "Mercedes-Benz Sprinter (906): ASSYST service indicator, using buttons 0 and M on the instrument cluster.",
+      "executionType": "Manual",
+      "oemOperationId": "",
+      "preconditions": [
+        {
+          "textKa": "გააკეთე მხოლოდ სერვისის შესრულების შემდეგ.",
+          "textEn": "Do this only after the service has been carried out."
+        }
+      ],
+      "steps": [
+        {
+          "order": 1,
+          "textKa": "ჩართე ანთება. თუ ეკრანზე სერვისის ინტერვალის გადაცილება ჩანს, დაელოდე, სანამ ჩვენება თავისით გადავა საერთო კილომეტრაჟზე — მხოლოდ ამის შემდეგ იხსნება სერვისის მენიუ.",
+          "textEn": "Switch the ignition on. If the display shows that the service interval has been exceeded, wait until the readout switches by itself to the total mileage; only then can you enter the service menu."
+        },
+        {
+          "order": 2,
+          "textKa": "დაფაზე 0 ღილაკს დააჭირე დაახლოებით 30 წამი, სანამ სიგნალს არ გაიგონებ.",
+          "textEn": "Press button 0 on the instrument cluster for about 30 seconds until a beep sounds."
+        },
+        {
+          "order": 3,
+          "textKa": "დიზელზე გრძელი ზეთის ინტერვალით: M (1) ღილაკს დააჭირე რამდენჯერმე, სანამ ეკრანზე „rESEt .51 / rESEt .31“ არ გამოჩნდება (ძველ დაფაზე „rESEt 229.5 / rESEt 229.3“) ზეთის ქილის სიმბოლოსთან ერთად.",
+          "textEn": "Diesel engines with a long oil change interval: press M (1) repeatedly until “rESEt .51 / rESEt .31” is shown (older clusters: “rESEt 229.5 / rESEt 229.3”) together with the oil can symbol."
+        },
+        {
+          "order": 4,
+          "textKa": "დაფაზე 0 ღილაკს დააჭირე დაახლოებით 3 წამი, გაუშვი და ისევ დააჭირე.",
+          "textEn": "Press button 0 on the cluster for about 3 seconds, release it and press it again."
+        },
+        {
+          "order": 5,
+          "textKa": "თუ შემთხვევით არასწორი ზეთის ტიპი აირჩიე: გამორთე და ჩართე ანთება, 0 ღილაკს ~30 წამი დააჭირე სიგნალამდე, M-ით აირჩიე „rESEt StoP“ (ზეთის ქილის სიმბოლოსთან ერთად), 0 ღილაკს ~3 წამი დააჭირე, გაუშვი და ისევ დააჭირე; შემდეგ გაიმეორე ნაბიჯები 3 და 4.",
+          "textEn": "If the wrong oil type was selected by mistake: switch the ignition off and on, hold 0 for about 30 seconds until the beep, press M until “rESEt StoP” (with the oil can symbol) is shown, hold 0 for about 3 seconds, release and press again; then repeat steps 3 and 4."
+        }
+      ],
+      "source": "Mercedes-Benz Vans Canada — “MB Reset Service Indicator Guide – Sprinter” (2014 Sprinter document, without steering-wheel controls). Other model years of the same generation may differ slightly.",
+      "expectedResultKa": "სერვისის ინდიკატორი განულდება. აპი ამას ვერ ამოწმებს — შეამოწმე დაფაზე.",
+      "expectedResultEn": "The service indicator is reset. The app cannot check this; look at the dashboard.",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
+    },
+    {
+      "id": "mercedes-benz.sprinter.2007-2018.service-reset-steering-controls",
+      "brand": "Mercedes-Benz|Mercedes",
+      "model": "Sprinter",
+      "minimumYear": 2007,
+      "maximumYear": 2018,
+      "category": "Oil Service",
+      "kind": "OilService",
+      "systemName": "ASSYST PLUS",
+      "nameKa": "Sprinter — სერვისის ინდიკატორის განულება (საჭის ღილაკებით)",
+      "nameEn": "Sprinter — service indicator reset (with steering-wheel controls)",
+      "descriptionKa": "Mercedes-Benz Sprinter (906): ASSYST PLUS, საჭის მართვის პანელებითა და დაფის 0 ღილაკით.",
+      "descriptionEn": "Mercedes-Benz Sprinter (906): ASSYST PLUS, using the steering-wheel control panels and button 0 on the cluster.",
+      "executionType": "Manual",
+      "oemOperationId": "",
+      "preconditions": [
+        {
+          "textKa": "გააკეთე მხოლოდ სერვისის შესრულების შემდეგ.",
+          "textEn": "Do this only after the service has been carried out."
+        }
+      ],
+      "steps": [
+        {
+          "order": 1,
+          "textKa": "ჩართე ანთება. ეკრანზე საერთო კილომეტრაჟი უნდა ჩანდეს; თუ არ ჩანს, ქვედა პანელზე სისტემის არჩევის ღილაკს დააჭირე, სანამ არ გამოჩნდება.",
+          "textEn": "Switch the ignition on. The total mileage must be displayed; if it is not, press the system selection button on the lower control panel until it is."
+        },
+        {
+          "order": 2,
+          "textKa": "ზედა პანელზე წინ/უკან გადახვევის ღილაკს რამდენჯერმე დააჭირე, სანამ დაფის ეკრანზე „service scope x in xxx km“ არ გამოჩნდება.",
+          "textEn": "Press the scroll forward/back button on the upper control panel several times until “service scope x in xxx km” appears in the cluster display."
+        },
+        {
+          "order": 3,
+          "textKa": "დაფაზე 0 ღილაკს დააჭირე დაახლოებით 30 წამი, სანამ სიგნალს არ გაიგონებ.",
+          "textEn": "Press button 0 on the instrument cluster for about 30 seconds until a beep sounds."
+        },
+        {
+          "order": 4,
+          "textKa": "ქვედა პანელზე სისტემის არჩევის ღილაკს დააჭირე ერთხელ.",
+          "textEn": "Press the system selection button on the lower control panel once."
+        },
+        {
+          "order": 5,
+          "textKa": "ზედა პანელზე წინ/უკან გადახვევის ღილაკს დააჭირე, სანამ ეკრანზე „Service in xxx km“ არ გამოჩნდება.",
+          "textEn": "Press the scroll forward/back button on the upper panel until “Service in xxx km” appears."
+        },
+        {
+          "order": 6,
+          "textKa": "დაფაზე 0 ღილაკს დააჭირე — გამოჩნდება მენიუ „Carry out“.",
+          "textEn": "Press button 0 on the cluster — the “Carry out” menu appears."
+        },
+        {
+          "order": 7,
+          "textKa": "ზედა პანელზე გადახვევის ღილაკს დააჭირე — გამოჩნდება არჩევანი „Oil types“.",
+          "textEn": "Press the scroll button on the upper panel — the “Oil types” selection appears."
+        },
+        {
+          "order": 8,
+          "textKa": "ზედა პანელზე + და – ღილაკით მონიშნე ზეთის ტიპი, რომელიც ჩაასხი.",
+          "textEn": "Use the + and – button on the upper panel to mark the oil type you used."
+        },
+        {
+          "order": 9,
+          "textKa": "მონიშნული ზეთის ტიპი აირჩიე წინ/უკან გადახვევის ღილაკით.",
+          "textEn": "Select the marked oil type with the scroll forward/back button."
+        },
+        {
+          "order": 10,
+          "textKa": "დაფაზე 0 ღილაკს დააჭირე დაახლოებით 3 წამი, სანამ ეკრანზე „Service confirmed“ არ გამოჩნდება.",
+          "textEn": "Hold button 0 on the cluster for about 3 seconds until “Service confirmed” appears in the display."
+        },
+        {
+          "order": 11,
+          "textKa": "გადახვევის ღილაკს დააჭირე — ეკრანზე ახალი სერვისის მოცულობა გამოჩნდება.",
+          "textEn": "Press the scroll button — the newly set service scope appears in the display."
+        },
+        {
+          "order": 12,
+          "textKa": "თუ შემთხვევით არასწორი ზეთის ტიპი აირჩიე: დააჭირე 0 ღილაკს („Carry out“), მენიუში „To be carried out“ + და – ღილაკით მონიშნე „Full service back“, აირჩიე გადახვევის ღილაკით და 0 ღილაკს ~3 წამი დააჭირე „Service confirmed“-მდე; შემდეგ ისევ 0 ღილაკი, მონიშნე „Full Service“ და გაიმეორე ნაბიჯები 7–11.",
+          "textEn": "If the wrong oil type was selected by mistake: press 0 (“Carry out”), in the menu “To be carried out” mark “Full service back” with + and –, select it with the scroll button and hold 0 for about 3 seconds until “Service confirmed”; then press 0 again, mark “Full Service” and repeat steps 7–11."
+        }
+      ],
+      "source": "Mercedes-Benz Vans Canada — “MB Reset Service Indicator Guide – Sprinter” (2014 Sprinter document, with steering-wheel controls). Other model years of the same generation may differ slightly.",
+      "expectedResultKa": "სერვისის ინდიკატორი განულდება. აპი ამას ვერ ამოწმებს — შეამოწმე დაფაზე.",
+      "expectedResultEn": "The service indicator is reset. The app cannot check this; look at the dashboard.",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
+    },
+    {
+      "id": "general.fiat.2007-plus.menu-oil-reset",
+      "brand": "Fiat|Abarth",
+      "model": "*",
+      "minimumYear": 2007,
+      "maximumYear": 0,
+      "category": "Oil Service",
+      "kind": "OilService",
+      "systemName": "Service / oil change reminder",
+      "nameKa": "ზეთის/სერვისის შეხსენების განულება (დაფის მენიუდან)",
+      "nameEn": "Oil / service reminder reset (cluster menu)",
+      "descriptionKa": "Fiat-ის მოდელებზე, რომლებსაც დაფაზე მენიუ აქვს (მაგ. Punto 199 SET/+ მენიუთი, 500, 500L, 500X, Ducato 2016+). ბაზისურ ან ძველ მანქანებზე ეს პუნქტი შეიძლება არ იყოს — მაშინ განულებას სერვისის აპარატი სჭირდება.",
+      "descriptionEn": "For Fiat models with a cluster menu (for example Punto 199 with the SET / + menu, 500, 500L, 500X and Ducato 2016+). Base-trim or older cars may not have this menu item; they need a workshop tool.",
+      "executionType": "Manual",
+      "oemOperationId": "",
+      "preconditions": [
+        {
+          "textKa": "გააკეთე მხოლოდ სერვისის შესრულების შემდეგ.",
+          "textEn": "Do this only after the service has been carried out."
+        }
+      ],
+      "steps": [
+        {
+          "order": 1,
+          "textKa": "დახურე კარები და ჩართე ანთება (ძრავი არ დაქოქო).",
+          "textEn": "Close the doors and switch the ignition on (do not start the engine)."
+        },
+        {
+          "order": 2,
+          "textKa": "დაფის მენიუ გახსენი MENU / SET ღილაკით (ან საჭის ისრებით).",
+          "textEn": "Open the cluster menu with the MENU / SET button (or the steering-wheel arrows)."
+        },
+        {
+          "order": 3,
+          "textKa": "გადადი Settings → Service (ან Maintenance) → „Oil change reset“. Punto 199-ზე SET/+ ღილაკებით: დააჭირე MENU-ს, მერე + ღილაკს, სანამ ეკრანზე ზეთის განულება არ გამოჩნდება, და დააჭირე SET-ს.",
+          "textEn": "Go to Settings → Service (or Maintenance) → “Oil change reset”. On a Punto 199 with the SET / + buttons: press MENU, then + until the oil change reset item is shown, and press SET."
+        },
+        {
+          "order": 4,
+          "textKa": "დაადასტურე: აირჩიე Yes / OK (Punto 199-ზე + ღილაკით აირჩიე „დიახ“ და დააჭირე SET-ს).",
+          "textEn": "Confirm: select Yes / OK (on the Punto 199 press + to choose Yes, then SET)."
+        },
+        {
+          "order": 5,
+          "textKa": "გამორთე ანთება, რამდენიმე წამი დაელოდე, დაქოქე ძრავი და შეამოწმე, რომ სერვისის ინდიკატორი ჩაქრა.",
+          "textEn": "Switch the ignition off, wait a few seconds, start the engine and check that the service indicator is off."
+        }
+      ],
+      "source": "carwiki.de — Fiat Punto Inspektion zurücksetzen (Punto 199 menu); klavkarr.com — How to reset the oil change light on Fiat (500 / 500L / 500X after 2016 and Ducato 2016–2023 menu). Menu names vary by model and year; some cars have no such menu item.",
+      "expectedResultKa": "სერვისის ინდიკატორი ქრება. აპი ამას ვერ ამოწმებს — შეამოწმე დაფაზე.",
+      "expectedResultEn": "The service indicator goes out. The app cannot check this; look at the dashboard.",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     }
   ],
-  "catalogGenerated": "2026-10-09",
+  "catalogGenerated": "2026-10-18",
   "coverageNotes": [
     "Only source-backed Manual/Guided procedures are included.",
     "No guessed ECU write/reset/coding command is included.",
@@ -6718,7 +6919,10 @@
     "Brand-wide entries (model \"*\", id prefix \"general.\") give dashboard/button reset procedures per brand and generation. They are shown when no exact model entry matches. Brand field may list several brands separated by \"|\". None of them sends an ECU command.",
     "Catalog 7: brand-wide entries added for Porsche, Smart, Volvo 2011+, Tesla, Rivian, Lucid, Polestar, Saab, Alfa Romeo, Lancia, MG, Geely, Chery, JAC, Haval/GWM, BYD, Hongqi, Dongfeng, Zeekr, NIO, Jaguar/Land Rover pre-2016, Bentley, Skoda, Suzuki, Isuzu, exotic brands and Lada/Daewoo/UAZ/SsangYong. Entries that say \"diagnostic tool\" / \"dealer\" are honest: no verified owner method exists or was found.",
     "Catalog 9: optional fields (kind, systemName, verificationStatus, verificationMethod, toolRequired, preconditions, expectedResult) added; all entries stay source-documented guides (none is marked VehicleVerified). New guides: TPMS for Toyota/Lexus/Scion, Honda/Acura and Hyundai, and a separate inspection-reminder reset for the VW group.",
-    "Researched but NOT added: battery registration and electronic-parking-brake service mode — no owner-level method could be established; they are workshop-tool functions and need exact diagnostic commands that must not be guessed."
+    "Researched but NOT added: battery registration and electronic-parking-brake service mode — no owner-level method could be established; they are workshop-tool functions and need exact diagnostic commands that must not be guessed.",
+    "Catalog 10: Mercedes-Benz Sprinter (906, 2007-2018) guides, with and without steering-wheel controls, from the Mercedes-Benz Vans Canada Reset Service Indicator Guide for the Sprinter (an official document); and a Fiat/Abarth cluster-menu oil reminder guide (two independent sources).",
+    "Catalog 10 research that was NOT added because no reliable source exists: Fiat Grande Punto trip-button and pedal sequences (contradictory reports, one owner reported that it did not work), Ford Transit / Transit Custom (only low-quality pages), Nissan Qashqai J10 (no reliable source), Land Rover / Jaguar official owner-information pages (dynamic pages that cannot be read automatically), Volvo service message (official pages only describe the message, not the reset).",
+    "No open dataset of oil-life reset commands (UDS 0x2E / 0x31 or GMLAN) for all cars exists on GitHub or elsewhere; the commercial scanner apps keep theirs closed. Automatic resets stay disabled until an exact, hardware-verified entry exists (see oem_operations.json)."
   ],
   "researchedButNotPinnedInThisCatalog": []
 }

@@ -298,7 +298,18 @@ public partial class FuelViewModel
     {
         _tripActive = true;
         _checkpointTimer?.Dispose();
-        _checkpointTimer = new Timer(_ => MainThread.BeginInvokeOnMainThread(WriteCheckpoint), null, CheckpointEvery, CheckpointEvery);
+        _checkpointTimer = new Timer(_ => MainThread.BeginInvokeOnMainThread(OnCheckpointTimer), null, CheckpointEvery, CheckpointEvery);
+    }
+
+    private void OnCheckpointTimer()
+    {
+        WriteCheckpoint();
+
+        // The notification otherwise keeps showing the last distance as if the trip were still being measured while
+        // the adapter link is down or the car is asleep: say that no data is coming in.
+        if (CarScanner.Services.Background.TripKeepAlive.IsActive && DateTime.UtcNow - _lastDataAtUtc > StaleDataAfter)
+            CarScanner.Services.Background.TripKeepAlive.Update(
+                CarScanner.Services.Localization.LocalizationService.T(L("OBD360 — ველოდები მანქანის მონაცემებს…", "OBD360 — waiting for data from the car…")));
     }
 
     private void EndTripTracking(bool deleteCheckpoint)

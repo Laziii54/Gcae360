@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OBD360 Coding Coming Soon</title>
+<style>
+  :root { --PageBg:#F4F5F3; --CardBg:#FFFFFF; --TextColor:#1B1D20; --SubTextColor:#5D636B; --BorderColor:#DCDFE3; --Primary:#1D5BD6; --ok:#1F8A4C; --desk:#dfe3e8; --toast:#1B1D20; --toastText:#fff; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --PageBg:#0E1114; --CardBg:#171B20; --TextColor:#EEF0F2; --SubTextColor:#9AA3AD; --BorderColor:#2A3038; --Primary:#60A5FA; --ok:#4ADE80; --desk:#07090b; --toast:#EEF0F2; --toastText:#0E1114; } }
+  :root[data-theme="dark"] { --PageBg:#0E1114; --CardBg:#171B20; --TextColor:#EEF0F2; --SubTextColor:#9AA3AD; --BorderColor:#2A3038; --Primary:#60A5FA; --ok:#4ADE80; --desk:#07090b; --toast:#EEF0F2; --toastText:#0E1114; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--desk); color:var(--TextColor); font:14px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:20px 16px 50px; }
+  .top { max-width:860px; margin:0 auto 14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .top h1 { font-size:18px; margin:0; flex:1 1 260px; }
+  .top button { font:inherit; font-weight:700; padding:7px 14px; border-radius:10px; border:1.5px solid var(--Primary); background:transparent; color:var(--Primary); cursor:pointer; }
+  .hint { max-width:860px; margin:0 auto 16px; color:var(--SubTextColor); font-size:13px; }
+  .phones { max-width:860px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:24px; justify-items:center; }
+  .col { width:340px; max-width:100%; }
+  .label { text-align:center; font-weight:700; margin-bottom:8px; } .label small { display:block; font-weight:400; color:var(--SubTextColor); }
+  .phone { position:relative; background:var(--PageBg); border:1px solid var(--BorderColor); border-radius:30px; overflow:hidden; box-shadow:0 10px 36px rgba(0,0,0,.18); height:560px; }
+  .cap { padding:16px 16px 4px; font-size:12px; font-weight:700; color:var(--SubTextColor); }
+  .status { margin:4px 16px 12px; padding:10px 12px; background:var(--CardBg); border:1px solid var(--BorderColor); border-radius:14px; display:flex; align-items:center; gap:10px; font-size:13px; }
+  .dot { width:10px; height:10px; border-radius:50%; background:#B3361F; } .dot.on { background:var(--ok); }
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:0 16px; }
+  .tile { background:var(--CardBg); border:1px solid var(--BorderColor); border-radius:16px; padding:12px 6px 10px; text-align:center; opacity:.4; transition:opacity .2s; user-select:none; }
+  .on .tile { opacity:1; }
+  .on .tile.coding { opacity:.4; }
+  .tile.coding { cursor:pointer; outline-offset:2px; }
+  .ico { width:40px; height:40px; border-radius:12px; background:var(--PageBg); margin:0 auto 8px; display:grid; place-items:center; }
+  .ico svg { width:22px; height:22px; fill:none; stroke:var(--SubTextColor); stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+  .tile b { display:block; font-size:12px; height:30px; line-height:1.25; }
+  .toast { position:absolute; left:50%; bottom:26px; transform:translate(-50%,14px); background:var(--toast); color:var(--toastText); padding:10px 18px; border-radius:22px; font-size:13px; font-weight:600; opacity:0; transition:all .25s; white-space:nowrap; box-shadow:0 4px 14px rgba(0,0,0,.3); pointer-events:none; }
+  .toast.show { opacity:1; transform:translate(-50%,0); }
+  .tap { text-align:center; margin-top:10px; color:var(--SubTextColor); font-size:13px; }
+  .note { max-width:860px; margin:24px auto 0; background:var(--CardBg); border:1px solid var(--BorderColor); border-radius:14px; padding:14px 16px; font-size:13px; color:var(--SubTextColor); }
+  .note b { color:var(--TextColor); }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>OBD360 · კოდირების ღილაკი: „მალე დაემატება“</h1>
+  <button onclick="toggleTheme()">ბნელი / ღია</button>
+</div>
+<p class="hint">დააჭირე <b>„კოდირება“</b> ღილაკს ორივე ტელეფონზე. გვერდი არ იხსნება, ქვემოთ ჩნდება პატარა შეტყობინება.</p>
+
+<div class="phones">
+  <div class="col">
+    <div class="label">1. ადაპტერთან დაკავშირებამდე<small>ყველა ღილაკი მუქია</small></div>
+    <div class="phone" id="p1">
+      <div class="cap">მანქანის ფუნქციები</div>
+      <div class="status"><span class="dot"></span><span>ადაპტერი არ არის დაკავშირებული</span></div>
+      <div class="grid"></div>
+      <div class="toast"></div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="label">2. დაკავშირების შემდეგ<small>დანარჩენი ღილაკები ინათება, კოდირება კვლავ მუქია</small></div>
+    <div class="phone on" id="p2">
+      <div class="cap">მანქანის ფუნქციები</div>
+      <div class="status"><span class="dot on"></span><span>დაკავშირებულია · Chevrolet Volt 2017</span></div>
+      <div class="grid"></div>
+      <div class="toast"></div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <b>რა იცვლება აპში:</b> Home-ზე კოდირების ღილაკი ყოველთვის დაბინდულია. დაჭერისას კოდირების გვერდი არ იხსნება, ეკრანის ქვედა ნაწილში ჩნდება „მალე დაემატება“ (ინგლისურ ენაზე „Coming soon“).
+  <br>მაკეტში ხატულები გამარტივებულია, რეალურ აპში საკუთარი ხატულები აქვთ. ტექსტი, განლაგება (3 სვეტი) და გამჭვირვალობა (40 % / 100 %) რეალური მნიშვნელობებია.
+</div>
+
+<script>
+  const icons = {
+    c:'<circle cx="12" cy="12" r="7"/><path d="M12 8v4l3 2"/>', ecu:'<rect x="5" y="6" width="14" height="12" rx="2"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3"/>',
+    hyb:'<path d="M13 3 6 13h5l-1 8 7-10h-5z"/>', bat:'<path d="M3,8 L19,8 L19,17 L3,17 Z M21,11 L21,14 M7,12.5 L11,12.5 M9,10.5 L9,14.5 M14,12.5 L17,12.5"/>',
+    graph:'<path d="M4,19 L20,19 M4,19 L4,5 M7,15 L11,10 L14,13 L19,7"/>', code:'<path d="M8,7 L3,12 L8,17 M16,7 L21,12 L16,17 M14,5 L10,19"/>',
+    speed:'<path d="M4 17a8 8 0 1 1 16 0M12 17l4-5"/>'
+  };
+  const tiles = [['ECU ინფო','ecu'],['ჰიბრიდი','hyb'],['აკუმულატორი','bat'],['გრაფიკები (Graph Studio)','graph'],['კოდირება','code'],['0–100','speed']];
+  document.querySelectorAll('.grid').forEach(g => {
+    tiles.forEach(([name, ic]) => {
+      const d = document.createElement('div'); d.className = 'tile' + (ic==='code' ? ' coding' : '');
+      d.innerHTML = '<div class="ico"><svg viewBox="0 0 24 24">'+icons[ic]+'</svg></div><b>'+name+'</b>';
+      if (ic === 'code') d.onclick = () => { const t = g.parentElement.querySelector('.toast'); t.textContent = 'მალე დაემატება'; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('show'), 2200); };
+      g.appendChild(d);
+    });
+  });
+  function toggleTheme(){ var r=document.documentElement; var dark = r.getAttribute('data-theme')==='dark' || (!r.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches); r.setAttribute('data-theme', dark ? 'light' : 'dark'); }
+</script>
+</body>
+</html>

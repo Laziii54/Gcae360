@@ -46,6 +46,7 @@ builder.Services.AddSingleton<VinQuotaStore>();
 builder.Services.AddSingleton<WebPaymentService>();
 builder.Services.AddHostedService<WebRenewalWorker>();
 builder.Services.AddSingleton<AccelerationLeaderboardStore>();
+builder.Services.AddSingleton<AvatarStore>();
 builder.Services.AddSingleton<QrReportStore>();
 
 // Azure App Service terminates TLS at its front end and forwards the
@@ -268,8 +269,8 @@ app.MapGet("/privacy-policy", () =>
 <p class="ka">QR ანგარიში ინახავს არჩეული სკანის შეჯამებას: ავტომობილის სახელს, VIN-ის ბოლო ექვს სიმბოლოს, სკანის შეჯამებას, შეცდომის კოდებს, მზადყოფნას და, თუ არის, შენ მიერ შეყვანილ სერვისის ისტორიას. ბმულის ან QR კოდის მქონე ნებისმიერ ადამიანს შეუძლია მისი ნახვა. გვერდზე მითითებულია, რომ ანგარიში შექმნა ავტომობილის მფლობელმა OBD360-ით და დამოუკიდებლად გადამოწმებული არ არის. ბმული 30 დღის შემდეგ აღარ მუშაობს და ვადაგასული ანგარიშები სერვერიდან იშლება.</p>
 
 <h2>6. Acceleration leaderboard · აჩქარების რეიტინგი</h2>
-<p>If you publish a 0–100 km/h, 0–60 mph or ¼ mile result, your display name, vehicle model and time are shown publicly. The VIN is used to confirm the model and only a one-way hash of it is stored. While measuring, the App uses the phone's GPS (foreground only); when you publish, ECU and GPS speed traces are sent. GPS coordinates are kept only for results that need a review (top places or unusually fast results), and for those we may ask for the video you recorded in the App. Coordinates and videos are seen only by the administrator and are deleted 30 days after the review. If you delete your account, results waiting for review are deleted and public results stay anonymised ("Deleted").</p>
-<p class="ka">0–100 კმ/სთ, 0–60 mph ან ¼ მილის შედეგის გამოქვეყნებისას საჯაროდ ჩანს შენი სახელი, ავტომობილის მოდელი და დრო. VIN გამოიყენება მოდელის დასადასტურებლად და ინახება მხოლოდ მისი ცალმხრივი ჰეში. გაზომვისას აპი იყენებს ტელეფონის GPS-ს (მხოლოდ გახსნილ აპში); გამოქვეყნებისას იგზავნება ECU-ს და GPS-ის სიჩქარის ჩანაწერები. GPS კოორდინატები ინახება მხოლოდ შესამოწმებელი შედეგებისთვის (ტოპ ადგილები ან უჩვეულოდ სწრაფი შედეგები); ასეთ შემთხვევაში შეიძლება ვითხოვოთ აპში ჩაწერილი ვიდეოც. კოორდინატებს და ვიდეოს ხედავს მხოლოდ ადმინისტრატორი და ისინი იშლება შემოწმებიდან 30 დღეში. ანგარიშის წაშლისას შესამოწმებელი შედეგები იშლება, საჯარო შედეგები კი რჩება ანონიმურად („Deleted“).</p>
+<p>If you publish a 0–100 km/h, 0–60 mph or ¼ mile result, your display name, vehicle model and time are shown publicly. The VIN is used to confirm the model and only a one-way hash of it is stored. While measuring, the App uses the phone's GPS (foreground only); when you publish, ECU and GPS speed traces are sent. GPS coordinates are kept only for results that need a review (top places or unusually fast results), and for those we may ask for the video you recorded in the App. Coordinates and videos are seen only by the administrator and are deleted 30 days after the review. If you delete your account, results waiting for review are deleted and public results stay anonymised ("Deleted"). You may add an optional profile picture from your gallery (Account screen); it is shrunk on the phone to a small JPEG and shown next to your result on the public ranking. Before anybody can see it, the picture is sent to Google (Gemini) for an automatic check for offensive content; a picture that fails is not stored. You can remove it at any time in the App, and it is deleted with your account. If you do not add one, a default car icon is shown.</p>
+<p class="ka">0–100 კმ/სთ, 0–60 mph ან ¼ მილის შედეგის გამოქვეყნებისას საჯაროდ ჩანს შენი სახელი, ავტომობილის მოდელი და დრო. VIN გამოიყენება მოდელის დასადასტურებლად და ინახება მხოლოდ მისი ცალმხრივი ჰეში. გაზომვისას აპი იყენებს ტელეფონის GPS-ს (მხოლოდ გახსნილ აპში); გამოქვეყნებისას იგზავნება ECU-ს და GPS-ის სიჩქარის ჩანაწერები. GPS კოორდინატები ინახება მხოლოდ შესამოწმებელი შედეგებისთვის (ტოპ ადგილები ან უჩვეულოდ სწრაფი შედეგები); ასეთ შემთხვევაში შეიძლება ვითხოვოთ აპში ჩაწერილი ვიდეოც. კოორდინატებს და ვიდეოს ხედავს მხოლოდ ადმინისტრატორი და ისინი იშლება შემოწმებიდან 30 დღეში. ანგარიშის წაშლისას შესამოწმებელი შედეგები იშლება, საჯარო შედეგები კი რჩება ანონიმურად („Deleted“). შეგიძლია დაამატო სურვილისამებრ პროფილის ფოტო გალერეიდან (ანგარიშის ეკრანი); ის ტელეფონზე მცირდება პატარა JPEG-მდე და ჩანს საჯარო რეიტინგში შენი შედეგის გვერდით. სანამ ვინმე დაინახავს, ფოტო ეგზავნება Google-ს (Gemini) შეურაცხმყოფელი შინაარსის ავტომატური შემოწმებისთვის; ვერდაგავლილი ფოტო არ ინახება. ფოტოს ნებისმიერ დროს წაშლი აპში და ის ანგარიშთან ერთად იშლება. თუ ფოტოს არ დაამატებ, ჩანს მანქანის ხატულა.</p>
 
 <h2>7. Crowd-sourced service data · ერთობლივად შეგროვებული სერვისის მონაცემები</h2>
 <p>To help other owners of the same model, the App may send: results of the oil-service search (make, model, year, the first characters of the VIN, which data sources answered), odometer locations found by the mileage finder (module, request and byte position — never the mileage itself) and service-reset (CAN) recordings (the messages the adapter heard during a reset, make, model, year and the first characters of the VIN). They are stored with a hash of the installation identifier, your account ID if you are signed in and, for odometer locations, a hash of your IP address. They are kept to improve support for the model; when you delete your account the account ID is removed from them.</p>
@@ -2161,6 +2162,105 @@ app.MapPost(
         return Results.Ok(new { success = status != "Rejected", status, videoRequired = status == "Pending" });
     });
 
+// ============================================================
+// PROFILE PICTURES (shown on the public ranking)
+//   POST   /api/accounts/avatar   own picture: a small JPEG as the request body
+//   GET    /api/accounts/avatar   status of the own picture
+//   DELETE /api/accounts/avatar   remove the own picture
+//   GET    /api/avatars/{id}      the picture (only while approved; the id is not the account id)
+// A new picture is checked automatically before anybody can see it.
+// ============================================================
+
+app.MapPost(
+    "/api/accounts/avatar",
+    async (HttpContext http, AccountStore accounts, AvatarStore avatars, IHttpClientFactory clients,
+        IConfiguration config, CancellationToken ct) =>
+    {
+        var deviceId = http.Request.Headers["X-GCS-Device-Id"].ToString();
+        var identity = await accounts.ResolveAsync(http.Request.Headers.Authorization.ToString(), deviceId, ct);
+        if (identity is null)
+            return Results.Unauthorized();
+
+        if (!RateWindow.TryConsume("avatar:" + identity.AccountId, DateTimeOffset.UtcNow, 10, TimeSpan.FromHours(1)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        if (http.Request.ContentLength is > AvatarStore.MaxBytes)
+            return Results.Json(new { success = false, code = "AVATAR_TOO_LARGE" }, statusCode: StatusCodes.Status413PayloadTooLarge);
+
+        using var buffer = new MemoryStream();
+        var chunk = new byte[16 * 1024];
+        int read;
+        while ((read = await http.Request.Body.ReadAsync(chunk, ct)) > 0)
+        {
+            if (buffer.Length + read > AvatarStore.MaxBytes)
+                return Results.Json(new { success = false, code = "AVATAR_TOO_LARGE" }, statusCode: StatusCodes.Status413PayloadTooLarge);
+            buffer.Write(chunk, 0, read);
+        }
+
+        var jpeg = buffer.ToArray();
+        if (!AvatarStore.IsAcceptableJpeg(jpeg, out var invalid))
+            return Results.BadRequest(new { success = false, code = "AVATAR_INVALID", reason = invalid });
+
+        var logger = http.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Avatar");
+        var apiKey = config["Gemini:ApiKey"] ?? Environment.GetEnvironmentVariable("GEMINI_API_KEY");
+        var verdict = string.IsNullOrWhiteSpace(apiKey)
+            ? AvatarVerdict.Unavailable
+            : await AvatarModeration.CheckAsync(clients.CreateClient(), apiKey, jpeg, logger, ct);
+
+        if (verdict == AvatarVerdict.Unsafe)
+        {
+            // Nothing is stored; the picture the person had before stays as it was.
+            logger.LogInformation("Profile picture rejected by the automatic check.");
+            return Results.Json(new { success = false, status = "Rejected", code = "AVATAR_REJECTED" }, statusCode: StatusCodes.Status422UnprocessableEntity);
+        }
+
+        // Only a picture that passed the check is shown. When the check could not run, the picture is kept but hidden until
+        // an administrator approves it, unless the server is set to publish in that case (GCS_AVATAR_PUBLISH_UNCHECKED=true).
+        var publishUnchecked = bool.TryParse(config["Avatars:PublishUnchecked"] ?? Environment.GetEnvironmentVariable("GCS_AVATAR_PUBLISH_UNCHECKED"), out var flag) && flag;
+        var status = verdict == AvatarVerdict.Safe || publishUnchecked ? AvatarStatus.Approved : AvatarStatus.Pending;
+        var record = await avatars.SaveAsync(identity.AccountId, jpeg, status, ct);
+        return Results.Ok(new { success = true, status = record.Status.ToString(), avatarUrl = record.Url });
+    });
+
+app.MapGet(
+    "/api/accounts/avatar",
+    async (HttpContext http, AccountStore accounts, AvatarStore avatars, CancellationToken ct) =>
+    {
+        var identity = await accounts.ResolveAsync(
+            http.Request.Headers.Authorization.ToString(), http.Request.Headers["X-GCS-Device-Id"].ToString(), ct);
+        if (identity is null)
+            return Results.Unauthorized();
+
+        var record = await avatars.GetForAccountAsync(identity.AccountId, ct);
+        return Results.Ok(new { hasAvatar = record is not null, status = record?.Status.ToString(), avatarUrl = record?.Url });
+    });
+
+app.MapDelete(
+    "/api/accounts/avatar",
+    async (HttpContext http, AccountStore accounts, AvatarStore avatars, CancellationToken ct) =>
+    {
+        var identity = await accounts.ResolveAsync(
+            http.Request.Headers.Authorization.ToString(), http.Request.Headers["X-GCS-Device-Id"].ToString(), ct);
+        if (identity is null)
+            return Results.Unauthorized();
+
+        await avatars.DeleteAsync(identity.AccountId, ct);
+        return Results.Ok(new { success = true });
+    });
+
+app.MapGet(
+    "/api/avatars/{publicId}",
+    async (string publicId, AvatarStore avatars, HttpContext http, CancellationToken ct) =>
+    {
+        var bytes = await avatars.ReadApprovedAsync(publicId.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ? publicId[..^4] : publicId, ct);
+        if (bytes is null)
+            return Results.NotFound();
+
+        // The id changes with every new picture, so the file itself never changes.
+        http.Response.Headers.CacheControl = "public, max-age=86400, immutable";
+        return Results.File(bytes, "image/jpeg");
+    });
+
 // Review video for a "Pending" (top-10 / suspicious) result. Only the
 // owner can upload; the file is kept until 30 days after the review.
 const long MaxRankingVideoBytes = 80L * 1024 * 1024;
@@ -2565,6 +2665,7 @@ app.MapGet(
             "payments" => AdminPages.Payments(session, await admin.OrdersAsync(300, ct), note, ok),
             "devices" => AdminPages.Devices(session, await admin.OverviewAsync(ct), note, ok),
             "acceleration" => await AccelerationAdminAsync(),
+            "avatars" => await AvatarsAdminAsync(),
             "service" => AdminPages.ServiceLearning(
                 session,
                 await http.RequestServices.GetRequiredService<ServiceSearchStore>().LatestAsync(200, ct),
@@ -2578,6 +2679,15 @@ app.MapGet(
             _ => await OverviewAdminAsync()
         };
         return Results.Content(html, "text/html; charset=utf-8");
+
+        async Task<string> AvatarsAdminAsync()
+        {
+            var store = http.RequestServices.GetRequiredService<AvatarStore>();
+            var rows = new List<(AvatarRecord Avatar, string? Email)>();
+            foreach (var avatar in await store.ListAsync(300, ct))
+                rows.Add((avatar, await admin.AccountEmailAsync(avatar.AccountId, ct)));
+            return AdminPages.Avatars(session, rows, note, ok);
+        }
 
         async Task<string> AccelerationAdminAsync()
         {
@@ -2603,6 +2713,23 @@ app.MapGet(
             }
             return AdminPages.Overview(session, await admin.OverviewAsync(ct), await play.GetAsync(ct), overviewNote, overviewOk);
         }
+    });
+
+// A profile picture for the administrator, whatever its status (to review it before approving). Never cached.
+app.MapGet(
+    "/admin/avatars/{publicId}/image",
+    async (string publicId, HttpContext http, AdminService admin, AvatarStore avatars, CancellationToken ct) =>
+    {
+        AdminService.SecureHeaders(http.Response);
+        if (!AdminService.IpAllowed(http) || admin.ReadSession(http.Request, AdminAccess.IsAdmin) is null)
+            return Results.NotFound();
+
+        var bytes = await avatars.ReadAnyAsync(publicId, ct);
+        if (bytes is null)
+            return Results.NotFound();
+
+        http.Response.Headers.CacheControl = "private, no-store";
+        return Results.File(bytes, "image/jpeg");
     });
 
 app.MapPost(
@@ -2680,6 +2807,7 @@ app.MapPost(
         FullHistoryService full,
         WebPaymentService payments,
         AccelerationLeaderboardStore acceleration,
+        AvatarStore avatars,
         CancellationToken ct) =>
     {
         AdminService.SecureHeaders(http.Response);
@@ -2758,10 +2886,42 @@ app.MapPost(
             return Results.Redirect(Back("ecu", changed ? (action == "verify" ? "დამოწმდა" : "დამოწმება მოიხსნა") : "ვერ შეიცვალა", changed));
         }
 
+        if (kind == "avatars")
+        {
+            // One row per profile picture, identified by its opaque public id.
+            var record = await avatars.GetByPublicIdAsync(id, ct);
+            if (record is null)
+                return Results.Redirect(Back("avatars", "ფოტო ვერ მოიძებნა", false));
+
+            switch (action)
+            {
+                case "approve":
+                    await avatars.SetStatusAsync(record.AccountId, AvatarStatus.Approved, ct);
+                    await admin.AuditAsync(session.Email, "avatar_approve", record.AccountId, ip, ct);
+                    return Results.Redirect(Back("avatars", "ფოტო დამოწმდა და ახლა ჩანს რეიტინგში", true));
+                case "delete":
+                    await avatars.DeleteAsync(record.AccountId, ct);
+                    await admin.AuditAsync(session.Email, "avatar_delete", record.AccountId, ip, ct);
+                    return Results.Redirect(Back("avatars", "ფოტო წაიშალა", true));
+                default:
+                    return Results.Redirect(Back("avatars", "ვერ დამუშავდა", false));
+            }
+        }
+
         if (kind == "acceleration")
         {
             // One row: SubmissionId (route) + AccountId (hidden form field).
             var owner = form["account"].ToString();
+            if (action == "avatar-delete")
+            {
+                // Removes the profile picture of this result's account (offensive picture reported by a person).
+                if (owner.Length is 0 or > 64 || owner == "demo" || owner == "deleted")
+                    return Results.Redirect(Back("acceleration", "ფოტო ვერ მოიძებნა", false));
+                await avatars.DeleteAsync(owner, ct);
+                await admin.AuditAsync(session.Email, "avatar_delete", owner, ip, ct);
+                return Results.Redirect(Back("acceleration", "ფოტო წაიშალა", true));
+            }
+
             var changed = await acceleration.ReviewAsync(id, owner, action, session.Email, ct);
             await admin.AuditAsync(session.Email, "acceleration_" + action, id + " · " + (owner.Length > 64 ? owner[..64] : owner), ip, ct);
             var label = action switch { "approve" => "დამოწმდა", "reject" => "უარყოფილია", "delete" => "წაიშალა", _ => "ვერ დამუშავდა" };
@@ -3676,9 +3836,10 @@ static async Task DeleteAccountDataAsync(
     await services.GetRequiredService<EntitlementStore>().DeleteUserDataAsync(accountId, ct);
     await services.GetRequiredService<VinQuotaStore>().DeleteUserDataAsync(accountId, ct);
     await services.GetRequiredService<FullHistoryService>().DeleteUserDataAsync(accountId, ct);
+    await services.GetRequiredService<AvatarStore>().DeleteAsync(accountId, ct);
     await services.GetRequiredService<AccelerationLeaderboardStore>().ForgetAccountAsync(accountId, ct);
 
-    var qr = services.GetRequiredService<QrReportStore>();
+    var qr =services.GetRequiredService<QrReportStore>();
     await qr.DeleteOwnerAsync(accountId, ct);
     if (!string.IsNullOrWhiteSpace(deviceId) && deviceId.Length is >= 16 and <= 64)
         await qr.DeleteOwnerAsync("device:" + deviceId, ct);

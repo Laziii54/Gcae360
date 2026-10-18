@@ -352,6 +352,7 @@ public partial class AccelerationLeaderboardViewModel : BaseViewModel
             Rank = $"{rank}",
             UserName = name,
             Initial = name[..1].ToUpperInvariant(),
+            AvatarUrl = CarScanner.Services.AvatarService.Absolute(entry.AvatarUrl),
             // ¼ mile: the speed at the finish line (trap speed) next to the car.
             VehicleModel = _testId == "quarter-mile" && entry.MaxSpeedKph > 0
                 ? $"{entry.VehicleModel} · {_units.FormatSpeed(entry.MaxSpeedKph)}"
@@ -439,6 +440,8 @@ public sealed class AccelerationLeaderboardRow
     public string Rank { get; init; } = string.Empty;
     public string UserName { get; init; } = string.Empty;
     public string Initial { get; init; } = "G";
+    /// <summary>Absolute address of the profile picture; empty = the default car icon.</summary>
+    public string AvatarUrl { get; init; } = string.Empty;
     public string VehicleModel { get; init; } = string.Empty;
     public double Seconds { get; init; }
     public string TimeText { get; init; } = string.Empty;

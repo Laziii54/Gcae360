@@ -136,20 +136,12 @@
                     </Grid>
                 </Border>
                 <Border Style="{StaticResource ListCardStyle}" Padding="12,11">
-                    <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToMileageCommand}" /></Border.GestureRecognizers>
+                    <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToHybridHealthCommand}" /></Border.GestureRecognizers>
                     <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="4">
-                        <Path Data="M4,19 L20,19 M6,19 L6,10 M12,19 L12,5 M18,19 L18,13" Style="{StaticResource RowIconStyle}" Stroke="{DynamicResource Primary}" HorizontalOptions="Start" />
+                        <Path Data="M3,8 L18,8 L18,17 L3,17 Z M18,11 L20.5,11 L20.5,14 L18,14 M11.5,9.5 L8.5,12.7 L12,12.7 L9.5,15.5" Style="{StaticResource RowIconStyle}" Stroke="{DynamicResource Primary}" HorizontalOptions="Start" />
                         <Border Style="{StaticResource ProBadgeStyle}" IsVisible="{Binding ShowProBadges}" HorizontalOptions="End" VerticalOptions="Start"><Label Text="PRO" Style="{StaticResource ProBadgeTextStyle}" /></Border>
-                        <Label Grid.Row="1" Text="გარბენის გადამოწმება" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" Margin="0,4,0,0" />
-                        <Label Grid.Row="2" Text="ოდომეტრის შედარება მოდულებთან" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
-                    </Grid>
-                </Border>
-                <Border Style="{StaticResource ListCardStyle}" Padding="12,11" IsVisible="{Binding IsAdmin}">
-                    <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToResearchCommand}" /></Border.GestureRecognizers>
-                    <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="4">
-                        <Path Data="M11,19 A8,8 0 1 1 11,3 A8,8 0 0 1 11,19 M16.65,16.65 L21,21" Style="{StaticResource RowIconStyle}" Stroke="{DynamicResource Primary}" HorizontalOptions="Start" />
-                        <Label Grid.Row="1" Text="კვლევა" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" Margin="0,4,0,0" />
-                        <Label Grid.Row="2" Text="დაუდასტურებელი სიგნალების შემოწმება" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                        <Label Grid.Row="1" Text="ჰიბრიდის ბატარეა" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" Margin="0,4,0,0" />
+                        <Label Grid.Row="2" Text="უჯრედები, SOH, დატვირთვის ტესტი" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                     </Grid>
                 </Border>
                 <Border Style="{StaticResource ListCardStyle}" Padding="12,11">
@@ -273,12 +265,12 @@
                                 <Setter Property="Opacity" Value="1" />
                             </DataTrigger>
                         </Border.Triggers>
-                        <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToHybridHealthCommand}" /></Border.GestureRecognizers>
+                        <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToMileageCommand}" /></Border.GestureRecognizers>
                         <VerticalStackLayout Spacing="8" HorizontalOptions="Fill">
                             <Border WidthRequest="40" HeightRequest="40" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 12" HorizontalOptions="Center">
-                                <Path Data="M3,8 L18,8 L18,17 L3,17 Z M18,11 L20.5,11 L20.5,14 L18,14 M11.5,9.5 L8.5,12.7 L12,12.7 L9.5,15.5" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
+                                <Path Data="M4,19 L20,19 M6,19 L6,10 M12,19 L12,5 M18,19 L18,13" Style="{StaticResource RowIconStyle}" HorizontalOptions="Center" VerticalOptions="Center" />
                             </Border>
-                            <Label Text="ჰიბრიდი" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" VerticalTextAlignment="Start" MaxLines="2" LineBreakMode="TailTruncation" HeightRequest="34" />
+                            <Label Text="გარბენის გადამოწმება" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" VerticalTextAlignment="Start" MaxLines="2" LineBreakMode="TailTruncation" HeightRequest="34" />
                         </VerticalStackLayout>
                     </Border>
                     <Border Style="{StaticResource ListCardStyle}" Padding="6,12,6,10" Opacity="0.4">
@@ -309,12 +301,8 @@
                             <Label Text="გრაფიკები (Graph Studio)" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" HorizontalTextAlignment="Center" VerticalTextAlignment="Start" MaxLines="2" LineBreakMode="TailTruncation" HeightRequest="34" />
                         </VerticalStackLayout>
                     </Border>
+                    <!-- Coding is switched off for now: always dimmed, a tap shows "Coming soon". -->
                     <Border Style="{StaticResource ListCardStyle}" Padding="6,12,6,10" Opacity="0.4">
-                        <Border.Triggers>
-                            <DataTrigger TargetType="Border" Binding="{Binding IsConnected}" Value="True">
-                                <Setter Property="Opacity" Value="1" />
-                            </DataTrigger>
-                        </Border.Triggers>
                         <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding GoToCodingCommand}" /></Border.GestureRecognizers>
                         <VerticalStackLayout Spacing="8" HorizontalOptions="Fill">
                             <Border WidthRequest="40" HeightRequest="40" BackgroundColor="{DynamicResource PageBg}" StrokeThickness="0" StrokeShape="RoundRectangle 12" HorizontalOptions="Center">

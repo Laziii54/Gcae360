@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OBD360 Service Mockup</title>
+<style>
+  /* Colours are the real tokens from Resources/Styles/Colors.xaml */
+  :root {
+    --PageBg:#F4F5F3; --CardBg:#FFFFFF; --TextColor:#1B1D20; --SubTextColor:#5D636B;
+    --BorderColor:#DCDFE3; --DividerColor:#ECEEF0; --Primary:#1D5BD6; --PrimaryText:#FFFFFF;
+    --ok:#1F8A4C; --warn:#C98A1A; --bad:#B3361F;
+    --okBg:#E3F3EA; --warnBg:#FBEECF; --badBg:#F8E1DC; --chipBg:#EDEEEA;
+    --desk:#dfe3e8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --PageBg:#0E1114; --CardBg:#171B20; --TextColor:#EEF0F2; --SubTextColor:#9AA3AD; --BorderColor:#2A3038; --DividerColor:#232930; --Primary:#60A5FA; --PrimaryText:#0E1114; --okBg:#173324; --warnBg:#3A2D12; --badBg:#3B1C16; --chipBg:#1F252C; --ok:#4ADE80; --warn:#F5B942; --bad:#F87171; --desk:#07090b; }
+  }
+  :root[data-theme="dark"] { --PageBg:#0E1114; --CardBg:#171B20; --TextColor:#EEF0F2; --SubTextColor:#9AA3AD; --BorderColor:#2A3038; --DividerColor:#232930; --Primary:#60A5FA; --PrimaryText:#0E1114; --okBg:#173324; --warnBg:#3A2D12; --badBg:#3B1C16; --chipBg:#1F252C; --ok:#4ADE80; --warn:#F5B942; --bad:#F87171; --desk:#07090b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--desk); color:var(--TextColor); font:14px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:20px 16px 60px; }
+  .top { max-width:900px; margin:0 auto 14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .top h1 { font-size:18px; margin:0; flex:1 1 220px; }
+  .top button { font:inherit; font-weight:700; padding:7px 14px; border-radius:10px; border:1.5px solid var(--Primary); background:transparent; color:var(--Primary); cursor:pointer; }
+  .wrap { max-width:900px; margin:0 auto; display:grid; grid-template-columns:390px minmax(0,1fr); gap:24px; align-items:start; }
+  @media (max-width:860px){ .wrap{ grid-template-columns:minmax(0,1fr);} }
+  .note { background:var(--CardBg); border:1px solid var(--BorderColor); border-radius:14px; padding:14px 16px; font-size:13px; color:var(--SubTextColor); }
+  .note h2 { font-size:14px; color:var(--TextColor); margin:0 0 6px; }
+  .note ul { margin:4px 0 10px 18px; padding:0; }
+  .note code { background:var(--chipBg); padding:1px 5px; border-radius:5px; font-size:12px; }
+
+  /* ---------- phone ---------- */
+  .phone { width:390px; max-width:100%; background:var(--PageBg); border:1px solid var(--BorderColor); border-radius:34px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.18); }
+  .status { height:28px; }
+  .header { display:flex; align-items:center; gap:10px; padding:12px 16px 6px; }
+  .header .title { flex:1; font-size:24px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .btn-outline { height:36px; padding:0 14px; border-radius:12px; border:1.5px solid var(--TextColor); background:transparent; color:var(--TextColor); font:700 12px system-ui; }
+  .scroll { padding:6px 16px 32px; display:grid; gap:12px; }
+  .caption { font-size:12px; font-weight:700; color:var(--SubTextColor); margin:6px 0 0 4px; }
+  .card { background:var(--CardBg); border:1px solid var(--BorderColor); border-radius:16px; overflow:hidden; }
+  .pad { padding:14px 16px; }
+  .rowflex { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .oil .t { font-size:14px; font-weight:700; } .oil .s { font-size:12px; color:var(--SubTextColor); }
+  .oil .v { font-size:28px; font-weight:700; color:var(--ok); } .oil .due { font-size:12px; color:var(--SubTextColor); margin-left:10px; }
+  .progress { height:6px; border-radius:3px; background:var(--chipBg); overflow:hidden; margin-top:8px; } .progress i { display:block; height:100%; background:var(--ok); border-radius:3px; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+  .reset { min-height:48px; border-radius:12px; padding:6px 8px; display:flex; align-items:center; justify-content:center; text-align:center; font:700 13px system-ui; }
+  .reset.fill { background:#1D5BD6; color:#fff; } .reset.line { border:1.5px solid var(--Primary); color:var(--Primary); }
+  .status-line { text-align:center; font-size:12px; font-weight:700; color:var(--ok); margin-top:8px; }
+  .row { display:grid; grid-template-columns:auto 1fr auto auto; align-items:center; gap:12px; padding:11px 14px; border-top:1px solid var(--DividerColor); }
+  .row:first-child { border-top:0; }
+  .row .n { font-size:14px; font-weight:700; } .row .d { font-size:12px; color:var(--SubTextColor); }
+  .row.rem { grid-template-columns:auto 1fr auto auto; } .row.rem .n { font-weight:400; }
+  .pill { font-size:12px; font-weight:700; padding:3px 9px; border-radius:9px; max-width:100px; text-align:center; }
+  .pill.ok{background:var(--okBg);color:var(--ok);} .pill.warn{background:var(--warnBg);color:var(--warn);} .pill.bad{background:var(--badBg);color:var(--bad);}
+  .mini { height:30px; padding:0 12px; border-radius:15px; border:1px solid var(--BorderColor); background:transparent; color:var(--Primary); font:700 12px system-ui; }
+  .ic { width:20px; height:20px; fill:none; stroke:var(--SubTextColor); stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+  .ic.sm { width:14px; height:14px; }
+  .search { display:flex; align-items:center; gap:8px; padding:0 12px; height:46px; background:var(--CardBg); border:1px solid var(--BorderColor); border-radius:12px; color:var(--SubTextColor); }
+  .chips { display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; }
+  .chip { flex:none; padding:6px 12px; border-radius:16px; border:1px solid var(--BorderColor); font-size:12px; font-weight:700; background:var(--CardBg); color:var(--SubTextColor); }
+  .chip.on { background:var(--Primary); border-color:var(--Primary); color:var(--PrimaryText); }
+  .proc { padding:12px 14px; cursor:pointer; }
+  .proc .h { display:grid; grid-template-columns:1fr auto; gap:10px; }
+  .proc .tt { font-size:14px; font-weight:700; } .proc .st { font-size:12px; color:var(--SubTextColor); margin-top:3px; }
+  .tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .tag { font-size:12px; padding:2px 8px; border:1px solid var(--BorderColor); border-radius:9px; color:var(--SubTextColor); }
+  .more { display:none; margin-top:10px; border-top:1px solid var(--DividerColor); padding-top:10px; font-size:12px; color:var(--SubTextColor); } .more p { margin:0 0 8px; } .more b { color:var(--TextColor); }
+  .proc.open .more { display:block; } .proc.open .chev { transform:rotate(180deg); }
+  .run { height:44px; border-radius:12px; background:var(--Primary); color:var(--PrimaryText); font:700 14px system-ui; display:flex; align-items:center; justify-content:center; }
+  .odo { display:flex; justify-content:space-between; font-size:12px; color:var(--SubTextColor); padding:0 4px; } .odo b { color:var(--Primary); }
+  .help .row { grid-template-columns:auto 1fr auto; }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>OBD360 · სერვისის გვერდი (მაკეტი) <span style="font-weight:400;color:var(--SubTextColor)">— ახალი ვერსია (წინადადება)</span></h1>
+  <button onclick="toggleTheme()">ბნელი / ღია</button>
+</div>
+
+<div class="wrap">
+<div class="phone">
+  <div class="status"></div>
+  <!-- Header: ServicePage.xaml:15-18 -->
+  <div class="header"><div class="title">სერვისი</div><div class="btn-outline" style="display:flex;align-items:center">განახლება</div></div>
+  <div class="scroll">
+
+    <!-- Oil card: ServicePage.xaml:26-60 -->
+    <div class="card pad oil">
+      <div class="rowflex"><span class="t">ზეთის რესურსი</span><span class="s">მანქანიდან</span></div>
+      <div style="margin-top:8px"><span class="v">64 %</span><span class="due">შემდეგ შეცვლამდე ≈ 4 800 კმ</span></div>
+      <div class="progress"><i style="width:64%"></i></div>
+      <div class="two"><div class="reset fill">განულება სრულად (100 %)</div><div class="reset line">განულება ნახევრად (50 %)</div></div>
+      <div class="status-line">მზად არის</div>
+    </div>
+
+    <!-- Reminders: xaml:63-89 -->
+    <div class="caption">შეხსენებები</div>
+    <div class="card">
+      <div class="row"><svg class="ic" viewBox="0 0 24 24"><path d="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M12,8 L12,12 L15,14"/></svg><div><div class="n">ზეთი და ფილტრი</div><div class="d">შემდეგი: 8 200 კმ</div></div><span class="pill ok">ნორმაშია</span><svg class="ic sm" viewBox="0 0 24 24"><path d="M9,6 L15,12 L9,18"/></svg></div>
+      <div class="row"><svg class="ic" viewBox="0 0 24 24"><path d="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M12,8 L12,12 L15,14"/></svg><div><div class="n">სამუხრუჭე სითხე</div><div class="d">3 კვირაში</div></div><span class="pill warn">მალე</span><svg class="ic sm" viewBox="0 0 24 24"><path d="M9,6 L15,12 L9,18"/></svg></div>
+      <div class="row"><svg class="ic" viewBox="0 0 24 24"><path d="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M12,8 L12,12 L15,14"/></svg><div><div class="n">ჰაერის ფილტრი</div><div class="d">გადაცილებულია 1 200 კმ-ით</div></div><span class="pill bad">გადაცდა</span><svg class="ic sm" viewBox="0 0 24 24"><path d="M9,6 L15,12 L9,18"/></svg></div>
+    </div>
+
+    <!-- Service reminders from the car: xaml:92-110 -->
+    <div class="card">
+      <div class="row rem"><svg class="ic" viewBox="0 0 24 24"><path d="M9,3 L15,3 M12,3 L12,6 M5,14 A7,7 0 1 0 19,14 A7,7 0 1 0 5,14 M12,10 L12,14 L15,16"/></svg><div class="n">სერვისი B</div><b style="font-size:13px;color:var(--ok)">2 400 კმ</b><button class="mini">განულება</button></div>
+      <div class="row rem"><svg class="ic" viewBox="0 0 24 24"><path d="M9,3 L15,3 M12,3 L12,6 M5,14 A7,7 0 1 0 19,14 A7,7 0 1 0 5,14 M12,10 L12,14 L15,16"/></svg><div class="n">სამუხრუჭე სითხე</div><b style="font-size:13px;color:var(--warn)">21 დღე</b><span></span></div>
+    </div>
+
+    <!-- Odometer line: xaml:203-210 -->
+    <div class="odo"><span>გარბენი: 84 213 კმ (მანქანიდან)</span><b>შეცვლა</b></div>
+
+  </div>
+</div>
+
+<div class="note">
+  <h2>როგორ გამოიყენო</h2>
+  <ul>
+    <li>ეს არის სერვისის გვერდი <b>პროცედურებისა და დახმარების გარეშე</b>. დარჩა: სათაური, ზეთის ბარათი, შეხსენებები, გარბენის ხაზი. ფერები და ზომები რეალური მნიშვნელობებია (<code>Views/ServicePage.xaml</code>).</li>
+    <li>მაგალითის ტექსტები და რიცხვები გამოგონილია, რომ ყველა მდგომარეობა ერთად ჩანდეს.</li>
+    <li>ბნელი/ღია თემა გადართე ზედა ღილაკით.</li>
+  </ul>
+  <h2>რა უნდა გამიგზავნო</h2>
+  <ul>
+    <li>რა გინდა შეიცვალოს: ბარათების თანმიმდევრობა, ზომები, ფერები, გაქრეს რაიმე ბლოკი?</li>
+    <li>რომელი ბლოკი გინდა კიდევ შეიცვალოს (მაგ. „ზეთის ბარათი“, „შეხსენებები“).</li>
+    <li>სკრინშოტი აპიდან, თუ ხედავ სხვაობას მაკეტსა და რეალურ გვერდს შორის.</li>
+  </ul>
+  <h2>შენიშვნა</h2>
+  <p style="margin:0">ეს მაკეტია, აპში არაფერი შეცვლილა. ვიზუალს შენი ნებართვით გადავიტან XAML-ში.</p>
+</div>
+</div>
+
+<script>
+  function toggleTheme(){ var r=document.documentElement; var dark = r.getAttribute('data-theme')==='dark' || (!r.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches); r.setAttribute('data-theme', dark ? 'light' : 'dark'); }
+</script>
+</body>
+</html>

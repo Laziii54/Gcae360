@@ -60,6 +60,11 @@ public sealed partial class EcuPidReading : ObservableObject
     private double CurrentMetricValue { get; set; }
     private bool HasMetricValue { get; set; }
 
+    /// <summary>True once the ECU has answered with a number, so tapping the row can open a live graph.</summary>
+    public bool CanGraph => HasMetricValue;
+
+    partial void OnCurrentValueChanged(string value) => OnPropertyChanged(nameof(CanGraph));
+
     public void MarkNoResponse()
     {
         // Keep the last confirmed ECU value visible, but never present it as

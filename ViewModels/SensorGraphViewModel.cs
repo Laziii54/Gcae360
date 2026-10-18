@@ -124,6 +124,7 @@ public partial class SensorGraphViewModel : BaseViewModel
         LivePidItem pid => (pid.DisplayName, pid.Unit),
         ModuleLiveSignal signal => (signal.Name, signal.Unit),
         LiveSensorSource source => (source.Name, source.Unit),
+        EcuPidReading reading => (reading.Name, reading.Unit),
         _ => ("", "")
     };
 
@@ -135,6 +136,9 @@ public partial class SensorGraphViewModel : BaseViewModel
             ModuleLiveSignal signal when double.TryParse(
                 signal.ValueText, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsed) => parsed,
             LiveSensorSource source => source.Value,
+            // ECU Explorer rows: the page already refreshes CurrentValue in place; a "—" (no answer yet) is skipped.
+            EcuPidReading reading when double.TryParse(
+                reading.CurrentValue, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsedReading) => parsedReading,
             _ => null
         };
 

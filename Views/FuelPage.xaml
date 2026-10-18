@@ -194,6 +194,7 @@
             </Grid>
 
             <Label AutomationId="DynamicTextFuelStatus" Text="{Binding Status}" TextColor="{DynamicResource SubTextColor}" FontSize="12" HorizontalTextAlignment="Center" />
+            <Label AutomationId="DynamicTextFuelBackgroundNote" Text="{Binding BackgroundNote}" IsVisible="{Binding HasBackgroundNote}" TextColor="#B7791F" FontSize="12" FontAttributes="Bold" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
 
             <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
                 <Button Text="{Binding StartButtonText}" Command="{Binding StartCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="48" />

@@ -160,9 +160,58 @@ public sealed class SimulatedElm327 : IBluetoothService
         return Answer(upper);
     }
 
+    /// <summary>
+    /// AT commands (by prefix, e.g. "ATS1", "ATD0", "ATCRA", "ATCF") this adapter answers with "?" — an older-microcode
+    /// clone. Elm Electronics' command table lists ATS and ATD as first appearing in firmware 1.3, ATCRA hhh in 1.3 and
+    /// ATCRA (no argument) in 1.4b; cheap "v1.5" adapters are widely reported to run older code. Empty = a full-featured adapter.
+    /// </summary>
+    public HashSet<string> RejectedAt { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The header set by the last ATSH (7DF after a reset).</summary>
+    public string CurrentHeader => _header;
+    public bool HeadersOn => _headers;
+    public bool SpacesOn => _spaces;
+
+    /// <summary>The receive address / ID filter the adapter currently has, or null for its default.</summary>
+    public string? ReceiveFilter { get; private set; }
+
     private string AtResponse(string upper)
     {
-        if (upper.StartsWith("ATZ", StringComparison.Ordinal) || upper == "ATI")
+        foreach (var prefix in RejectedAt)
+        {
+            if (upper.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return "?";
+        }
+
+        if (upper.StartsWith("ATZ", StringComparison.Ordinal))
+        {
+            // A reset puts every setting back to its default.
+            _headers = false;
+            _spaces = true;
+            _header = "7DF";
+            ReceiveFilter = null;
+            return "ELM327 v1.5";
+        }
+
+        if (upper.StartsWith("ATCRA", StringComparison.Ordinal))
+        {
+            ReceiveFilter = upper.Length > 5 ? upper[5..] : null;
+            return "OK";
+        }
+
+        if (upper == "ATAR")
+        {
+            ReceiveFilter = null;
+            return "OK";
+        }
+
+        if (upper.StartsWith("ATCF", StringComparison.Ordinal) && !upper.StartsWith("ATCFC", StringComparison.Ordinal))
+        {
+            ReceiveFilter = upper[4..];
+            return "OK";
+        }
+
+        if (upper == "ATI")
             return "ELM327 v1.5";
         if (upper == "ATDPN")
             return "A" + ProtocolNumber;

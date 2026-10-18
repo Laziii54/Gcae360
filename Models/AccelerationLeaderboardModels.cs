@@ -13,6 +13,8 @@ public sealed class AccelerationLeaderboardEntry
     public int MaxSpeedKph { get; set; }
     /// <summary>Approved, Pending (under review) or Verified.</summary>
     public string Status { get; set; } = "Approved";
+    /// <summary>Relative address of the profile picture (only when it was checked and approved); empty or null = default icon.</summary>
+    public string? AvatarUrl { get; set; }
 }
 
 public sealed class AccelerationLeaderboardSubmission

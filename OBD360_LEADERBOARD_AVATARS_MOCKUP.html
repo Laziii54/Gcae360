@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OBD360 Leaderboard Avatars</title>
+<style>
+  :root { --PageBg:#F4F5F3; --CardBg:#FFFFFF; --TextColor:#1B1D20; --SubTextColor:#5D636B; --BorderColor:#DCDFE3; --DividerColor:#ECEEF0; --Primary:#1D5BD6; --PrimaryText:#fff; --ok:#1F8A4C; --warn:#B7791F; --desk:#dfe3e8; --chip:#EDEEEA; --gold:#E8B323; --silver:#A7B0BA; --bronze:#C7834A; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --PageBg:#0E1114; --CardBg:#171B20; --TextColor:#EEF0F2; --SubTextColor:#9AA3AD; --BorderColor:#2A3038; --DividerColor:#232930; --Primary:#60A5FA; --PrimaryText:#0E1114; --ok:#4ADE80; --warn:#F5B942; --desk:#07090b; --chip:#1F252C; } }
+  :root[data-theme="dark"] { --PageBg:#0E1114; --CardBg:#171B20; --TextColor:#EEF0F2; --SubTextColor:#9AA3AD; --BorderColor:#2A3038; --DividerColor:#232930; --Primary:#60A5FA; --PrimaryText:#0E1114; --ok:#4ADE80; --warn:#F5B942; --desk:#07090b; --chip:#1F252C; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--desk); color:var(--TextColor); font:14px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:20px 16px 50px; }
+  .top { max-width:960px; margin:0 auto 12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .top h1 { font-size:18px; margin:0; flex:1 1 280px; }
+  .top button { font:inherit; font-weight:700; padding:7px 14px; border-radius:10px; border:1.5px solid var(--Primary); background:transparent; color:var(--Primary); cursor:pointer; }
+  .phones { max-width:960px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:22px; justify-items:center; }
+  .col { width:350px; max-width:100%; }
+  .label { text-align:center; font-weight:700; margin-bottom:8px; } .label small { display:block; font-weight:400; color:var(--SubTextColor); }
+  .phone { background:var(--PageBg); border:1px solid var(--BorderColor); border-radius:30px; overflow:hidden; box-shadow:0 10px 36px rgba(0,0,0,.18); padding:16px; }
+  .title { font-size:22px; font-weight:700; margin:6px 0 10px; }
+  .podium { display:grid; grid-template-columns:1fr 1.15fr 1fr; gap:8px; align-items:end; margin-bottom:12px; }
+  .pod { text-align:center; background:var(--CardBg); border:1px solid var(--BorderColor); border-radius:16px; padding:10px 6px; }
+  .pod.first { padding-top:14px; padding-bottom:14px; }
+  .pod .nm { font-size:12px; font-weight:700; margin-top:6px; } .pod .tm { font-size:18px; font-weight:800; } .pod .cr { font-size:11px; color:var(--SubTextColor); }
+  .card { background:var(--CardBg); border:1px solid var(--BorderColor); border-radius:16px; overflow:hidden; }
+  .row { display:grid; grid-template-columns:26px auto 1fr auto; gap:10px; align-items:center; padding:10px 12px; border-top:1px solid var(--DividerColor); }
+  .row:first-child { border-top:0; } .rk { font-size:13px; font-weight:700; color:var(--SubTextColor); text-align:center; }
+  .nm2 { font-size:14px; font-weight:700; } .cr2 { font-size:12px; color:var(--SubTextColor); }
+  .tm2 { font-size:17px; font-weight:800; text-align:right; } .dt { font-size:11px; color:var(--SubTextColor); text-align:right; }
+  /* avatar */
+  .av { position:relative; width:40px; height:40px; border-radius:50%; display:grid; place-items:center; color:#fff; font-weight:800; font-size:16px; flex:none; }
+  .av.lg { width:54px; height:54px; font-size:22px; margin:0 auto; }
+  .av.ring-1 { box-shadow:0 0 0 3px var(--CardBg), 0 0 0 5px var(--gold); } .av.ring-2 { box-shadow:0 0 0 3px var(--CardBg), 0 0 0 5px var(--silver); } .av.ring-3 { box-shadow:0 0 0 3px var(--CardBg), 0 0 0 5px var(--bronze); }
+  .av .vf { position:absolute; right:-3px; bottom:-3px; width:17px; height:17px; border-radius:50%; background:var(--ok); border:2px solid var(--CardBg); display:grid; place-items:center; }
+  .av .vf svg { width:9px; height:9px; fill:none; stroke:#fff; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
+  .sample { display:inline-block; font-size:10px; font-weight:700; padding:1px 7px; border-radius:8px; background:var(--chip); color:var(--SubTextColor); margin-left:6px; vertical-align:2px; }
+  .old .av { background:#1D5BD6; }
+  .mine { background:color-mix(in srgb, var(--Primary) 10%, var(--CardBg)); }
+  .note { max-width:960px; margin:22px auto 0; background:var(--CardBg); border:1px solid var(--BorderColor); border-radius:14px; padding:14px 16px; font-size:13px; color:var(--SubTextColor); }
+  .note b { color:var(--TextColor); } .note ul { margin:6px 0 0 18px; padding:0; }
+</style>
+</head>
+<body>
+<div class="top"><h1>OBD360 · რეიტინგის ავატარები</h1><button onclick="toggleTheme()">ბნელი / ღია</button></div>
+
+<div class="phones">
+  <div class="col old">
+    <div class="label">ახლა<small>ყველა ერთი ფერი, ინიციალით</small></div>
+    <div class="phone"><div class="title">0–100 კმ/სთ</div><div class="card" id="oldList"></div></div>
+  </div>
+  <div class="col">
+    <div class="label">შემოთავაზება<small>სახელზე მიბმული ფერი · ოქრო/ვერცხლი/ბრინჯაო · დადასტურების ნიშანი</small></div>
+    <div class="phone"><div class="title">0–100 კმ/სთ</div>
+      <div class="podium" id="podium"></div>
+      <div class="card" id="newList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <b>რა ხდება ახალ ვარიანტში:</b>
+  <ul>
+    <li><b>ფერი სახელზეა მიბმული:</b> ერთი და იგივე მძღოლი ყოველთვის იგივე ფერს იღებს (8 ფერი, სახელის ჰეშით). რეიტინგი ცოცხალი და მრავალფეროვანი ჩანს, ყალბი ფოტოების გარეშე.</li>
+    <li><b>პოდიუმის სამი:</b> ოქროს, ვერცხლის და ბრინჯაოს ჩარჩო ავატარის გარშემო.</li>
+    <li><b>მწვანე ნიშანი</b> ავატარზე = ვიდეოთი დადასტურებული შედეგი.</li>
+    <li><b>ხელოვნური ჩანაწერები</b> მშვიდი ნაცრისფერი „ნიმუში“ ნიშნით, რომელიც სახელის გვერდით პატარაა და თვალში არ ხვდება. ის რჩება: ხელოვნური შედეგი რეალურად არ უნდა გამოიყურებოდეს. ბეჯის გარეშე დემო-ჩანაწერებს არ ვაჩვენებ.</li>
+    <li>ნამდვილი ფოტოს ატვირთვა ცალკე ფუნქციაა (სერვერზე შენახვა, მოდერაცია, კონფიდენციალურობა) და ამ მაკეტში არ შედის.</li>
+  </ul>
+  <p style="margin:8px 0 0">მაკეტში სახელები და დროები ნიმუშია, ისინი რეალურ რეიტინგს არ წარმოადგენს.</p>
+</div>
+
+<script>
+  const palette = ['#1D5BD6','#0E8A7D','#B3361F','#7A4FD1','#C77A12','#2B8A3E','#C2255C','#3B5BDB'];
+  const people = [
+    ['ნიკა','Chevrolet Corvette C8 2021',3.12,true,true],['გიორგი','Subaru WRX STI 2019',4.82,true,true],['ლუკა','Toyota GR Supra 2020',4.35,false,true],
+    ['დათო','Chevrolet Camaro SS 2018',4.41,true,true],['საბა','Subaru BRZ 2022',6.18,false,true],['ანა','Toyota Camry 3.5 2021',6.24,true,true],
+    ['ირაკლი','Chevrolet Volt 2017',7.46,false,true]
+  ].sort((a,b)=>a[2]-b[2]);
+  const hash = s => { let h=0; for (const c of s) h=(h*31+c.charCodeAt(0))>>>0; return h; };
+  const color = s => palette[hash(s)%palette.length];
+  const check = '<span class="vf"><svg viewBox="0 0 24 24"><path d="M5,12.5 L10,17 L19,7"/></svg></span>';
+  const av = (n,ver,ring,big) => '<div class="av '+(big?'lg ':'')+(ring?'ring-'+ring:'')+'" style="background:'+color(n)+'">'+n[0]+(ver?check:'')+'</div>';
+  const day = i => String(10+i).padStart(2,'0')+'.10.2026';
+  document.getElementById('oldList').innerHTML = people.map((p,i)=>'<div class="row"><span class="rk">'+(i+1)+'</span><div class="av">'+p[0][0]+'</div><div><div class="nm2">'+p[0]+'</div><div class="cr2">'+p[1]+'</div></div><div><div class="tm2">'+p[2].toFixed(2)+'</div><div class="dt">'+day(i)+'</div></div></div>').join('');
+  const top3 = [people[1],people[0],people[2]], ring=[2,1,3];
+  document.getElementById('podium').innerHTML = top3.map((p,k)=>'<div class="pod '+(k===1?'first':'')+'">'+av(p[0],p[3],ring[k],true)+'<div class="nm">'+p[0]+'</div><div class="tm">'+p[2].toFixed(2)+'</div><div class="cr">'+p[1].split(' ').slice(0,2).join(' ')+'</div></div>').join('');
+  document.getElementById('newList').innerHTML = people.slice(3).map((p,i)=>'<div class="row"><span class="rk">'+(i+4)+'</span>'+av(p[0],p[3],0,false)+'<div><div class="nm2">'+p[0]+(p[4]?'<span class="sample">ნიმუში</span>':'')+'</div><div class="cr2">'+p[1]+'</div></div><div><div class="tm2">'+p[2].toFixed(2)+'</div><div class="dt">'+day(i+3)+'</div></div></div>').join('');
+  function toggleTheme(){ var r=document.documentElement; var dark = r.getAttribute('data-theme')==='dark' || (!r.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches); r.setAttribute('data-theme', dark ? 'light' : 'dark'); }
+</script>
+</body>
+</html>

@@ -152,6 +152,7 @@ public static class MauiProgram
         // ============================================================
 
         builder.Services.AddSingleton<AccountService>();
+        builder.Services.AddSingleton<AvatarService>();
 
         builder.Services.AddSingleton<ProService>();
 
@@ -363,7 +364,6 @@ public static class MauiProgram
 
         builder.Services.AddTransient<ModuleScanViewModel>();
         builder.Services.AddTransient<ModuleLiveDataViewModel>();
-        builder.Services.AddTransient<ResearchDataViewModel>();
         builder.Services.AddTransient<SensorGraphViewModel>();
         builder.Services.AddTransient<PrePurchaseViewModel>();
         builder.Services.AddTransient<FreezeFrameViewModel>();
@@ -463,7 +463,6 @@ public static class MauiProgram
 
         builder.Services.AddTransient<ModuleScanPage>();
         builder.Services.AddTransient<ModuleLiveDataPage>();
-        builder.Services.AddTransient<ResearchDataPage>();
         builder.Services.AddTransient<SensorGraphPage>();
         builder.Services.AddTransient<PrePurchasePage>();
         builder.Services.AddTransient<PrePurchaseAiPage>();

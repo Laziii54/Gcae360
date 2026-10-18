@@ -253,11 +253,84 @@ public sealed class LiveDataEngine : IAsyncDisposable
         }
     }
 
+    /// <summary>The OBD link to the adapter is up (initialised or not).</summary>
+    public bool IsAdapterConnected => _obd.IsAdapterConnected;
+
+    private bool _keepRunningForTrip;
+    private Timer? _tripWatchdog;
+    private int _tripWatchdogBusy;
+    private readonly object _tripWatchdogGate = new();
+
+    /// <summary>How often the trip watchdog looks at the polling loop. Internal so a test can shorten it.</summary>
+    internal static TimeSpan TripWatchdogInterval { get; set; } = TimeSpan.FromSeconds(5);
+
     /// <summary>
     /// True while a fuel/energy trip records. Other pages (live data, 0–100 …)
     /// may then ask to stop, but polling keeps running until the trip ends.
+    /// While it is true a watchdog also starts polling again whenever it has stopped for any other reason (a failed
+    /// resume after the adapter came back, a resume that raced the old loop's shutdown, a forced stop from another
+    /// page), because a trip must not freeze silently in the background.
     /// </summary>
-    public bool KeepRunningForTrip { get; set; }
+    public bool KeepRunningForTrip
+    {
+        get => Volatile.Read(ref _keepRunningForTrip);
+        set
+        {
+            Volatile.Write(ref _keepRunningForTrip, value);
+            ArmTripWatchdog(value);
+        }
+    }
+
+    private void ArmTripWatchdog(bool on)
+    {
+        lock (_tripWatchdogGate)
+        {
+            if (!on || _disposed)
+            {
+                _tripWatchdog?.Dispose();
+                _tripWatchdog = null;
+                return;
+            }
+
+            _tripWatchdog ??= new Timer(_ => _ = TripWatchdogTickAsync(), null, TripWatchdogInterval, TripWatchdogInterval);
+        }
+    }
+
+    private async Task TripWatchdogTickAsync()
+    {
+        try
+        {
+            if (_disposed || !KeepRunningForTrip)
+                return;
+
+            // Polling is alive (a hung tick is reported by the independent health timer), or there is no adapter link:
+            // in that case the Bluetooth/Wi-Fi layer reconnects on its own and the resume in OnConnectionChanged runs.
+            if (LiveDataStartPolicy.Decide(IsRunning, _obd.IsInitialized, _obd.IsAdapterConnected) != LiveDataStartDecision.Proceed)
+                return;
+
+            if (Interlocked.Exchange(ref _tripWatchdogBusy, 1) == 1)
+                return;
+
+            try
+            {
+                _logger.LogInformation("A trip is recording but live data was not running; starting it again.");
+                await StartAsync().ConfigureAwait(false);
+
+                // The trip ended while this start was under way: do not leave polling running for nobody.
+                if (!KeepRunningForTrip && IsRunning)
+                    await StopAsync(force: true).ConfigureAwait(false);
+            }
+            finally
+            {
+                Volatile.Write(ref _tripWatchdogBusy, 0);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Not ready yet (for example the car's ECU is still waking up): the next tick tries again.
+            _logger.LogDebug(ex, "Trip watchdog could not restart live data; it will try again.");
+        }
+    }
 
     public async Task StopAsync(bool force = false)
     {
@@ -479,5 +552,5 @@ public sealed class LiveDataEngine : IAsyncDisposable
         Value = value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)
     };
 
-    public async ValueTask DisposeAsync() { if (_disposed) return; _disposed = true; await StopAsync(force: true).ConfigureAwait(false); _gate.Dispose(); }
+    public async ValueTask DisposeAsync() { if (_disposed) return; _disposed = true; ArmTripWatchdog(false); await StopAsync(force: true).ConfigureAwait(false); _gate.Dispose(); }
 }

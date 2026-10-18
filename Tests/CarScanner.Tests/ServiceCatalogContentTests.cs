@@ -7,9 +7,9 @@ public sealed class ServiceCatalogContentTests
     private static readonly IReadOnlyList<CarScanner.Models.ServiceProcedureDefinition> Real = ServiceTestData.Real.Procedures;
 
     [Fact]
-    public void CatalogVersion9_AddsTheDocumentedGuides_WithoutLosingAnyOldRecord()
+    public void Catalog_KeepsEveryRecordOfVersion9_AndIsNowVersion10()
     {
-        Assert.Equal(9, ServiceTestData.Real.CatalogVersion);
+        Assert.Equal(10, ServiceTestData.Real.CatalogVersion);
         Assert.Contains(Real, p => p.Id == "chevrolet.volt.2012-2013.oil-life-reset");
         Assert.Contains(Real, p => p.Id == "general.mercedes.2014-2021.w205-w213");
         Assert.Contains(Real, p => p.Id == "general.toyota.2008-plus.tpms-reset-switch");

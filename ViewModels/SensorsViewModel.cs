@@ -126,6 +126,64 @@ public partial class SensorsViewModel : BaseViewModel
         }
     }
 
+    // ---- live graph of one sensor (the sheet on the page) -------------------------------------------------------
+    // The scan above is a one-time read, so the graph polls only the tapped PID, with the same single short
+    // attempt the live dashboard uses, and only while the sheet is open.
+    private CancellationTokenSource? _graphCts;
+
+    /// <summary>Starts reading one sensor again and again; returns the value source the graph listens to (null when the value is not a number).</summary>
+    public LiveSensorSource? StartGraph(SensorValue sensor)
+    {
+        if (!double.TryParse(sensor.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var first))
+            return null;
+
+        StopGraph();
+        var source = new LiveSensorSource { Name = sensor.Name, Unit = sensor.Unit, Value = first };
+        var cts = new CancellationTokenSource();
+        _graphCts = cts;
+        _ = PollGraphAsync(sensor.Pid, source, cts.Token);
+        return source;
+    }
+
+    public void StopGraph()
+    {
+        var cts = _graphCts;
+        _graphCts = null;
+        if (cts is null)
+            return;
+
+        cts.Cancel();
+        cts.Dispose();
+    }
+
+    private async Task PollGraphAsync(int pid, LiveSensorSource source, CancellationToken token)
+    {
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                // A running scan owns the adapter: wait for it instead of competing.
+                if (!IsBusy)
+                {
+                    var values = await _obd.ReadLiveValuesAsync(new[] { pid }, token);
+                    if (values.Count > 0)
+                    {
+                        var converted = _units.Convert(values[0]);
+                        if (double.TryParse(converted.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var number))
+                            await MainThread.InvokeOnMainThreadAsync(() => source.Value = number);
+                    }
+                }
+
+                await Task.Delay(TimeSpan.FromMilliseconds(500), token);
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception exception)
+        {
+            CarScanner.Services.CommandErrors.Report(exception, "SensorsViewModel.PollGraphAsync");
+        }
+    }
+
     private void RebuildGroups(IReadOnlyList<SensorValue> items)
     {
         SensorGroups.Clear();

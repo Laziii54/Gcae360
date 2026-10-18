@@ -17,6 +17,11 @@ public sealed partial class ModuleLiveSignal : ObservableObject
     [ObservableProperty] private string valueText = "—";
     [ObservableProperty] private string unit = string.Empty;
 
+    /// <summary>True once the value is a number, so tapping the row can open a live graph.</summary>
+    public bool CanGraph => double.TryParse(ValueText, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out _);
+
+    partial void OnValueTextChanged(string value) => OnPropertyChanged(nameof(CanGraph));
+
     public void ApplyLanguage(bool english)
     {
         Name = english || string.IsNullOrWhiteSpace(NameKa) ? NameEn : NameKa;

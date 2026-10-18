@@ -86,6 +86,7 @@ public sealed partial class ServiceDataReaderService
         // 0x1A reads, and a GM car whose VIN decode is incomplete should
         // still show its oil life.
         LastOilLifeProbeNote = string.Empty;
+        LastOilLifeProbeAdapterSide = false;
         ServiceMetricReading? gmOilLife = null;
         if (ShouldProbeGmOilLife(vehicle, resolved))
             gmOilLife = await TryReadFirstGenerationVoltOilLifeAsync(token).ConfigureAwait(false);
@@ -411,9 +412,16 @@ public sealed partial class ServiceDataReaderService
             }
         }
 
+        // What each failed attempt turned out to be (adapter side, ECU side …), so the page can say which it was.
+        var failures = new List<AdapterFailureKind>();
+
         foreach (var did in GmOilLifeDids)
         {
             token.ThrowIfCancellationRequested();
+            byte[] data = Array.Empty<byte>();
+            var haveData = false;
+            var tryFunctional = true;
+
             try
             {
                 var raw = await _obd.ReadPhysicalCanReadOnlyAsync(
@@ -423,52 +431,11 @@ public sealed partial class ServiceDataReaderService
                         token)
                     .ConfigureAwait(false);
 
-                notes.Add($"22 {did:X4} (7E0) → {Shorten(raw)}");
-
-                if (!TryExtractDidData(raw, did, address.ReceiveCanId, out var data) || data.Length < 1)
-                {
-                    // Fallback: functional (broadcast 7DF) request with the
-                    // adapter's automatic header — the form older GM tools use.
-                    string functionalRaw;
-                    try
-                    {
-                        functionalRaw = await _obd.SendRawCommandAsync($"22{did:X4}", token).ConfigureAwait(false);
-                    }
-                    catch (OperationCanceledException) when (token.IsCancellationRequested)
-                    {
-                        throw;
-                    }
-                    catch (Exception ex)
-                    {
-                        functionalRaw = ex.Message;
-                    }
-
-                    notes.Add($"22 {did:X4} (7DF) → {Shorten(functionalRaw)}");
-
-                    if (!TryExtractDidData(functionalRaw, did, null, out data) || data.Length < 1)
-                        continue;
-                }
-
-                var percent = data[0] * 100d / 255d;
-                if (percent is < 0 or > 100)
-                    continue;
-
-                LastOilLifeProbeNote = string.Join(" · ", notes);
-
-                return new ServiceMetricReading(
-                    $"chevrolet_volt_oil_life_{did:x4}",
-                    ServiceMetricKind.OilLifePercent,
-                    "Engine Oil Life Remaining",
-                    percent,
-                    "%",
-                    $"REAL ECU READ · GM enhanced 0x22 DID 0x{did:X4} · exact positive 0x62 response",
-                    "Chevrolet Volt Gen-1 read-only response",
-                    address.TransmitCanId,
-                    did,
-                    address.ReceiveCanId,
-                    false,
-                    null,
-                    ServiceMetricEvidenceLevel.ResearchCatalog);
+                var reply = AdapterReadFailure.ClassifyReply(raw, address.ReceiveCanId, did);
+                notes.Add($"22 {did:X4} (7E0) → {Shorten(raw)}{(reply.Kind == AdapterFailureKind.None ? string.Empty : " " + reply)}");
+                haveData = TryExtractDidData(raw, did, address.ReceiveCanId, out data) && data.Length >= 1;
+                if (!haveData)
+                    failures.Add(reply.Kind == AdapterFailureKind.None ? AdapterFailureKind.UnexpectedReply : reply.Kind);
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested)
             {
@@ -476,12 +443,86 @@ public sealed partial class ServiceDataReaderService
             }
             catch (Exception ex)
             {
-                notes.Add($"22 {did:X4} → {ex.GetType().Name}: {ex.Message}");
+                // The adapter could not do the physically addressed request at all. When the reason is one of its
+                // addressing commands (a clone that answers '?'), the functional request below needs none of them and
+                // is still tried; before, this branch skipped it, so exactly those adapters never got a value.
+                var failure = AdapterReadFailure.Classify(ex);
+                notes.Add($"22 {did:X4} (7E0) → {failure}");
+                failures.Add(failure.Kind);
+                tryFunctional = AdapterReadFailure.ShouldTryFunctionalRequest(ex);
             }
+
+            if (!haveData && tryFunctional)
+            {
+                // Fallback: functional (broadcast 7DF) request with the
+                // adapter's automatic header — the form older GM tools use.
+                string functionalRaw;
+                try
+                {
+                    functionalRaw = await _obd.SendRawCommandAsync($"22{did:X4}", token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    functionalRaw = ex.Message;
+                }
+
+                var functionalReply = AdapterReadFailure.ClassifyReply(functionalRaw, null, did);
+                notes.Add($"22 {did:X4} (7DF) → {Shorten(functionalRaw)}{(functionalReply.Kind == AdapterFailureKind.None ? string.Empty : " " + functionalReply)}");
+                haveData = TryExtractDidData(functionalRaw, did, null, out data) && data.Length >= 1;
+                if (!haveData)
+                    failures.Add(functionalReply.Kind == AdapterFailureKind.None ? AdapterFailureKind.UnexpectedReply : functionalReply.Kind);
+            }
+
+            if (!haveData)
+                continue;
+
+            var percent = data[0] * 100d / 255d;
+            if (percent is < 0 or > 100)
+                continue;
+
+            FinishOilLifeProbe(notes, failures, valueRead: true);
+
+            return new ServiceMetricReading(
+                $"chevrolet_volt_oil_life_{did:x4}",
+                ServiceMetricKind.OilLifePercent,
+                "Engine Oil Life Remaining",
+                percent,
+                "%",
+                $"REAL ECU READ · GM enhanced 0x22 DID 0x{did:X4} · exact positive 0x62 response",
+                "Chevrolet Volt Gen-1 read-only response",
+                address.TransmitCanId,
+                did,
+                address.ReceiveCanId,
+                false,
+                null,
+                ServiceMetricEvidenceLevel.ResearchCatalog);
         }
 
-        LastOilLifeProbeNote = string.Join(" · ", notes);
+        FinishOilLifeProbe(notes, failures, valueRead: false);
         return null;
+    }
+
+    /// <summary>
+    /// True when every attempt of the last GM oil-life probe failed on the adapter's side (it refused addressing commands
+    /// or the link dropped) — the page then says "Adapter:" instead of "ECU reply:", because the ECU was never properly asked.
+    /// </summary>
+    public bool LastOilLifeProbeAdapterSide { get; private set; }
+
+    private void FinishOilLifeProbe(List<string> notes, List<AdapterFailureKind> failures, bool valueRead)
+    {
+        // Which setup commands this adapter did not accept and how the replies were limited: the facts that differ
+        // between two adapters on the same car. Reported per read, never remembered as a verdict on the adapter.
+        var setup = _obd?.LastPhysicalReadSetupNote;
+        if (!string.IsNullOrWhiteSpace(setup))
+            notes.Add(setup);
+
+        LastOilLifeProbeNote = string.Join(" · ", notes);
+        LastOilLifeProbeAdapterSide = !valueRead && failures.Count > 0 &&
+            failures.All(kind => kind is AdapterFailureKind.AdapterCommandUnsupported or AdapterFailureKind.AdapterLinkLost);
     }
 
     // ============================================================

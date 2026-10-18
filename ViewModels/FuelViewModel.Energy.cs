@@ -96,6 +96,10 @@ public partial class FuelViewModel
     /// <summary>Called when the page appears (the connected car may have changed).</summary>
     public void OnPageAppearing()
     {
+        // Back on the page with a trip recording: bring the background service back if the system dropped it.
+        CarScanner.Services.Background.TripKeepAlive.Recheck();
+        RefreshBackgroundNote();
+
         if (_tripStartedAt is null)
         {
             LoadUserFuelKind();

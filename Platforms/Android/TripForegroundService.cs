@@ -10,6 +10,7 @@ public static partial class TripKeepAlive
     static partial void PlatformStart(string title, string text)
     {
         TripForegroundService.StopRequested = false;
+        TripForegroundService.StartRequestedAtUtc = DateTime.UtcNow;
         var context = Android.App.Application.Context;
         var intent = new Intent(context, typeof(TripForegroundService));
         intent.PutExtra(TripForegroundService.TitleExtra, title);
@@ -32,6 +33,51 @@ public static partial class TripKeepAlive
         TripForegroundService.StopRequested = true;
         TripForegroundService.Current?.StopNow();
     }
+
+    static partial void PlatformRecheck(string title, string text)
+    {
+        // The service is gone although the trip still records: Android stopped it, or refused it because the app was
+        // not visible when the trip started. The app is visible now (or the page just appeared), so start it again.
+        // A start that was only requested a moment ago is still on its way and is left alone.
+        if (TripForegroundService.Current is not null)
+            return;
+
+        if (DateTime.UtcNow - TripForegroundService.StartRequestedAtUtc < TimeSpan.FromSeconds(8))
+            return;
+
+        PlatformStart(title, text);
+    }
+
+    private static bool AndroidBatteryOptimized()
+    {
+        if (!OperatingSystem.IsAndroidVersionAtLeast(23))
+            return false;
+
+        var context = Android.App.Application.Context;
+        var power = context.GetSystemService(Context.PowerService) as PowerManager;
+        return power is not null && !power.IsIgnoringBatteryOptimizations(context.PackageName);
+    }
+
+    private static void AndroidOpenBatterySettings()
+    {
+        var context = Android.App.Application.Context;
+
+        // The list of apps with battery optimisation needs no special permission. A few phones do not have that
+        // screen: the app's own settings page is the fallback.
+        try
+        {
+            var list = new Intent(Android.Provider.Settings.ActionIgnoreBatteryOptimizationSettings);
+            list.AddFlags(ActivityFlags.NewTask);
+            context.StartActivity(list);
+        }
+        catch (ActivityNotFoundException)
+        {
+            var details = new Intent(Android.Provider.Settings.ActionApplicationDetailsSettings);
+            details.SetData(Android.Net.Uri.FromParts("package", context.PackageName, null));
+            details.AddFlags(ActivityFlags.NewTask);
+            context.StartActivity(details);
+        }
+    }
 }
 
 /// <summary>
@@ -46,13 +92,22 @@ public sealed class TripForegroundService : Service
     private const string ChannelId = "gcar360_trip";
     private const int NotificationId = 4100;
 
+    // The wake lock has a timeout so a forgotten trip can never hold the CPU for ever; while readings keep arriving
+    // the timeout is pushed forward (UpdateText), so a long drive is never cut off by it.
+    private static readonly TimeSpan WakeLockTimeout = TimeSpan.FromHours(12);
+    private static readonly TimeSpan WakeLockRenewEvery = TimeSpan.FromHours(1);
+
     private PowerManager.WakeLock? _wakeLock;
+    private DateTime _wakeLockAcquiredAtUtc = DateTime.MinValue;
     private string _title = "OBD360";
 
     public static TripForegroundService? Current { get; private set; }
 
     /// <summary>The trip ended while the service was still starting.</summary>
     public static volatile bool StopRequested;
+
+    /// <summary>When the app last asked for the service to start (a start is asynchronous).</summary>
+    public static DateTime StartRequestedAtUtc { get; set; } = DateTime.MinValue;
 
     public override IBinder? OnBind(Intent? intent) => null;
 
@@ -75,15 +130,22 @@ public sealed class TripForegroundService : Service
         }
         catch (Exception ex)
         {
-            // e.g. missing Bluetooth permission on Android 14: keep the app
-            // running; the trip then only records while the app is open.
+            // e.g. a missing permission on Android 14. The app keeps running, but the trip then only records while
+            // the app is open, and the Fuel page says so instead of leaving the user to find out on the road.
             System.Diagnostics.Debug.WriteLine($"Trip service could not start: {ex.Message}");
+            TripKeepAlive.ReportProblem(TripKeepAliveProblem.Unavailable);
             StopNow();
             return StartCommandResult.NotSticky;
         }
 
         if (StopRequested)
+        {
             StopNow();
+            return StartCommandResult.NotSticky;
+        }
+
+        // The service is up (again): clear a refusal that an earlier start left behind.
+        TripKeepAlive.ReportProblem(TripKeepAliveProblem.None);
 
         // If Android kills the process the trip is gone anyway; do not restart empty.
         return StartCommandResult.NotSticky;
@@ -95,6 +157,7 @@ public sealed class TripForegroundService : Service
         {
             var manager = (NotificationManager?)GetSystemService(NotificationService);
             manager?.Notify(NotificationId, BuildNotification(text));
+            RenewWakeLockIfOld();
         }
         catch (Exception ex)
         {
@@ -114,6 +177,25 @@ public sealed class TripForegroundService : Service
         {
             System.Diagnostics.Debug.WriteLine($"Trip service stop failed: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// The user swiped the app away from the recent apps. That is "closing the app": the notification and the wake
+    /// lock go away, and the trip page keeps what was recorded as a paused trip (its checkpoint is saved).
+    /// </summary>
+    public override void OnTaskRemoved(Intent? rootIntent)
+    {
+        try
+        {
+            TripKeepAlive.NotifyAppClosed();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Trip app-closed notification failed: {ex.Message}");
+        }
+
+        StopNow();
+        base.OnTaskRemoved(rootIntent);
     }
 
     public override void OnDestroy()
@@ -141,8 +223,21 @@ public sealed class TripForegroundService : Service
         var power = (PowerManager?)GetSystemService(PowerService);
         _wakeLock = power?.NewWakeLock(WakeLockFlags.Partial, "GCar360:trip");
         _wakeLock?.SetReferenceCounted(false);
-        // Safety limit: a forgotten trip can never hold the CPU for more than 12 hours.
-        _wakeLock?.Acquire((long)TimeSpan.FromHours(12).TotalMilliseconds);
+        _wakeLock?.Acquire((long)WakeLockTimeout.TotalMilliseconds);
+        _wakeLockAcquiredAtUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Acquiring a lock that is not reference-counted again restarts its timeout. This runs only while the trip
+    /// still delivers readings, so a lock whose trip went quiet (car off, adapter gone) still ends by itself.
+    /// </summary>
+    private void RenewWakeLockIfOld()
+    {
+        if (_wakeLock is null || DateTime.UtcNow - _wakeLockAcquiredAtUtc < WakeLockRenewEvery)
+            return;
+
+        _wakeLock.Acquire((long)WakeLockTimeout.TotalMilliseconds);
+        _wakeLockAcquiredAtUtc = DateTime.UtcNow;
     }
 
     private void CreateChannel()

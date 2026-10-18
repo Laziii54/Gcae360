@@ -14,6 +14,11 @@
 	<!-- Fuel/energy trip keeps recording in the background (TripForegroundService). -->
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+	<!-- Android 14+ lets a "connectedDevice" foreground service start only if the app has declared one of
+	     CHANGE_NETWORK_STATE / CHANGE_WIFI_STATE (normal permissions, granted at install) or has been granted a
+	     Bluetooth runtime permission. A Wi-Fi OBD adapter user never grants Bluetooth, so without this line the
+	     trip service is refused and the trip stops recording as soon as the screen turns off. -->
+	<uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.INTERNET" />
 	<!-- No in-app purchases on Android (PRO bought on the website is unlocked by
 	     signing in). Make sure no library merges the Play Billing permission. -->

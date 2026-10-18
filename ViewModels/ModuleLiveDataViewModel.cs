@@ -184,12 +184,22 @@ public partial class ModuleLiveDataViewModel : BaseViewModel
         _cts?.Cancel();
     }
 
+    /// <summary>Raised when the user taps a numeric signal; the page opens the graph sheet for it.</summary>
+    public event Action<object>? GraphRequested;
+
     /// <summary>Taps a live signal to open its own live-updating chart (Graphic Datastream).</summary>
     [RelayCommand]
     private Task OpenGraph(CarScanner.Models.ModuleLiveSignal? signal)
     {
-        if (signal is null)
+        if (signal is null || !signal.CanGraph)
             return Task.CompletedTask;
+
+        // The page shows the graph as a bottom sheet when it is listening; otherwise the full graph page opens.
+        if (GraphRequested is { } handler)
+        {
+            handler(signal);
+            return Task.CompletedTask;
+        }
 
         var parameters = new Dictionary<string, object> { ["item"] = signal };
         return CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.SensorGraphPage), parameters);

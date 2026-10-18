@@ -5,11 +5,13 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:m="clr-namespace:CarScanner.Models"
     xmlns:vm="clr-namespace:CarScanner.ViewModels"
+    xmlns:controls="clr-namespace:CarScanner.Controls"
     x:Class="CarScanner.Views.EcuIdentifiersPage"
     x:DataType="vm:EcuIdentifiersViewModel"
     BackgroundColor="{DynamicResource PageBg}"
     Title="ECU Explorer">
 
+    <Grid>
     <ScrollView>
         <VerticalStackLayout Padding="16,14,16,32" Spacing="12">
 
@@ -58,9 +60,13 @@
                             <VerticalStackLayout Spacing="0">
                                 <BoxView Style="{StaticResource RowDividerStyle}" Margin="14,0,0,0" />
                                 <Grid
-                                    ColumnDefinitions="Auto,*,Auto"
+                                    ColumnDefinitions="Auto,*,Auto,Auto"
                                     ColumnSpacing="12"
                                     Padding="14,13">
+
+                                    <Grid.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnPidTapped" />
+                                    </Grid.GestureRecognizers>
 
                                     <Label IsVisible="False"
                                         Text="{Binding Command}"
@@ -116,6 +122,8 @@
                                             LineBreakMode="WordWrap" />
 
                                     </VerticalStackLayout>
+
+                                    <Path Grid.Column="3" IsVisible="{Binding CanGraph}" Data="M4,19 L20,19 M4,19 L4,5 M7,15 L11,10 L14,13 L19,7" Style="{StaticResource RowIconStyle}" Stroke="{DynamicResource Primary}" WidthRequest="15" HeightRequest="15" VerticalOptions="Center" />
 
                                 </Grid>
                             </VerticalStackLayout>
@@ -185,5 +193,8 @@
 
         </VerticalStackLayout>
     </ScrollView>
+    <!-- Tap a PID value: its live graph slides up as a sheet. -->
+    <controls:SensorGraphSheet x:Name="GraphSheet" />
+    </Grid>
 
 </ContentPage>

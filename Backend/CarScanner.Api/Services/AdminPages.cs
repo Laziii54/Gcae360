@@ -133,6 +133,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
         ("payments", "გადახდები"),
         ("devices", "მოწყობილობები"),
         ("acceleration", "აჩქარების რეიტინგი"),
+        ("avatars", "პროფილის ფოტოები"),
         ("service", "სერვისის სწავლება"),
         ("odometer", "გარბენის ადგილები"),
         ("ecu", "ECU მონაცემები"),
@@ -235,11 +236,12 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
             var approve = $"<form class=\"inline\" method=\"post\" action=\"/admin/acceleration/{sid}/approve\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\">{owner}<button class=\"green\">დამოწმება</button></form>";
             var reject = $"<form class=\"inline\" method=\"post\" action=\"/admin/acceleration/{sid}/reject\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\">{owner}<button>უარყოფა</button></form>";
             var delete = $"<form class=\"inline\" method=\"post\" action=\"/admin/acceleration/{sid}/delete\"{Confirm("ნამდვილად წაიშალოს ეს შედეგი?")}><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\">{owner}<button class=\"red\">წაშლა</button></form>";
+            var avatarDelete = item.IsDemo ? string.Empty : $"<form class=\"inline\" method=\"post\" action=\"/admin/acceleration/{sid}/avatar-delete\"{Confirm("ამ მომხმარებლის პროფილის ფოტო წაიშალოს?")}><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\">{owner}<button>ფოტოს წაშლა</button></form>";
             rows.Append($"""
 <tr><td><b>{H(item.UserName)}</b>{demoPill}<div class="muted mono">{H(item.SubmissionId)}</div></td>
 <td>{H(item.VehicleModel)}</td><td><b>{item.DurationSeconds:0.00} წმ</b><br><small>{H(item.TestId == "quarter-mile" ? $"¼ მილი · {item.MaxSpeedKph} km/h" : item.TestId)}</small></td><td>{item.SampleCount}</td>
 <td>{Evidence(item)}</td><td>{status}</td><td>{item.FinishedAt.ToLocalTime():dd.MM.yyyy HH:mm}</td>
-<td>{approve}{reject}{delete}</td></tr>
+<td>{approve}{reject}{delete}{avatarDelete}</td></tr>
 """);
         }
 
@@ -254,6 +256,47 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
 <tbody>{rows}</tbody></table></div>
 """;
         return Layout(s, "acceleration", "აჩქარების რეიტინგი", "ყველა შედეგი GPS-ით მოწმდება · ტოპ-10 და საეჭვო შედეგები „მოწმდება“ სტატუსით ჩნდება და ვიდეოს ელოდება · „დამოწმება“ ვიდეოთი = Verified · ვიდეო და GPS კოორდინატები განხილვიდან 30 დღეში იშლება", content, message, ok);
+    }
+
+    /// <summary>All profile pictures (pictures waiting for approval first): look at each one, approve it or delete it.</summary>
+    public static string Avatars(AdminService.Session s, IReadOnlyList<(AvatarRecord Avatar, string? Email)> items, string? message, bool ok)
+    {
+        var csrf = H(s.Csrf);
+        var pending = items.Count(x => x.Avatar.Status == AvatarStatus.Pending);
+        var approved = items.Count(x => x.Avatar.Status == AvatarStatus.Approved);
+        var rows = new StringBuilder();
+        foreach (var (avatar, email) in items)
+        {
+            var id = H(avatar.PublicId);
+            var status = avatar.Status == AvatarStatus.Approved
+                ? "<span class=\"pill p-ok\">ჩანს რეიტინგში</span>"
+                : "<span class=\"pill p-warn\">დადასტურებას ელოდება</span>";
+            var approve = avatar.Status == AvatarStatus.Pending
+                ? $"<form class=\"inline\" method=\"post\" action=\"/admin/avatars/{id}/approve\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button class=\"green\">დამოწმება</button></form>"
+                : string.Empty;
+            var delete = $"<form class=\"inline\" method=\"post\" action=\"/admin/avatars/{id}/delete\"{Confirm("ეს პროფილის ფოტო წაიშალოს?")}><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button class=\"red\">წაშლა</button></form>";
+            rows.Append($"""
+<tr><td><a href="/admin/avatars/{id}/image" target="_blank" rel="noopener"><img src="/admin/avatars/{id}/image" width="72" height="72" alt="" style="border-radius:50%;object-fit:cover;background:var(--accent-soft);display:block"></a></td>
+<td><b>{H(email ?? "(ანგარიში ვერ მოიძებნა)")}</b><div class="muted mono">{H(avatar.AccountId)}</div></td>
+<td>{status}</td><td>{avatar.UpdatedAt.ToLocalTime():dd.MM.yyyy HH:mm}</td><td>{Math.Max(1, avatar.Bytes / 1024)} KB</td>
+<td>{approve}{delete}</td></tr>
+""");
+        }
+
+        var table = items.Count == 0
+            ? "<p class=\"muted\">პროფილის ფოტო ჯერ არავის დაუმატებია.</p>"
+            : $"<div class=\"tbl\"><table><thead><tr><th>ფოტო</th><th>ანგარიში</th><th>სტატუსი</th><th>ატვირთვა</th><th>ზომა</th><th>მართვა</th></tr></thead><tbody>{rows}</tbody></table></div>";
+
+        var content = $"""
+<div class="grid">
+{Kpi("ყველა ფოტო", N(items.Count), "ბოლო 300")}
+{Kpi("ელოდება", N(pending), "ავტომატურმა შემოწმებამ ვერ გაიარა და დაფარულია", pending > 0 ? "bad" : "")}
+{Kpi("რეიტინგში", N(approved), "ყველას უჩანს", "good")}
+</div>
+<h2>ფოტოები</h2>
+{table}
+""";
+        return Layout(s, "avatars", "პროფილის ფოტოები", "ფოტო ჩნდება მხოლოდ ავტომატური შემოწმების გავლის შემდეგ · აქედან ნებისმიერი ფოტო შეგიძლია წაშალო ან (თუ მოლოდინშია) დაადასტურო", content, message, ok);
     }
 
     private static string Bars(IEnumerable<(string Label, int Count)> items)

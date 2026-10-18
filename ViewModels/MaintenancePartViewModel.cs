@@ -4,6 +4,7 @@ using CarScanner.Models;
 using CarScanner.Services;
 using CarScanner.Services.Localization;
 using CarScanner.Services.Maintenance;
+using CarScanner.Services.ServiceProcedures;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -133,17 +134,14 @@ public partial class MaintenancePartViewModel : BaseViewModel
         try
         {
             var procedures = await _procedures.GetForVehicleAsync(_tracker.CurrentVehicle, null, CancellationToken.None);
-            var procedure = procedures
-                .Where(item => item.ExecutionType == ServiceProcedureExecutionType.Manual)
-                .OrderByDescending(item => item.Category.Equals("Oil Service", StringComparison.OrdinalIgnoreCase))
-                .ThenByDescending(item => item.NameEn.Contains("Oil", StringComparison.OrdinalIgnoreCase))
-                .FirstOrDefault();
-            if (procedure is null || procedure.Steps.Count == 0)
+
+            // Every applicable source-documented guide (up to three, each with its title): the driver usually cannot tell
+            // whether the car has the button cluster or the menu cluster, so the first one alone could be the wrong one.
+            var guides = ServiceGuideText.OilGuides(procedures);
+            if (guides.Count == 0)
                 return;
 
-            InstructionText = string.Join(
-                Environment.NewLine,
-                procedure.Steps.OrderBy(step => step.Order).Select(step => $"{step.Order}. {(English ? step.TextEn : step.TextKa)}"));
+            InstructionText = ServiceGuideText.Format(guides, English);
             HasInstruction = InstructionText.Length > 0;
         }
         catch (Exception ex)

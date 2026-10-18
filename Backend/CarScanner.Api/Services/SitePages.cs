@@ -43,6 +43,7 @@ public static class SitePages
         ["chat"] = """<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>""",
         ["search"] = """<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>""",
         ["clock"] = """<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>""",
+        ["bolt"] = """<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>""",
         ["fuel"] = """<path d="M3 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18"/><path d="M2 22h14M6 7h6"/><path d="M15 9h2a2 2 0 0 1 2 2v6a1.5 1.5 0 0 0 3 0V8l-3-3"/>""",
         ["layers"] = """<path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/>""",
         ["file"] = """<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/>""",
@@ -236,6 +237,7 @@ document.addEventListener("DOMContentLoaded",function(){var btn=document.getElem
             Feat("activity", "ცოცხალი მონაცემები", "Live data", "ბრუნები, ტემპერატურა, სიჩქარე და სენსორები რეალურ დროში, გრაფიკით და ჩაწერით.", "RPM, temperatures, speed and sensors in real time, with graphs and recording."),
             Feat("heart", "ჯანმრთელობის სკანი", "Health scan", "ერთი ღილაკით სრული შემოწმება, ქულა და ნაპოვნი პრობლემების სია.", "A full check with one tap, a score and a list of the problems found."),
             Feat("leaf", "ინსპექციის მზადყოფნა", "Inspection readiness", "Readiness მონიტორები, Mode 05/06 ტესტები და Freeze Frame.", "Readiness monitors, Mode 05/06 tests and freeze frame data."),
+            Feat("clock", "გარბენის გადამოწმება", "Mileage check", "ადარებს მოდულებში შენახულ გარბენს. ეხმარება დაგრეხილი სპიდომეტრის პოვნაში.", "Compares mileage stored in different modules to help spot a rolled-back odometer."),
             Feat("battery", "აკუმულატორი", "Battery", "12V ძაბვა, მინიმუმი და მაქსიმუმი, ისტორია. ჰიბრიდებზე მაღალი ძაბვის ბატარეაც.", "12V voltage with min, max and history. High-voltage battery on hybrids where available."),
             Feat("wrench", "სერვისის განულება", "Service reset", "ზეთის და ტექმომსახურების ინდიკატორის განულება 150+ მოდელზე, ნაბიჯ-ნაბიჯ.", "Step-by-step oil and service light reset for 150+ models."),
             Feat("flag", "აჩქარების გაზომვა", "Performance", "0–100 და სხვა მონაკვეთები, ისტორია და ვიდეო მონაცემებით.", "0–100 and other runs, with history and video overlay."),
@@ -245,7 +247,7 @@ document.addEventListener("DOMContentLoaded",function(){var btn=document.getElem
             Feat("cart", "ყიდვისწინა შემოწმება", "Pre-purchase check", "შეცდომები ყველა მოდულში, გარბენის შედარება, ბატარეა და მზადყოფნა. ბოლოს შეფასება.", "Faults in every module, mileage comparison, battery and readiness, with a final verdict.", true),
             Feat("spark", "AI დიაგნოსტიკა", "AI diagnostics", "აანალიზებს კოდებს და სენსორებს და მარტივად გიხსნის, რა ხდება.", "Looks at codes and sensor data and explains what is going on in plain words.", true),
             Feat("chat", "AI კონსულტაცია", "AI consultation", "ყიდვისწინა შემოწმების შედეგზე გასაგები შეფასება და რჩევები მყიდველისთვის.", "A clear assessment of the pre-purchase result, with advice for the buyer.", true),
-            Feat("clock", "გარბენის გადამოწმება", "Mileage check", "ადარებს მოდულებში შენახულ გარბენს. ეხმარება დაგრეხილი სპიდომეტრის პოვნაში.", "Compares mileage stored in different modules to help spot a rolled-back odometer.", true),
+            Feat("bolt", "ჰიბრიდის ბატარეის შემოწმება", "Hybrid battery check", "მაღალი ძაბვის ბატარეის მდგომარეობა: უჯრედების სხვაობა, ტემპერატურა, SOH და დატვირთვის ტესტი.", "High-voltage battery condition: cell spread, temperature, SOH and a load test.", true),
             Feat("fuel", "საწვავის ხარჯი", "Fuel economy", "მგზავრობის ანალიტიკა, ჩასხმები ლარებში და რეალური ხარჯი.", "Trip analytics, refuel log and real consumption tank to tank.", true),
             Feat("layers", "მოდულების მონაცემები", "Module data", "მწარმოებლის მოდულების მონაცემები, ნაწილის ნომრები და ვერსიები.", "Manufacturer module data, part numbers and software versions.", true));
 
@@ -344,7 +346,7 @@ document.addEventListener("DOMContentLoaded",function(){var btn=document.getElem
 <div class="head"><h2>{{T("ფასები", "Pricing")}}</h2><p>{{T("გეგმა ანგარიშზეა მიბმული და ყველა შენს მოწყობილობაზე მუშაობს.", "Plans are tied to your account and work on all your devices.")}}</p></div>
 <div class="tiers">
 <div class="tier"><div class="t"><h3>OBD PRO</h3></div><div class="pr">{{Gel(obd)}} ₾<small> / {{month}}</small></div><p>{{T("ღრმა დიაგნოსტიკა და AI.", "Deeper diagnostics and AI.")}}</p>
-<ul class="ck">{{Li("ყიდვისწინა შემოწმება", "Pre-purchase check")}}{{Li("AI დიაგნოსტიკა და კონსულტაცია", "AI diagnostics and consultation")}}{{Li("გარბენი და საწვავის ხარჯი", "Mileage check and fuel economy")}}{{Li("მოდულების მონაცემები, ანგარიშები", "Module data and reports")}}</ul><a class="btn btn-o" href="/pro">{{T("არჩევა", "Choose")}}</a></div>
+<ul class="ck">{{Li("ყიდვისწინა შემოწმება", "Pre-purchase check")}}{{Li("AI დიაგნოსტიკა და კონსულტაცია", "AI diagnostics and consultation")}}{{Li("ჰიბრიდის ბატარეის შემოწმება", "Hybrid battery check")}}{{Li("საწვავის ხარჯი", "Fuel economy")}}{{Li("მოდულების მონაცემები, ანგარიშები", "Module data and reports")}}</ul><a class="btn btn-o" href="/pro">{{T("არჩევა", "Choose")}}</a></div>
 <div class="tier hi"><div class="t"><h3>{{T("სრული PRO", "Full PRO")}}</h3><span class="lbl">{{T("ხელსაყრელი", "best value")}}</span></div><div class="pr">{{Gel(fullPrice)}} ₾<small> / {{month}}</small></div><p>{{T("OBD PRO და VIN PRO ერთად.", "OBD PRO and VIN PRO together.")}}</p>
 <ul class="ck">{{Li("ყველაფერი OBD PRO-დან", "Everything in OBD PRO")}}{{Li($"თვეში {q} VIN-ის ისტორია", $"{q} VIN histories a month")}}{{Li("გახსნილი VIN ხელახლა უფასოდ", "Reopen checked VINs for free")}}{{Li("ყველა მოწყობილობაზე", "On all your devices")}}</ul><a class="btn btn-p" href="/pro">{{T("არჩევა", "Choose")}}</a></div>
 <div class="tier"><div class="t"><h3>VIN PRO</h3></div><div class="pr">{{Gel(vinPrice)}} ₾<small> / {{month}}</small></div><p>{{T("მათთვის, ვინც მანქანას ეძებს.", "For people shopping for a car.")}}</p>

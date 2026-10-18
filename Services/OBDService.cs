@@ -1150,6 +1150,12 @@ public sealed class OBDService
             timeout,
             token);
 
+    /// <summary>
+    /// Which setup commands the adapter did not accept on the last physically addressed read, and how the replies were
+    /// limited to the asked module. Evidence for comparing adapters; empty before the first read.
+    /// </summary>
+    public string LastPhysicalReadSetupNote => _protocol.LastPhysicalReadSetupNote;
+
     public async Task<string> ReadPhysicalCanReadOnlyAsync(
         ServiceDiagnosticAddress address,
         ReadOnlyMemory<byte> payload,

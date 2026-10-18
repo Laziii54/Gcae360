@@ -29,6 +29,11 @@ public static partial class TripKeepAlive
             _location.ShowsBackgroundLocationIndicator = true;
 
         _location.StartUpdatingLocation();
+
+        // Without location the system suspends the app as soon as the screen turns off. Say so instead of recording
+        // silently for a few seconds and then freezing. (An answer to the permission prompt is looked at again later.)
+        if (LocationRefused())
+            ReportProblem(TripKeepAliveProblem.LocationNotAllowed);
     }
 
     static partial void PlatformUpdate(string text)
@@ -44,4 +49,24 @@ public static partial class TripKeepAlive
         _location.StopUpdatingLocation();
         _location.AllowsBackgroundLocationUpdates = false;
     }
+
+    static partial void PlatformRecheck(string title, string text)
+    {
+        if (LocationRefused())
+        {
+            ReportProblem(TripKeepAliveProblem.LocationNotAllowed);
+            return;
+        }
+
+        // The permission may have been given since (the prompt, or Settings): clear the warning and make sure the
+        // updates really run.
+        if (Problem == TripKeepAliveProblem.LocationNotAllowed)
+            ReportProblem(TripKeepAliveProblem.None);
+
+        _location?.StartUpdatingLocation();
+    }
+
+    /// <summary>Denied, restricted, or location services switched off for the whole phone (iOS reports that as denied).</summary>
+    private static bool LocationRefused() =>
+        CLLocationManager.Status is CLAuthorizationStatus.Denied or CLAuthorizationStatus.Restricted;
 }

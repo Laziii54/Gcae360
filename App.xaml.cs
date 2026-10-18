@@ -95,6 +95,10 @@ public partial class App : Application
 
     private void OnWindowResumed(object? sender, EventArgs e)
     {
+        // A trip that records in the background: the app is visible again, so a background service the system
+        // dropped (or refused while the app was hidden) can be started again, and the iOS location answer is read.
+        CarScanner.Services.Background.TripKeepAlive.Recheck();
+
         StartEntitlementSynchronization();
         _ = _usage.ReportAsync();
         ScheduleConsentCheck();

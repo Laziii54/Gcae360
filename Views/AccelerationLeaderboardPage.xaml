@@ -75,11 +75,7 @@
                             <Path Data="M7,4 L17,4 L17,9 A5,5 0 0 1 7,9 Z M7,6 L4,6 L4,8 A3,3 0 0 0 7,11 M17,6 L20,6 L20,8 A3,3 0 0 1 17,11 M12,14 L12,17 M9,20 L15,20 M10,17 L14,17 L14,20 L10,20 Z"
                                   Stroke="#8A939D" Fill="#DDE2E7" StrokeThickness="1.6" StrokeLineCap="Round" StrokeLineJoin="Round"
                                   WidthRequest="24" HeightRequest="24" Aspect="Uniform" HorizontalOptions="Center" />
-                            <Border WidthRequest="38" HeightRequest="38" HorizontalOptions="Center" StrokeThickness="0" StrokeShape="RoundRectangle 19"
-                                    BackgroundColor="{DynamicResource PageBg}">
-                                <Label Text="{Binding Second.Initial}" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
-                                       HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Border>
+                            <controls:AvatarView Name="{Binding Second.UserName}" AvatarUrl="{Binding Second.AvatarUrl}" Size="38" HorizontalOptions="Center" />
                             <Label Text="{Binding Second.UserName}" FontSize="12.5" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
                                    HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
                             <Label Text="{Binding Second.VehicleModel}" FontSize="10.5" TextColor="{DynamicResource SubTextColor}"
@@ -105,11 +101,7 @@
                             <Path Data="M7,4 L17,4 L17,9 A5,5 0 0 1 7,9 Z M7,6 L4,6 L4,8 A3,3 0 0 0 7,11 M17,6 L20,6 L20,8 A3,3 0 0 1 17,11 M12,14 L12,17 M9,20 L15,20 M10,17 L14,17 L14,20 L10,20 Z"
                                   Stroke="#C99A12" Fill="#F6D86B" StrokeThickness="1.6" StrokeLineCap="Round" StrokeLineJoin="Round"
                                   WidthRequest="30" HeightRequest="30" Aspect="Uniform" HorizontalOptions="Center" />
-                            <Border WidthRequest="44" HeightRequest="44" HorizontalOptions="Center" StrokeThickness="0" StrokeShape="RoundRectangle 22"
-                                    BackgroundColor="{DynamicResource PageBg}">
-                                <Label Text="{Binding First.Initial}" FontSize="19" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
-                                       HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Border>
+                            <controls:AvatarView Name="{Binding First.UserName}" AvatarUrl="{Binding First.AvatarUrl}" Size="44" HorizontalOptions="Center" />
                             <Label Text="{Binding First.UserName}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
                                    HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
                             <Label Text="{Binding First.VehicleModel}" FontSize="10.5" TextColor="{DynamicResource SubTextColor}"
@@ -135,11 +127,7 @@
                             <Path Data="M7,4 L17,4 L17,9 A5,5 0 0 1 7,9 Z M7,6 L4,6 L4,8 A3,3 0 0 0 7,11 M17,6 L20,6 L20,8 A3,3 0 0 1 17,11 M12,14 L12,17 M9,20 L15,20 M10,17 L14,17 L14,20 L10,20 Z"
                                   Stroke="#A8683A" Fill="#E7B48A" StrokeThickness="1.6" StrokeLineCap="Round" StrokeLineJoin="Round"
                                   WidthRequest="24" HeightRequest="24" Aspect="Uniform" HorizontalOptions="Center" />
-                            <Border WidthRequest="38" HeightRequest="38" HorizontalOptions="Center" StrokeThickness="0" StrokeShape="RoundRectangle 19"
-                                    BackgroundColor="{DynamicResource PageBg}">
-                                <Label Text="{Binding Third.Initial}" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
-                                       HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Border>
+                            <controls:AvatarView Name="{Binding Third.UserName}" AvatarUrl="{Binding Third.AvatarUrl}" Size="38" HorizontalOptions="Center" />
                             <Label Text="{Binding Third.UserName}" FontSize="12.5" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
                                    HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
                             <Label Text="{Binding Third.VehicleModel}" FontSize="10.5" TextColor="{DynamicResource SubTextColor}"
@@ -205,11 +193,7 @@
                                     <Grid ColumnDefinitions="30,40,*,Auto" ColumnSpacing="10" Padding="14,12">
                                         <Label Text="{Binding Rank}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}"
                                                VerticalOptions="Center" HorizontalTextAlignment="Center" />
-                                        <Border Grid.Column="1" WidthRequest="38" HeightRequest="38" StrokeThickness="0" StrokeShape="RoundRectangle 19"
-                                                BackgroundColor="{DynamicResource PageBg}" VerticalOptions="Center">
-                                            <Label Text="{Binding Initial}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
-                                                   HorizontalOptions="Center" VerticalOptions="Center" />
-                                        </Border>
+                                        <controls:AvatarView Grid.Column="1" Name="{Binding UserName}" AvatarUrl="{Binding AvatarUrl}" Size="38" VerticalOptions="Center" />
                                         <VerticalStackLayout Grid.Column="2" Spacing="1" VerticalOptions="Center">
                                             <Label Text="{Binding UserName}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}"
                                                    LineBreakMode="TailTruncation" />

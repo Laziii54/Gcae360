@@ -12,14 +12,17 @@ public partial class AccountPage : ContentPage
     private readonly AccountService _account;
     private readonly ProService _pro;
     private readonly LocalizationService _localization;
+    private readonly AvatarService _avatars;
     private bool _busy;
+    private bool _hasAvatar;
 
-    public AccountPage(AccountService account, ProService pro, LocalizationService localization)
+    public AccountPage(AccountService account, ProService pro, LocalizationService localization, AvatarService avatars)
     {
         InitializeComponent();
         _account = account;
         _pro = pro;
         _localization = localization;
+        _avatars = avatars;
     }
 
     private string L(string ka, string en) => _localization.IsEnglish ? en : ka;
@@ -32,6 +35,7 @@ public partial class AccountPage : ContentPage
             "შედი ანგარიშზე — PRO გეგმა და გახსნილი VIN ისტორიები შენს ანგარიშზე ინახება.",
             "Sign in — your PRO plan and opened VIN histories are kept on your account.");
         SignedInAsLabel.Text = L("შესული ხარ როგორც", "Signed in as");
+        AvatarHintLabel.Text = L("ფოტოს შეცვლა", "Change photo");
         LogoutButton.Text = L("გამოსვლა", "Sign out");
         EmailLabel.Text = L("ელ-ფოსტა", "E-mail");
         PasswordLabel.Text = L("პაროლი", "Password");
@@ -65,8 +69,12 @@ public partial class AccountPage : ContentPage
         ChangePasswordCard.IsVisible = signedIn;
         FormCard.IsVisible = !signedIn;
         EmailValueLabel.Text = _account.Email;
+        AccountAvatar.Name = _account.Email;
         if (signedIn)
+        {
             _ = RefreshEmailStatusAsync();
+            _ = RefreshAvatarAsync();
+        }
         else
             VerifyCard.IsVisible = false;
 
@@ -79,6 +87,131 @@ public partial class AccountPage : ContentPage
         else if (mustChange)
         {
             ShowChangePasswordForm(true);
+        }
+    }
+
+    // ---- profile photo ---------------------------------------------------------------------------------------------
+
+    private async Task RefreshAvatarAsync()
+    {
+        try
+        {
+            var info = await _avatars.GetMineAsync();
+            if (info is null)
+                return;
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                _hasAvatar = info.HasAvatar;
+                AccountAvatar.AvatarUrl = string.Equals(info.Status, "Approved", StringComparison.OrdinalIgnoreCase) ? info.AvatarUrl ?? string.Empty : string.Empty;
+                AvatarHintLabel.Text = string.Equals(info.Status, "Pending", StringComparison.OrdinalIgnoreCase)
+                    ? L("ფოტო შენახულია და დადასტურებას ელოდება", "Photo saved, waiting for approval")
+                    : L("ფოტოს შეცვლა", "Change photo");
+            });
+        }
+        catch (Exception exception)
+        {
+            CarScanner.Services.CommandErrors.Report(exception, "AccountPage.RefreshAvatarAsync");
+        }
+    }
+
+    private async void OnAvatarTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (_busy || !_account.IsSignedIn)
+                return;
+
+            var choose = L("აირჩიე გალერეიდან", "Choose from gallery");
+            var remove = L("ფოტოს წაშლა", "Remove photo");
+            var cancel = L("გაუქმება", "Cancel");
+            var picked = await this.DisplayActionSheetLocalizedAsync(L("პროფილის ფოტო", "Profile photo"), cancel, _hasAvatar ? remove : null, choose);
+
+            if (picked == choose)
+                await PickAndUploadAvatarAsync();
+            else if (picked == remove && _hasAvatar)
+                await RemoveAvatarAsync();
+        }
+        catch (Exception commandException)
+        {
+            CarScanner.Services.CommandErrors.Report(commandException, "AccountPage.OnAvatarTapped");
+        }
+    }
+
+    private async Task PickAndUploadAvatarAsync()
+    {
+        _busy = true;
+        try
+        {
+            byte[]? jpeg;
+            try
+            {
+                jpeg = await _avatars.PickAndShrinkAsync();
+            }
+            catch (Exception pickException) when (pickException is not OperationCanceledException)
+            {
+                CarScanner.Services.CommandErrors.Report(pickException, "AccountPage.PickAvatar");
+                ShowStatus(L("გალერეის გახსნა ვერ მოხერხდა.", "Could not open the gallery."), error: true);
+                return;
+            }
+
+            if (jpeg is null)
+                return;
+
+            ShowStatus(L("ფოტო იტვირთება…", "Uploading photo…"), error: false);
+            var result = await _avatars.UploadAsync(jpeg);
+            switch (result.Outcome)
+            {
+                case AvatarOutcome.Added:
+                    _hasAvatar = true;
+                    AccountAvatar.AvatarUrl = result.AvatarUrl ?? string.Empty;
+                    ShowStatus(L("ფოტო დაემატა.", "Photo added."), error: false);
+                    break;
+                case AvatarOutcome.WaitingForApproval:
+                    _hasAvatar = true;
+                    AvatarHintLabel.Text = L("ფოტო შენახულია და დადასტურებას ელოდება", "Photo saved, waiting for approval");
+                    ShowStatus(L("ფოტო შენახულია. ის სხვებს დადასტურების შემდეგ დაუჩანს.", "Photo saved. Others will see it after it is approved."), error: false);
+                    break;
+                case AvatarOutcome.Rejected:
+                    ShowStatus(L("ეს ფოტო ვერ გამოვიყენებთ. აირჩიე სხვა.", "This photo can't be used. Choose another one."), error: true);
+                    break;
+                case AvatarOutcome.TooManyAttempts:
+                    ShowStatus(L("ძალიან ბევრი ცდა. სცადე მოგვიანებით.", "Too many attempts. Try again later."), error: true);
+                    break;
+                case AvatarOutcome.NotSignedIn:
+                    ShowStatus(L("ფოტოს დასამატებლად შედი ანგარიშზე.", "Sign in to add a photo."), error: true);
+                    break;
+                default:
+                    ShowStatus(L("ფოტოს ატვირთვა ვერ მოხერხდა. სცადე მოგვიანებით.", "Photo upload failed. Try again later."), error: true);
+                    break;
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task RemoveAvatarAsync()
+    {
+        _busy = true;
+        try
+        {
+            if (await _avatars.DeleteAsync())
+            {
+                _hasAvatar = false;
+                AccountAvatar.AvatarUrl = string.Empty;
+                AvatarHintLabel.Text = L("ფოტოს შეცვლა", "Change photo");
+                ShowStatus(L("ფოტო წაიშალა.", "Photo removed."), error: false);
+            }
+            else
+            {
+                ShowStatus(L("ფოტოს წაშლა ვერ მოხერხდა.", "Could not remove the photo."), error: true);
+            }
+        }
+        finally
+        {
+            _busy = false;
         }
     }
 

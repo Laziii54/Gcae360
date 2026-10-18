@@ -1356,15 +1356,16 @@ public partial class HomeViewModel : BaseViewModel
     }
 
 
-    /// <summary>Coding opens without an adapter too (saved backups, history).</summary>
+    /// <summary>
+    /// Coding is switched off for users for now: the tile stays dimmed, connected or not, and a tap only says
+    /// "Coming soon" at the bottom of the screen. The Coding page itself is untouched.
+    /// </summary>
     [RelayCommand]
-    private async Task GoToCoding()
+    private void GoToCoding()
     {
         try
         {
-            // Opens without an adapter on purpose (saved backups, history, what is available and why); the page itself
-            // says "connect the adapter" and offers the button. Returning silently here left the tile looking broken.
-            await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.CodingPage));
+            CarScanner.Services.Reports.ReportToast.Show(L("მალე დაემატება", "Coming soon"));
         }
         catch (Exception commandException)
         {
@@ -1719,26 +1720,6 @@ public partial class HomeViewModel : BaseViewModel
         }
     }
 
-
-    [RelayCommand]
-    private async Task GoToResearch()
-    {
-        try
-        {
-        // Server-confirmed admin only — mirrors the re-check inside ResearchDataViewModel.Start().
-        if (!IsAdmin)
-            return;
-        if (!await RequireObdConnectionAsync())
-            return;
-
-        await CarScanner.Services.SafeNavigation.GoToAsync(
-            nameof(Views.ResearchDataPage));
-        }
-        catch (Exception commandException)
-        {
-            CarScanner.Services.CommandErrors.Report(commandException, "HomeViewModel.GoToResearch");
-        }
-    }
 
     [RelayCommand]
     private async Task GoToPro()

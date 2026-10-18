@@ -40,6 +40,12 @@ namespace CarScanner.Services.OBD
     {
         public string RawResponse { get; }
 
+        /// <summary>
+        /// Set when the adapter itself refused a setup command it was required to accept (for example '?' on a chip that
+        /// does not know the command): the problem is the adapter's command set, not the car.
+        /// </summary>
+        public string? UnsupportedCommand { get; init; }
+
         public Elm327CommandException(string message, string rawResponse) : base(message)
         {
             RawResponse = rawResponse ?? string.Empty;
@@ -397,6 +403,12 @@ namespace CarScanner.Services.OBD
                 var switchedProtocol =
                     Is29BitCanProtocol(originalProtocol) != extended29Bit;
 
+                // Setup commands the adapter did not accept, and how the replies were limited to the asked module.
+                // Kept per read (see LastPhysicalReadSetupNote), never remembered as "this adapter cannot".
+                var rejectedSetup = new List<string>();
+                var receiveFilter = PhysicalFilterState.None;
+                var answerReceived = false;
+
                 try
                 {
                     if (switchedProtocol)
@@ -407,11 +419,15 @@ namespace CarScanner.Services.OBD
                     }
 
                     await RequireOkInternalAsync("ATL0", token).ConfigureAwait(false);
-                    await RequireOkInternalAsync("ATS1", token).ConfigureAwait(false);
+                    // S1, CFC1 and D0 are the adapter's own defaults. Elm Electronics' command table lists ATS and ATD
+                    // as first appearing in firmware 1.3 and cheap "v1.5" clones are widely reported to run older
+                    // microcode, so they answer '?': the read goes on with the default, which is what S1/CFC1/D0 ask
+                    // for anyway. (The module scan already treats ATD0/ATCFC1 this way.)
+                    await TrySetupAsync("ATS1", rejectedSetup, token).ConfigureAwait(false);
                     await RequireOkInternalAsync("ATH1", token).ConfigureAwait(false);
                     await RequireOkInternalAsync("ATCAF1", token).ConfigureAwait(false);
-                    await RequireOkInternalAsync("ATCFC1", token).ConfigureAwait(false);
-                    await RequireOkInternalAsync("ATD0", token).ConfigureAwait(false);
+                    await TrySetupAsync("ATCFC1", rejectedSetup, token).ConfigureAwait(false);
+                    await TrySetupAsync("ATD0", rejectedSetup, token).ConfigureAwait(false);
 
                     if (extendedAddress.HasValue)
                     {
@@ -427,15 +443,14 @@ namespace CarScanner.Services.OBD
 
                     if (receiveCanId.HasValue)
                     {
-                        await RequireOkInternalAsync(
-                            $"ATCRA{receiveCanId.Value.ToString($"X{width}")}",
-                            token).ConfigureAwait(false);
+                        receiveFilter = await SetPhysicalReceiveFilterAsync(
+                            transmitCanId, receiveCanId.Value, extended29Bit, width, rejectedSetup, token).ConfigureAwait(false);
                     }
                     else
                     {
-                        // Clear any stale receive filter. The caller still
-                        // requires an exact 0x62 DID echo before accepting data.
-                        await RequireOkInternalAsync("ATCRA", token).ConfigureAwait(false);
+                        // Clear any stale receive filter (ATCRA, else ATAR; neither exists on the oldest chips, which
+                        // then keep their default). The caller still requires an exact 0x62 DID echo before accepting data.
+                        await TryResetReceiveFilterAsync(token).ConfigureAwait(false);
                     }
 
                     var command = string.Concat(
@@ -447,9 +462,16 @@ namespace CarScanner.Services.OBD
                         maxRetries: 1,
                         treatNegativeStatusAsError: false,
                         token).ConfigureAwait(false);
+
+                    // No hardware filter on this adapter: keep the frames of the asked module only, exactly as the
+                    // adapter would have delivered them, so no caller ever sees another module's frames.
+                    if (receiveCanId.HasValue && (receiveFilter & PhysicalFilterState.Hardware) == 0)
+                        answer = KeepOnlyFramesFrom(answer, receiveCanId.Value, extended29Bit);
+
                     // A BMW-style extended address cannot be described by a CAN id pair: not reported.
                     if (!extendedAddress.HasValue)
                         ObserveModule(transmitCanId, receiveCanId, extended29Bit, command, payload.Span[0], answer);
+                    answerReceived = true;
                     return answer;
                 }
                 finally
@@ -472,6 +494,14 @@ namespace CarScanner.Services.OBD
                         }
                     }
 
+                    // An ID filter set with ATCF/ATCM stays until it is cleared: ATCRA / ATAR do that; if neither
+                    // exists the only way back to the default is a full re-initialisation (ATZ).
+                    if ((receiveFilter & PhysicalFilterState.NeedsClear) != 0 &&
+                        !await TryResetReceiveFilterAsync(CancellationToken.None).ConfigureAwait(false))
+                    {
+                        _isInitialized = false;
+                    }
+
                     if (switchedProtocol)
                     {
                         try
@@ -488,15 +518,188 @@ namespace CarScanner.Services.OBD
 
                     if (_isInitialized)
                     {
-                        await RestoreGenericCanSettingsCoreAsync(
-                            CancellationToken.None).ConfigureAwait(false);
+                        try
+                        {
+                            await RestoreGenericCanSettingsCoreAsync(
+                                CancellationToken.None).ConfigureAwait(false);
+                        }
+                        catch (Exception restoreError)
+                        {
+                            // The adapter state can no longer be trusted (the restore already forced a full
+                            // re-initialisation for the next operation). This must neither throw away an answer that
+                            // was already read nor hide the real error of a read that failed.
+                            _logger.LogWarning(restoreError,
+                                "Could not restore the generic CAN settings after a physical read (answer received: {Answered}).",
+                                answerReceived);
+                        }
                     }
+
+                    _lastPhysicalReadSetupNote = DescribePhysicalSetup(rejectedSetup, receiveFilter);
                 }
             }
             finally
             {
                 _sessionGate.Release();
             }
+        }
+
+        /// <summary>
+        /// How the last physically addressed read limited the replies to the asked module and which setup commands the
+        /// adapter did not accept (empty before the first read). Evidence for comparing adapters; never used to decide
+        /// that an adapter "cannot" do something — every read tries its own setup afresh.
+        /// </summary>
+        public string LastPhysicalReadSetupNote => _lastPhysicalReadSetupNote;
+
+        private string _lastPhysicalReadSetupNote = string.Empty;
+
+        [Flags]
+        private enum PhysicalFilterState
+        {
+            None = 0,
+
+            /// <summary>The adapter itself limits the replies (ATCRA, or ATCF + ATCM).</summary>
+            Hardware = 1,
+
+            /// <summary>An ATCF/ATCM filter was set (even if only half of it was accepted) and must be cleared afterwards.</summary>
+            NeedsClear = 2,
+
+            /// <summary>No filter was set: the adapter's own Auto Receive address follows the header (standard OBD pairing).</summary>
+            AutoReceive = 4
+        }
+
+        /// <summary>
+        /// Sets one setup command that is the adapter's default anyway. Returns whether the adapter accepted it; a
+        /// refusal ('?' on a chip that does not know the command, or no usable answer) is recorded and the read goes on.
+        /// </summary>
+        private async Task<bool> TrySetupAsync(string command, List<string> rejected, CancellationToken token)
+        {
+            try
+            {
+                var response = await SendCommandInternalAsync(
+                    command, TimeSpan.FromSeconds(2), maxRetries: 1, treatNegativeStatusAsError: false, token).ConfigureAwait(false);
+                if (IsAffirmativeAtResponse(response))
+                    return true;
+
+                rejected.Add($"{command} → {SafeEvidence(response)}");
+                _logger.LogInformation("Adapter did not accept '{Command}' ('{Response}'); continuing with its default.", command, response);
+                return false;
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                rejected.Add($"{command} → {ex.GetType().Name}");
+                _logger.LogDebug(ex, "Setup command '{Command}' failed; continuing.", command);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Limits the replies to one module: ATCRA (firmware 1.3+), else ATCF + ATCM (every firmware), else nothing —
+        /// the adapter keeps its default filter and the caller filters by CAN id. The module scan uses the same ladder.
+        /// </summary>
+        private async Task<PhysicalFilterState> SetPhysicalReceiveFilterAsync(
+            int transmitCanId, int receiveCanId, bool extended29Bit, int width, List<string> rejected, CancellationToken token)
+        {
+            var receive = receiveCanId.ToString($"X{width}");
+            if (await TrySetupAsync($"ATCRA{receive}", rejected, token).ConfigureAwait(false))
+                return PhysicalFilterState.Hardware;
+
+            // The standard OBD pairing (7E0..7E7 answered on 7E8..7EF): Auto Receive is on by default and, according to the
+            // ELM327 datasheet ("AR"), chooses the receive address from the header bytes and follows them. Nothing more has
+            // to be set, no filter state is changed, so nothing has to be cleared (and no re-initialisation is forced).
+            // The app still keeps only this module's frames.
+            if (!extended29Bit && transmitCanId is >= 0x7E0 and <= 0x7E7 && receiveCanId == transmitCanId + 8)
+                return PhysicalFilterState.AutoReceive;
+
+            var mask = width == 8 ? "1FFFFFFF" : "7FF";
+            if (!await TrySetupAsync($"ATCF{receive}", rejected, token).ConfigureAwait(false))
+                return PhysicalFilterState.None;
+
+            return await TrySetupAsync($"ATCM{mask}", rejected, token).ConfigureAwait(false)
+                ? PhysicalFilterState.Hardware | PhysicalFilterState.NeedsClear
+                : PhysicalFilterState.NeedsClear;   // half a filter is set: it must be cleared, and it filters nothing reliably
+        }
+
+        private static string DescribePhysicalSetup(IReadOnlyList<string> rejected, PhysicalFilterState filter)
+        {
+            var filterText = (filter & PhysicalFilterState.Hardware) == 0
+                ? (filter & PhysicalFilterState.AutoReceive) != 0
+                    ? "adapter's automatic receive address (frames also filtered in the app)"
+                    : "no hardware receive filter (frames filtered in the app)"
+                : (filter & PhysicalFilterState.NeedsClear) != 0 ? "ID filter via ATCF/ATCM" : "ATCRA";
+            return rejected.Count == 0
+                ? $"setup: all accepted; filter: {filterText}"
+                : $"setup: not accepted: {string.Join(", ", rejected)}; filter: {filterText}";
+        }
+
+        /// <summary>
+        /// Keeps only the frames sent by <paramref name="canId"/> (the adapter output of ATH1, spaced or compact).
+        /// Status words are kept; frames that all came from other modules become "NO DATA", like a hardware filter.
+        /// </summary>
+        internal static string KeepOnlyFramesFrom(string response, int canId, bool extended29Bit)
+        {
+            if (string.IsNullOrWhiteSpace(response))
+                return response;
+
+            var width = extended29Bit ? 8 : 3;
+            var id = canId.ToString(extended29Bit ? "X8" : "X3", System.Globalization.CultureInfo.InvariantCulture);
+            var kept = new List<string>();
+            var current = new List<string>();
+            var currentIsOwn = false;
+            var frames = 0;
+            var ownFrames = 0;
+
+            void Flush()
+            {
+                if (current.Count == 0)
+                    return;
+
+                frames++;
+                if (currentIsOwn)
+                {
+                    ownFrames++;
+                    kept.AddRange(current);
+                }
+
+                current.Clear();
+            }
+
+            foreach (var token in response.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var upper = token.ToUpperInvariant();
+                var isHex = upper.All(Uri.IsHexDigit);
+
+                if (isHex && upper.Length == width)
+                {
+                    // Spaced output: a bare CAN id starts a frame, its data bytes follow as two-digit tokens.
+                    Flush();
+                    current.Add(token);
+                    currentIsOwn = string.Equals(upper, id, StringComparison.Ordinal);
+                }
+                else if (isHex && upper.Length == 2 && current.Count > 0)
+                {
+                    current.Add(token);
+                }
+                else if (isHex && upper.Length > width)
+                {
+                    // Compact output (ATS0): id and data in one token.
+                    Flush();
+                    current.Add(token);
+                    currentIsOwn = upper.StartsWith(id, StringComparison.Ordinal);
+                    Flush();
+                }
+                else
+                {
+                    Flush();
+                    kept.Add(token);
+                }
+            }
+
+            Flush();
+            return frames > 0 && ownFrames == 0 ? "NO DATA" : string.Join(' ', kept);
         }
 
         /// <summary>
@@ -1654,7 +1857,10 @@ namespace CarScanner.Services.OBD
             if (!IsAffirmativeAtResponse(response))
                 throw new Elm327CommandException(
                     $"Adapter does not support required command '{command}'.",
-                    response);
+                    response)
+                {
+                    UnsupportedCommand = command
+                };
         }
 
         /// <summary>Sends an AT command and reports whether the adapter accepted it. Never throws except on cancellation.</summary>
@@ -1702,7 +1908,9 @@ namespace CarScanner.Services.OBD
                 await RequireOkInternalAsync("ATCAF1", token).ConfigureAwait(false);
                 await TryOkInternalAsync("ATCFC1", token).ConfigureAwait(false);
                 await TryOkInternalAsync("ATD0", token).ConfigureAwait(false);
-                await RequireOkInternalAsync("ATS1", token).ConfigureAwait(false);
+                // Spaces on is the adapter's default; ATS only exists from firmware 1.3 on, and a chip that rejects
+                // ATS1 never had its spaces changed (it would have rejected ATS0 too), so a refusal here is harmless.
+                await TryOkInternalAsync("ATS1", token).ConfigureAwait(false);
 
                 var functionalHeader = Is29BitCanProtocol(_currentProtocol)
                     ? "18DB33F1"

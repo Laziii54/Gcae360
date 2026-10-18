@@ -70,6 +70,10 @@ public partial class FuelViewModel : BaseViewModel
     [ObservableProperty] private string tankToTankSummary = "Tank-to-Tank ხარჯისთვის საჭიროა ერთი VIN-ის ორი „სრული ავზი“ ჩანაწერი.";
     [ObservableProperty] private string tripHistorySummary = "დასრულებული მოგზაურობები ჯერ არ არის.";
     [ObservableProperty] private bool showTripHistory;
+
+    /// <summary>Why the trip may stop when the screen turns off (the phone refused the background service, iOS has no location permission). Empty when all is well.</summary>
+    [ObservableProperty] private string backgroundNote = "";
+    [ObservableProperty] private bool hasBackgroundNote;
     public string TripHistoryToggleText => ShowTripHistory ? L("დამალვა", "Hide") : L("ისტორიის ნახვა ›", "Show history ›");
     /// <summary>The expanded list only renders once there is something to show it for.</summary>
     public bool ShowTripHistoryList => ShowTripHistory && HasTripHistory;
@@ -109,9 +113,17 @@ public partial class FuelViewModel : BaseViewModel
         Status = _localization.IsEnglish ? "Stopped" : "გაჩერებულია";
         InitEnergy();
         UpdateFuelKind();
+
+        // A refused background service must not be silent, and swiping the app away ends the background recording.
+        // This view model lives as long as the app does, so the static events need no unsubscribing.
+        TripKeepAlive.ProblemChanged += (_, _) => MainThread.BeginInvokeOnMainThread(RefreshBackgroundNote);
+        TripKeepAlive.AppClosed += OnAppClosed;
     }
 
     private bool _startInProgress;
+    private DateTime _lastDataAtUtc = DateTime.UtcNow;
+    private static readonly TimeSpan StaleDataAfter = TimeSpan.FromSeconds(25);
+    private const string BatteryHintShownKey = "trip_battery_hint_shown";
 
     [RelayCommand]
     private async Task Start()
@@ -121,12 +133,25 @@ public partial class FuelViewModel : BaseViewModel
             return;
         _startInProgress = true;
         var startedTripHere = false;
+        var keepAliveStartedHere = false;
+        var tripRunning = false;
         try
         {
         if (!await ProGate.EnsureOrOpenAsync(_pro))
             return;
 
         IsTripSummaryVisible = false;
+
+        // The background service goes up first, while this tap still counts as the app being in use: Android refuses
+        // to start a foreground service once the app is no longer visible, and the adapter handshake below can take
+        // several seconds (the driver may already have locked the phone by then). Only with a connected adapter, so
+        // nothing is asked or shown for a start that cannot happen; every way out below that is not a running trip
+        // takes it down again.
+        if (_engine.IsAdapterConnected && !TripKeepAlive.IsActive)
+        {
+            StartKeepAlive();
+            keepAliveStartedHere = true;
+        }
 
         // Polling comes first: nothing is subscribed, flagged or started until the adapter really answers, so a
         // missing connection leaves no half-started trip behind (the crash report: Start → StartAsync → InitializeAsync).
@@ -160,11 +185,15 @@ public partial class FuelViewModel : BaseViewModel
         BeginTripTracking();
         HasInterruptedTrip = false;
         Status = RunningStatus();
+        _lastDataAtUtc = DateTime.UtcNow;
 
-        // Keep recording when the app goes to the background or the screen turns off.
-        TripKeepAlive.Start(
-            CarScanner.Services.Localization.LocalizationService.T(L("OBD360 — მოგზაურობა იწერება", "OBD360 — trip is recording")),
-            CarScanner.Services.Localization.LocalizationService.T(L("შეეხე აპის გასახსნელად", "Tap to open the app")));
+        // Keep recording when the app goes to the background or the screen turns off. Normally already up (see
+        // above); this only covers a start where the adapter link appeared while the handshake was under way.
+        if (!TripKeepAlive.IsActive)
+            StartKeepAlive();
+        tripRunning = true;
+        RefreshBackgroundNote();
+        _ = OfferBatterySettingsOnceAsync();
         }
         catch
         {
@@ -187,9 +216,90 @@ public partial class FuelViewModel : BaseViewModel
         }
         finally
         {
+            // A start that did not become a running trip must not leave the "trip is recording" notification behind.
+            if (keepAliveStartedHere && !tripRunning)
+            {
+                TripKeepAlive.Stop();
+                RefreshBackgroundNote();
+            }
+
             _startInProgress = false;
         }
     }
+
+    private void StartKeepAlive() => TripKeepAlive.Start(
+        CarScanner.Services.Localization.LocalizationService.T(L("OBD360 — მოგზაურობა იწერება", "OBD360 — trip is recording")),
+        CarScanner.Services.Localization.LocalizationService.T(L("შეეხე აპის გასახსნელად", "Tap to open the app")));
+
+    /// <summary>
+    /// Shows (or hides) the line under the status that says the trip may stop with the screen off. It is the answer to
+    /// "why did my trip stop in my pocket": the phone refused the background service, or iOS has no location permission.
+    /// </summary>
+    private void RefreshBackgroundNote()
+    {
+        var problem = TripKeepAlive.IsActive ? TripKeepAlive.Problem : TripKeepAliveProblem.None;
+        BackgroundNote = problem switch
+        {
+            TripKeepAliveProblem.LocationNotAllowed => L(
+                "ეკრანის გამორთვისას ჩაწერა შეწყდება: ტელეფონის პარამეტრებში ჩართე მდებარეობა „აპის გამოყენებისას“.",
+                "Recording will stop when the screen turns off: allow Location \"While Using the App\" in the phone's settings."),
+            TripKeepAliveProblem.Unavailable => L(
+                "ფონური ჩაწერა ვერ ჩაირთო. დატოვე აპი გახსნილი და ეკრანი ჩართული, თორემ მოგზაურობა შეიძლება შეწყდეს.",
+                "Background recording could not start. Keep the app open and the screen on, or the trip may stop."),
+            _ => string.Empty
+        };
+        HasBackgroundNote = BackgroundNote.Length > 0;
+    }
+
+    /// <summary>
+    /// Android only, once: some phones stop background apps for battery saving whatever the app does, and the only fix
+    /// is the user's own setting. Shown after a trip has started, never twice, and only while the app is still
+    /// optimised.
+    /// </summary>
+    private async Task OfferBatterySettingsOnceAsync()
+    {
+        try
+        {
+            if (!TripKeepAlive.BatteryOptimizationMayStopTrips || Preferences.Default.Get(BatteryHintShownKey, false))
+                return;
+
+            if (Shell.Current is not { } shell)
+                return;
+
+            Preferences.Default.Set(BatteryHintShownKey, true);
+            var open = await shell.DisplayAlertLocalizedAsync(
+                L("მოგზაურობა ეკრანის გამორთვისას", "Recording with the screen off"),
+                L("ზოგიერთი ტელეფონი ბატარეის დასაზოგად ფონურ აპებს თავად აჩერებს. რომ მოგზაურობა ეკრანის გამორთვისასაც ჩაიწეროს, პარამეტრებში OBD360-ს ბატარეის შეზღუდვა მოუხსენი („შეუზღუდავი“).",
+                  "Some phones stop background apps to save battery. To keep the trip recording with the screen off, set OBD360 to \"Unrestricted\" (no battery optimization) in the settings."),
+                L("პარამეტრების გახსნა", "Open settings"),
+                L("მოგვიანებით", "Later"));
+            if (open)
+                TripKeepAlive.OpenBatterySettings();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Battery hint failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>The user swiped the app away: stop recording in the background, but keep the trip as a paused one.</summary>
+    private void OnAppClosed(object? sender, EventArgs e) =>
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            try
+            {
+                if (_tripStartedAt is null || !_tripActive)
+                    return;
+
+                // Save what was recorded before anything else: the system may end the process right after the swipe.
+                WriteCheckpoint();
+                await Pause();
+            }
+            catch (Exception ex)
+            {
+                CarScanner.Services.CommandErrors.Report(ex, "FuelViewModel.OnAppClosed");
+            }
+        });
 
     [RelayCommand]
     private async Task Pause()
@@ -204,6 +314,7 @@ public partial class FuelViewModel : BaseViewModel
         _engine.SetFuelAnalyticsEnabled(false);
         EndTripTracking(deleteCheckpoint: false);
         Status = _localization.IsEnglish ? "Paused" : "დაპაუზებულია";
+        RefreshBackgroundNote();
         }
         catch (Exception commandException)
         {
@@ -229,6 +340,7 @@ public partial class FuelViewModel : BaseViewModel
         Status = _localization.IsEnglish
             ? "Stopped"
             : saveResult ?? "გაჩერებულია";
+        RefreshBackgroundNote();
         }
         catch (Exception commandException)
         {
@@ -319,6 +431,7 @@ public partial class FuelViewModel : BaseViewModel
     {
         // The engine decides what is fresh enough to combine; everything below only presents its results.
         var now = DateTime.UtcNow;
+        _lastDataAtUtc = now;
         FuelSignalMapper.Apply(_fuel.Signals, data, now);
         _fuel.Tick(now);
         SyncFromEngine(now);

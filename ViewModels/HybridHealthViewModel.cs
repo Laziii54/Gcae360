@@ -126,13 +126,20 @@ public partial class HybridHealthViewModel : BaseViewModel
     // ---------------------------------------------------------------- texts
 
     public string PageTitle => L("ჰიბრიდის ბატარეა", "Hybrid battery");
-    public string ScanButtonText => L("შემოწმება", "Check");
+    public string ScanButtonText => L("შემოწმება", "Check") + ProGate.Suffix;
     public string ScoreCaption => L("ბატარეის მდგომარეობა", "Battery condition");
     public string LoadTitle => L("ტესტი დატვირთვით · 30 წმ", "Load test · 30 s");
     public string LoadIntro => L(
         "სუსტი ბლოკი ყველაზე კარგად დატვირთვისას ჩანს. ტესტს რთავს მგზავრი, მძღოლი კი 2–3-ჯერ მკვეთრად აჩქარებს უსაფრთხო გზაზე. მძღოლი ტელეფონს არ ეხება.",
         "A weak block shows best under load. A passenger starts the test while the driver accelerates hard 2–3 times on a safe road. The driver does not touch the phone.");
-    public string LoadStartText => L("ტესტის დაწყება", "Start test");
+    public string LoadStartText => L("ტესტის დაწყება", "Start test") + ProGate.Suffix;
+
+    /// <summary>The page is open for everyone; the check and the load test are PRO. Re-reads the "PRO" mark (e.g. after the PRO page).</summary>
+    public void RefreshProState()
+    {
+        OnPropertyChanged(nameof(ScanButtonText));
+        OnPropertyChanged(nameof(LoadStartText));
+    }
     public string LoadStopText => L("დასრულება", "Finish");
     public string DetailsCaption => L("დეტალები", "Details");
     public string TemperatureTitle => L("ბატარეის ტემპერატურა", "Battery temperature");
@@ -255,6 +262,8 @@ public partial class HybridHealthViewModel : BaseViewModel
         try
         {
         if (IsBusy || IsLoadTesting) return;
+        // The battery check is PRO: without PRO the PRO page opens instead.
+        if (!await ProGate.EnsureOrOpenAsync()) return;
         _scanCancellation?.Cancel();
         _scanCancellation?.Dispose();
         _scanCancellation = new CancellationTokenSource();
@@ -315,6 +324,7 @@ public partial class HybridHealthViewModel : BaseViewModel
         try
         {
         if (!CanLoadTest || _result?.PackKind is not { } kind) return;
+        if (!await ProGate.EnsureOrOpenAsync()) return;
         var lithium = HvPackProtocol.IsCellLevel(kind);
         _loadStop?.Dispose();
         _loadStop = new CancellationTokenSource();

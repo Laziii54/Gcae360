@@ -201,7 +201,7 @@ ON CONFLICT(AccountId) DO UPDATE SET Email=excluded.Email, LastAt=excluded.LastA
         // The only script on admin pages is AdminPages.ConfirmScript (static,
         // no user data); it is allowed by its hash, inline handlers are not.
         response.Headers["Content-Security-Policy"] =
-            "default-src 'none'; style-src 'unsafe-inline'; script-src '" + ConfirmScriptHash + "'; img-src data:; media-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
+            "default-src 'none'; style-src 'unsafe-inline'; script-src '" + ConfirmScriptHash + "'; img-src 'self' data:; media-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
     }
 
     private static readonly string ConfirmScriptHash =

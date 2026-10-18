@@ -15,6 +15,8 @@ public sealed partial class LocalizationService
         {
             ["მონიტორების სტატუსი შეცდომების წაშლის შემდეგ"] = "Monitor status since DTCs cleared",
             ["ძაბვა · დენი"] = "Voltage · current",
+            ["ჰიბრიდის ბატარეა"] = "Hybrid battery",
+            ["უჯრედები, SOH, დატვირთვის ტესტი"] = "Cells, SOH, load test",
             ["CAN მოსმენა (მხოლოდ კითხვა)"] = "CAN listening (read-only)",
             ["მანქანის საკუთარი შეტყობინებები, opendbc-სთან შედარებით"] = "The car's own messages, compared with opendbc",
             ["Freeze Frame-ის შეცდომის კოდი"] = "Freeze-frame DTC",

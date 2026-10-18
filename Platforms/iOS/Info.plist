@@ -55,6 +55,9 @@
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>Finished acceleration videos are saved to the photo library when the user requests it.</string>
 
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>You can choose a photo from your library as your profile picture on the public ranking. Only the photo you choose is read.</string>
+
 		<key>NSLocalNetworkUsageDescription</key>
 		<string>The local network is used to connect directly to a Wi-Fi OBD-II adapter.</string>
 

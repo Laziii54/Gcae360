@@ -37,6 +37,12 @@ PRIMARY KEY(AccountId, SubmissionId));
 CREATE INDEX IF NOT EXISTS IX_AccelerationLeaderboard_Time ON AccelerationLeaderboard(DurationSeconds);
 CREATE INDEX IF NOT EXISTS IX_AccelerationLeaderboard_Finished ON AccelerationLeaderboard(FinishedAt);";
         command.ExecuteNonQuery();
+        // The ranking joins the profile pictures table, so it must exist even before the avatar store is first used.
+        using (var avatarSchema = connection.CreateCommand())
+        {
+            avatarSchema.CommandText = AvatarStore.SchemaSql;
+            avatarSchema.ExecuteNonQuery();
+        }
         EnsureColumn(connection, "Status", "TEXT NOT NULL DEFAULT 'Pending'");
         EnsureColumn(connection, "ReviewedAt", "TEXT NULL");
         EnsureColumn(connection, "ReviewedBy", "TEXT NULL");
@@ -473,15 +479,17 @@ WHERE AccountId=$a;";
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(token);
         await using var command = connection.CreateCommand();
-        command.CommandText = @"SELECT SubmissionId,UserName,VehicleModel,DurationSeconds,FinishedAt,HasVerifiedVideo,IsDemo,MaxSpeedKph,Status
-FROM AccelerationLeaderboard WHERE Status IN ('Approved','Verified') AND TestId=$test AND ($demo=1 OR IsDemo=0) ORDER BY DurationSeconds ASC,FinishedAt ASC LIMIT 100";
+        command.CommandText = @"SELECT l.SubmissionId,l.UserName,l.VehicleModel,l.DurationSeconds,l.FinishedAt,l.HasVerifiedVideo,l.IsDemo,l.MaxSpeedKph,l.Status,a.PublicId
+FROM AccelerationLeaderboard l LEFT JOIN AccountAvatars a ON a.AccountId=l.AccountId AND a.Status='Approved'
+WHERE l.Status IN ('Approved','Verified') AND l.TestId=$test AND ($demo=1 OR l.IsDemo=0) ORDER BY l.DurationSeconds ASC,l.FinishedAt ASC LIMIT 100";
         command.Parameters.AddWithValue("$demo", _showDemo ? 1 : 0);
         command.Parameters.AddWithValue("$test", NormalizeTest(testId));
         await using var reader = await command.ExecuteReaderAsync(token);
         while (await reader.ReadAsync(token))
             result.Add(new(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetDouble(3),
                 DateTime.Parse(reader.GetString(4), null, System.Globalization.DateTimeStyles.RoundtripKind),
-                reader.GetInt32(5) != 0, reader.GetInt32(6) != 0, reader.GetInt32(7), reader.GetString(8)));
+                reader.GetInt32(5) != 0, reader.GetInt32(6) != 0, reader.GetInt32(7), reader.GetString(8),
+                reader.IsDBNull(9) ? null : "/api/avatars/" + reader.GetString(9)));
         return result;
     }
 
@@ -636,7 +644,7 @@ public sealed record AccelerationLeaderboardRequest(
 
 public sealed record AccelerationLeaderboardItem(
     string SubmissionId, string UserName, string VehicleModel, double DurationSeconds,
-    DateTime FinishedAt, bool HasVerifiedVideo, bool IsDemo, int MaxSpeedKph = 0, string Status = "Approved");
+    DateTime FinishedAt, bool HasVerifiedVideo, bool IsDemo, int MaxSpeedKph = 0, string Status = "Approved", string? AvatarUrl = null);
 
 public sealed record AccelerationLeaderboardAdminItem(
     string SubmissionId, string AccountId, string UserName, string VehicleModel, double DurationSeconds,

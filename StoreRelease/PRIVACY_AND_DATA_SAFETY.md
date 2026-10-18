@@ -18,6 +18,7 @@ authentication, crash reporting or another SDK is added.
 | Website card payment (BOG/TBC) | Purchases | Yes | No | Card entered on the bank page; backend keeps order ID, product, amount, status, bank payment ID |
 | QR report | App functionality | No (public link) | No | Stored 30 days: make/model/year, last 6 VIN characters, scan summary, codes, readiness, owner-entered service history |
 | Acceleration leaderboard result (0–100, 0–60 mph, ¼ mile) | App functionality | Yes | No | Public: display name, vehicle model, time; VIN stored only as a one-way hash |
+| Profile photo (optional) | App functionality | Yes | Shared with Google (Gemini) for an automatic offensive-content check before it is shown | Public on the ranking next to the result; small JPEG (256 px) chosen by the user from the gallery; deleted with the account or on request in the app |
 | Precise location (GPS) during a measured run | App functionality, fraud prevention | Yes | No | Optional; foreground only while measuring. Sent only when a result is published; coordinates kept only for results under review, deleted 30 days after the review |
 | Review video of a run | App functionality, fraud prevention | Yes | No | Only for top-place / unusual results, uploaded by the user; seen only by the administrator; deleted 30 days after the review |
 | Service history, trips, reminders | App functionality | No | No | Stored only on the device; reminders are local notifications |

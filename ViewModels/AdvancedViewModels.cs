@@ -2747,9 +2747,10 @@ public partial class ServiceViewModel : BaseViewModel
         ResetFullButtonText = L("სრული განახლება (100%)", "Reset full length (100%)");
         ResetHalfButtonText = L("ნახევარი (50%)", "Reset 1/2 length (50%)");
         OilResetHistoryTitleText = L("განულების ისტორია:", "Reset history:");
+        // The dashboard steps for this car are on the Oil item page (Reminders → Oil), so the text points there.
         OilResetUnavailableText = L(
-            "ამ მანქანაზე აპიდან განულება ჯერ მიუწვდომელია — გამოიყენე ქვემოთ მოცემული ინსტრუქცია.",
-            "In-app reset is not available for this car yet — use the guide below.");
+            "ამ მანქანაზე აპიდან განულება ჯერ მიუწვდომელია. განულე დაფიდან ხელით (ნაბიჯები: „შეხსენებებში“ დააჭირე „ზეთს“), მერე განაახლე გვერდი.",
+            "In-app reset is not available for this car yet. Reset it by hand on the dashboard (steps: tap Oil under Reminders), then refresh this page.");
         if (HasOilResetCard)
             UpdateOilCompatibilityText();
 
@@ -3359,12 +3360,19 @@ public partial class ServiceViewModel : BaseViewModel
         // Why no value was read: reader status + the ECU's raw reply to the
         // oil-life request (if one was sent). Shown on the page.
         var probe = _serviceDataReader.LastOilLifeProbeNote;
+        // "ECU reply" only when the ECU was really asked: when the adapter refused its addressing commands (or the
+        // link dropped) the car never answered anything, and calling that an ECU reply would blame the car.
+        var probeLine = string.IsNullOrWhiteSpace(probe)
+            ? string.Empty
+            : _serviceDataReader.LastOilLifeProbeAdapterSide
+                ? L($"ადაპტერი: {probe}", $"Adapter: {probe}")
+                : L($"ECU-ს პასუხი: {probe}", $"ECU reply: {probe}");
         _lastServiceReadDetail = result.HasValues
             ? string.Empty
             : string.Join("\n", new[]
                 {
                     $"{result.Status}: {result.Detail}".Trim(' ', ':'),
-                    string.IsNullOrWhiteSpace(probe) ? string.Empty : L($"ECU-ს პასუხი: {probe}", $"ECU reply: {probe}")
+                    probeLine
                 }.Where(line => !string.IsNullOrWhiteSpace(line)));
         RebuildServiceValuePresentation();
     }
@@ -5326,11 +5334,12 @@ public partial class ModuleScanViewModel : BaseViewModel
     }
 
     [RelayCommand]
-    private async Task OpenCoding()
+    private void OpenCoding()
     {
         try
         {
-            await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.CodingPage));
+            // Coding is switched off for users for now (same message as the Home tile).
+            CarScanner.Services.Reports.ReportToast.Show(_localization.IsEnglish ? "Coming soon" : "მალე დაემატება");
         }
         catch (Exception commandException)
         {

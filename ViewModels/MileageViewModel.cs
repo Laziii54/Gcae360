@@ -139,7 +139,7 @@ public class MileageViewModel : BaseViewModel
     public string AttemptsCaption => L("წყაროების სტატუსი", "Source status");
     public string DashboardCaption => L("შეადარე დაფას", "Compare with the dashboard");
     public string DashboardPlaceholder => L("დაფაზე ნაჩვენები გარბენი", "Distance shown on the dashboard");
-    public string CheckButtonText => (HasResult ? L("თავიდან წაკითხვა", "Read again") : L("მაჩვენებლების წაკითხვა", "Read mileage values")) + ProGate.Suffix;
+    public string CheckButtonText => (HasResult ? L("თავიდან წაკითხვა", "Read again") : L("მაჩვენებლების წაკითხვა", "Read mileage values"));
     public string LogToggleText => ShowLog ? L("ლოგის დამალვა", "Hide technical log") : L("ტექნიკური ლოგი ›", "Technical log ›");
 
     public IAsyncRelayCommand CheckCommand { get; }
@@ -240,10 +240,7 @@ public class MileageViewModel : BaseViewModel
         if (IsBusy)
             return;
 
-        // The page is open for everyone; the check itself is PRO.
-        if (!await ProGate.EnsureOrOpenAsync(_pro))
-            return;
-
+        // The mileage check is free for everyone (no PRO needed).
         try
         {
             IsBusy = true;
