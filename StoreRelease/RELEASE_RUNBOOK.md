@@ -48,7 +48,7 @@ Back up first (Azure portal → App Service → Advanced Tools/Kudu, or download
 ```bash
 cd StoreRelease/output
 powershell Compress-Archive -Path backend/* -DestinationPath backend.zip -Force
-az webapp deploy --resource-group GeorgianCarScannerRG --name georgian-car-scanner-api-cyawhhdygecng6bt --src-path backend.zip --type zip
+az webapp deploy --resource-group GeorgianCarScannerRG --name georgian-car-scanner-api --src-path backend.zip --type zip
 ```
 Keep the App Service at one instance (SQLite). Application settings are not changed by this command.
 
