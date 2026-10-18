@@ -21,6 +21,7 @@ public partial class FuelViewModel
     private string? _evSourceVin;
     private volatile bool _evResolving;
     private volatile bool _evResolveFailed;
+    private volatile bool _evAdapterLimited;
     private CancellationTokenSource? _evCts;
     private double? _latestSpeedKph;
     private double? _socStart;
@@ -285,6 +286,7 @@ public partial class FuelViewModel
             {
                 _evSource = null;
                 _evResolveFailed = false;
+                _evAdapterLimited = false;
                 _evResolving = true;
                 MainThread.BeginInvokeOnMainThread(RefreshPresentation);
 
@@ -293,6 +295,7 @@ public partial class FuelViewModel
                 _evSourceVin = vin;
                 _evResolving = false;
                 _evResolveFailed = source is null;
+                _evAdapterLimited = source is null && _evReader.AdapterLimit is not null;
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
                     HasEnergyLog = true;
@@ -550,6 +553,20 @@ public partial class FuelViewModel
                     ? string.Empty
                     : "\n" + L("დენის მიმართულება ჯერ დგინდება: ერთხელ აჩქარდი.", "Current direction is still being learned: accelerate once."));
             EnergySourceColor = RegenColor;
+        }
+        else if (_evResolveFailed && _evAdapterLimited)
+        {
+            // The adapter, not necessarily the car: another adapter may read it, so this is not "no data".
+            EnergySourceTitle = L("ადაპტერმა ბატარეის მოდული ვერ წაიკითხა", "The adapter could not read the battery module");
+            // One sentence per line so each line has its own translation row; the technical note stays as it is.
+            EnergySourceText = L(
+                "ეს არ ნიშნავს, რომ მანქანას ეს მონაცემი არ აქვს: ადაპტერმა ვერ შეძლო ბატარეის მოდულთან მიმართვა.\n" +
+                "სცადე სრული ELM327/STN ადაპტერი ან გახსენი ადაპტერის ცენტრი.\n" + (_evReader.AdapterLimit ?? string.Empty) +
+                (_mode == EnergyMode.Electric ? "\nქვემოთ შეიყვანე ბატარეის ტევადობა, ხარჯი დამუხტვის %-ით მიახლოებით დაითვლება." : string.Empty),
+                "This does not mean the car lacks this data: the adapter could not address the battery module.\n" +
+                "Try a full ELM327/STN adapter or open Adapter Center.\n" + (_evReader.AdapterLimit ?? string.Empty) +
+                (_mode == EnergyMode.Electric ? "\nEnter the battery capacity below to estimate use from the state of charge." : string.Empty));
+            EnergySourceColor = WarnColor;
         }
         else if (_evResolveFailed)
         {

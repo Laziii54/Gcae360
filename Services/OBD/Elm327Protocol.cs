@@ -133,6 +133,10 @@ namespace CarScanner.Services.OBD
         private readonly SemaphoreSlim _sessionGate = new(1, 1);
         private readonly SemaphoreSlim _commandGate = new(1, 1);
 
+        /// <summary>Backs the polling off when the adapter shows strain; see <see cref="AdapterLoadGovernor"/>.</summary>
+        public AdapterLoadGovernor Load { get; } = new();
+        private long _lastDataCommandEndTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+
         private volatile bool _isInitialized;
         private volatile bool _disposed;
         private ObdProtocol _currentProtocol = ObdProtocol.Unknown;
@@ -159,6 +163,8 @@ namespace CarScanner.Services.OBD
             _bluetooth = bluetooth ?? throw new ArgumentNullException(nameof(bluetooth));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _bluetooth.ConnectionChanged += OnConnectionChanged;
+            Load.LevelChanged += (from, to, reason) =>
+                LinkEventLog.Add($"Load: {from} -> {to} ({reason})");
         }
 
         #endregion
@@ -171,6 +177,9 @@ namespace CarScanner.Services.OBD
             await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
+                // A fresh session starts with full polling; the recovery path calls InitializeCoreAsync directly and keeps its level.
+                if (!_isInitialized)
+                    Load.Reset();
                 await InitializeCoreAsync(cancellationToken).ConfigureAwait(false);
             }
             finally
@@ -2469,12 +2478,15 @@ namespace CarScanner.Services.OBD
             CancellationToken cancellationToken)
         {
             var countable = IsDataRequest(command.Trim());
+            var started = System.Diagnostics.Stopwatch.GetTimestamp();
             try
             {
                 var answer = await SendCommandCoreAsync(command, timeout, maxRetries, treatNegativeStatusAsError, cancellationToken).ConfigureAwait(false);
                 if (countable)
                 {
-                    if (IsAdapterLevelFailure(answer))
+                    var failed = IsAdapterLevelFailure(answer);
+                    Load.Record(System.Diagnostics.Stopwatch.GetElapsedTime(started), ok: !failed);
+                    if (failed)
                         Interlocked.Increment(ref _failureStreak);
                     else if (!answer.Contains("NO DATA", StringComparison.OrdinalIgnoreCase))
                         Interlocked.Exchange(ref _failureStreak, 0);   // a real answer (positive or an ECU refusal): the adapter works
@@ -2486,11 +2498,15 @@ namespace CarScanner.Services.OBD
             {
                 LinkEventLog.Add($"Timeout: {command.Trim()} (streak {Volatile.Read(ref _failureStreak) + (IsDataRequest(command.Trim()) ? 1 : 0)})");
                 if (countable)
+                {
+                    Load.Record(System.Diagnostics.Stopwatch.GetElapsedTime(started), ok: false);
                     Interlocked.Increment(ref _failureStreak);
+                }
                 throw;
             }
             catch (Elm327CommandException ex) when (countable && IsAdapterLevelFailure(ex.RawResponse))
             {
+                Load.Record(System.Diagnostics.Stopwatch.GetElapsedTime(started), ok: false);
                 Interlocked.Increment(ref _failureStreak);
                 throw;
             }
@@ -2546,6 +2562,15 @@ namespace CarScanner.Services.OBD
                 try
                 {
                     string rawResponse;
+
+                    // A strained adapter gets a quiet moment between data requests (init and reset commands are never delayed).
+                    var gap = Load.MinimumGap;
+                    if (gap > TimeSpan.Zero && IsDataRequest(command.Trim()))
+                    {
+                        var quiet = System.Diagnostics.Stopwatch.GetElapsedTime(Volatile.Read(ref _lastDataCommandEndTicks));
+                        if (quiet < gap)
+                            await Task.Delay(gap - quiet, cancellationToken).ConfigureAwait(false);
+                    }
 
                     try
                     {
@@ -2660,6 +2685,7 @@ namespace CarScanner.Services.OBD
                 }
                 finally
                 {
+                    Volatile.Write(ref _lastDataCommandEndTicks, System.Diagnostics.Stopwatch.GetTimestamp());
                     _commandGate.Release();
                 }
             }

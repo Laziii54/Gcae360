@@ -100,8 +100,25 @@ public sealed class EvEnergyReader
     // Resolve
     // ------------------------------------------------------------------
 
+    private AdapterFailure? _adapterFailure;
+
+    /// <summary>
+    /// Set when, while looking for the battery data, a request failed on the ADAPTER's side (it refused a command it needs
+    /// to address the module, or the link dropped). Then "no battery data found" would blame the car for what may be the
+    /// adapter; the page says "the adapter could not read it" instead. Reset on every resolve; never remembered.
+    /// </summary>
+    public string? AdapterLimit => _adapterFailure?.Text;
+
+    private void NoteAdapterFailure(Exception exception)
+    {
+        var failure = AdapterReadFailure.Classify(exception);
+        if (failure.IsAdapterSide)
+            _adapterFailure ??= failure;
+    }
+
     public async Task<EvBatterySource?> ResolveAsync(VehicleInfo? vehicle, CancellationToken token)
     {
+        _adapterFailure = null;
         lock (_logGate)
             _log.Clear();
 
@@ -160,6 +177,7 @@ public sealed class EvEnergyReader
             }
             catch (Exception ex)
             {
+                NoteAdapterFailure(ex);
                 Trace($"{Describe(request)}: {ex.Message}");
             }
 
@@ -482,8 +500,9 @@ public sealed class EvEnergyReader
         {
             throw;
         }
-        catch
+        catch (Exception ex)
         {
+            NoteAdapterFailure(ex);
             return null;
         }
     }

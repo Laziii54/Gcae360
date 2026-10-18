@@ -35,6 +35,9 @@ public sealed class OBDService
 
     public bool IsInitialized => _protocol.IsInitialized;
 
+    /// <summary>How hard the live polling may push the adapter right now (backs off when the adapter shows strain).</summary>
+    public AdapterLoadGovernor Load => _protocol.Load;
+
     /// <summary>The transport link (Bluetooth or Wi-Fi) is up. Not the same as an initialised adapter.</summary>
     public bool IsAdapterConnected => _bluetooth.IsConnected;
     public ObdProtocol CurrentProtocol => _protocol.CurrentProtocol;
@@ -310,7 +313,7 @@ public sealed class OBDService
         var values = new List<SensorValue>();
         var requested = pids
             .Distinct()
-            .Take(9)
+            .Take(Load.MaxExtraReadings)
             .Where(_supported.ContainsKey)
             .Select(pid => _supported[pid])
             .ToArray();

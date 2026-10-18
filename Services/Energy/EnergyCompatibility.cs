@@ -50,6 +50,8 @@ public enum EnergyReason
     SpeedMissing,
     RpmMissing,
     NoBatterySource,
+    /// <summary>The adapter refused or lost the commands needed to address the battery module: says nothing about the car.</summary>
+    AdapterCouldNotRead,
     BatteryCurrentSource,
     SocWithoutCapacity,
     SocWithCapacity,
@@ -67,7 +69,8 @@ public sealed record EnergyFacts(
     bool BatteryCurrentSource,
     bool StateOfChargeSource,
     bool BatteryCapacityKnown,
-    bool LambdaPidAdvertised = false);
+    bool LambdaPidAdvertised = false,
+    bool AdapterLimited = false);
 
 /// <summary>
 /// Decides, per calculation, whether the data to do it exists for this car. It looks at the PIDs the ECU advertises and at
@@ -158,8 +161,8 @@ public static class EnergyCompatibility
         else
         {
             Add(EnergyMetric.StateOfCharge,
-                facts.StateOfChargeSource || Has(PidBatteryCharge) == true ? EnergySupport.DirectlySupported : EnergySupport.Unsupported,
-                facts.StateOfChargeSource || Has(PidBatteryCharge) == true ? EnergyReason.None : EnergyReason.NoBatterySource);
+                facts.StateOfChargeSource || Has(PidBatteryCharge) == true ? EnergySupport.DirectlySupported : facts.AdapterLimited ? EnergySupport.InsufficientData : EnergySupport.Unsupported,
+                facts.StateOfChargeSource || Has(PidBatteryCharge) == true ? EnergyReason.None : facts.AdapterLimited ? EnergyReason.AdapterCouldNotRead : EnergyReason.NoBatterySource);
 
             if (facts.BatteryCurrentSource)
             {
@@ -169,15 +172,20 @@ public static class EnergyCompatibility
             }
             else
             {
-                Add(EnergyMetric.ElectricPower, EnergySupport.Unsupported, EnergyReason.NoBatterySource);
-                Add(EnergyMetric.Regeneration, EnergySupport.Unsupported, EnergyReason.NoBatterySource);
+                // When the ADAPTER could not address the battery module, that is no finding about the car: say "not read",
+                // never "not supported" (another adapter may well read it).
+                var noSource = facts.AdapterLimited
+                    ? (Support: EnergySupport.InsufficientData, Reason: EnergyReason.AdapterCouldNotRead)
+                    : (Support: EnergySupport.Unsupported, Reason: EnergyReason.NoBatterySource);
+                Add(EnergyMetric.ElectricPower, noSource.Support, noSource.Reason);
+                Add(EnergyMetric.Regeneration, noSource.Support, noSource.Reason);
                 var soc = facts.StateOfChargeSource || Has(PidBatteryCharge) == true;
                 if (soc && facts.BatteryCapacityKnown)
                     Add(EnergyMetric.ElectricEnergy, EnergySupport.Estimated, EnergyReason.SocWithCapacity);
                 else if (soc)
                     Add(EnergyMetric.ElectricEnergy, EnergySupport.InsufficientData, EnergyReason.SocWithoutCapacity);
                 else
-                    Add(EnergyMetric.ElectricEnergy, EnergySupport.Unsupported, EnergyReason.NoBatterySource);
+                    Add(EnergyMetric.ElectricEnergy, noSource.Support, noSource.Reason);
             }
         }
 

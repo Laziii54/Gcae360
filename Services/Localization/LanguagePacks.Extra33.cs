@@ -658,5 +658,33 @@ internal static partial class LanguagePacks
           "Un compte OBD360 avec {0} existe déjà. Pour y associer cette connexion, saisis le mot de passe de ce compte.",
           "Esiste già un account OBD360 con {0}. Per collegarvi questo accesso, inserisci la password di quell'account."),
 
+        // Fuel/energy page: the adapter, not the car, could not read the battery module.
+        R("The adapter could not read the battery module", "Adaptör batarya modülünü okuyamadı", "Der Adapter konnte das Batteriemodul nicht lesen", "Adapter nie mógł odczytać modułu baterii", "El adaptador no pudo leer el módulo de la batería", "O adaptador não conseguiu ler o módulo da bateria", "L'adaptateur n'a pas pu lire le module de batterie", "L'adattatore non è riuscito a leggere il modulo della batteria"),
+        R("the adapter could not read the battery module", "adaptör batarya modülünü okuyamadı", "der Adapter konnte das Batteriemodul nicht lesen", "adapter nie mógł odczytać modułu baterii", "el adaptador no pudo leer el módulo de la batería", "o adaptador não conseguiu ler o módulo da bateria", "l'adaptateur n'a pas pu lire le module de batterie", "l'adattatore non è riuscito a leggere il modulo della batteria"),
+        R("This does not mean the car lacks this data: the adapter could not address the battery module.",
+          "Bu, aracın bu veriye sahip olmadığı anlamına gelmez: adaptör batarya modülüne erişemedi.",
+          "Das heißt nicht, dass das Auto diese Daten nicht hat: Der Adapter konnte das Batteriemodul nicht ansprechen.",
+          "To nie znaczy, że samochód nie ma tych danych: adapter nie mógł połączyć się z modułem baterii.",
+          "Esto no significa que el coche no tenga este dato: el adaptador no pudo dirigirse al módulo de la batería.",
+          "Isto não significa que o carro não tenha este dado: o adaptador não conseguiu comunicar com o módulo da bateria.",
+          "Cela ne veut pas dire que la voiture n'a pas cette donnée : l'adaptateur n'a pas pu s'adresser au module de batterie.",
+          "Questo non significa che l'auto non abbia il dato: l'adattatore non è riuscito a rivolgersi al modulo della batteria."),
+        R("Try a full ELM327/STN adapter or open Adapter Center.",
+          "Tam bir ELM327/STN adaptörü dene veya Adaptör Merkezi'ni aç.",
+          "Versuche einen vollwertigen ELM327/STN-Adapter oder öffne das Adapter-Center.",
+          "Spróbuj pełnego adaptera ELM327/STN lub otwórz Centrum adaptera.",
+          "Prueba un adaptador ELM327/STN completo o abre el Centro de adaptadores.",
+          "Experimenta um adaptador ELM327/STN completo ou abre o Centro de adaptadores.",
+          "Essaie un adaptateur ELM327/STN complet ou ouvre le Centre d'adaptateurs.",
+          "Prova un adattatore ELM327/STN completo o apri il Centro adattatori."),
+        R("Enter the battery capacity below to estimate use from the state of charge.",
+          "Şarj durumundan tüketimi tahmin etmek için aşağıya batarya kapasitesini gir.",
+          "Gib unten die Batteriekapazität ein, um den Verbrauch aus dem Ladezustand zu schätzen.",
+          "Wpisz poniżej pojemność baterii, aby oszacować zużycie na podstawie stanu naładowania.",
+          "Introduce abajo la capacidad de la batería para estimar el consumo a partir del estado de carga.",
+          "Introduz abaixo a capacidade da bateria para estimar o consumo a partir do estado de carga.",
+          "Saisis ci-dessous la capacité de la batterie pour estimer la consommation à partir de l'état de charge.",
+          "Inserisci sotto la capacità della batteria per stimare il consumo dallo stato di carica."),
+
     };
 }

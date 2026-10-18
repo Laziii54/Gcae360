@@ -253,7 +253,8 @@ public partial class FuelViewModel
             _evSource is not null,
             _socNow is not null || _evSource is not null,
             CapacityKWh() is not null,
-            AdvertisedPids()?.Contains(0x24) == true);
+            AdvertisedPids()?.Contains(0x24) == true,
+            _evAdapterLimited);
 
         SupportCaption = en ? "What this car reports" : "რას გადმოსცემს ეს მანქანა";
         UnitCaption = en ? "Consumption unit" : "ხარჯის ერთეული";

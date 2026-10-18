@@ -148,6 +148,7 @@ public static class FuelPresenter
         EnergyReason.SpeedMissing => english ? "no speed PID" : "სიჩქარის PID არ არის",
         EnergyReason.RpmMissing => english ? "no rpm PID" : "ბრუნვების PID არ არის",
         EnergyReason.NoBatterySource => english ? "no battery data found" : "ბატარეის მონაცემი ვერ მოიძებნა",
+        EnergyReason.AdapterCouldNotRead => english ? "the adapter could not read the battery module" : "ადაპტერმა ბატარეის მოდული ვერ წაიკითხა",
         EnergyReason.BatteryCurrentSource => english ? "voltage × current × time" : "ძაბვა × დენი × დრო",
         EnergyReason.SocWithoutCapacity => english ? "needs the battery capacity" : "ბატარეის ტევადობა სჭირდება",
         EnergyReason.SocWithCapacity => english ? "battery % × capacity" : "ბატარეის % × ტევადობა",

@@ -484,6 +484,14 @@ public sealed class LiveDataEngine : IAsyncDisposable
                 var slow = isPerformancePolling
                     ? performanceFloor
                     : profile == "Fast" ? TimeSpan.FromMilliseconds(1100) : profile == "Low power" ? TimeSpan.FromMilliseconds(2600) : SlowPollInterval;
+                // A strained adapter gets longer pauses between ticks (1.0 while it keeps up; never applied to performance runs).
+                if (!isPerformancePolling)
+                {
+                    var factor = _obd.Load.IntervalFactor;
+                    fast = TimeSpan.FromMilliseconds(fast.TotalMilliseconds * factor);
+                    slow = TimeSpan.FromMilliseconds(slow.TotalMilliseconds * factor);
+                }
+
                 var target = elapsed > fast ? slow : fast;
                 var delay = target - elapsed;
                 if (delay > TimeSpan.Zero) await Task.Delay(delay, token).ConfigureAwait(false);
