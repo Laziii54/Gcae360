@@ -134,6 +134,10 @@
 		<!-- VIN camera scanner: text recognition on the phone (Google ML Kit via Play Services). -->
 		<PackageReference Include="Xamarin.GooglePlayServices.MLKit.Text.Recognition" Version="119.0.1.9" Condition="'$(TargetFramework)' == 'net10.0-android'" />
 
+		<!-- In-app rating prompt: Google Play's native review dialog. -->
+		<PackageReference Include="Xamarin.Google.Android.Play.Review" Version="2.0.1.9" Condition="'$(TargetFramework)' == 'net10.0-android'" />
+		<PackageReference Include="Xamarin.Google.Android.Play.Review.Ktx" Version="2.0.1.9" Condition="'$(TargetFramework)' == 'net10.0-android'" />
+
 		<!-- Keep the AndroidX Kotlin-extension artifacts on the same generation as the
 		     AndroidX base artifacts pulled in by ML Kit. Mixing the
 		     older KTX line with Fragment 1.9.0 defines FragmentKt twice during D8. -->

@@ -56,7 +56,7 @@ public sealed class BrandingTests
     [InlineData("Platforms/Android/Resources/mipmap-xxxhdpi/ic_gcar_dark_round.png", 192, 192)]
     [InlineData("Platforms/Android/Resources/mipmap-xxxhdpi/ic_gcar_light_foreground.png", 432, 432)]
     [InlineData("Platforms/Android/Resources/mipmap-mdpi/ic_gcar_dark_foreground.png", 108, 108)]
-    [InlineData("Backend/CarScanner.Api/wwwroot/assets/logo.png", 400, 293)]
+    [InlineData("Backend/CarScanner.Api/wwwroot/assets/logo.png", 256, 256)]
     [InlineData("Backend/CarScanner.Api/wwwroot/assets/favicon.png", 128, 128)]
     [InlineData("Backend/CarScanner.Api/wwwroot/assets/apple-touch-icon.png", 180, 180)]
     [InlineData("Backend/CarScanner.Api/wwwroot/assets/icon-512.png", 512, 512)]

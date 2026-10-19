@@ -158,6 +158,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<ProService>();
 
         builder.Services.AddSingleton<PurchaseService>();
+        builder.Services.AddSingleton<ReviewPromptService>();
 
         // ============================================================
         // ADVANCED / OEM / UDS

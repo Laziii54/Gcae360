@@ -11,6 +11,7 @@ public partial class VehicleHealthViewModel : BaseViewModel
 {
     private readonly VehicleHealthService _service;
     private readonly LocalizationService _localization;
+    private readonly ReviewPromptService _reviewPrompt;
     private CancellationTokenSource? _scanCts;
     private long _scanGeneration;
 
@@ -30,10 +31,12 @@ public partial class VehicleHealthViewModel : BaseViewModel
 
     public VehicleHealthViewModel(
         VehicleHealthService service,
-        LocalizationService localization)
+        LocalizationService localization,
+        ReviewPromptService reviewPrompt)
     {
         _service = service;
         _localization = localization;
+        _reviewPrompt = reviewPrompt;
         Title = "Vehicle Health";
         ScanStage = L("Connect the vehicle and start the scan.", "დააკავშირე ავტომობილი და დაიწყე სკანირება.");
     }
@@ -85,6 +88,11 @@ public partial class VehicleHealthViewModel : BaseViewModel
             ProgressValue = 1;
             ProgressText = "100%";
             ScanStage = L("Health analysis complete", "მდგომარეობის შეფასება დასრულდა");
+
+            // A clean (or mostly clean) result is the natural moment to ask —
+            // never right after the app surfaces a problem.
+            if (result.CriticalIssueCount == 0)
+                _ = _reviewPrompt.MaybeRequestAsync();
         }
         catch (OperationCanceledException)
         {
