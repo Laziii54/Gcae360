@@ -246,6 +246,8 @@ app.MapGet("/about", (IConfiguration config) =>
 </head>
 <body>
 
+<a href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:#222;font-weight:700;font-size:15px;margin-bottom:18px"><img src="/assets/logo.png" alt="" style="height:28px;width:auto"><span>OBD360</span></a>
+
 <h1>About Us — OBD360</h1>
 
 <p>OBD360 is a vehicle diagnostic application and website operated by {{System.Net.WebUtility.HtmlEncode(legal.Name)}}. The App connects to OBD2 adapters over Bluetooth to read fault codes, live sensor data, battery and service information, and offers a separate VIN history check (auction photos, damage, mileage and title records) for cars imported from the US.</p>
@@ -302,6 +304,8 @@ app.MapGet("/privacy-policy", () =>
     </style>
 </head>
 <body>
+
+<a href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:#222;font-weight:700;font-size:15px;margin-bottom:18px"><img src="/assets/logo.png" alt="" style="height:28px;width:auto"><span>OBD360</span></a>
 
 <h1>Privacy Policy — OBD360</h1>
 <p class="updated">Last updated: October 8, 2026 · ბოლო განახლება: 2026 წლის 8 ოქტომბერი</p>
@@ -403,6 +407,7 @@ app.MapGet("/support", () =>
     <style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.65;max-width:900px;margin:auto;padding:30px 20px;color:#222}h1{font-size:32px}h2{margin-top:28px}</style>
 </head>
 <body>
+<a href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:#222;font-weight:700;font-size:15px;margin-bottom:18px"><img src="/assets/logo.png" alt="" style="height:28px;width:auto"><span>OBD360</span></a>
 <h1>OBD360 Support</h1>
 <p>For help, purchase questions or a data-deletion request, email <a href="mailto:obd360support@gmail.com">obd360support@gmail.com</a>.</p>
 <h2>Before contacting support</h2>
@@ -435,6 +440,7 @@ app.MapGet("/terms-of-use", () =>
     <style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.65;max-width:900px;margin:auto;padding:30px 20px;color:#222}h1{font-size:32px}h2{margin-top:28px}</style>
 </head>
 <body>
+<a href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:#222;font-weight:700;font-size:15px;margin-bottom:18px"><img src="/assets/logo.png" alt="" style="height:28px;width:auto"><span>OBD360</span></a>
 <h1>Terms of Use — OBD360</h1>
 <p>Last updated: October 1, 2026</p>
 <h2>1. Diagnostic information</h2>
