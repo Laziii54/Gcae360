@@ -72,7 +72,6 @@
             -p:ApplicationVersion="$BUILD_NUMBER" \
             -p:CodesignKey="$CERT_NAME" \
             -p:CodesignProvision="$PROFILE_NAME" \
-            -p:EnableAppleSignIn=true \
             -o "$CM_BUILD_DIR/artifacts"
 
     artifacts:
