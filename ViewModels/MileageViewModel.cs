@@ -74,7 +74,6 @@ public class MileageViewModel : BaseViewModel
     private CarScanner.Models.VehicleInfo? _vehicleInfo;
     private double? _lastKnownMileageKm;
     private ActualMileageResult? _lastResult;
-    private string _dashboardMileage = string.Empty;
     private bool _showLog;
 
     public string Vin { get; set; } = "—";
@@ -110,26 +109,6 @@ public class MileageViewModel : BaseViewModel
     public bool HasContext => ContextReadings.Count > 0;
     public bool HasAttempts => Attempts.Count > 0;
 
-    // Dashboard comparison
-    public string DashboardMileage
-    {
-        get => _dashboardMileage;
-        set
-        {
-            if (_dashboardMileage == value)
-                return;
-            _dashboardMileage = value;
-            OnPropertyChanged();
-            UpdateDashboardComparison();
-        }
-    }
-
-    public string DashboardUnit => _units.DistanceUnit;
-    public string DashboardResult { get; private set; } = string.Empty;
-    public Color DashboardResultColor { get; private set; } = Grey;
-    public bool HasDashboardResult => !string.IsNullOrWhiteSpace(DashboardResult);
-    public bool ShowDashboardCompare => HasResult && _lastResult?.FinalMileageKm is not null;
-
     // Log
     public string Log { get; set; } = string.Empty;
     public bool HasLog => !string.IsNullOrWhiteSpace(Log);
@@ -160,8 +139,6 @@ public class MileageViewModel : BaseViewModel
     public string ContextCaption => L("სხვა მანძილის და დროის მნიშვნელობები", "Other distance and time values");
     public string ContextNote => MileageWording.ContextNote(_localization.IsEnglish);
     public string AttemptsCaption => L("წყაროების სტატუსი", "Source status");
-    public string DashboardCaption => L("შეადარე დაფას", "Compare with the dashboard");
-    public string DashboardPlaceholder => L("დაფაზე ნაჩვენები გარბენი", "Distance shown on the dashboard");
     public string CheckButtonText => (HasResult ? L("თავიდან წაკითხვა", "Read again") : L("მაჩვენებლების წაკითხვა", "Read mileage values"));
     public string LogToggleText => ShowLog ? L("ლოგის დამალვა", "Hide technical log") : L("ტექნიკური ლოგი ›", "Technical log ›");
 
@@ -372,7 +349,11 @@ public class MileageViewModel : BaseViewModel
             MethodText = $"{evidence.Method} · {evidence.RetrievedAt.ToLocalTime():HH:mm:ss}" +
                          (evidence.RawHex.Length > 0 ? $"\nraw {evidence.RawHex}" : string.Empty),
             SourceText = MileageWording.SourceKind(evidence.SourceKind, en),
-            DefinitionText = evidence.DefinitionUnderTest ? MileageWording.DefinitionUnderTest(en) : string.Empty,
+            DefinitionText = string.Join("\n", new[]
+            {
+                evidence.DefinitionUnderTest ? MileageWording.DefinitionUnderTest(en) : string.Empty,
+                evidence.RecordedReplyForModelYear ? MileageWording.RecordedForModelYear(en) : string.Empty
+            }.Where(line => line.Length > 0)),
             IsHighlighted = highlighted,
             ValueColor = highlighted ? Amber : ThemeService.Soft("#1B1D20")
         };
@@ -494,7 +475,6 @@ public class MileageViewModel : BaseViewModel
 
         // Everything on the page depends on the result and the language.
         OnPropertyChanged(string.Empty);
-        UpdateDashboardComparison();
     }
 
     private MileageAttemptRow ToAttemptRow(MileageAttempt attempt, bool en)
@@ -521,42 +501,6 @@ public class MileageViewModel : BaseViewModel
             OutcomeColor = outcome.Item2,
             DetailText = string.Join(" — ", detail)
         };
-    }
-
-    private void UpdateDashboardComparison()
-    {
-        var dashboardKm = TryGetDashboardMileageKm();
-        var reported = _lastResult?.FinalMileageKm;
-        if (dashboardKm is null)
-        {
-            DashboardResult = string.Empty;
-        }
-        else if (reported is null)
-        {
-            DashboardResult = L("არ არის ერთი შესადარებელი მაჩვენებელი (არ წაკითხულა ან მაჩვენებლები განსხვავდება).", "There is no single reading to compare with (nothing was read, or the readings differ).");
-            DashboardResultColor = Grey;
-        }
-        else
-        {
-            var tolerance = Math.Max(5d, reported.Value * 0.002d);
-            var diff = dashboardKm.Value - reported.Value;
-            if (Math.Abs(diff) <= tolerance)
-            {
-                DashboardResult = L("დაფაზე ჩაწერილი მნიშვნელობა ემთხვევა წაკითხულ მაჩვენებელს.", "The value you typed matches the reading above.");
-                DashboardResultColor = Blue;
-            }
-            else
-            {
-                DashboardResult = L(
-                    $"განსხვავება: {_units.FormatDistance(Math.Abs(diff), "0.#")}. შეამოწმე ერთეული (km / mi) და ციფრები.",
-                    $"Difference: {_units.FormatDistance(Math.Abs(diff), "0.#")}. Check the unit (km / mi) and the digits.");
-                DashboardResultColor = Amber;
-            }
-        }
-
-        OnPropertyChanged(nameof(DashboardResult));
-        OnPropertyChanged(nameof(DashboardResultColor));
-        OnPropertyChanged(nameof(HasDashboardResult));
     }
 
     private async Task CopyLogAsync()
@@ -594,14 +538,5 @@ public class MileageViewModel : BaseViewModel
         }
 
         return null;
-    }
-
-    private double? TryGetDashboardMileageKm()
-    {
-        // Odometers are whole numbers: spaces, dots and commas are thousand separators.
-        var digits = new string((DashboardMileage ?? string.Empty).Where(char.IsDigit).ToArray());
-        return double.TryParse(digits, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) && value is > 0 and < 3_000_000
-            ? _units.DistanceToKilometers(value)
-            : null;
     }
 }

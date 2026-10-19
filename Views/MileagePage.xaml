@@ -139,20 +139,6 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Compare with what the dashboard shows (only when there is one unconflicted reading) -->
-            <Border IsVisible="{Binding ShowDashboardCompare}" Style="{StaticResource ListCardStyle}" Padding="14,12">
-                <VerticalStackLayout Spacing="8">
-                    <Label Text="{Binding DashboardCaption}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" />
-                    <Border Stroke="{DynamicResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 10" Padding="10,0" BackgroundColor="{DynamicResource PageBg}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <Entry Text="{Binding DashboardMileage}" Placeholder="{Binding DashboardPlaceholder}" Keyboard="Numeric" FontSize="15" TextColor="{DynamicResource TextColor}" />
-                            <Label Grid.Column="1" AutomationId="DynamicTextDashboardUnit" Text="{Binding DashboardUnit}" FontSize="13" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
-                        </Grid>
-                    </Border>
-                    <Label IsVisible="{Binding HasDashboardResult}" Text="{Binding DashboardResult}" FontSize="12" TextColor="{Binding DashboardResultColor}" LineBreakMode="WordWrap" />
-                </VerticalStackLayout>
-            </Border>
-
             <!-- One button: filled before the check, outlined after it -->
             <Button IsVisible="{Binding HasResult, Converter={StaticResource InverseBoolConverter}}" Text="{Binding CheckButtonText}" Command="{Binding CheckCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" HeightRequest="52" />
             <Button IsVisible="{Binding HasResult}" Text="{Binding CheckButtonText}" Command="{Binding CheckCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" CornerRadius="12" HeightRequest="48" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.2" />

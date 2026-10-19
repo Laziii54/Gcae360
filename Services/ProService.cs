@@ -27,11 +27,16 @@ public sealed class ProService
     // Shown only when the store price cannot be loaded.
     public const decimal PriceGEL = 4.99m;
     public const decimal VinPriceGEL = 5.99m;
-    public const decimal FullPriceGEL = 8.99m;
-    public const decimal VinPack5PriceGEL = 3.99m;
-    public const decimal VinPack10PriceGEL = 6.99m;
-    public const decimal VinSinglePriceGEL = 2.99m;
+    public const decimal FullPriceGEL = 7.99m;
+    public const decimal VinPack5PriceGEL = 3.49m;
+    public const decimal VinPack10PriceGEL = 5.99m;
+    public const decimal VinSinglePriceGEL = 1.49m;
     public const int VinMonthlyReports = 10;
+
+    // Reference ("was") prices shown struck through next to the real price.
+    public const decimal PriceAnchorGEL = 9m;
+    public const decimal VinPriceAnchorGEL = 10m;
+    public const decimal FullPriceAnchorGEL = PriceGEL + VinPriceGEL;
 
     private const string HasVinKey = "pro.hasVin";
     private const string VinExpiresKey = "pro.vinExpires";

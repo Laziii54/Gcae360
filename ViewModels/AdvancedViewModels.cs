@@ -1358,18 +1358,19 @@ public partial class ProViewModel : BaseViewModel
                     plan.Title = L("უფასო", "Free");
                     plan.Subtitle = string.Empty;
                     plan.PriceText = string.Empty;
-                    plan.Features = L(
+                    plan.SetFeatures(L(
                         "შეცდომის კოდები და მათი ახსნა\nცოცხალი მონაცემები\nსაწვავის ხარჯი, სერვისი, 0–100\nVIN: მანქანის მონაცემები და ისტორიის მიმოხილვა",
-                        "Fault codes with explanations\nLive data\nFuel use, service, 0–100\nVIN: car details and a history preview");
+                        "Fault codes with explanations\nLive data\nFuel use, service, 0–100\nVIN: car details and a history preview"));
                     plan.IsActive = !hasAny;
                     break;
                 case ProService.ObdProductId:
                     plan.Title = "PRO";
                     plan.Subtitle = L("მანქანის სრული დიაგნოსტიკა", "Full car diagnostics");
                     plan.PriceText = $"{Price(plan.ProductId, ProService.PriceGEL)} / {month}";
-                    plan.Features = L(
+                    plan.AnchorPriceText = $"{ProService.PriceAnchorGEL:0.##} ₾";
+                    plan.SetFeatures(L(
                         "ყველა მოდულის სკანირება (ABS, SRS, ტრანსმისია…)\nმოდულების ცოცხალი მონაცემები და გრაფიკები\nყიდვისწინა შემოწმება\nAI დიაგნოსტიკა და კონსულტაცია",
-                        "Scan every module (ABS, SRS, transmission…)\nModule live data and graphs\nPre-purchase check\nAI diagnostics and consultation");
+                        "Scan every module (ABS, SRS, transmission…)\nModule live data and graphs\nPre-purchase check\nAI diagnostics and consultation"));
                     plan.IsActive = hasObd;
                     break;
 
@@ -1377,9 +1378,10 @@ public partial class ProViewModel : BaseViewModel
                     plan.Title = "VIN PRO";
                     plan.Subtitle = L("მანქანის ისტორია VIN კოდით", "Car history by VIN");
                     plan.PriceText = $"{Price(plan.ProductId, ProService.VinPriceGEL)} / {month}";
-                    plan.Features = L(
+                    plan.AnchorPriceText = $"{ProService.VinPriceAnchorGEL:0.##} ₾";
+                    plan.SetFeatures(L(
                         $"VIN: სრული ისტორია, {ProService.VinMonthlyReports} ყოველთვე\nაუქციონის ფოტოები და დაზიანებები\nგარბენი და ტიტულის სტატუსი\nუკვე გახსნილი VIN თავიდან უფასოდ იხსნება",
-                        $"VIN: full history, {ProService.VinMonthlyReports} every month\nAuction photos and damage\nMileage and title status\nAn opened VIN reopens for free");
+                        $"VIN: full history, {ProService.VinMonthlyReports} every month\nAuction photos and damage\nMileage and title status\nAn opened VIN reopens for free"));
                     plan.IsActive = hasVin;
                     break;
 
@@ -1387,28 +1389,32 @@ public partial class ProViewModel : BaseViewModel
                     plan.Title = L("სრული PRO", "Full PRO");
                     plan.Subtitle = L("OBD PRO + VIN PRO ერთად", "OBD PRO + VIN PRO together");
                     plan.PriceText = $"{Price(plan.ProductId, ProService.FullPriceGEL)} / {month}";
-                    plan.Features = L(
-                        "ყველაფერი PRO-დან\nყველაფერი VIN PRO-დან\nყველაზე მომგებიანი",
-                        "Everything in PRO\nEverything in VIN PRO\nThe best value");
+                    plan.AnchorPriceText = $"{ProService.FullPriceAnchorGEL:0.##} ₾";
+                    plan.SetFeatures(L(
+                        "PRO-ის ყველა ფუნქცია\nVIN PRO-ის ყველა ფუნქცია",
+                        "Everything in PRO\nEverything in VIN PRO"));
                     plan.IsActive = hasObd && hasVin;
                     plan.BadgeText = L("საუკეთესო", "Best value");
+                    var savedPercent = (int)Math.Round((1 - ProService.FullPriceGEL / ProService.FullPriceAnchorGEL) * 100);
+                    plan.DiscountBadgeText = $"-{savedPercent}%";
                     break;
             }
 
             // Card: "current" (green) for the plan you have, "best value" (blue) for Full PRO.
-            plan.ShowPrice = CanBuyInApp && !plan.IsFree;
+            // Android shows the price too: tapping a plan opens obd360.ge/pro to pay there
+            // (Google Play Billing is still not used, so this stays off the Play Store checkout).
+            plan.ShowPrice = !plan.IsFree;
+            plan.ShowAnchor = plan.ShowPrice;
+            plan.ShowDiscountBadge = plan.ShowPrice && !string.IsNullOrEmpty(plan.DiscountBadgeText);
             plan.CanOpen = !plan.IsActive && !plan.IsFree;
             plan.TagText = plan.IsActive
                 ? L("მიმდინარე", "Current")
-                : plan.IsRecommended ? L("საუკეთესო", "Best value") : string.Empty;
-            plan.TagBackground = Color.FromArgb(plan.IsActive ? "#E8F5EE" : "#2563EB");
-            plan.TagTextColor = Color.FromArgb(plan.IsActive ? "#1F8A4C" : "#FFFFFF");
-            plan.StrokeColor = Color.FromArgb(plan.IsActive ? "#22C55E" : plan.IsRecommended ? "#3B82F6" : "#6694A3B8");
+                : string.Empty;
+            plan.TagBackground = Color.FromArgb("#E8F5EE");
+            plan.TagTextColor = Color.FromArgb("#1F8A4C");
+            plan.StrokeColor = Color.FromArgb(plan.IsActive ? "#22C55E" : plan.IsRecommended ? "#1D5BD6" : "#6694A3B8");
         }
 
-        // Android (Google Play payments policy): ShowPrice above is false and
-        // packs stay hidden, so no price is shown and nothing points to another
-        // way to pay; only "Sign in" and "Restore" unlock PRO already on the account.
         foreach (var pack in Packs)
         {
             var fallback = pack.Credits == 5 ? ProService.VinPack5PriceGEL : ProService.VinPack10PriceGEL;
@@ -1417,7 +1423,8 @@ public partial class ProViewModel : BaseViewModel
             pack.ButtonText = $"+{pack.Credits} VIN — {pack.PriceText}";
         }
 
-        ShowPacks = CanBuyInApp && hasVin;
+        // On Android these are bought on the website too (BuyPack opens it below).
+        ShowPacks = hasVin;
 
         string Until(DateTime? date) =>
             date is { } d && d.Year < 2100 ? L($" · {d.ToLocalTime():dd.MM.yyyy}-მდე", $" · until {d.ToLocalTime():dd.MM.yyyy}") : string.Empty;
@@ -1557,6 +1564,19 @@ public partial class ProViewModel : BaseViewModel
 
         if (CanBuyInApp)
         {
+            // Sign in first: the App Store charge is only ever credited to a
+            // signed-in account (/api/store/verify requires it), so buying
+            // while signed out would take the user's money and grant nothing.
+            if (!_account.IsSignedIn)
+            {
+                Status = L(
+                    "ჯერ შედი ანგარიშზე — PRO მხოლოდ ანგარიშზე ირთვება.",
+                    "Sign in first — PRO is only activated on an account.");
+                StatusColor = Color.FromArgb("#B45309");
+                await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.AccountPage));
+                return;
+            }
+
             await BuyPlan(plan);
             return;
         }
@@ -1567,14 +1587,17 @@ public partial class ProViewModel : BaseViewModel
             return;
         }
 
+        // Already paid for on the website? A quick server check before sending
+        // the user out to pay again.
         await Restore();
-        if (!plan.IsActive)
-        {
-            Status = L(
-                $"{plan.Title} შენს ანგარიშზე ({_account.Email}) ჯერ არ არის აქტიური.",
-                $"{plan.Title} is not active on your account ({_account.Email}) yet.");
-            StatusColor = Color.FromArgb("#B45309");
-        }
+        if (plan.IsActive)
+            return;
+
+        Status = L(
+            "იხსნება obd360.ge — იქ გადაიხდი ბარათით ან Google Pay-ით.",
+            "Opening obd360.ge — pay there by card or Google Pay.");
+        StatusColor = Color.FromArgb("#94A3B8");
+        await StoreLinks.OpenAsync(StoreLinks.ProUrlFor(_account.Email));
         }
         catch (Exception commandException)
         {
@@ -1596,6 +1619,16 @@ public partial class ProViewModel : BaseViewModel
                 "VIN პაკეტები ხელმისაწვდომია VIN PRO ან სრული PRO გამოწერით.",
                 "VIN packs are available with VIN PRO or Full PRO.");
             StatusColor = Color.FromArgb("#B45309");
+            return;
+        }
+
+        if (!CanBuyInApp)
+        {
+            Status = L(
+                "იხსნება obd360.ge — იქ გადაიხდი ბარათით ან Google Pay-ით.",
+                "Opening obd360.ge — pay there by card or Google Pay.");
+            StatusColor = Color.FromArgb("#94A3B8");
+            await StoreLinks.OpenAsync(StoreLinks.ProUrlFor(_account.Email));
             return;
         }
 
@@ -1863,7 +1896,10 @@ public sealed partial class ProPlanItem : ObservableObject
     [ObservableProperty] private string title = "";
     [ObservableProperty] private string subtitle = "";
     [ObservableProperty] private string priceText = "";
-    [ObservableProperty] private string features = "";
+    [ObservableProperty] private string anchorPriceText = "";
+    [ObservableProperty] private bool showAnchor;
+    [ObservableProperty] private string discountBadgeText = "";
+    [ObservableProperty] private bool showDiscountBadge;
     [ObservableProperty] private string buttonText = "";
     [ObservableProperty] private string badgeText = "";
     [ObservableProperty] private bool isActive;
@@ -1872,6 +1908,19 @@ public sealed partial class ProPlanItem : ObservableObject
     [ObservableProperty] private string tagText = "";
     [ObservableProperty] private Color tagBackground = Color.FromArgb("#2563EB");
     [ObservableProperty] private Color tagTextColor = Colors.White;
+
+    /// <summary>One checkmark row per included feature, shown in order.</summary>
+    public ObservableCollection<string> FeatureList { get; } = new();
+
+    public void SetFeatures(string linesSeparatedByNewline)
+    {
+        FeatureList.Clear();
+        foreach (var line in linesSeparatedByNewline.Split('\n'))
+        {
+            if (!string.IsNullOrWhiteSpace(line))
+                FeatureList.Add(line.Trim());
+        }
+    }
 
     public bool HasTag => !string.IsNullOrEmpty(TagText);
     partial void OnTagTextChanged(string value) => OnPropertyChanged(nameof(HasTag));

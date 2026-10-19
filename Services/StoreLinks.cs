@@ -8,6 +8,11 @@ public static class StoreLinks
     public const string PrivacyPolicyUrl = Website + "/privacy-policy";
     public const string TermsOfUseUrl = Website + "/terms-of-use";
     public const string SupportUrl = Website + "/support";
+    public const string ProUrl = Website + "/pro";
+
+    /// <summary>/pro with the signed-in e-mail pre-filled, so only the password is left to type.</summary>
+    public static string ProUrlFor(string? email) =>
+        string.IsNullOrWhiteSpace(email) ? ProUrl : ProUrl + "?email=" + Uri.EscapeDataString(email);
 
     public static string ManageSubscriptionUrl => DeviceInfo.Platform == DevicePlatform.iOS
         ? "https://apps.apple.com/account/subscriptions"
