@@ -349,11 +349,7 @@ public class MileageViewModel : BaseViewModel
             MethodText = $"{evidence.Method} · {evidence.RetrievedAt.ToLocalTime():HH:mm:ss}" +
                          (evidence.RawHex.Length > 0 ? $"\nraw {evidence.RawHex}" : string.Empty),
             SourceText = MileageWording.SourceKind(evidence.SourceKind, en),
-            DefinitionText = string.Join("\n", new[]
-            {
-                evidence.DefinitionUnderTest ? MileageWording.DefinitionUnderTest(en) : string.Empty,
-                evidence.RecordedReplyForModelYear ? MileageWording.RecordedForModelYear(en) : string.Empty
-            }.Where(line => line.Length > 0)),
+            DefinitionText = evidence.DefinitionUnderTest ? MileageWording.DefinitionUnderTest(en) : string.Empty,
             IsHighlighted = highlighted,
             ValueColor = highlighted ? Amber : ThemeService.Soft("#1B1D20")
         };
