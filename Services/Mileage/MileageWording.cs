@@ -16,6 +16,8 @@ public static class MileageWording
         MileageMeasurement.MinutesSinceDiagnosticEvent => en ? "Time since a diagnostic event (not a distance)" : "დრო დიაგნოსტიკური მოვლენიდან (არა მანძილი)",
         MileageMeasurement.ElectricDriveDistance => en ? "Electric drive distance (not the odometer)" : "ელექტრო მოძრაობის მანძილი (არა ოდომეტრი)",
         MileageMeasurement.EstimatedDistance => en ? "Estimated distance (a calculation, not a reading)" : "სავარაუდო მანძილი (გამოთვლა და არა ჩვენება)",
+        MileageMeasurement.OdometerAtEvent => en ? "Odometer value stored at a past event (a record, not the current distance)" : "ოდომეტრის მნიშვნელობა, რომელიც მოდულმა წარსულ მოვლენაზე შეინახა (ჩანაწერია და არა მიმდინარე მანძილი)",
+        MileageMeasurement.ModuleInstallRecord => en ? "Value tied to this module's installation (not the current odometer)" : "ამ მოდულის დაყენებასთან დაკავშირებული მნიშვნელობა (არა მიმდინარე ოდომეტრი)",
         _ => en ? "Other distance value (not the odometer)" : "სხვა მანძილის მნიშვნელობა (არა ოდომეტრი)"
     };
 
@@ -29,8 +31,67 @@ public static class MileageWording
         MileageMeasurement.MinutesSinceDiagnosticEvent => en ? "Time" : "დრო",
         MileageMeasurement.ElectricDriveDistance => en ? "Electric drive" : "ელექტრო",
         MileageMeasurement.EstimatedDistance => en ? "Estimate" : "შეფასება",
+        MileageMeasurement.OdometerAtEvent => en ? "Past record" : "წარსული ჩანაწერი",
+        MileageMeasurement.ModuleInstallRecord => en ? "Installation record" : "დაყენების ჩანაწერი",
         _ => en ? "Other" : "სხვა"
     };
+
+    /// <summary>When a historical odometer value was stored.</summary>
+    public static string EventKind(MileageEventKind kind, bool en) => kind switch
+    {
+        MileageEventKind.Regeneration => en ? "At a particulate-filter regeneration" : "ნაწილაკების ფილტრის რეგენერაციისას",
+        MileageEventKind.Replacement => en ? "At a component replacement" : "კომპონენტის შეცვლისას",
+        MileageEventKind.Adaptation => en ? "At an adaptation or learning" : "ადაპტაციის ან სწავლების დროს",
+        MileageEventKind.Warning => en ? "At a warning or fault event" : "გაფრთხილების ან შეცდომის მოვლენისას",
+        MileageEventKind.Service => en ? "At a service" : "სერვისისას",
+        MileageEventKind.TirePressure => en ? "At a tire-pressure monitor event" : "საბურავის წნევის სენსორის მოვლენისას",
+        _ => en ? "At a recorded event" : "ჩაწერილი მოვლენისას"
+    };
+
+    public static string FindingTitle(MileageFindingCode code, bool en) => code switch
+    {
+        MileageFindingCode.SourcesAgree => Headline(MileageOutcome.Consistent, en),
+        MileageFindingCode.SourcesDiffer => Headline(MileageOutcome.Conflicting, en),
+        MileageFindingCode.HistoricalExceedsCurrent => en ? "A stored record is higher than the current odometer" : "შენახული ჩანაწერი მიმდინარე ოდომეტრზე მეტია",
+        MileageFindingCode.ModuleRecordExceedsCurrent => en ? "A module's installation record is higher than the current odometer" : "მოდულის დაყენების ჩანაწერი მიმდინარე ოდომეტრზე მეტია",
+        MileageFindingCode.HistoryNotAboveCurrent => en ? "Stored records are not above the current odometer" : "შენახული ჩანაწერები მიმდინარე ოდომეტრს არ აღემატება",
+        MileageFindingCode.NoCurrentOdometer => en ? "Records found, but no current odometer to compare them with" : "ჩანაწერები ნაპოვნია, მაგრამ შესადარებელი მიმდინარე ოდომეტრი არ არის",
+        _ => Headline(MileageOutcome.SingleSource, en)
+    };
+
+    /// <summary>The explanation with the amount filled in. See <see cref="FindingTemplate"/>.</summary>
+    public static string FindingText(MileageFindingCode code, bool en, string difference = "") =>
+        string.Format(System.Globalization.CultureInfo.InvariantCulture, FindingTemplate(code, en), difference);
+
+    /// <summary>
+    /// The explanation of a finding as a template: "{0}" stands for the already formatted amount (in the user's unit) by which a record
+    /// is higher than the highest current reading; only the two "exceeds" findings use it. A template, rather than a finished
+    /// sentence, so the English one can be matched by a translation row. Every text states what was observed and what it cannot show;
+    /// none says tampering, and none names an original mileage.
+    /// </summary>
+    public static string FindingTemplate(MileageFindingCode code, bool en) => code switch
+    {
+        MileageFindingCode.SourcesAgree => Explanation(MileageOutcome.Consistent, en),
+        MileageFindingCode.SourcesDiffer => Explanation(MileageOutcome.Conflicting, en),
+        MileageFindingCode.HistoricalExceedsCurrent => en
+            ? "At least one module stored an odometer value from a past event that is higher than every current reading (by {0}). A value from the past should not exceed the present one. Possible explanations include a changed odometer, a module taken from another vehicle, a counter that was reset or reprogrammed, a different unit or decoding of that value, and a wrong vehicle or module identification. This is not a finding of tampering: compare it with service records and have it checked."
+            : "ერთ-ერთმა მოდულმა წარსული მოვლენისას შენახული ოდომეტრის მნიშვნელობა აჩვენა, რომელიც ყველა მიმდინარე მაჩვენებელზე მეტია ({0}-ით). წარსული მნიშვნელობა ჩვეულებრივ აწმყოს არ უნდა აღემატებოდეს. შესაძლო მიზეზებია: შეცვლილი ოდომეტრი, სხვა მანქანიდან აღებული მოდული, განულებული ან გადაპროგრამებული მრიცხველი, ამ მნიშვნელობის სხვა ერთეული ან გაშიფვრა, მანქანის ან მოდულის არასწორი ამოცნობა. ეს გადახვევის დასკვნა არ არის: შეადარე სერვისის ჩანაწერებს და გადაამოწმებინე.",
+        MileageFindingCode.ModuleRecordExceedsCurrent => en
+            ? "A module reports an installation-related value that is {0} higher than the highest current reading. Whether it is the odometer at installation or the distance since installation, it should not exceed the current odometer of the same car. The possible explanations are the same as above: a changed odometer, a module from another vehicle, a reset counter, a different decoding, or a wrong identification. This is not a finding of tampering."
+            : "ერთი მოდული დაყენებასთან დაკავშირებულ მნიშვნელობას აცხადებს, რომელიც უმაღლეს მიმდინარე მაჩვენებელზე {0}-ით მეტია. იქნება ეს დაყენების მომენტის ოდომეტრი თუ დაყენების შემდეგ გავლილი მანძილი, იმავე მანქანის მიმდინარე ოდომეტრს არ უნდა აღემატებოდეს. შესაძლო მიზეზები იგივეა: შეცვლილი ოდომეტრი, სხვა მანქანიდან აღებული მოდული, განულებული მრიცხველი, სხვა გაშიფვრა ან არასწორი ამოცნობა. ეს გადახვევის დასკვნა არ არის.",
+        MileageFindingCode.HistoryNotAboveCurrent => en
+            ? "The historical records read from the modules are not higher than the current odometer reading. An unchanged odometer shows exactly this, and so would a change made consistently everywhere, so it does not prove that the mileage is authentic."
+            : "მოდულებიდან წაკითხული ისტორიული ჩანაწერები მიმდინარე ოდომეტრზე მეტი არ არის. სწორედ ასეთია უცვლელი ოდომეტრიც და ყველგან თანმიმდევრულად შეცვლილიც, ამიტომ ეს გარბენის ნამდვილობას არ ადასტურებს.",
+        MileageFindingCode.NoCurrentOdometer => en
+            ? "Historical records were read, but no usable current odometer reading, so they cannot be compared with one."
+            : "ისტორიული ჩანაწერები წაიკითხა, მაგრამ გამოსადეგი მიმდინარე ოდომეტრი არა, ამიტომ მათი შედარება არაფერთან შეიძლება.",
+        _ => Explanation(MileageOutcome.SingleSource, en)
+    };
+
+    /// <summary>Provenance line of a reading whose public definition the catalog still flags as under test.</summary>
+    public static string DefinitionUnderTest(bool en) => en
+        ? "The public definition is still marked as under test in the catalog."
+        : "საჯარო აღწერა კატალოგში ჯერ კიდევ გამოსაცდელად არის მონიშნული.";
 
     public static string SourceKind(MileageSourceKind kind, bool en) => kind switch
     {

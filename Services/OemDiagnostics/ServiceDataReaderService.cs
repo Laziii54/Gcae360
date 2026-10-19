@@ -626,7 +626,19 @@ public sealed partial class ServiceDataReaderService
         int Rx,
         int Did,
         int ByteIndex,
-        bool Scale255);
+        bool Scale255,
+        // false: the reviewed evidence covers the reset to 100% only. A percentage other than 100 is offered, and sent,
+        // only when the entry says in so many words that this module accepts it (documented and tested for that model).
+        bool AllowsPercentTargets = false);
+
+    /// <summary>
+    /// Whether the page may offer a reset to exactly this percentage. The reset to 100% needs a reviewed entry; any other
+    /// value (for example 50%) additionally needs that entry to state that arbitrary percentages are supported. Being able
+    /// to reset says nothing about being able to set a chosen value, so the default is "no".
+    /// </summary>
+    public bool CanOfferOilLifeTarget(int percent) =>
+        CanResetLearnedOilLife &&
+        (percent == 100 || _reviewedGmReset is { AllowsPercentTargets: true });
 
     /// <summary>
     /// Reviewed write catalog. Intentionally empty until an entry has been
@@ -693,9 +705,12 @@ public sealed partial class ServiceDataReaderService
 
     /// <summary>
     /// The connected car is a VIN-verified first-generation Chevrolet Volt
-    /// (2011–2015). Only this profile may receive the GMLAN oil-life reset —
-    /// it was tested on a real Volt 2013 (write, read-back, dashboard).
-    /// Other GM models are added only after the same real-car test.
+    /// (2011–2015). That is a precondition for the GMLAN oil-life reset, not a
+    /// licence for it: nothing is sent unless a reviewed catalog entry also
+    /// exists, and none does (oem_operations.json, candidate
+    /// vehicle.chevrolet.volt.2012-2013.oil-life-reset: BLOCKED_UNTIL_EXACT_WIRE_CAPTURE).
+    /// SERVICE_RESET_RESEARCH.md (2026-09) says the Volt reset worked on one car, but no capture or evidence file
+    /// was kept, and the audit of 2026-09-28 closed the write until an exact request and response are documented.
     /// </summary>
     private bool _verifiedGmResetProfile;
 
@@ -791,8 +806,8 @@ public sealed partial class ServiceDataReaderService
     }
 
     /// <summary>
-    /// Resets the GM oil-life value to <paramref name="targetPercent"/> (100 or 50)
-    /// with one GMLAN $3B write. Safeguards:
+    /// Resets the GM oil-life value to <paramref name="targetPercent"/> with one GMLAN $3B write:
+    /// 100, or another value only when the reviewed entry says the module accepts it. Safeguards:
     ///  - only an address from a REVIEWED catalog entry for this VIN-verified
     ///    model is written — never a learned/inferred address; without an
     ///    entry the reset is not supported and nothing is sent;
@@ -816,6 +831,12 @@ public sealed partial class ServiceDataReaderService
 
         if (targetPercent is < 1 or > 100)
             throw new ArgumentOutOfRangeException(nameof(targetPercent));
+
+        // Reset to 100% is one thing; setting a chosen value is another and needs its own evidence. Nothing is sent otherwise.
+        if (targetPercent != 100 && !entry.AllowsPercentTargets)
+            return OilLifeResetResult.NotSent(
+                OilLifeResetFailure.NotSupported,
+                "this car's reviewed entry covers the reset to 100% only; setting another percentage is not supported");
 
         var steps = new List<string>();
         if (!_obd.IsInitialized)
@@ -1006,6 +1027,10 @@ public sealed partial class ServiceDataReaderService
     {
         if (!CanResetByWriteBack(reading) || !_readingSources.TryGetValue(reading.Id, out var source))
             return OilLifeResetResult.NotSent(OilLifeResetFailure.NoLearnedSource, "not resettable");
+
+        // A readable percentage is not proof that an arbitrary percentage may be written: only the reset to 100% is ever offered here.
+        if (reading.Kind == ServiceMetricKind.OilLifePercent && Math.Abs(target - 100d) > 0.001)
+            return OilLifeResetResult.NotSent(OilLifeResetFailure.NotSupported, "only the reset to 100% is supported; setting another percentage is not");
 
         var candidate = source.Candidate;
         var steps = new List<string>();
@@ -1930,63 +1955,14 @@ public sealed partial class ServiceDataReaderService
         return true;
     }
 
-    private static bool IsPlausible(ServiceMetricKind kind, string unit, double value)
-    {
-        if (!double.IsFinite(value))
-            return false;
+    private static bool IsPlausible(ServiceMetricKind kind, string unit, double value) =>
+        ServiceMetricClassifier.IsPlausible(kind, unit, value);
 
-        return kind switch
-        {
-            ServiceMetricKind.OilLifePercent => value is >= 0 and <= 100,
-            ServiceMetricKind.DistanceToNextService => value is >= 0 and <= 300000,
-            ServiceMetricKind.DaysToNextService => value is >= 0 and <= 5000,
-            ServiceMetricKind.DistanceSinceOilChange => value is >= 0 and <= 1500000,
-            ServiceMetricKind.OilChangeInterval => value is >= 0 and <= 1500000,
-            ServiceMetricKind.MaintenanceCounter => value is >= 0 and <= 1000000,
-            ServiceMetricKind.OilLevel when unit.Equals("percent", StringComparison.OrdinalIgnoreCase) => value is >= 0 and <= 100,
-            _ => true
-        };
-    }
+    private static ServiceMetricKind Classify(string? name, string? parameterId) =>
+        ServiceMetricClassifier.Classify(name, parameterId);
 
-    private static ServiceMetricKind Classify(string? name, string? parameterId)
-    {
-        var text = $"{name} {parameterId}".ToLowerInvariant();
-        if (text.Contains("oil life") || text.Contains("oil degradation"))
-            return ServiceMetricKind.OilLifePercent;
-        if (text.Contains("oil level") || text.Contains("oil fill level"))
-            return ServiceMetricKind.OilLevel;
-        if (text.Contains("distance to next service") || text.Contains("service distance") || text.Contains("distance until service"))
-            return ServiceMetricKind.DistanceToNextService;
-        if (text.Contains("days to next service") || text.Contains("service days") || text.Contains("days until service"))
-            return ServiceMetricKind.DaysToNextService;
-        if (text.Contains("distance since last oil change") || text.Contains("distance since oil changed") || text.Contains("distance since oil change"))
-            return ServiceMetricKind.DistanceSinceOilChange;
-        if (text.Contains("max distance to oil change") || text.Contains("oil change interval"))
-            return ServiceMetricKind.OilChangeInterval;
-        if (text.Contains("inspection") && text.Contains("distance"))
-            return ServiceMetricKind.InspectionDistance;
-        if (text.Contains("inspection") && text.Contains("day"))
-            return ServiceMetricKind.InspectionDays;
-        if (text.Contains("maintenance"))
-            return ServiceMetricKind.MaintenanceCounter;
-        if (text.Contains("service status") || text.Contains("maintenance status"))
-            return ServiceMetricKind.ServiceStatus;
-        return ServiceMetricKind.Other;
-    }
-
-    private static bool IsServiceRelevantName(string? name)
-    {
-        var text = (name ?? string.Empty).ToLowerInvariant();
-        return text.Contains("oil life") ||
-               text.Contains("oil degradation") ||
-               text.Contains("oil level") ||
-               text.Contains("oil change") ||
-               text.Contains("next service") ||
-               text.Contains("service interval") ||
-               text.Contains("maintenance") ||
-               (text.Contains("inspection") &&
-                (text.Contains("distance") || text.Contains("day")));
-    }
+    private static bool IsServiceRelevantName(string? name) =>
+        ServiceMetricClassifier.IsServiceRelevantName(name);
 
     private static bool ModelMatches(string? make, string? catalogModel, string vehicleModel)
     {
@@ -2037,6 +2013,7 @@ public sealed partial class ServiceDataReaderService
 
     private static bool IsBrandWideKind(ServiceMetricKind kind) => kind is
         ServiceMetricKind.OilLifePercent or
+        ServiceMetricKind.OilDegradationPercent or
         ServiceMetricKind.DistanceSinceOilChange or
         ServiceMetricKind.DistanceToNextService or
         ServiceMetricKind.DaysToNextService or
@@ -2071,6 +2048,7 @@ public sealed partial class ServiceDataReaderService
         ServiceMetricKind.MaintenanceCounter => 7,
         ServiceMetricKind.OilLevel => 8,
         ServiceMetricKind.ServiceStatus => 9,
+        ServiceMetricKind.OilDegradationPercent => 10,
         _ => 20
     };
 

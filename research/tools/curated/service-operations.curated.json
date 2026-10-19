@@ -1,0 +1,277 @@
+{
+  "principle": "Reading is separated from writing. A read needs a public definition for the exact model; a write that changes the car needs exact, per-vehicle, reviewed evidence (exact module and address, exact request bytes, exact positive reply, read-back after the reset, safety preconditions, hashed evidence) and none exists for any vehicle. Until then the app shows the owner's own documented steps and says plainly that it sent nothing. A percentage other than 100 is never offered on the strength of a reset alone: setting a chosen value is a different capability that a module has to be documented to accept.",
+  "signalKinds": {
+    "OilLifePercent": "Remaining life of the oil, in percent. 100 = fresh oil and the value shrinks. OBDb names: 'Oil life remaining', 'Engine oil life remaining', 'Remaining oil life'.",
+    "OilDegradationPercent": "Wear of the oil, in percent. 0 = fresh oil and the value GROWS: the opposite scale. OBDb name: 'Engine oil degradation' (service 22, identifier 3813, on the Stellantis / FCA family). Never shown as remaining life and never a reset-to-100 target.",
+    "DistanceToNextService": "Distance still to go until the next service or oil change ('Distance to next service', 'Estimated distance to oil change', 'Distance before next oil change').",
+    "DaysToNextService": "Days still to go until the next service.",
+    "DistanceSinceOilChange": "Distance driven since the last oil change. A counter that grows ('Distance since oil change', 'Mileage since last oil change'). The 'under severe operating conditions' counter of the Stellantis family is a different counter and stays unclassified.",
+    "OilChangeInterval": "The configured interval ('Max distance to oil change', 'Oil change interval in km'). A setting, not a counter. Some Renault signals give it in months with the unit 'scalar'.",
+    "MaintenanceCounter": "Maintenance items whose meaning is vehicle-specific: Honda / Acura 'Maintenance, <item>' (unit not stated by the definition) and Renault 'Maintenance autonomy ...'. Shown, never interpreted.",
+    "OilLevel": "Oil LEVEL (millimetres, percent or a scalar). Not oil life.",
+    "Other": "Service-related by name but not one of the above (for example 'Time since last oil change', 'Oil change history 1')."
+  },
+  "oilLifeNotes": [
+    "Every oil-life and oil-degradation signal in the catalog is in percent. The scale differs by family: remaining life shrinks, degradation grows.",
+    "The Service page's normal refresh sends the non-debug definitions of the exact model and, for oil life, oil degradation, distance and days to service, distance since the oil change and inspection, the identifiers other models of the same make use ('brand-wide'); readings obtained that way carry the research-level evidence label. Other definitions the community flags 'dbg' are sent only on request.",
+    "The catalog has no model-year filter (OBDb's 'filter' and 'dbgfilter' did not survive the import), so a row applies to the model whatever the year; a wrong year answers with a negative reply or nothing, and a value is shown only after a positive reply that decodes to a plausible figure.",
+    "There is no standard (SAE J1979) PID for oil life or a service interval; the only oil-related standard PID is 5C, engine oil temperature."
+  ],
+  "operationTypes": [
+    {
+      "id": "read.oil-life-remaining",
+      "label": "Read oil life remaining (%)",
+      "changesTheCar": false,
+      "meaning": "A percentage that shrinks as the oil ages; 100 = fresh oil.",
+      "distinctFrom": ["read.oil-degradation", "read.oil-level"]
+    },
+    {
+      "id": "read.oil-degradation",
+      "label": "Read oil degradation (%)",
+      "changesTheCar": false,
+      "meaning": "A percentage that grows as the oil wears; 0 = fresh oil. The opposite scale of the previous one.",
+      "distinctFrom": ["read.oil-life-remaining"]
+    },
+    {
+      "id": "read.service-distance-time",
+      "label": "Read service distance, days, distance since the oil change, interval, maintenance counters",
+      "changesTheCar": false,
+      "meaning": "Counters and remaining distances the module reports. Some count down, some count up; the name states which.",
+      "distinctFrom": ["set.service-interval"]
+    },
+    {
+      "id": "reset.oil-life-to-full",
+      "label": "Reset the oil-life monitor to 100%",
+      "changesTheCar": true,
+      "meaning": "Tells the oil-life monitor that the oil was changed. After it the remaining life is 100% (or the degradation 0%).",
+      "distinctFrom": ["set.oil-life-percent", "clear.reminder-message"]
+    },
+    {
+      "id": "set.oil-life-percent",
+      "label": "Set the oil life to a chosen percentage (for example 50%)",
+      "changesTheCar": true,
+      "meaning": "Writes a value other than 'new oil'. Possible only where the module is documented to accept it. A reset that works says nothing about this.",
+      "distinctFrom": ["reset.oil-life-to-full"]
+    },
+    {
+      "id": "reset.service-interval-counters",
+      "label": "Reset the service-interval counters (distance and time)",
+      "changesTheCar": true,
+      "meaning": "Restarts the distance and time counters behind a 'Service due' display (VAG service interval indicator, ASSYST, BMW CBS items, Honda Maintenance Minder items).",
+      "distinctFrom": ["reset.oil-life-to-full", "reset.inspection-reminder"]
+    },
+    {
+      "id": "reset.inspection-reminder",
+      "label": "Reset the inspection reminder",
+      "changesTheCar": true,
+      "meaning": "On some brands the inspection distance and time are separate from the oil service (VAG).",
+      "distinctFrom": ["reset.service-interval-counters"]
+    },
+    {
+      "id": "clear.reminder-message",
+      "label": "Dismiss a 'Service due' / 'Maintenance required' message",
+      "changesTheCar": true,
+      "meaning": "Whether dismissing the message also restarts the counters is vehicle-specific and has to come from that vehicle's own documentation; the app never assumes it.",
+      "distinctFrom": ["reset.service-interval-counters"]
+    },
+    {
+      "id": "set.service-interval",
+      "label": "Change the configured service interval",
+      "changesTheCar": true,
+      "meaning": "A configuration change (for example a maximum distance in km). Not offered.",
+      "distinctFrom": ["reset.service-interval-counters"]
+    }
+  ],
+  "currentAppBehaviour": [
+    {
+      "operation": "read.oil-life-remaining",
+      "status": "implemented",
+      "how": "Service page. The normal refresh sends the non-debug OBDb definitions of the exact model, plus the brand-wide identifiers of the make (labelled research-level evidence). A value is shown only after an identifier-matching positive reply with a plausible figure (0 to 100).",
+      "files": ["Services/OemDiagnostics/ServiceDataReaderService.cs", "Services/OemDiagnostics/ServiceMetricClassifier.cs"]
+    },
+    {
+      "operation": "read.oil-degradation",
+      "status": "implemented in this work",
+      "how": "Own kind and own row 'Engine oil degradation (higher = more worn)' with an explaining line. It is not a reset target: the write path refuses anything that is not remaining life.",
+      "files": ["Services/OemDiagnostics/ServiceMetricClassifier.cs", "ViewModels/AdvancedViewModels.cs"]
+    },
+    {
+      "operation": "read.service-distance-time",
+      "status": "implemented",
+      "how": "Same path as above, one row per kind with the unit the module reports.",
+      "files": ["Services/OemDiagnostics/ServiceDataReaderService.cs"]
+    },
+    {
+      "operation": "reset.oil-life-to-full",
+      "status": "guided steps only",
+      "how": "164 shipped procedures (manual, from owner's manuals and manufacturer documents). Two automatic write paths exist in code and both are closed by design: the GMLAN write needs a reviewed entry (ReviewedGmOilLifeResets is empty, so no vehicle passes CanResetLearnedOilLife), and the catalog write-back needs a whitelisted identifier (OBDService.WritableServiceDids is an empty set, and ServiceSafetyTests asserts that it stays empty).",
+      "files": ["Resources/Raw/service_procedures.json", "Services/OemDiagnostics/ServiceDataReaderService.cs", "Services/OBDService.cs"]
+    },
+    {
+      "operation": "set.oil-life-percent",
+      "status": "not offered",
+      "how": "The 50% button is visible only when a reviewed entry states AllowsPercentTargets; the sender refuses any target other than 100 otherwise. No entry exists. Implemented in this work.",
+      "files": ["Services/OemDiagnostics/ServiceDataReaderService.cs", "ViewModels/AdvancedViewModels.cs", "Views/ServicePage.xaml"]
+    },
+    {
+      "operation": "reset.service-interval-counters",
+      "status": "guided steps only",
+      "how": "Guides for Maintenance Minder, ASSYST / ASSYST PLUS, BMW service indicator, VAG service reminder and others. Nothing is sent to the car.",
+      "files": ["Resources/Raw/service_procedures.json"]
+    },
+    {
+      "operation": "reset.inspection-reminder",
+      "status": "guided steps only",
+      "how": "One inspection-reminder guide for the VW group; the catalog marks it as a separate operation from the oil service.",
+      "files": ["Resources/Raw/service_procedures.json"]
+    },
+    {
+      "operation": "clear.reminder-message",
+      "status": "guided steps only",
+      "how": "As documented per vehicle in the guide text; the app does not claim an effect the documentation does not state.",
+      "files": ["Resources/Raw/service_procedures.json"]
+    },
+    {
+      "operation": "set.service-interval",
+      "status": "not offered",
+      "how": "No code path, no catalog entry.",
+      "files": []
+    }
+  ],
+  "brandFamilies": [
+    {
+      "id": "gm",
+      "label": "GM (Chevrolet, GMC, Buick, Cadillac, Holden, Opel / Vauxhall)",
+      "catalogMakes": ["Chevrolet", "GMC", "Buick", "Cadillac", "Holden", "VauxhallOpel"],
+      "read": { "status": "public definitions", "evidence": "E2", "detail": "OBDb defines 'Oil life remaining' (service 22, percent) for many models; most of those definitions are still flagged debug. The app also has a read path for the first-generation Chevrolet Volt (22 119F, then 4DC0) that predates this work.", "sources": ["obdb-signalsets", "project-overnight-report"] },
+      "guidedReset": { "status": "owner's-manual guides", "evidence": "E3", "detail": "Engine Oil Life System procedures for Equinox, Silverado, Enclave, XT5, Volt and Opel Mokka X are shipped.", "sources": ["project-service-procedures"] },
+      "diagnosticReset": { "status": "closed tool only", "evidence": "E1", "detail": "GM service tools restore the oil-life percentage after an engine-control-module reprogramming (a GM bulletin hosted by NHTSA, known only through a search summary; the PDF was not opened). The request is not published. A forum post shows a Mode 22 request for oil life on one Bosch module; it is unverified and was not used. The project's own candidate also cites community GMLAN research that places an 'engine oil life reset request' signal on CAN message 0x1F1 for some platforms: that is a broadcast the vehicle sends itself (with rolling counters and protection bytes), not a diagnostic request, and the repository has no licence.", "sources": ["gm-tsb-nhtsa", "gm-forum-mode22", "gmlan-research", "project-oem-operations", "project-service-reset-research"] },
+      "setPercent": { "status": "closed tool only", "evidence": "E1", "detail": "The same bulletin implies that a scan tool can set a chosen percentage (it restores the value recorded before reprogramming). That is the only hint of a set capability found for any brand, and it has no public protocol.", "sources": ["gm-tsb-nhtsa"] }
+    },
+    {
+      "id": "ford-mazda",
+      "label": "Ford, Lincoln, Mazda",
+      "catalogMakes": ["Ford", "Lincoln", "Mazda"],
+      "read": { "status": "public definitions", "evidence": "E2", "detail": "'Oil life remaining' (22 054B and others, percent) for many Ford models, 'Distance since last oil change' and 'Time since last oil change' for Ford and Mazda, 'Max distance to oil change' for Mazda.", "sources": ["obdb-signalsets"] },
+      "guidedReset": { "status": "owner's-manual guides", "evidence": "E3", "detail": "Intelligent Oil Life Monitor (Bronco, Bronco Sport, Maverick) and oil-change-indicator reset (Focus 2018) guides are shipped.", "sources": ["project-service-procedures"] },
+      "diagnosticReset": { "status": "closed tool only", "evidence": "E1", "detail": "FORScan's change history lists per-vehicle PCM service procedures 'Reset oil change indicator' (Ranger and Everest diesel, EcoSport EU 1.5 TDCi, Edge 2.0 TDCi, Ka 1.5 TDCi, Fiesta Mk7 TDCi, Galaxy / S-Max, Territory and others) and 'Reset Engine Oil Deterioration Learned Value' (Mazda 3 / 5 / 6 / CX-3 / CX-5 / CX-7 diesels and a Mazda Bongo, Ford F-Series 6.7 Powerstroke). It proves the functions exist for those exact vehicles; the payloads are not public. Since 2.3.46 FORScan shows manual instructions when a PCM does not support the function.", "sources": ["forscan-changelog"] },
+      "setPercent": { "status": "none found", "evidence": "E0", "detail": "No source describes setting a chosen oil-life value on these vehicles.", "sources": [] }
+    },
+    {
+      "id": "stellantis",
+      "label": "Stellantis / FCA / PSA (Jeep, Dodge, Ram, Chrysler, Fiat, Alfa Romeo, Peugeot, Citroen)",
+      "catalogMakes": ["Jeep", "Dodge", "Ram", "Chrysler", "FIAT", "Alfa", "Peugeot", "Citroen"],
+      "read": { "status": "public definitions, OPPOSITE scale", "evidence": "E2", "detail": "'Engine oil degradation' (22 3813, percent) grows with wear; it is not remaining life. PSA vehicles add 'Distance to next oil change' and a severe-conditions mileage counter.", "sources": ["obdb-signalsets"] },
+      "guidedReset": { "status": "owner's-manual guides", "evidence": "E3", "detail": "RAM 2500 / 3500, Chrysler 300 and Pacifica, Dodge Challenger / Charger / Durango oil-life reset guides, and Peugeot / Citroen service-indicator zeroing guides are shipped.", "sources": ["project-service-procedures"] },
+      "diagnosticReset": { "status": "none found", "evidence": "E0", "detail": "arduino-psa-diag (GPL-3.0) sends raw UDS / KWP frames to PSA modules; nothing about a service reset was found in its description. Its data is quarantined in the catalog and was not used.", "sources": ["arduino-psa-diag"] },
+      "setPercent": { "status": "none found", "evidence": "E0", "detail": "Nothing found.", "sources": [] }
+    },
+    {
+      "id": "vag",
+      "label": "VAG (Volkswagen, Audi, Seat, Cupra, Skoda, Porsche, Bentley)",
+      "catalogMakes": ["Volkswagen", "Audi", "Seat", "Cupra", "Skoda", "Porsche", "Bentley"],
+      "read": { "status": "oil LEVEL only", "evidence": "E2", "detail": "OBDb defines many oil-level signals (millimetres, percent) for the group, and none for remaining oil life or a service interval. The service interval indicator lives in the instrument cluster and is reached through cluster adaptation channels (Ross-Tech), not through a public read definition.", "sources": ["obdb-signalsets", "ross-tech-sri"] },
+      "guidedReset": { "status": "owner's-manual and bulletin guides", "evidence": "E3", "detail": "VW Jetta 2021 service-reminder bulletin, CUPRA Formentor, Skoda guides and a separate inspection-reminder guide are shipped.", "sources": ["project-service-procedures"] },
+      "diagnosticReset": { "status": "closed tool only", "evidence": "E1", "detail": "VCDS 'SRI Reset' writes the cluster's service channels. Ross-Tech distinguishes the oil service (ESI function on newer clusters) from the time- and distance-based service, notes that the generic option does not work on many 2008+ Audis (a market-specific option is needed), and that newer UDS clusters may offer only oil and time-based choices. No raw payload is public.", "sources": ["ross-tech-sri"] },
+      "setPercent": { "status": "not applicable", "evidence": "E1", "detail": "The same channels also hold the maximum distance and time to service (an interval setting, in km). It is a separate operation (set.service-interval) and is not offered.", "sources": ["ross-tech-sri"] }
+    },
+    {
+      "id": "bmw",
+      "label": "BMW, MINI, Rolls-Royce",
+      "catalogMakes": ["BMW", "MINI", "Rolls"],
+      "read": { "status": "public definitions", "evidence": "E2", "detail": "'Distance since last oil change' for BMW and MINI. Condition Based Service data in general is read through BMW's own tooling.", "sources": ["obdb-signalsets"] },
+      "guidedReset": { "status": "guide", "evidence": "E3", "detail": "A BMW service-indicator / CBS guide is shipped.", "sources": ["project-service-procedures"] },
+      "diagnosticReset": { "status": "blocked: payload unknown", "evidence": "E1", "detail": "The project's own candidate 'family.bmw-mini.cbs-reset' records that BMW's EDIABAS description files document CBS_RESET as a WriteDataByIdentifier (0x2E) followed by a save routine (31 01 F0 ED). The payload is built per CBS item, service counter and date and differs by ECU generation, so no universal request is safe. The documentation site cited there carries no licence and was not opened in this work.", "sources": ["bmw-ediabas-docs", "project-oem-operations", "hella-cbs-bulletin"] },
+      "setPercent": { "status": "none found", "evidence": "E0", "detail": "Nothing found.", "sources": [] }
+    },
+    {
+      "id": "mercedes",
+      "label": "Mercedes-Benz, smart",
+      "catalogMakes": ["Mercedes", "smart"],
+      "read": { "status": "public definitions", "evidence": "E2", "detail": "'Distance to next service' for some Mercedes models and for the smart in the catalog, 'Days to next service' for the smart.", "sources": ["obdb-signalsets"] },
+      "guidedReset": { "status": "guides", "evidence": "E3", "detail": "ASSYST / ASSYST PLUS guides, including the Sprinter (906) from an official Mercedes-Benz Vans document.", "sources": ["project-service-procedures"] },
+      "diagnosticReset": { "status": "none found", "evidence": "E0", "detail": "No official or open source gives a routine for the ASSYST reset; workshop blogs describe XENTRY menus and cluster key sequences and disagree with each other.", "sources": ["mercedes-blogs", "project-oem-operations"] },
+      "setPercent": { "status": "none found", "evidence": "E0", "detail": "Nothing found.", "sources": [] }
+    },
+    {
+      "id": "toyota",
+      "label": "Toyota, Lexus, Scion, Daihatsu",
+      "catalogMakes": ["Toyota", "Lexus", "Scion", "Daihatsu"],
+      "read": { "status": "public definitions", "evidence": "E2", "detail": "'Distance since oil change' (21 41 on header 7C0 for the RAV4 and others) and 'Estimated distance to oil change'; nearly all flagged debug.", "sources": ["obdb-signalsets"] },
+      "guidedReset": { "status": "dashboard guides", "evidence": "E3", "detail": "Maintenance-required light procedures for Toyota, Lexus and Scion are shipped.", "sources": ["project-service-procedures"] },
+      "diagnosticReset": { "status": "none found", "evidence": "E0", "detail": "Only low-quality web pages describing the odometer-button procedure were found; nothing about a dealer-tool request.", "sources": [] },
+      "setPercent": { "status": "none found", "evidence": "E0", "detail": "Nothing found.", "sources": [] }
+    },
+    {
+      "id": "honda",
+      "label": "Honda, Acura",
+      "catalogMakes": ["Honda", "Acura"],
+      "read": { "status": "public definitions, meaning not stated", "evidence": "E2", "detail": "'Maintenance, <item>' for nine items (oil and filter, air cleaner, cabin filter, coolant, brake fluid, transmission fluid, spark plugs and valves, tire rotation, general inspection). The definition gives no unit, so the page shows the number as the module reports it.", "sources": ["obdb-signalsets"] },
+      "guidedReset": { "status": "official guides", "evidence": "E3", "detail": "Maintenance Minder procedures (Acura RDX 2023, TLX 2021 and others) are shipped.", "sources": ["project-service-procedures"] },
+      "diagnosticReset": { "status": "none found", "evidence": "E0", "detail": "Nothing found.", "sources": [] },
+      "setPercent": { "status": "none found", "evidence": "E0", "detail": "Nothing found.", "sources": [] }
+    },
+    {
+      "id": "subaru",
+      "label": "Subaru",
+      "catalogMakes": ["Subaru"],
+      "read": { "status": "public definitions", "evidence": "E2", "detail": "'Estimated distance to oil change' (km) for several models, nearly all flagged debug.", "sources": ["obdb-signalsets"] },
+      "guidedReset": { "status": "owner's-manual guides", "evidence": "E3", "detail": "Centre information display maintenance-screen guides (Legacy / Outback 2020) are shipped.", "sources": ["project-service-procedures"] },
+      "diagnosticReset": { "status": "none found", "evidence": "E0", "detail": "Nothing found.", "sources": [] },
+      "setPercent": { "status": "none found", "evidence": "E0", "detail": "Nothing found.", "sources": [] }
+    },
+    {
+      "id": "renault",
+      "label": "Renault, Dacia",
+      "catalogMakes": ["Renault", "Dacia"],
+      "read": { "status": "public definitions, mixed units", "evidence": "E2", "detail": "Oil change interval, range and history in km, miles or months, 'Maintenance autonomy' values and 'Maintenance mode'. Several definitions give a kilometre name with a mile unit or a month value with the unit 'scalar'.", "sources": ["obdb-signalsets"] },
+      "guidedReset": { "status": "guides", "evidence": "E3", "detail": "Dacia and Renault-family guides are shipped where an exact source exists.", "sources": ["project-service-procedures"] },
+      "diagnosticReset": { "status": "none found", "evidence": "E0", "detail": "Nothing found.", "sources": [] },
+      "setPercent": { "status": "none found", "evidence": "E0", "detail": "Nothing found.", "sources": [] }
+    },
+    {
+      "id": "korea-japan-other",
+      "label": "Hyundai, Kia, Genesis, Nissan, Infiniti, Mitsubishi, Suzuki",
+      "catalogMakes": ["Hyundai", "Kia", "Genesis", "Nissan", "INFINITI", "Mitsubishi", "Suzuki"],
+      "read": { "status": "no public definition", "evidence": "E0", "detail": "The catalog has no oil-life, service-distance or maintenance signal for these makes.", "sources": ["obdb-signalsets"] },
+      "guidedReset": { "status": "guides", "evidence": "E3", "detail": "Cluster-menu and button procedures are shipped for Kia (ten), Hyundai, Genesis, Nissan, Infiniti, Mitsubishi and Suzuki.", "sources": ["project-service-procedures"] },
+      "diagnosticReset": { "status": "none found", "evidence": "E0", "detail": "Nothing found.", "sources": [] },
+      "setPercent": { "status": "none found", "evidence": "E0", "detail": "Nothing found.", "sources": [] }
+    }
+  ],
+  "negativeFindings": [
+    {
+      "finding": "No open or documented raw request (UDS 0x2E / 0x31, KWP2000, GMLAN) for resetting an oil-life monitor or a service reminder was found for any brand.",
+      "searched": ["GM bulletins and Mode 22 oil-life discussions", "BMW CBS reset routines", "Mercedes ASSYST reset", "generic UDS oil-service reset on GitHub", "PSA (arduino-psa-diag)", "FORScan, Ross-Tech, Toyota and Honda resets"],
+      "result": "Procedure-level descriptions and proof that closed tools can do it, nothing that could be used without guessing bytes.",
+      "date": "2026-10-19"
+    },
+    {
+      "finding": "SAE J1979 has no PID for oil life, a service interval or a maintenance reminder. The only oil-related standard PID is 5C, engine oil temperature.",
+      "searched": ["Wikipedia OBD-II PIDs, Mode 01 table and the other modes"],
+      "result": "Confirmed from the page; the standard itself (paid) was not read.",
+      "date": "2026-10-19"
+    },
+    {
+      "finding": "All OBDb commands are read services. Of 226,798 signals in the default signal sets (880 vehicle repositories read, 5 unreadable; 609 of them define at least one signal), 186,617 use service 22, 39,074 use service 21 and 1,107 use service 01. There is no write, routine or security-access command.",
+      "searched": ["OBDb signalsets/v3/default.json of every vehicle repository"],
+      "result": "Counted with research/tools/tally-obdb-services.js; year-range override files were not downloaded. The shipped catalog holds 556 vehicles, fewer than upstream defines today.",
+      "date": "2026-10-18"
+    },
+    {
+      "finding": "The shipped catalog cannot restrict a row to a model year: OBDb's 'filter' and 'dbgfilter' are absent from all 157,229 rows.",
+      "searched": ["raw_json of every OBDb row in the shipped catalog"],
+      "result": "A row applies to the model whatever the year. See next-steps.md.",
+      "date": "2026-10-19"
+    }
+  ],
+  "reportLimits": [
+    "Counts are over the definitions in the shipped catalog. A definition says where a value is supposed to be; only a positive reply from a real car shows that it is. None of this research talked to a car.",
+    "A vehicle missing from a table has no definition in the catalog. It does not mean the vehicle has no such data or no reset.",
+    "'Non-debug' means the community has not flagged the command 'dbg' (OBDb's schema describes the flag as: whether to debug the signal responses). It is not a statement that anyone verified the definition on a car.",
+    "The Service page's normal refresh sends the non-debug definitions of the exact model and the brand-wide identifiers of its make; other research definitions only on request. The Mileage page requests the exact model's definitions whether or not they are flagged debug.",
+    "The OBDb files used here are the default signal set of each vehicle; year-range override files are not included.",
+    "The model-year of a vehicle is not part of a catalog row, so every figure is per model.",
+    "Names of makes follow the catalog (for example 'Land' for Land Rover, 'Alfa' for Alfa Romeo, 'Rolls' for Rolls-Royce)."
+  ]
+}

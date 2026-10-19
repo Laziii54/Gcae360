@@ -1,0 +1,2433 @@
+{
+  "schema": "obd360.research.oil-life-coverage/1",
+  "about": "What the shipped catalog (OBDb public signal definitions) can read about engine-oil condition and service intervals, per vehicle. These are definitions, not measurements: nothing here was read from a vehicle by this research.",
+  "generatedFrom": {
+    "classifiedSignals": "classified-signals.json",
+    "exportedUtc": "2026-10-18T23:50:26Z",
+    "classifiers": "MileageSignalClassifier + ServiceMetricClassifier, as compiled in this test run",
+    "catalogSources": [
+      {
+        "id": 5,
+        "name": "OBDb/obdb.community",
+        "revision": "3fd5afe5ecf68a6d6b06beb7b4e86f23ee6df69b 2026-10-17T13:55:35.1855889+00:00",
+        "rows": 157229
+      }
+    ],
+    "catalogMetaRevision": "bc13d91af5605d8953bc40bc1caa8db2f2c514d8 2026-10-03T19:40:47+00:00",
+    "note": "OBDb-derived tables: CC BY-SA 4.0, attribution and share-alike apply (see README.md)."
+  },
+  "kinds": {
+    "OilLifePercent": "Remaining life of the oil, in percent. 100 = fresh oil and the value shrinks. OBDb names: 'Oil life remaining', 'Engine oil life remaining', 'Remaining oil life'.",
+    "OilDegradationPercent": "Wear of the oil, in percent. 0 = fresh oil and the value GROWS: the opposite scale. OBDb name: 'Engine oil degradation' (service 22, identifier 3813, on the Stellantis / FCA family). Never shown as remaining life and never a reset-to-100 target.",
+    "DistanceToNextService": "Distance still to go until the next service or oil change ('Distance to next service', 'Estimated distance to oil change', 'Distance before next oil change').",
+    "DaysToNextService": "Days still to go until the next service.",
+    "DistanceSinceOilChange": "Distance driven since the last oil change. A counter that grows ('Distance since oil change', 'Mileage since last oil change'). The 'under severe operating conditions' counter of the Stellantis family is a different counter and stays unclassified.",
+    "OilChangeInterval": "The configured interval ('Max distance to oil change', 'Oil change interval in km'). A setting, not a counter. Some Renault signals give it in months with the unit 'scalar'.",
+    "MaintenanceCounter": "Maintenance items whose meaning is vehicle-specific: Honda / Acura 'Maintenance, <item>' (unit not stated by the definition) and Renault 'Maintenance autonomy ...'. Shown, never interpreted.",
+    "OilLevel": "Oil LEVEL (millimetres, percent or a scalar). Not oil life.",
+    "Other": "Service-related by name but not one of the above (for example 'Time since last oil change', 'Oil change history 1')."
+  },
+  "totals": {
+    "vehiclesInCatalog": 556,
+    "oilLifeRemaining": {
+      "signals": 157,
+      "vehicles": 95,
+      "vehiclesWithProductionDefinition": 39,
+      "units": {
+        "percent": 157
+      }
+    },
+    "oilDegradation": {
+      "signals": 11,
+      "vehicles": 11,
+      "vehiclesWithProductionDefinition": 2,
+      "units": {
+        "percent": 11
+      }
+    },
+    "otherServiceKinds": {
+      "DistanceToNextService": {
+        "vehicles": 30,
+        "vehiclesWithProductionDefinition": 2,
+        "signals": 40
+      },
+      "DaysToNextService": {
+        "vehicles": 1,
+        "vehiclesWithProductionDefinition": 0,
+        "signals": 1
+      },
+      "DistanceSinceOilChange": {
+        "vehicles": 121,
+        "vehiclesWithProductionDefinition": 33,
+        "signals": 121
+      },
+      "OilChangeInterval": {
+        "vehicles": 12,
+        "vehiclesWithProductionDefinition": 1,
+        "signals": 20
+      },
+      "MaintenanceCounter": {
+        "vehicles": 23,
+        "vehiclesWithProductionDefinition": 4,
+        "signals": 185
+      },
+      "OilLevel": {
+        "vehicles": 121,
+        "vehiclesWithProductionDefinition": 67,
+        "signals": 694
+      }
+    }
+  },
+  "byMake": [
+    {
+      "make": "Acura",
+      "vehiclesInCatalog": 8,
+      "oilLifeRemainingVehicles": 0,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 0,
+      "distanceSinceOilChangeVehicles": 0,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 5
+    },
+    {
+      "make": "BMW",
+      "vehiclesInCatalog": 34,
+      "oilLifeRemainingVehicles": 0,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 0,
+      "distanceSinceOilChangeVehicles": 19,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "Buick",
+      "vehiclesInCatalog": 4,
+      "oilLifeRemainingVehicles": 4,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 0,
+      "distanceSinceOilChangeVehicles": 0,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "Cadillac",
+      "vehiclesInCatalog": 9,
+      "oilLifeRemainingVehicles": 7,
+      "oilLifeRemainingProductionVehicles": 1,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 0,
+      "distanceSinceOilChangeVehicles": 0,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "Chevrolet",
+      "vehiclesInCatalog": 33,
+      "oilLifeRemainingVehicles": 30,
+      "oilLifeRemainingProductionVehicles": 5,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 0,
+      "distanceSinceOilChangeVehicles": 0,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "Daihatsu",
+      "vehiclesInCatalog": 2,
+      "oilLifeRemainingVehicles": 0,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 0,
+      "distanceSinceOilChangeVehicles": 2,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "Dodge",
+      "vehiclesInCatalog": 8,
+      "oilLifeRemainingVehicles": 0,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 1,
+      "distanceToServiceVehicles": 0,
+      "distanceSinceOilChangeVehicles": 0,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "FIAT",
+      "vehiclesInCatalog": 7,
+      "oilLifeRemainingVehicles": 0,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 3,
+      "distanceToServiceVehicles": 0,
+      "distanceSinceOilChangeVehicles": 0,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "Ford",
+      "vehiclesInCatalog": 42,
+      "oilLifeRemainingVehicles": 36,
+      "oilLifeRemainingProductionVehicles": 28,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 0,
+      "distanceSinceOilChangeVehicles": 30,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "GMC",
+      "vehiclesInCatalog": 7,
+      "oilLifeRemainingVehicles": 6,
+      "oilLifeRemainingProductionVehicles": 4,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 0,
+      "distanceSinceOilChangeVehicles": 0,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "Holden",
+      "vehiclesInCatalog": 3,
+      "oilLifeRemainingVehicles": 3,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 0,
+      "distanceSinceOilChangeVehicles": 0,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "Honda",
+      "vehiclesInCatalog": 22,
+      "oilLifeRemainingVehicles": 0,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 0,
+      "distanceSinceOilChangeVehicles": 0,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 13
+    },
+    {
+      "make": "Jeep",
+      "vehiclesInCatalog": 12,
+      "oilLifeRemainingVehicles": 0,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 5,
+      "distanceToServiceVehicles": 1,
+      "distanceSinceOilChangeVehicles": 1,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "Lexus",
+      "vehiclesInCatalog": 10,
+      "oilLifeRemainingVehicles": 0,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 0,
+      "distanceSinceOilChangeVehicles": 5,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "Lincoln",
+      "vehiclesInCatalog": 4,
+      "oilLifeRemainingVehicles": 3,
+      "oilLifeRemainingProductionVehicles": 1,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 0,
+      "distanceSinceOilChangeVehicles": 1,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "Mazda",
+      "vehiclesInCatalog": 19,
+      "oilLifeRemainingVehicles": 6,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 0,
+      "distanceSinceOilChangeVehicles": 7,
+      "oilChangeIntervalVehicles": 7,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "Mercedes",
+      "vehiclesInCatalog": 18,
+      "oilLifeRemainingVehicles": 0,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 4,
+      "distanceSinceOilChangeVehicles": 0,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "MINI",
+      "vehiclesInCatalog": 5,
+      "oilLifeRemainingVehicles": 0,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 0,
+      "distanceSinceOilChangeVehicles": 4,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "Peugeot",
+      "vehiclesInCatalog": 10,
+      "oilLifeRemainingVehicles": 0,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 10,
+      "distanceSinceOilChangeVehicles": 10,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "Ram",
+      "vehiclesInCatalog": 5,
+      "oilLifeRemainingVehicles": 0,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 2,
+      "distanceToServiceVehicles": 0,
+      "distanceSinceOilChangeVehicles": 0,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "Renault",
+      "vehiclesInCatalog": 12,
+      "oilLifeRemainingVehicles": 0,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 3,
+      "distanceSinceOilChangeVehicles": 0,
+      "oilChangeIntervalVehicles": 5,
+      "maintenanceCounterVehicles": 5
+    },
+    {
+      "make": "Scion",
+      "vehiclesInCatalog": 4,
+      "oilLifeRemainingVehicles": 0,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 1,
+      "distanceSinceOilChangeVehicles": 3,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "smart",
+      "vehiclesInCatalog": 1,
+      "oilLifeRemainingVehicles": 0,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 1,
+      "distanceSinceOilChangeVehicles": 0,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "Subaru",
+      "vehiclesInCatalog": 10,
+      "oilLifeRemainingVehicles": 0,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 8,
+      "distanceSinceOilChangeVehicles": 0,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    },
+    {
+      "make": "Toyota",
+      "vehiclesInCatalog": 46,
+      "oilLifeRemainingVehicles": 0,
+      "oilLifeRemainingProductionVehicles": 0,
+      "oilDegradationVehicles": 0,
+      "distanceToServiceVehicles": 2,
+      "distanceSinceOilChangeVehicles": 39,
+      "oilChangeIntervalVehicles": 0,
+      "maintenanceCounterVehicles": 0
+    }
+  ],
+  "oilLifeRemainingTargets": [
+    {
+      "make": "Buick",
+      "request": "22 119F @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Remaining oil life",
+      "kind": "OilLifePercent",
+      "unit": "percent",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Enclave",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Encore",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Envision",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "LaCrosse",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Buick",
+      "request": "22 4DC0 @ 18DA11F1",
+      "transmitCanId": "18DA11F1",
+      "receiveCanId": "18DAF111",
+      "name": "Engine oil life remaining",
+      "kind": "OilLifePercent",
+      "unit": "percent",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Envision",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Buick",
+      "request": "22 4DC0 @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Engine oil life remaining",
+      "kind": "OilLifePercent",
+      "unit": "percent",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Enclave",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Encore",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Envision",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "LaCrosse",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Cadillac",
+      "request": "22 119F @ 18DA11F1",
+      "transmitCanId": "18DA11F1",
+      "receiveCanId": "18DAF111",
+      "name": "Remaining oil life",
+      "kind": "OilLifePercent",
+      "unit": "percent",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "CT5",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Cadillac",
+      "request": "22 119F @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Remaining oil life",
+      "kind": "OilLifePercent",
+      "unit": "percent",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "CTS",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "DTS",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "ELR",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "SRX",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "XT5",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Cadillac",
+      "request": "22 4DC0 @ 18DA11F1",
+      "transmitCanId": "18DA11F1",
+      "receiveCanId": "18DAF111",
+      "name": "Engine oil life remaining",
+      "kind": "OilLifePercent",
+      "unit": "percent",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "CT5",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Escalade",
+          "definitionFlaggedDebug": false
+        }
+      ]
+    },
+    {
+      "make": "Cadillac",
+      "request": "22 4DC0 @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Engine oil life remaining",
+      "kind": "OilLifePercent",
+      "unit": "percent",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "CTS",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "DTS",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "ELR",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Escalade",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "SRX",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "XT5",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Chevrolet",
+      "request": "22 119F @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Remaining oil life",
+      "kind": "OilLifePercent",
+      "unit": "percent",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Avalanche",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Aveo",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Blazer",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Camaro",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Caprice",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Cobalt",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Colorado",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Corvette",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Cruze",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Cruze-Limited",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Equinox",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Express",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "HHR",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Impala",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Impala-Limited",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Malibu",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Orlando",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Sail",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Silverado",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Silverado-1500",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Silverado-2500",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Silverado-3500",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Spark",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Spin",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Tahoe",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Trailblazer",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Traverse",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Trax",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Volt",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Chevrolet",
+      "request": "22 4DC0 @ 18DA11F1",
+      "transmitCanId": "18DA11F1",
+      "receiveCanId": "18DAF111",
+      "name": "Engine oil life remaining",
+      "kind": "OilLifePercent",
+      "unit": "percent",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Blazer",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Colorado",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Corvette",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "S-10",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Silverado-1500",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Silverado-2500",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Silverado-3500",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Tahoe",
+          "definitionFlaggedDebug": false
+        }
+      ]
+    },
+    {
+      "make": "Chevrolet",
+      "request": "22 4DC0 @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Engine oil life remaining",
+      "kind": "OilLifePercent",
+      "unit": "percent",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Avalanche",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Aveo",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Blazer",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Camaro",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Caprice",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Cobalt",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Colorado",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Corvette",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Cruze",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Cruze-Limited",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Equinox",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Express",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "HHR",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Impala",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Impala-Limited",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Malibu",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Orlando",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "S-10",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Sail",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Silverado",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Silverado-1500",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Silverado-2500",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Silverado-3500",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Spark",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Spin",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Tahoe",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Trailblazer",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Traverse",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Trax",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Volt",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Ford",
+      "request": "22 054B @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Oil life remaining",
+      "kind": "OilLifePercent",
+      "unit": "percent",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "B-Max",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Bronco",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Bronco-Sport",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "C-Max",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "C-Max-Energi",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "C-Max-Hybrid",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "E-Series-Wagon",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "EcoSport",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Escape",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Everest",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Expedition",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Explorer",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Explorer-Sport-Trac",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "F-150",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "F-250",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "F-350",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Fiesta",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Flex",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Focus",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Focus-RS",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Focus-ST",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Fusion",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Fusion-Hybrid",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Kuga",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Maverick",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Mondeo",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Mustang",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Puma",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Ranger",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "S-Max",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Taurus",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Taurus-X",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Territory",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Tourneo",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Transit",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Transit-Connect",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "GMC",
+      "request": "22 119F @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Remaining oil life",
+      "kind": "OilLifePercent",
+      "unit": "percent",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Acadia",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Canyon",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Sierra-2500HD",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Sierra-3500HD",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Terrain",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Yukon",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "GMC",
+      "request": "22 4DC0 @ 18DA11F1",
+      "transmitCanId": "18DA11F1",
+      "receiveCanId": "18DAF111",
+      "name": "Engine oil life remaining",
+      "kind": "OilLifePercent",
+      "unit": "percent",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Canyon",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Sierra-2500HD",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Terrain",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Yukon",
+          "definitionFlaggedDebug": false
+        }
+      ]
+    },
+    {
+      "make": "GMC",
+      "request": "22 4DC0 @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Engine oil life remaining",
+      "kind": "OilLifePercent",
+      "unit": "percent",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Acadia",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Canyon",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Sierra-2500HD",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Sierra-3500HD",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Terrain",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Yukon",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Holden",
+      "request": "22 119F @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Remaining oil life",
+      "kind": "OilLifePercent",
+      "unit": "percent",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Colorado",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Commodore",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Cruze",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Holden",
+      "request": "22 4DC0 @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Engine oil life remaining",
+      "kind": "OilLifePercent",
+      "unit": "percent",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Colorado",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Commodore",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Cruze",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Lincoln",
+      "request": "22 054B @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Oil life remaining",
+      "kind": "OilLifePercent",
+      "unit": "percent",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "MKC",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Nautilus",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Navigator",
+          "definitionFlaggedDebug": false
+        }
+      ]
+    },
+    {
+      "make": "Mazda",
+      "request": "22 054B @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Oil life remaining",
+      "kind": "OilLifePercent",
+      "unit": "percent",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "3",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "5",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "6",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "CX-30",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "CX-5",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Mazdaspeed-MX-5",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    }
+  ],
+  "oilDegradationTargets": [
+    {
+      "make": "Dodge",
+      "request": "22 3813 @ 18DA10F1",
+      "transmitCanId": "18DA10F1",
+      "receiveCanId": "18DAF110",
+      "name": "Engine oil degradation",
+      "kind": "OilDegradationPercent",
+      "unit": "percent",
+      "bitLength": 16,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Hornet",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "FIAT",
+      "request": "22 3813 @ 18DA10F1",
+      "transmitCanId": "18DA10F1",
+      "receiveCanId": "18DAF110",
+      "name": "Engine oil degradation",
+      "kind": "OilDegradationPercent",
+      "unit": "percent",
+      "bitLength": 16,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "500",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "500X",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Panda",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Jeep",
+      "request": "22 3813 @ 18DA10F1",
+      "transmitCanId": "18DA10F1",
+      "receiveCanId": "18DAF110",
+      "name": "Engine oil degradation",
+      "kind": "OilDegradationPercent",
+      "unit": "percent",
+      "bitLength": 16,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Cherokee",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Compass",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Grand-Wagoneer",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Renegade",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Wagoneer-L",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Ram",
+      "request": "22 3813 @ 18DA10F1",
+      "transmitCanId": "18DA10F1",
+      "receiveCanId": "18DAF110",
+      "name": "Engine oil degradation",
+      "kind": "OilDegradationPercent",
+      "unit": "percent",
+      "bitLength": 16,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "2500",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "3500",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    }
+  ],
+  "distanceAndTimeTargets": [
+    {
+      "make": "BMW",
+      "request": "22 DFE7 @ 6F1/19",
+      "transmitCanId": "6F1",
+      "receiveCanId": "619",
+      "name": "Distance since last oil change",
+      "kind": "DistanceSinceOilChange",
+      "unit": "kilometers",
+      "bitLength": 32,
+      "bitOffset": 304,
+      "models": [
+        {
+          "model": "1-Series",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "2-Series",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "3-Series",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "3-Series-eDrive",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "5-Series",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "7-Series",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "i5",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "i8",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "iX3",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "M2",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "M3",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "M4",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "M5",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "X2",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "X3",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "X4",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "X5",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "X7",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Z4",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Daihatsu",
+      "request": "21 41 @ 7C0",
+      "transmitCanId": "7C0",
+      "receiveCanId": null,
+      "name": "Distance since oil change",
+      "kind": "DistanceSinceOilChange",
+      "unit": "kilometers",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Hijet",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Terios",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Ford",
+      "request": "22 0542 @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Distance since last oil change",
+      "kind": "DistanceSinceOilChange",
+      "unit": "kilometers",
+      "bitLength": 16,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "B-Max",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Bronco",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Bronco-Sport",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "C-Max",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "E-Series-Wagon",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "EcoSport",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Everest",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Expedition",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Explorer",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Explorer-Sport-Trac",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "F-250",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "F-350",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Fiesta",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Focus",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Focus-RS",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Focus-ST",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Fusion",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Fusion-Hybrid",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Kuga",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Maverick",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Mondeo",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Mustang",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Puma",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Ranger",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Taurus",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Taurus-X",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Territory",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Tourneo",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Transit",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Transit-Connect",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Jeep",
+      "request": "22 D43F @ 6A8",
+      "transmitCanId": "6A8",
+      "receiveCanId": null,
+      "name": "Mileage since last oil change",
+      "kind": "DistanceSinceOilChange",
+      "unit": "kilometers",
+      "bitLength": 16,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Avenger",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Jeep",
+      "request": "22 D536 @ 6A8",
+      "transmitCanId": "6A8",
+      "receiveCanId": null,
+      "name": "Distance to next oil change",
+      "kind": "DistanceToNextService",
+      "unit": "kilometers",
+      "bitLength": 16,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Avenger",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Lexus",
+      "request": "21 41 @ 7C0",
+      "transmitCanId": "7C0",
+      "receiveCanId": null,
+      "name": "Distance since oil change",
+      "kind": "DistanceSinceOilChange",
+      "unit": "kilometers",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "ES",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "GX",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "IS",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "RC",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "UX",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Lincoln",
+      "request": "22 0542 @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Distance since last oil change",
+      "kind": "DistanceSinceOilChange",
+      "unit": "kilometers",
+      "bitLength": 16,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Navigator",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Mazda",
+      "request": "22 0519 @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Distance since oil changed",
+      "kind": "DistanceSinceOilChange",
+      "unit": "kilometers",
+      "bitLength": 16,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "3",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "5",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "6",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "CX-30",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "CX-5",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Mazdaspeed-MX-5",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "MX-5-Miata",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Mazda",
+      "request": "22 0542 @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Max distance to oil change",
+      "kind": "OilChangeInterval",
+      "unit": "kilometers",
+      "bitLength": 16,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "3",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "5",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "6",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "CX-30",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "CX-5",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Mazdaspeed-MX-5",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "MX-5-Miata",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Mercedes",
+      "request": "22 6504 @ 7E5",
+      "transmitCanId": "7E5",
+      "receiveCanId": "7ED",
+      "name": "Distance to next service",
+      "kind": "DistanceToNextService",
+      "unit": "kilometers",
+      "bitLength": 16,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Benz",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Benz-EQA",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Benz-EQB",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Benz-EQV",
+          "definitionFlaggedDebug": false
+        }
+      ]
+    },
+    {
+      "make": "MINI",
+      "request": "22 DFE7 @ 6F1/19",
+      "transmitCanId": "6F1",
+      "receiveCanId": "619",
+      "name": "Distance since last oil change",
+      "kind": "DistanceSinceOilChange",
+      "unit": "kilometers",
+      "bitLength": 32,
+      "bitOffset": 304,
+      "models": [
+        {
+          "model": "Clubman",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Cooper",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Countryman",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Hardtop",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Peugeot",
+      "request": "22 D43F @ 6A8",
+      "transmitCanId": "6A8",
+      "receiveCanId": null,
+      "name": "Mileage since last oil change",
+      "kind": "DistanceSinceOilChange",
+      "unit": "kilometers",
+      "bitLength": 16,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "2008",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "207",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "208",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "3008",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "308",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "408",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "5008",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "508",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Partner",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "RCZ",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Peugeot",
+      "request": "22 D536 @ 6A8",
+      "transmitCanId": "6A8",
+      "receiveCanId": null,
+      "name": "Distance to next oil change",
+      "kind": "DistanceToNextService",
+      "unit": "kilometers",
+      "bitLength": 16,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "2008",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "207",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "208",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "3008",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "308",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "408",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "5008",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "508",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Partner",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "RCZ",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Renault",
+      "request": "21 11 @ 743",
+      "transmitCanId": "743",
+      "receiveCanId": null,
+      "name": "Oil change interval in km",
+      "kind": "OilChangeInterval",
+      "unit": "kilometers",
+      "bitLength": 8,
+      "bitOffset": 128,
+      "models": [
+        {
+          "model": "Captur",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Clio",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Megane-E-Tech",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Symbioz",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Renault",
+      "request": "21 11 @ 743",
+      "transmitCanId": "743",
+      "receiveCanId": null,
+      "name": "Oil change interval in months",
+      "kind": "OilChangeInterval",
+      "unit": "scalar",
+      "bitLength": 8,
+      "bitOffset": 136,
+      "models": [
+        {
+          "model": "Captur",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Clio",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Megane-E-Tech",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Symbioz",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Renault",
+      "request": "22 0201 @ 743",
+      "transmitCanId": "743",
+      "receiveCanId": null,
+      "name": "Oil change interval in km",
+      "kind": "OilChangeInterval",
+      "unit": "miles",
+      "bitLength": 16,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Captur",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Clio",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Megane-E-Tech",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Scenic",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Symbioz",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Renault",
+      "request": "22 2110 @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Distance before next oil change",
+      "kind": "DistanceToNextService",
+      "unit": "kilometers",
+      "bitLength": 24,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Captur",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Clio",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Symbioz",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Scion",
+      "request": "21 41 @ 7C0",
+      "transmitCanId": "7C0",
+      "receiveCanId": null,
+      "name": "Distance since oil change",
+      "kind": "DistanceSinceOilChange",
+      "unit": "kilometers",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "iQ",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "tC",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "xB",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Scion",
+      "request": "22 1155 @ 7A2",
+      "transmitCanId": "7A2",
+      "receiveCanId": null,
+      "name": "Estimated distance to oil change",
+      "kind": "DistanceToNextService",
+      "unit": "kilometers",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "FR-S",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Scion",
+      "request": "22 1155 @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Estimated distance to oil change",
+      "kind": "DistanceToNextService",
+      "unit": "kilometers",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "FR-S",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "smart",
+      "request": "22 0203 @ 743",
+      "transmitCanId": "743",
+      "receiveCanId": null,
+      "name": "Distance to next service",
+      "kind": "DistanceToNextService",
+      "unit": "kilometers",
+      "bitLength": 16,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "fortwo",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "smart",
+      "request": "22 0204 @ 743",
+      "transmitCanId": "743",
+      "receiveCanId": null,
+      "name": "Days to next service",
+      "kind": "DaysToNextService",
+      "unit": "scalar",
+      "bitLength": 16,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "fortwo",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "smart",
+      "request": "22 6504 @ 7E5",
+      "transmitCanId": "7E5",
+      "receiveCanId": "7ED",
+      "name": "Distance to next service",
+      "kind": "DistanceToNextService",
+      "unit": "kilometers",
+      "bitLength": 16,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "fortwo",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Subaru",
+      "request": "22 1155 @ 7A2",
+      "transmitCanId": "7A2",
+      "receiveCanId": null,
+      "name": "Estimated distance to oil change",
+      "kind": "DistanceToNextService",
+      "unit": "kilometers",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Ascent",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "BRZ",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Crosstrek",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Impreza",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Legacy",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Outback",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "WRX",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Subaru",
+      "request": "22 1155 @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Estimated distance to oil change",
+      "kind": "DistanceToNextService",
+      "unit": "kilometers",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "Ascent",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "BRZ",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Crosstrek",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Impreza",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Legacy",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Outback",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Tribeca",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "WRX",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Toyota",
+      "request": "21 41 @ 7C0",
+      "transmitCanId": "7C0",
+      "receiveCanId": null,
+      "name": "Distance since oil change",
+      "kind": "DistanceSinceOilChange",
+      "unit": "kilometers",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "4Runner",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Allion",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Aqua",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Auris",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Avalon",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Avalon-Hybrid",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Aygo",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "C-HR",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Camry",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Camry-Hybrid",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Corolla",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Corolla-Cross",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Corolla-Hybrid",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Crown",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "FJ-Cruiser",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "GR-Corolla",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Grand-Highlander",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Grand-Highlander-Hybrid",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Highlander",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Hilux",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Land-Cruiser",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Land-Cruiser-Hybrid",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Prius",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Prius-Prime",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "RAV4",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "RAV4-Hybrid",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "RAV4-Prime",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Sequoia",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Sienna",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Sienna-Hybrid",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Tacoma",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Tundra",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Veloz",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Venza",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Venza-Hybrid",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Yaris",
+          "definitionFlaggedDebug": false
+        },
+        {
+          "model": "Yaris-Cross",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Toyota",
+      "request": "22 1155 @ 7A2",
+      "transmitCanId": "7A2",
+      "receiveCanId": null,
+      "name": "Estimated distance to oil change",
+      "kind": "DistanceToNextService",
+      "unit": "kilometers",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "GR86",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Toyota",
+      "request": "22 1155 @ 7E0",
+      "transmitCanId": "7E0",
+      "receiveCanId": "7E8",
+      "name": "Estimated distance to oil change",
+      "kind": "DistanceToNextService",
+      "unit": "kilometers",
+      "bitLength": 8,
+      "bitOffset": 0,
+      "models": [
+        {
+          "model": "GR86",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "GT86",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    },
+    {
+      "make": "Toyota",
+      "request": "22 DFE7 @ 6F1/19",
+      "transmitCanId": "6F1",
+      "receiveCanId": "619",
+      "name": "Distance since last oil change",
+      "kind": "DistanceSinceOilChange",
+      "unit": "kilometers",
+      "bitLength": 32,
+      "bitOffset": 304,
+      "models": [
+        {
+          "model": "GR-Supra",
+          "definitionFlaggedDebug": true
+        },
+        {
+          "model": "Supra",
+          "definitionFlaggedDebug": true
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "Every oil-life and oil-degradation signal in the catalog is in percent. The scale differs by family: remaining life shrinks, degradation grows.",
+    "The Service page's normal refresh sends the non-debug definitions of the exact model and, for oil life, oil degradation, distance and days to service, distance since the oil change and inspection, the identifiers other models of the same make use ('brand-wide'); readings obtained that way carry the research-level evidence label. Other definitions the community flags 'dbg' are sent only on request.",
+    "The catalog has no model-year filter (OBDb's 'filter' and 'dbgfilter' did not survive the import), so a row applies to the model whatever the year; a wrong year answers with a negative reply or nothing, and a value is shown only after a positive reply that decodes to a plausible figure.",
+    "There is no standard (SAE J1979) PID for oil life or a service interval; the only oil-related standard PID is 5C, engine oil temperature."
+  ]
+}

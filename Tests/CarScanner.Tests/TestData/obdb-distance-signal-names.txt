@@ -1,0 +1,197 @@
+# Names of the distance signals in the public OBDb vehicle signal sets (https://github.com/OBDb, CC BY-SA 4.0), collected 2026-10-18 from 609 per-vehicle repositories.
+# Column 1: number of repositories that use the name. Used only as a vocabulary for classification tests; no value or definition is taken from here.
+475	Odometer
+56	Vehicle odometer
+53	Odometer #2
+50	Odometer, engine computer
+49	Odometer, mileage, HR
+49	Total distance
+46	Chain elongation inlet, mileage at last adaptation
+46	Chain elongation outlet, mileage at last adaptation
+46	Odometer, alternative
+45	Odometer, high resolution
+43	Odometer, instrument panel
+41	Transmission odometer
+38	Clutch 1 adaptation kiss point part 1 odometer reading
+38	Odometer, imperial
+37	Clutch 2 adaptation kiss point part 1 odometer reading
+37	Odometer at last DPF regeneration
+36	Odometer variant
+35	Diesel particulate filter odometer at last regeneration
+35	Mileage of oxidation catalytic converter
+35	Odometer, metric
+34	Mileage with ECU installed
+34	Odometer at oxidation catalytic converter replacement
+33	Odometer, low resolution
+32	Odometer #3
+32	Sensor 1 odometer event 1
+32	Sensor 1 odometer event 2
+32	Sensor 1 odometer event 3
+32	Sensor 2 odometer event 1
+32	Sensor 2 odometer event 2
+32	Sensor 2 odometer event 3
+32	Sensor 3 odometer event 1
+32	Sensor 3 odometer event 2
+32	Sensor 3 odometer event 3
+32	Sensor 4 odometer event 1
+32	Sensor 4 odometer event 2
+32	Sensor 4 odometer event 3
+31	Odometer with ECU installed
+30	Odometer, alternate
+25	Odometer at last gasoline particulate filter regeneration
+25	Odometer reading at fourth-to-last warning
+25	Odometer reading at last adaptation
+25	Odometer reading at last warning
+25	Odometer reading at next-to-last warning
+25	Odometer reading at third-to-last warning
+25	Odometer reading four adaptations ago
+25	Odometer reading three adaptations ago
+25	Odometer reading two adaptations ago
+25	Vehicle total distance
+24	Counter steer support, odometer, last activated
+24	Odometer, brake module
+22	Total distance, lifetime
+21	Brake disk drying, odometer at last activation
+21	Mileage since last oil change
+21	Odometer, meter group 1
+21	Total mileage
+21	Vehicle mileage since the last oil change under severe vehicle operating conditions
+20	Odometer, variation 3
+18	Mileage of SCR catalytic converter
+18	Odometer at SCR catalytic converter replacement
+15	Average mileage for the last 10 regenerations
+15	Odometer #1
+14	Odometer at last excess speed recognition
+14	Odometer, mileage
+13	Odometer at last service
+12	Odometer reading at DPF replace
+12	Odometer, mileage 2
+11	Exhaust timing chain extension, mileage since last adaptation
+11	Intake timing chain extension, mileage since last adaptation
+11	Mileage remaining before diesel particulate filter replacement
+11	Mileage since last diesel particulate filter replacement
+11	Odometer at last regeneration
+11	Odometer, instrument cluster
+11	Odometer, km
+11	Odometer, mileage 1
+11	Vehicle mileage remaining before filling the tank with urea solution
+10	Odometer, electric drive
+10	Sensor #1 odometer event #1
+10	Sensor #1 odometer event #2
+10	Sensor #1 odometer event #3
+10	Sensor #2 odometer event #1
+10	Sensor #2 odometer event #2
+10	Sensor #2 odometer event #3
+10	Sensor #3 odometer event #1
+10	Sensor #3 odometer event #2
+10	Sensor #3 odometer event #3
+10	Sensor #4 odometer event #1
+10	Sensor #4 odometer event #2
+10	Sensor #4 odometer event #3
+10	Traction battery total mileage
+9	Odometer (alternative)
+9	Odometer (dash)
+9	Odometer (TCM #1)
+9	Odometer reading when changing DPF
+9	Odometer, dash
+8	Counter steer support, odometer
+8	Mileage after injector learning
+8	Mileage after injector replacement
+8	Mileage before servicing
+8	Mileage since last fault
+8	Odometer with ECU installed, variant 2
+8	Odometer, battery management system, second read
+8	Tire pressure monitoring odometer reading at fourth to last warning
+8	Tire pressure monitoring odometer reading at last adaptation
+8	Tire pressure monitoring odometer reading at last warning
+8	Tire pressure monitoring odometer reading at second to last warning
+8	Tire pressure monitoring odometer reading at third to last warning
+8	Tire pressure monitoring odometer reading four adaptations ago
+8	Tire pressure monitoring odometer reading three adaptations ago
+8	Tire pressure monitoring odometer reading two adaptations ago
+7	Odometer (TCM #2)
+7	Odometer at last DPF regen
+7	Odometer at last excess speed event
+7	Odometer, battery management system
+7	Tire pressure monitor deflation odometer history 1
+7	Tire pressure monitor deflation odometer history 2
+7	Tire pressure monitor deflation odometer history 3
+7	Tire pressure monitor deflation odometer history 4
+7	Tire pressure monitor deflation odometer history 5
+7	Tire pressure monitor deflation odometer history 6
+7	Tire pressure monitor deflation odometer history 7
+7	Tire pressure monitor deflation odometer history 8
+7	Tire pressure monitor deflation odometer history 9
+7	Tire pressure monitor latest deflation odometer
+7	Tire pressure monitor latest set odometer
+7	Tire pressure monitor set odometer history 1
+7	Tire pressure monitor set odometer history 2
+7	Tire pressure monitor set odometer history 3
+7	Tire pressure monitor set odometer history 4
+7	Tire pressure monitor set odometer history 5
+7	Tire pressure monitor set odometer history 6
+7	Tire pressure monitor set odometer history 7
+7	Tire pressure monitor set odometer history 8
+7	Tire pressure monitor set odometer history 9
+6	Computer, current mileage
+6	Mileage
+6	Odometer, battery control module
+6	Odometer, four adaptations ago
+6	Odometer, fourth-to-last warning
+6	Odometer, last adaptation
+6	Odometer, last warning
+6	Odometer, next-to-last warning
+6	Odometer, power steering module
+6	Odometer, stability control module
+6	Odometer, third-to-last warning
+6	Odometer, three adaptations ago
+6	Odometer, two adaptations ago
+6	Odometers
+5	Mileage since last appearance of fault
+5	Odometer fault LED illuminated
+5	Odometer fault warning light illuminated, OBD
+5	Odometer, body control module
+5	Odometer, dashboard
+5	Odometer, forward sensing module
+5	Odometer, miles
+5	Total distance traveled in km
+4	Diesel particulate filter odometer
+4	Engine control module odometer
+4	Odometer (TCM #2 high res)
+4	Odometer at last overspeed recognition
+4	Odometer, BMS
+3	DBCAM1 odometer, raw count
+3	DBCAM10 odometer, raw count
+3	DBCAM2 odometer, raw count
+3	DBCAM3 odometer, raw count
+3	DBCAM4 odometer, raw count
+3	DBCAM5 odometer, raw count
+3	DBCAM6 odometer, raw count
+3	DBCAM7 odometer, raw count
+3	DBCAM8 odometer, raw count
+3	DBCAM9 odometer, raw count
+3	Odometer (alternative 2)
+3	Odometer (imperial)
+3	Odometer (Imperial)
+3	Odometer (Instrument panel)
+3	Odometer (metric)
+3	Odometer (Metric)
+3	Odometer at last engine over-speed
+3	Odometer in km
+3	Odometer, engine
+3	Total distance travelled in km
+2	Diesel particulate filter regeneration request mileage
+2	Electric compressor odometer
+2	Engine total mileage
+2	Instrument panel total mileage
+2	Odometer reading, raw count
+2	Odometer, BMS #2
+2	Odometer, transmission module
+1	Odometer (high resolution)
+1	Odometer (instrument panel)
+1	Odometer variation 1
+1	Odometer variation 2
+1	Odometer, alternative 2
+1	Odometer, engine control module
+1	Odometer, TCM #2 high res
+1	Transmission module odometer

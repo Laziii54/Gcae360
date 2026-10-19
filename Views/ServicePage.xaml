@@ -34,15 +34,15 @@
                             <Label IsVisible="{Binding HasOilDue}" Text="{Binding OilDueText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" VerticalOptions="Center" />
                         </HorizontalStackLayout>
                         <ProgressBar Progress="{Binding OilLifeFraction}" ProgressColor="{Binding OilLifeColor}" HeightRequest="6" />
-                        <!-- Both targets go through the same checked write-back (speed, voltage, read-back); shown only when the car supports the reset. -->
+                        <!-- The reset to 100% goes through the checked write (speed, voltage, read-back) and is shown only when the car has a reviewed reset; the 50% button needs separate evidence that this car accepts a chosen value. -->
                         <Grid IsVisible="{Binding CanResetOilLife}" ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,4,0,0">
-                            <Border BackgroundColor="#1D5BD6" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="8,6" MinimumHeightRequest="48" IsEnabled="{Binding CanPressOilReset}">
+                            <Border Grid.ColumnSpan="{Binding OilResetFullColumnSpan}" BackgroundColor="#1D5BD6" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="8,6" MinimumHeightRequest="48" IsEnabled="{Binding CanPressOilReset}">
                                 <Border.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding ResetOilLifeFullCommand}" />
                                 </Border.GestureRecognizers>
                                 <Label AutomationId="DynamicTextServiceResetFull" Text="{Binding ResetFullButtonText}" FontSize="13" FontAttributes="Bold" TextColor="White" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" HorizontalOptions="Center" VerticalOptions="Center" LineBreakMode="WordWrap" />
                             </Border>
-                            <Border Grid.Column="1" BackgroundColor="Transparent" Stroke="{DynamicResource Primary}" StrokeThickness="1.5" StrokeShape="RoundRectangle 12" Padding="8,6" MinimumHeightRequest="48" IsEnabled="{Binding CanPressOilReset}">
+                            <Border Grid.Column="1" IsVisible="{Binding CanSetOilLifeHalf}" BackgroundColor="Transparent" Stroke="{DynamicResource Primary}" StrokeThickness="1.5" StrokeShape="RoundRectangle 12" Padding="8,6" MinimumHeightRequest="48" IsEnabled="{Binding CanPressOilReset}">
                                 <Border.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding ResetOilLifeHalfCommand}" />
                                 </Border.GestureRecognizers>

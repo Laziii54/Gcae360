@@ -19,6 +19,15 @@ licence (https://creativecommons.org/licenses/by-sa/4.0/).
 Changes: the definitions were re-expressed as C# decoders with plausibility
 checks; the assessment limits and scoring are OBD360's own.
 
+Signal names and identifiers of OBDb (same licence, same credit) also appear in
+the name rules `Services/Mileage/MileageSignalClassifier.cs` and
+`Services/OemDiagnostics/ServiceMetricClassifier.cs`, in their tests
+(`Tests/CarScanner.Tests/MileageHistoryTests.cs`, `ServiceOilSemanticsTests.cs`,
+`TestData/obdb-distance-signal-names.txt`), and, counted and grouped, in the
+research tables under `research/` (see `research/README.md`). Those tables are
+offered under CC BY-SA 4.0. The CAN odometer fields listed there come from
+opendbc (MIT, Copyright (c) 2020, Comma.ai, Inc.).
+
 ## PriusChat community
 
 The 7E3 variant of the 2010–2015 block request (21 81, value × 79.99 / 65535)

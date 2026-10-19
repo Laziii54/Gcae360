@@ -12,7 +12,10 @@ public enum ServiceMetricKind
     InspectionDistance,
     InspectionDays,
     MaintenanceCounter,
-    ServiceStatus
+    ServiceStatus,
+
+    /// <summary>Oil wear on the reverse scale (higher = more worn), as some makes report it. NOT "oil life remaining": never shown or colored as such.</summary>
+    OilDegradationPercent
 }
 
 public enum ServiceMetricEvidenceLevel

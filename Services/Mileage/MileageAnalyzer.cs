@@ -17,6 +17,44 @@ public enum MileageOutcome
 
 public sealed record MileageConflict(MileageEvidence First, MileageEvidence Second, double DifferenceKm);
 
+/// <summary>What the evidence, taken together, shows. Every code describes an observation; none says "tampering" and none picks an "original" mileage.</summary>
+public enum MileageFindingCode
+{
+    /// <summary>Two or more current total-odometer readings agree within the tolerance.</summary>
+    SourcesAgree,
+
+    /// <summary>Two or more current total-odometer readings differ by more than the tolerance.</summary>
+    SourcesDiffer,
+
+    /// <summary>A module's stored historical odometer record is higher than even the highest current reading.</summary>
+    HistoricalExceedsCurrent,
+
+    /// <summary>A module's installation record is higher than even the highest current reading.</summary>
+    ModuleRecordExceedsCurrent,
+
+    /// <summary>Historical / installation records exist and none is higher than the current reading.</summary>
+    HistoryNotAboveCurrent,
+
+    /// <summary>Records were read but no usable current odometer, so they cannot be compared with one.</summary>
+    NoCurrentOdometer,
+
+    /// <summary>One current reading and no record to compare it with.</summary>
+    SingleSourceNoHistory
+}
+
+public enum MileageFindingLevel
+{
+    Info,
+    Notice,
+    Attention
+}
+
+public sealed record MileageFinding(
+    MileageFindingCode Code,
+    MileageFindingLevel Level,
+    IReadOnlyList<MileageEvidence> Evidence,
+    double? DifferenceKm = null);
+
 public sealed class MileageAnalysis
 {
     public MileageOutcome Outcome { get; init; }
@@ -39,6 +77,21 @@ public sealed class MileageAnalysis
     public double? SpreadKm { get; init; }
 
     public double ToleranceKm { get; init; }
+
+    /// <summary>
+    /// Odometer values the modules stored at past events (DPF regeneration, adaptation, warning, TPMS event ...). Each is a
+    /// record of the past and is compared only with the current readings, never with another record.
+    /// </summary>
+    public IReadOnlyList<MileageEvidence> History { get; init; } = Array.Empty<MileageEvidence>();
+
+    /// <summary>Values tied to a module's installation ("Mileage / Odometer with ECU installed").</summary>
+    public IReadOnlyList<MileageEvidence> InstallRecords { get; init; } = Array.Empty<MileageEvidence>();
+
+    /// <summary>The highest value among the usable historical and installation records: a lower bound for the distance the car had covered at that time. Not "the original mileage".</summary>
+    public MileageEvidence? HighestRecorded { get; init; }
+
+    /// <summary>What the evidence shows as a whole, most important first. Observations only.</summary>
+    public IReadOnlyList<MileageFinding> Findings { get; init; } = Array.Empty<MileageFinding>();
 }
 
 /// <summary>Sanity limits for a total-odometer value.</summary>
@@ -48,6 +101,9 @@ public static class MileagePlausibility
     public const double KmPerMile = 1.609344d;
 
     public static bool IsPlausibleOdometerKm(double km) => double.IsFinite(km) && km > 0 && km <= MaximumKm;
+
+    /// <summary>A stored record: zero means "nothing recorded" and is not used.</summary>
+    public static bool IsPlausibleRecordKm(double km) => IsPlausibleOdometerKm(km);
 
     public static double MilesToKm(double miles) => miles * KmPerMile;
 }
@@ -64,7 +120,9 @@ public static class MileageAnalyzer
         var all = evidence.ToList();
 
         var odometerCandidates = all.Where(e => e.Measurement == MileageMeasurement.TotalOdometer).ToList();
-        var context = all.Where(e => e.Measurement != MileageMeasurement.TotalOdometer).ToList();
+        var historyCandidates = all.Where(e => e.Measurement == MileageMeasurement.OdometerAtEvent).ToList();
+        var installCandidates = all.Where(e => e.Measurement == MileageMeasurement.ModuleInstallRecord).ToList();
+        var context = all.Where(e => e.Measurement is not (MileageMeasurement.TotalOdometer or MileageMeasurement.OdometerAtEvent or MileageMeasurement.ModuleInstallRecord)).ToList();
 
         var flagged = new List<MileageEvidence>();
         var usable = new List<MileageEvidence>();
@@ -102,8 +160,17 @@ public static class MileageAnalyzer
             _ => conflicts.Count == 0 ? MileageOutcome.Consistent : MileageOutcome.Conflicting
         };
 
+        var history = UsableRecords(historyCandidates, flagged);
+        var installs = UsableRecords(installCandidates, flagged);
+        var highest = history.Concat(installs).OrderByDescending(e => e.ValueKm).FirstOrDefault();
+        var findings = BuildFindings(usable, history, installs, outcome, spread);
+
         return new MileageAnalysis
         {
+            History = history,
+            InstallRecords = installs,
+            HighestRecorded = highest,
+            Findings = findings,
             Outcome = outcome,
             Odometer = usable,
             Flagged = flagged,
@@ -113,6 +180,84 @@ public static class MileageAnalyzer
             SpreadKm = spread,
             ToleranceKm = tolerance
         };
+    }
+
+    // A record is usable when it decoded, is a real distance and is not zero (zero = nothing recorded). Others go to "to review".
+    private static List<MileageEvidence> UsableRecords(List<MileageEvidence> candidates, List<MileageEvidence> flagged)
+    {
+        var usable = new List<MileageEvidence>();
+        foreach (var record in candidates)
+        {
+            if (record.Status != MileageReadStatus.Ok)
+                flagged.Add(record);
+            else if (!record.IsDistance || !MileagePlausibility.IsPlausibleRecordKm(record.ValueKm))
+                flagged.Add(record with { Status = MileageReadStatus.Implausible });
+            else if (!usable.Any(u => u.Ecu == record.Ecu && u.Method == record.Method && u.SignalName == record.SignalName))
+                usable.Add(record);
+        }
+
+        return usable
+            .OrderBy(e => e.Measurement)
+            .ThenBy(e => e.EventKind)
+            .ThenBy(e => e.Ecu, StringComparer.Ordinal)
+            .ThenBy(e => e.SignalName, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static IReadOnlyList<MileageFinding> BuildFindings(
+        IReadOnlyList<MileageEvidence> totals,
+        IReadOnlyList<MileageEvidence> history,
+        IReadOnlyList<MileageEvidence> installs,
+        MileageOutcome outcome,
+        double? spread)
+    {
+        var findings = new List<MileageFinding>();
+        var records = history.Concat(installs).ToList();
+
+        if (outcome == MileageOutcome.Conflicting)
+            findings.Add(new MileageFinding(MileageFindingCode.SourcesDiffer, MileageFindingLevel.Attention, totals, spread));
+        else if (outcome == MileageOutcome.Consistent)
+            findings.Add(new MileageFinding(MileageFindingCode.SourcesAgree, MileageFindingLevel.Info, totals, spread));
+
+        if (totals.Count == 0)
+        {
+            if (records.Count > 0)
+                findings.Add(new MileageFinding(MileageFindingCode.NoCurrentOdometer, MileageFindingLevel.Notice, records));
+            return findings;
+        }
+
+        // The reference is the HIGHEST current reading: a record is called higher than "the current distance" only when it
+        // is higher than every module's current value, so a low-reading module can never create the finding by itself.
+        var reference = totals.OrderByDescending(e => e.ValueKm).First();
+
+        var exceedingHistory = new List<MileageEvidence>();
+        var exceedingInstall = new List<MileageEvidence>();
+        foreach (var record in records)
+        {
+            var allowed = Tolerance(totals.Append(record).ToList());
+            if (record.ValueKm - reference.ValueKm > allowed)
+                (record.Measurement == MileageMeasurement.ModuleInstallRecord ? exceedingInstall : exceedingHistory).Add(record);
+        }
+
+        if (exceedingHistory.Count > 0)
+            findings.Add(new MileageFinding(
+                MileageFindingCode.HistoricalExceedsCurrent, MileageFindingLevel.Attention,
+                exceedingHistory.Append(reference).ToList(), exceedingHistory.Max(e => e.ValueKm) - reference.ValueKm));
+        if (exceedingInstall.Count > 0)
+            findings.Add(new MileageFinding(
+                MileageFindingCode.ModuleRecordExceedsCurrent, MileageFindingLevel.Attention,
+                exceedingInstall.Append(reference).ToList(), exceedingInstall.Max(e => e.ValueKm) - reference.ValueKm));
+
+        if (records.Count > 0 && exceedingHistory.Count == 0 && exceedingInstall.Count == 0)
+            findings.Add(new MileageFinding(MileageFindingCode.HistoryNotAboveCurrent, MileageFindingLevel.Info, records));
+
+        if (totals.Count == 1 && records.Count == 0)
+            findings.Add(new MileageFinding(MileageFindingCode.SingleSourceNoHistory, MileageFindingLevel.Notice, totals));
+
+        return findings
+            .OrderByDescending(f => f.Level)
+            .ThenBy(f => f.Code)
+            .ToList();
     }
 
     /// <summary>

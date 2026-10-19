@@ -19,6 +19,10 @@ public sealed class MileageReadingRow
     public string StatusText { get; init; } = string.Empty;
     public string MethodText { get; init; } = string.Empty;
     public string SourceText { get; init; } = string.Empty;
+
+    /// <summary>Set only when the catalog still flags the definition behind the reading as under test.</summary>
+    public string DefinitionText { get; init; } = string.Empty;
+    public bool HasDefinitionText => DefinitionText.Length > 0;
     public bool IsHighlighted { get; init; }
     public Color ValueColor { get; init; } = Colors.Gray;
     public Color RowBackground => IsHighlighted ? ThemeService.Soft("#FDF1D8") : Colors.Transparent;
@@ -27,6 +31,14 @@ public sealed class MileageReadingRow
 public sealed class MileageConflictRow
 {
     public string Text { get; init; } = string.Empty;
+}
+
+/// <summary>One observation about the stored records (Mileage page). An observation, never a verdict.</summary>
+public sealed class MileageFindingRow
+{
+    public string Title { get; init; } = string.Empty;
+    public string Text { get; init; } = string.Empty;
+    public Color TitleColor { get; init; } = Colors.Gray;
 }
 
 /// <summary>One source that was tried (or deliberately not tried) and what came of it.</summary>
@@ -86,6 +98,12 @@ public class MileageViewModel : BaseViewModel
     public ObservableCollection<MileageReadingRow> Flagged { get; } = new();
     public ObservableCollection<MileageReadingRow> ContextReadings { get; } = new();
     public ObservableCollection<MileageAttemptRow> Attempts { get; } = new();
+
+    // Records the modules keep of the past, and what they show next to the current readings
+    public ObservableCollection<MileageReadingRow> HistoryReadings { get; } = new();
+    public ObservableCollection<MileageFindingRow> Findings { get; } = new();
+    public bool HasHistory => HistoryReadings.Count > 0;
+    public bool HasFindings => Findings.Count > 0;
     public bool HasReadings => Readings.Count > 0;
     public bool HasConflicts => Conflicts.Count > 0;
     public bool HasFlagged => Flagged.Count > 0;
@@ -134,6 +152,11 @@ public class MileageViewModel : BaseViewModel
     public string ReadingsCaption => L("ოდომეტრის მაჩვენებლები", "Odometer readings");
     public string ConflictsCaption => L("სხვაობა მაჩვენებლებს შორის", "Differences between readings");
     public string FlaggedCaption => L("გადასამოწმებელი მნიშვნელობები (არ გამოიყენება)", "Values to review (not used)");
+    public string FindingsCaption => L("რას აჩვენებს შენახული ჩანაწერები", "What the stored records show");
+    public string HistoryCaption => L("მოდულების წარსული ჩანაწერები", "Records the modules keep of the past");
+    public string HistoryNote => L(
+        "ეს წარსულის ჩანაწერებია და არა მიმდინარე მანძილი. ისინი მხოლოდ მიმდინარე ოდომეტრის მაჩვენებლებს ედარება და ერთმანეთს — არა.",
+        "These are records of the past, not the current distance. They are compared only with the current odometer readings, never with each other.");
     public string ContextCaption => L("სხვა მანძილის და დროის მნიშვნელობები", "Other distance and time values");
     public string ContextNote => MileageWording.ContextNote(_localization.IsEnglish);
     public string AttemptsCaption => L("წყაროების სტატუსი", "Source status");
@@ -339,10 +362,17 @@ public class MileageViewModel : BaseViewModel
             Title = ReadingTitle(evidence),
             ValueText = MileageWording.FormatValue(evidence, en),
             ConvertedText = converted,
-            MeasurementText = MileageWording.Measurement(evidence.Measurement, en),
+            MeasurementText = evidence.Measurement switch
+            {
+                MileageMeasurement.OdometerAtEvent => $"{MileageWording.EventKind(evidence.EventKind, en)}\n{evidence.SignalName}",
+                MileageMeasurement.ModuleInstallRecord => $"{MileageWording.Measurement(evidence.Measurement, en)}\n{evidence.SignalName}",
+                _ => MileageWording.Measurement(evidence.Measurement, en)
+            },
             StatusText = evidence.Status == MileageReadStatus.Ok ? string.Empty : MileageWording.ReadStatus(evidence.Status, en),
-            MethodText = $"{evidence.Method} · {evidence.RetrievedAt.ToLocalTime():HH:mm:ss}",
+            MethodText = $"{evidence.Method} · {evidence.RetrievedAt.ToLocalTime():HH:mm:ss}" +
+                         (evidence.RawHex.Length > 0 ? $"\nraw {evidence.RawHex}" : string.Empty),
             SourceText = MileageWording.SourceKind(evidence.SourceKind, en),
+            DefinitionText = evidence.DefinitionUnderTest ? MileageWording.DefinitionUnderTest(en) : string.Empty,
             IsHighlighted = highlighted,
             ValueColor = highlighted ? Amber : ThemeService.Soft("#1B1D20")
         };
@@ -359,6 +389,8 @@ public class MileageViewModel : BaseViewModel
         Flagged.Clear();
         ContextReadings.Clear();
         Attempts.Clear();
+        HistoryReadings.Clear();
+        Findings.Clear();
 
         HasResult = result is not null;
         if (result is null)
@@ -386,6 +418,33 @@ public class MileageViewModel : BaseViewModel
                 Conflicts.Add(new MileageConflictRow
                 {
                     Text = $"{ReadingTitle(conflict.First)} {MileageWording.FormatValue(conflict.First, en)} {ReadingTitle(conflict.Second)} {MileageWording.FormatValue(conflict.Second, en)}  =  {difference}"
+                });
+            }
+
+            // Records of the past: each row says which module stored it and when; a row that a finding points at is highlighted.
+            var pointedAt = new HashSet<MileageEvidence>(analysis.Findings
+                .Where(f => f.Code is MileageFindingCode.HistoricalExceedsCurrent or MileageFindingCode.ModuleRecordExceedsCurrent)
+                .SelectMany(f => f.Evidence.Where(e => e.Measurement != MileageMeasurement.TotalOdometer)));
+            foreach (var record in analysis.History.Concat(analysis.InstallRecords))
+                HistoryReadings.Add(ToRow(record, pointedAt.Contains(record)));
+
+            foreach (var finding in analysis.Findings.Where(f => f.Code is
+                         MileageFindingCode.HistoricalExceedsCurrent or MileageFindingCode.ModuleRecordExceedsCurrent or
+                         MileageFindingCode.HistoryNotAboveCurrent or MileageFindingCode.NoCurrentOdometer))
+            {
+                // The English template goes through the translation table first, then the amount is put in.
+                var template = MileageWording.FindingTemplate(finding.Code, en);
+                var amount = finding.DifferenceKm is { } difference ? _units.FormatDistance(difference, "0.#") : string.Empty;
+                Findings.Add(new MileageFindingRow
+                {
+                    Title = en ? LocalizationService.T(MileageWording.FindingTitle(finding.Code, true)) : MileageWording.FindingTitle(finding.Code, false),
+                    Text = string.Format(CultureInfo.InvariantCulture, en ? LocalizationService.T(template) : template, amount),
+                    TitleColor = finding.Level switch
+                    {
+                        MileageFindingLevel.Attention => Amber,
+                        MileageFindingLevel.Info => Blue,
+                        _ => Grey
+                    }
                 });
             }
 

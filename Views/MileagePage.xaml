@@ -58,6 +58,7 @@
                                     <Label Text="{Binding MeasurementText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                                     <Label Text="{Binding MethodText}" FontSize="12" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                                     <Label Text="{Binding SourceText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                    <Label IsVisible="{Binding HasDefinitionText}" Text="{Binding DefinitionText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                                 </VerticalStackLayout>
                             </VerticalStackLayout>
                         </DataTemplate>
@@ -72,6 +73,45 @@
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="vm:MileageConflictRow">
                             <Label Text="{Binding Text}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- What the records the modules keep of the past show next to the current readings -->
+            <Label IsVisible="{Binding HasFindings}" Text="{Binding FindingsCaption}" Style="{StaticResource SectionCaptionStyle}" />
+            <Border IsVisible="{Binding HasFindings}" Style="{StaticResource ListCardStyle}" Padding="14,12">
+                <VerticalStackLayout Spacing="12" BindableLayout.ItemsSource="{Binding Findings}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:MileageFindingRow">
+                            <VerticalStackLayout Spacing="3">
+                                <Label Text="{Binding Title}" FontSize="13" FontAttributes="Bold" TextColor="{Binding TitleColor}" LineBreakMode="WordWrap" />
+                                <Label Text="{Binding Text}" FontSize="12" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Records of the past: kept apart from the current odometer and compared only with it -->
+            <Label IsVisible="{Binding HasHistory}" Text="{Binding HistoryCaption}" Style="{StaticResource SectionCaptionStyle}" />
+            <Label IsVisible="{Binding HasHistory}" Text="{Binding HistoryNote}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+            <Border IsVisible="{Binding HasHistory}" Style="{StaticResource ListCardStyle}">
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding HistoryReadings}" Spacing="0" Margin="0,-1,0,0">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:MileageReadingRow">
+                            <VerticalStackLayout Spacing="0" BackgroundColor="{Binding RowBackground}">
+                                <BoxView Style="{StaticResource RowDividerStyle}" />
+                                <VerticalStackLayout Spacing="3" Padding="14,12">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <Label Text="{Binding Title}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" VerticalOptions="Center" />
+                                        <Label Grid.Column="1" Text="{Binding ValueText}" FontSize="14" FontAttributes="Bold" TextColor="{Binding ValueColor}" HorizontalTextAlignment="End" />
+                                    </Grid>
+                                    <Label Text="{Binding MeasurementText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                    <Label Text="{Binding MethodText}" FontSize="12" FontFamily="monospace" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                    <Label IsVisible="{Binding HasDefinitionText}" Text="{Binding DefinitionText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                                </VerticalStackLayout>
+                            </VerticalStackLayout>
                         </DataTemplate>
                     </BindableLayout.ItemTemplate>
                 </VerticalStackLayout>

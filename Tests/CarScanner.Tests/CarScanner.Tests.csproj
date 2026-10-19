@@ -83,6 +83,8 @@
     <Compile Include="../../Services/OemDiagnostics/OemOperationSimulationValidator.cs" Link="OemOperationSimulationValidator.cs" />
     <Compile Include="../../Services/OemDiagnostics/VoltOilLifeDecoder.cs" Link="OemDiagnostics/VoltOilLifeDecoder.cs" />
     <Compile Include="../../Models/ServiceDataModels.cs" Link="ServiceDataModels.cs" />
+    <Compile Include="../../Services/OemDiagnostics/ServiceMetricClassifier.cs" Link="ServiceMetricClassifier.cs" />
+    <Compile Include="../../Services/OemDiagnostics/ObdbDiagnosticAddressResolver.cs" Link="ObdbDiagnosticAddressResolver.cs" />
     <Compile Include="../../Models/ServiceResetVerificationModels.cs" Link="ServiceResetVerificationModels.cs" />
     <Compile Include="../../Services/OemDiagnostics/ServiceResetVerificationService.cs" Link="ServiceResetVerificationService.cs" />
     <Compile Include="../../Services/OemDiagnostics/ServiceDiagnosticTrace.cs" Link="ServiceDiagnosticTrace.cs" />
@@ -126,10 +128,12 @@
     <!-- Service page engine: matching, compatibility, catalog parsing / validation. -->
     <Compile Include="../../Services/ServiceProcedures/*.cs" Link="ServiceProcedures/%(Filename)%(Extension)" />
     <None Include="../../Resources/Raw/service_procedures.json" Link="Resources/Raw/service_procedures.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="TestData/obdb-distance-signal-names.txt" Link="TestData/obdb-distance-signal-names.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <!-- Mileage: pure model, decoders, comparison and wording (no I/O). -->
     <Compile Include="../../Services/Mileage/MileageEvidence.cs" Link="Mileage/MileageEvidence.cs" />
+    <Compile Include="../../Services/Mileage/MileageSignalClassifier.cs" Link="Mileage/MileageSignalClassifier.cs" />
     <Compile Include="../../Services/Mileage/MileageAnalyzer.cs" Link="Mileage/MileageAnalyzer.cs" />
     <Compile Include="../../Services/Mileage/StandardMileageDecoder.cs" Link="Mileage/StandardMileageDecoder.cs" />
     <Compile Include="../../Services/Mileage/OdometerResponseDecoder.cs" Link="Mileage/OdometerResponseDecoder.cs" />

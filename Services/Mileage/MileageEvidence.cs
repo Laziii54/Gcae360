@@ -25,7 +25,13 @@ public enum MileageMeasurement
     /// <summary>Calculated from other data — an estimate, never a reading.</summary>
     EstimatedDistance,
 
-    OtherDistance
+    OtherDistance,
+
+    /// <summary>The odometer value a module stored when something happened (DPF regeneration, adaptation, warning, TPMS event). A record of the past: a snapshot, never the current distance.</summary>
+    OdometerAtEvent,
+
+    /// <summary>A value tied to the module's installation ("Mileage / Odometer with ECU installed"). Not the current odometer and not compared with it as one.</summary>
+    ModuleInstallRecord
 }
 
 public enum MileageReadStatus
@@ -84,7 +90,28 @@ public sealed record MileageEvidence(
 
     public DateTimeOffset RetrievedAt { get; init; } = DateTimeOffset.UtcNow;
 
+    /// <summary>What happened when an <see cref="MileageMeasurement.OdometerAtEvent"/> value was stored.</summary>
+    public MileageEventKind EventKind { get; init; } = MileageEventKind.None;
+
+    /// <summary>The public definition's own name for the value, e.g. "Odometer at last DPF regeneration".</summary>
+    public string SignalName { get; init; } = string.Empty;
+
+    /// <summary>
+    /// True when the public catalog still flags the definition behind this reading as under test (OBDb's "dbg": whether to debug the
+    /// signal responses). The number then comes from a definition that nobody has confirmed yet; it is shown, with that said.
+    /// </summary>
+    public bool DefinitionUnderTest { get; init; }
+
+    /// <summary>The data bytes of the module's reply exactly as received (hex), kept so a value can be re-checked by hand.</summary>
+    public string RawHex { get; init; } = string.Empty;
+
     public bool IsDistance => !double.IsNaN(ValueKm);
+
+    /// <summary>
+    /// Values that mean the same thing share a group; only values of the same group are ever compared. "odometer" holds
+    /// the current total-distance copies; every other measurement is its own group.
+    /// </summary>
+    public string ComparabilityGroup => Measurement == MileageMeasurement.TotalOdometer ? "odometer" : Measurement.ToString();
 
     public double DisplayValue => RawValue ?? ValueKm;
 }

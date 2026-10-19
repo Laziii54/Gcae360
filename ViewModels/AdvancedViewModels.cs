@@ -2193,6 +2193,14 @@ public partial class ServiceViewModel : BaseViewModel
     [ObservableProperty] private string oilResetHistoryTitleText = "";
     public bool IsOilResetIdle => !IsOilResetRunning;
     public bool CanPressOilReset => CanResetOilLife && !IsOilResetRunning;
+
+    /// <summary>The "1/2 (50%)" button exists only when the reviewed evidence for this car says an arbitrary percentage can be set; the reset to 100% alone never implies it.</summary>
+    public bool CanSetOilLifeHalf =>
+        CanResetOilLife &&
+        _oilLifeReading is { } reading &&
+        IsLearnedGmOilReading(reading) &&
+        _serviceDataReader.CanOfferOilLifeTarget(50);
+    public int OilResetFullColumnSpan => CanSetOilLifeHalf ? 1 : 2;
     public bool ShowOilResetUnavailable => HasOilResetCard && !CanResetOilLife;
     public bool HasOilResetStatus => !string.IsNullOrWhiteSpace(OilResetStatusText);
     public bool HasOilResetDetail => !string.IsNullOrWhiteSpace(OilResetDetailText);
@@ -2205,6 +2213,8 @@ public partial class ServiceViewModel : BaseViewModel
     partial void OnCanResetOilLifeChanged(bool value)
     {
         OnPropertyChanged(nameof(CanPressOilReset));
+        OnPropertyChanged(nameof(CanSetOilLifeHalf));
+        OnPropertyChanged(nameof(OilResetFullColumnSpan));
         OnPropertyChanged(nameof(ShowOilResetUnavailable));
         RebuildProcedureRows();
     }
@@ -3450,6 +3460,8 @@ public partial class ServiceViewModel : BaseViewModel
         var oilLife = _lastServiceReadings.FirstOrDefault(item => item.Kind == ServiceMetricKind.OilLifePercent);
         HasOilResetCard = oilLife is not null;
         _oilLifeReading = oilLife;
+        OnPropertyChanged(nameof(CanSetOilLifeHalf));
+        OnPropertyChanged(nameof(OilResetFullColumnSpan));
         CanResetOilLife = oilLife is not null &&
             (IsLearnedGmOilReading(oilLife) ? _serviceDataReader.CanResetLearnedOilLife : _serviceDataReader.CanResetByWriteBack(oilLife));
         OilManualResetText = oilLife is not null && !CanResetOilLife ? ManualResetGuide() : string.Empty;
@@ -3473,7 +3485,11 @@ public partial class ServiceViewModel : BaseViewModel
                 Name = LocalizeServiceMetricName(reading),
                 ValueText = FormatServiceMetricValue(reading),
                 ValueColor = GetServiceMetricValueColor(reading),
-                Detail = reading.Detail,
+                Detail = reading.Kind == ServiceMetricKind.OilDegradationPercent
+                    ? reading.Detail + "\n" + L(
+                        "ეს არის ზეთის დეგრადაცია და არა დარჩენილი რესურსი: რაც მეტია, მით უფრო ცვეთილია ზეთი. აღწერა საჯარო OBDb კატალოგიდანაა, OBD360-ს მანქანაზე არ შეუმოწმებია.",
+                        "This is oil degradation, not oil life remaining: the higher it is, the more worn the oil. The definition comes from the public OBDb catalog and has not been verified on a vehicle by OBD360.")
+                    : reading.Detail,
                 SourceText = reading.SourceCatalog,
                 EvidenceBadge = reading.EvidenceLevel == ServiceMetricEvidenceLevel.ProductionCatalog
                     ? L("REAL ECU READ", "REAL ECU READ")
@@ -3896,6 +3912,7 @@ public partial class ServiceViewModel : BaseViewModel
         ServiceMetricKind.InspectionDays => "DAY",
         ServiceMetricKind.MaintenanceCounter => "CNT",
         ServiceMetricKind.ServiceStatus => "SRV",
+        ServiceMetricKind.OilDegradationPercent => "DEG",
         _ => "DATA"
     };
 
@@ -3922,6 +3939,9 @@ public partial class ServiceViewModel : BaseViewModel
             ServiceMetricKind.InspectionDays when reading.NumericValue <= 0 => "#B3361F",
             ServiceMetricKind.InspectionDays when reading.NumericValue <= 30 => "#C98A1A",
             ServiceMetricKind.InspectionDays => "#1F8A4C",
+
+            // Degradation runs the other way from remaining life: no green / amber / red judgement is made from it.
+            ServiceMetricKind.OilDegradationPercent => "#5D636B",
 
             _ => "#1F8A4C"
         };
@@ -3956,6 +3976,7 @@ public partial class ServiceViewModel : BaseViewModel
         ServiceMetricKind.InspectionDays => L("დღეები ინსპექციამდე", "Days to inspection"),
         ServiceMetricKind.MaintenanceCounter => reading.SourceName,
         ServiceMetricKind.ServiceStatus => L("სერვისის სტატუსი", "Service status"),
+        ServiceMetricKind.OilDegradationPercent => L("ძრავის ზეთის დეგრადაცია (მეტი = უფრო ცვეთილი)", "Engine oil degradation (higher = more worn)"),
         _ => reading.SourceName
     };
 
