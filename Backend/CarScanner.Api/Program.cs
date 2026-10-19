@@ -222,6 +222,61 @@ app.MapPost(
     });
 
 // ============================================================
+// ABOUT US
+// ============================================================
+
+app.MapGet("/about", (IConfiguration config) =>
+{
+    var legal = WebPages.LegalInfo.From(config);
+    var html = $$"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OBD360 — About Us / ჩვენს შესახებ</title>
+    <style>
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.7;max-width:900px;margin:0 auto;padding:30px 20px;color:#222;background:#fff}
+        h1{font-size:30px;margin-bottom:8px}
+        h2{margin-top:32px;font-size:21px}
+        p,li{margin:10px 0}
+        .ka{color:#333;border-left:3px solid #e5e7eb;padding-left:12px}
+        a{color:#2563eb}
+    </style>
+</head>
+<body>
+
+<h1>About Us — OBD360</h1>
+
+<p>OBD360 is a vehicle diagnostic application and website operated by {{System.Net.WebUtility.HtmlEncode(legal.Name)}}. The App connects to OBD2 adapters over Bluetooth to read fault codes, live sensor data, battery and service information, and offers a separate VIN history check (auction photos, damage, mileage and title records) for cars imported from the US.</p>
+<p class="ka">OBD360 არის ავტომობილის დიაგნოსტიკის აპლიკაცია და ვებგვერდი, რომელსაც ფლობს {{System.Net.WebUtility.HtmlEncode(legal.Name)}}. აპი Bluetooth-ით უკავშირდება OBD2 ადაპტერს და კითხულობს შეცდომის კოდებს, ცოცხალ სენსორულ მონაცემებს, ბატარეისა და სერვისის ინფორმაციას; ცალკე გთავაზობთ VIN-ით ისტორიის შემოწმებას (აუქციონის ფოტოები, დაზიანება, გარბენი და ტიტულის ჩანაწერები) აშშ-იდან შემოყვანილი მანქანებისთვის.</p>
+
+<h2>Contact · კონტაქტი</h2>
+<p>E-mail: <a href="mailto:obd360support@gmail.com">obd360support@gmail.com</a>{{(legal.Address is null ? "" : " · " + System.Net.WebUtility.HtmlEncode(legal.Address))}}</p>
+
+<h2>Price and currency · ფასი და ვალუტა</h2>
+<p>Current plan prices and what each plan includes are listed on the <a href="/pro">PRO page</a> and on the <a href="/#prices">pricing section</a> of the homepage. Visitors in Georgia see and pay in Georgian lari (GEL); visitors from other countries see and pay in US dollars (USD).</p>
+<p class="ka">მოქმედი გეგმების ფასები და თითოეულის შემცველობა მოცემულია <a href="/pro">PRO გვერდზე</a> და მთავარი გვერდის <a href="/#prices">ფასების სექციაში</a>. საქართველოში ფასი ჩანს და იხდის ლარში (GEL); სხვა ქვეყნებიდან — დოლარში (USD).</p>
+
+<h2>Delivery · მიწოდება</h2>
+<p>OBD360 sells digital access only — there is no physical product or shipping. A plan activates automatically on the account as soon as the payment is confirmed; the current status is always visible on the <a href="/account/subscription">My subscription</a> page and in the app.</p>
+<p class="ka">OBD360 ყიდის მხოლოდ ციფრულ წვდომას — ფიზიკური პროდუქტი ან გზავნილი არ არსებობს. გეგმა ავტომატურად ირთვება ანგარიშზე გადახდის დადასტურებისთანავე; მიმდინარე სტატუსი ყოველთვის ჩანს <a href="/account/subscription">„ჩემი გამოწერა“</a> გვერდზე და აპში.</p>
+
+<h2>Cancellation and refunds · გაუქმება და თანხის დაბრუნება</h2>
+<p>Full details, including how to cancel an automatic monthly payment and how refunds are handled, are in the <a href="/terms-of-use">Terms of Use</a>.</p>
+<p class="ka">სრული წესები — ავტომატური ყოველთვიური გადახდის გაუქმება და თანხის დაბრუნება — <a href="/terms-of-use">გამოყენების პირობებში</a>.</p>
+
+<h2>Privacy · კონფიდენციალურობა</h2>
+<p>What data the App and server process is described in the <a href="/privacy-policy">Privacy Policy</a>.</p>
+<p class="ka">რა მონაცემებს ამუშავებს აპი და სერვერი — <a href="/privacy-policy">კონფიდენციალურობის პოლიტიკაში</a>.</p>
+
+</body>
+</html>
+""";
+    return Results.Content(SeoPages.WithMeta(html, "/about"), "text/html; charset=utf-8");
+});
+
+// ============================================================
 // PRIVACY POLICY
 // ============================================================
 
@@ -361,7 +416,7 @@ app.MapGet("/support", () =>
 <p>Available diagnostics depend on the vehicle, ECU, protocol and adapter. A function marked Not Supported or Not Available is not fabricated by the app.</p>
 <h2>ქართული მხარდაჭერა</h2>
 <p>დახმარებისთვის მოგვწერეთ ზემოთ მითითებულ ელფოსტაზე და დაურთეთ ტელეფონის მოდელი, სისტემის ვერსია, OBD ადაპტერის სახელი და ავტომობილის მარკა/მოდელი/წელი.</p>
-<p><a href="/privacy-policy">Privacy Policy</a> · <a href="/terms-of-use">Terms of Use</a></p>
+<p><a href="/about">About Us</a> · <a href="/privacy-policy">Privacy Policy</a> · <a href="/terms-of-use">Terms of Use</a></p>
 </body>
 </html>
 """;
@@ -3594,9 +3649,11 @@ static async Task<IResult> BuildVinReportAsync(
 
     var open = quota.Unlocked;
     // Opened history: the latest lot gets its full vehicle page
-    // (damage, odometer, title, keys, run condition, photos).
+    // (damage, odometer, title, keys, run condition, photos). The provider's
+    // own photo count can exceed what the summary/history list carried, so
+    // this also runs when fewer images arrived than the provider reports.
     if (open && lots.Count > 0 &&
-        (lots[0].ImageUrls.Count == 0 || lots[0].PrimaryDamage is null || lots[0].OdometerValue is null || lots[0].TitleStatus is null))
+        (lots[0].ImageUrls.Count < lots[0].PhotoCount || lots[0].PrimaryDamage is null || lots[0].OdometerValue is null || lots[0].TitleStatus is null))
     {
         var detail = await data.GetLatestDetailLotAsync(vin, lots[0].LotNumber, ct);
         if (detail is not null)

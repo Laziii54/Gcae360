@@ -162,7 +162,7 @@ Requests INTEGER NOT NULL);";
 
     /// <summary>API Auctions requests per month ($0.01 each).</summary>
     public int ApaMonthlyBudget =>
-        int.TryParse(_config["Vin:ApiAuctionsMonthlyBudget"], out var value) && value > 0 ? value : 300;
+        int.TryParse(_config["Vin:ApiAuctionsMonthlyBudget"], out var value) && value > 0 ? value : 1000;
 
     /// <summary>Any extra archive (VehicleDatabases / API Auctions) is set up.</summary>
     public bool HasExtraProviders => IsSecondProviderConfigured || IsApiAuctionsConfigured;
@@ -305,7 +305,7 @@ Requests INTEGER NOT NULL);";
 
     /// <summary>Paid VehicleDatabases lookups per month (their credits are limited).</summary>
     public int VdbMonthlyBudget =>
-        int.TryParse(_config["Vin:VdbMonthlyBudget"], out var value) && value > 0 ? value : 15;
+        int.TryParse(_config["Vin:VdbMonthlyBudget"], out var value) && value > 0 ? value : 60;
 
     /// <summary>
     /// Auction lots from VehicleDatabases. Photo links there are signed and
@@ -957,9 +957,9 @@ UPDATE VinProviderUsage SET Requests=Requests+1 WHERE Month=$m AND Requests < $l
         target.RunAndDrive ??= source.RunAndDrive;
         target.EngineStarts ??= source.EngineStarts;
         target.TitleStatus ??= source.TitleStatus;
-        if (target.ImageUrls.Count == 0 && source.ImageUrls.Count > 0)
-            target.ImageUrls = source.ImageUrls;
-        target.PhotoCount = Math.Max(target.PhotoCount, target.ImageUrls.Count);
+        if (source.ImageUrls.Count > 0)
+            target.ImageUrls = target.ImageUrls.Concat(source.ImageUrls).Distinct(StringComparer.OrdinalIgnoreCase).Take(80).ToList();
+        target.PhotoCount = Math.Max(target.PhotoCount, Math.Max(source.PhotoCount, target.ImageUrls.Count));
     }
 
     /// <summary>
@@ -984,11 +984,11 @@ UPDATE VinProviderUsage SET Requests=Requests+1 WHERE Month=$m AND Requests < $l
 
         var lots = ParseLots(raw, vin);
         var match = lots.FirstOrDefault(l => lotNumber is not null && l.LotNumber == lotNumber) ?? lots.FirstOrDefault();
-        if (match is not null && match.ImageUrls.Count == 0)
+        if (match is not null && match.ImageUrls.Count < match.PhotoCount)
         {
             var photos = await GetLatestPhotosAsync(vin, ct);
-            match.ImageUrls = photos;
-            match.PhotoCount = Math.Max(match.PhotoCount, photos.Count);
+            match.ImageUrls = match.ImageUrls.Concat(photos).Distinct(StringComparer.OrdinalIgnoreCase).Take(80).ToList();
+            match.PhotoCount = Math.Max(match.PhotoCount, match.ImageUrls.Count);
         }
         return match;
     }

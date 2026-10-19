@@ -149,6 +149,8 @@ ul.ck li:before{content:"";position:absolute;left:2px;top:.55em;width:9px;height
 .tier.hi{border:2px solid var(--ink)}
 .tier .t{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}.tier h3{margin:0;font-size:18px}
 .tier .pr{font-size:30px;font-weight:800;margin:4px 0 2px}.tier .pr small{font-size:14px;color:var(--muted);font-weight:500}
+.tier .anchor{font-size:13px;color:var(--muted);text-decoration:line-through}
+.tier .save{font-size:12px;font-weight:700;color:var(--amber);background:var(--amber-soft);border-radius:6px;padding:2px 9px;display:inline-block;margin:4px 0 10px}
 .tier p{color:var(--muted);margin:0 0 14px;font-size:14.5px}
 .tier ul.ck{margin-bottom:18px;flex:1}
 .tier .btn{justify-content:center}
@@ -228,6 +230,10 @@ document.addEventListener("DOMContentLoaded",function(){var btn=document.getElem
         var vinPrice = WebPaymentService.PriceFor(ProductCatalog.VinMonthly);
         var fullPrice = WebPaymentService.PriceFor(ProductCatalog.FullMonthly);
         var single = WebPaymentService.PriceFor(ProductCatalog.VinSingle);
+        var obdAnchor = WebPaymentService.AnchorPriceFor(ProductCatalog.ObdMonthly);
+        var vinAnchor = WebPaymentService.AnchorPriceFor(ProductCatalog.VinMonthly);
+        var fullAnchor = WebPaymentService.AnchorPriceFor(ProductCatalog.FullMonthly);
+        var fullSavePercent = fullPrice is { } fp && fullAnchor is { } fa && fa > 0 ? (int)Math.Round((1 - fp / fa) * 100) : (int?)null;
         var q = ProductCatalog.VinMonthlyQuota;
         var month = T("თვე", "month");
 
@@ -345,11 +351,11 @@ document.addEventListener("DOMContentLoaded",function(){var btn=document.getElem
 <section id="prices"><div class="c">
 <div class="head"><h2>{{T("ფასები", "Pricing")}}</h2><p>{{T("გეგმა ანგარიშზეა მიბმული და ყველა შენს მოწყობილობაზე მუშაობს.", "Plans are tied to your account and work on all your devices.")}}</p></div>
 <div class="tiers">
-<div class="tier"><div class="t"><h3>OBD PRO</h3></div><div class="pr">{{Gel(obd)}} ₾<small> / {{month}}</small></div><p>{{T("ღრმა დიაგნოსტიკა და AI.", "Deeper diagnostics and AI.")}}</p>
+<div class="tier"><div class="t"><h3>OBD PRO</h3></div><div class="anchor">{{Gel(obdAnchor)}} ₾</div><div class="pr">{{Gel(obd)}} ₾<small> / {{month}}</small></div><p>{{T("ღრმა დიაგნოსტიკა და AI.", "Deeper diagnostics and AI.")}}</p>
 <ul class="ck">{{Li("ყიდვისწინა შემოწმება", "Pre-purchase check")}}{{Li("AI დიაგნოსტიკა და კონსულტაცია", "AI diagnostics and consultation")}}{{Li("ჰიბრიდის ბატარეის შემოწმება", "Hybrid battery check")}}{{Li("საწვავის ხარჯი", "Fuel economy")}}{{Li("მოდულების მონაცემები, ანგარიშები", "Module data and reports")}}</ul><a class="btn btn-o" href="/pro">{{T("არჩევა", "Choose")}}</a></div>
-<div class="tier hi"><div class="t"><h3>{{T("სრული PRO", "Full PRO")}}</h3><span class="lbl">{{T("ხელსაყრელი", "best value")}}</span></div><div class="pr">{{Gel(fullPrice)}} ₾<small> / {{month}}</small></div><p>{{T("OBD PRO და VIN PRO ერთად.", "OBD PRO and VIN PRO together.")}}</p>
+<div class="tier hi"><div class="t"><h3>{{T("სრული PRO", "Full PRO")}}</h3></div><div class="anchor">{{Gel(fullAnchor)}} ₾</div><div class="pr">{{Gel(fullPrice)}} ₾<small> / {{month}}</small></div>{{(fullSavePercent is { } sp ? $"<span class=\"save\">-{sp}%</span>" : "")}}<p>{{T("OBD PRO და VIN PRO ერთად.", "OBD PRO and VIN PRO together.")}}</p>
 <ul class="ck">{{Li("ყველაფერი OBD PRO-დან", "Everything in OBD PRO")}}{{Li($"თვეში {q} VIN-ის ისტორია", $"{q} VIN histories a month")}}{{Li("გახსნილი VIN ხელახლა უფასოდ", "Reopen checked VINs for free")}}{{Li("ყველა მოწყობილობაზე", "On all your devices")}}</ul><a class="btn btn-p" href="/pro">{{T("არჩევა", "Choose")}}</a></div>
-<div class="tier"><div class="t"><h3>VIN PRO</h3></div><div class="pr">{{Gel(vinPrice)}} ₾<small> / {{month}}</small></div><p>{{T("მათთვის, ვინც მანქანას ეძებს.", "For people shopping for a car.")}}</p>
+<div class="tier"><div class="t"><h3>VIN PRO</h3></div><div class="anchor">{{Gel(vinAnchor)}} ₾</div><div class="pr">{{Gel(vinPrice)}} ₾<small> / {{month}}</small></div><p>{{T("მათთვის, ვინც მანქანას ეძებს.", "For people shopping for a car.")}}</p>
 <ul class="ck">{{Li($"თვეში {q} VIN-ის ისტორია", $"{q} VIN histories a month")}}{{Li("აუქციონის ფოტოები და დაზიანება", "Auction photos and damage")}}{{Li("გარბენი და ტიტული", "Odometer and title")}}{{Li("დამატებითი VIN პაკეტები", "Extra VIN packs")}}</ul><a class="btn btn-o" href="/pro">{{T("არჩევა", "Choose")}}</a></div>
 </div>
 <div class="extra"><span>+5 VIN <b>{{Gel(WebPaymentService.PriceFor(ProductCatalog.VinPack5))}} ₾</b></span><span>+10 VIN <b>{{Gel(WebPaymentService.PriceFor(ProductCatalog.VinPack10))}} ₾</b></span><span>{{T("1 VIN ანგარიში", "Single VIN report")}} <b>{{Gel(single)}} ₾</b></span><span>{{T("დამატებით VIN-ებს ვადა არ გასდის", "Extra VINs never expire")}}</span></div>
@@ -374,7 +380,7 @@ document.addEventListener("DOMContentLoaded",function(){var btn=document.getElem
 
 <footer><div class="c">
 <a class="logo" href="{{home}}" style="font-size:15px"><img src="/assets/logo.png" alt="" width="38" height="28" style="height:28px"><span>OBD360</span></a>
-<nav><a href="/pro">PRO</a><a href="/support">{{T("დახმარება", "Support")}}</a><a href="/privacy-policy">{{T("კონფიდენციალურობა", "Privacy")}}</a><a href="/terms-of-use">{{T("წესები", "Terms")}}</a></nav>
+<nav><a href="/pro">PRO</a><a href="/about">{{T("ჩვენს შესახებ", "About us")}}</a><a href="/support">{{T("დახმარება", "Support")}}</a><a href="/privacy-policy">{{T("კონფიდენციალურობა", "Privacy")}}</a><a href="/terms-of-use">{{T("წესები", "Terms")}}</a></nav>
 <span>© {{DateTime.UtcNow.Year}} OBD360</span>
 </div></footer>
 </body></html>

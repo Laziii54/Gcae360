@@ -88,10 +88,19 @@ CREATE INDEX IF NOT EXISTS IX_WebOrders_Provider ON WebOrders(Provider, Provider
     {
         ProductCatalog.ObdMonthly => 4.99m,
         ProductCatalog.VinMonthly => 5.99m,
-        ProductCatalog.FullMonthly => 8.99m,
-        ProductCatalog.VinPack5 => 3.99m,
-        ProductCatalog.VinPack10 => 6.99m,
-        ProductCatalog.VinSingle => 2.99m,
+        ProductCatalog.FullMonthly => 7.99m,
+        ProductCatalog.VinPack5 => 3.49m,
+        ProductCatalog.VinPack10 => 5.99m,
+        ProductCatalog.VinSingle => 1.49m,
+        _ => null
+    };
+
+    /// <summary>Reference ("was") price shown struck through next to the real one.</summary>
+    public static decimal? AnchorPriceFor(string? productId) => productId switch
+    {
+        ProductCatalog.ObdMonthly => 9m,
+        ProductCatalog.VinMonthly => 10m,
+        ProductCatalog.FullMonthly => 10.98m,
         _ => null
     };
 
@@ -103,10 +112,10 @@ CREATE INDEX IF NOT EXISTS IX_WebOrders_Provider ON WebOrders(Provider, Provider
     {
         ProductCatalog.ObdMonthly => 4.99m,
         ProductCatalog.VinMonthly => 5.99m,
-        ProductCatalog.FullMonthly => 8.99m,
-        ProductCatalog.VinPack5 => 3.99m,
-        ProductCatalog.VinPack10 => 6.99m,
-        ProductCatalog.VinSingle => 2.99m,
+        ProductCatalog.FullMonthly => 7.99m,
+        ProductCatalog.VinPack5 => 3.49m,
+        ProductCatalog.VinPack10 => 5.99m,
+        ProductCatalog.VinSingle => 1.49m,
         _ => null
     };
 

@@ -13,12 +13,13 @@ public static class WebPages
         (WebPaymentService.PriceFor(productId) ?? 0).ToString("0.00", CultureInfo.InvariantCulture) + " ₾";
 
     private const string Style = """
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0b1016;--card:#141b24;--border:#26313f;--text:#f1f5f9;--muted:#94a3b8;--accent:#3b82f6;--ok:#22c55e;--warn:#f59e0b;--err:#ef4444}
-@media (prefers-color-scheme: light){:root{--bg:#f4f6f8;--card:#fff;--border:#e2e8f0;--text:#0f172a;--muted:#64748b}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+:root{--bg:#f4f5f3;--card:#fff;--border:#dfe2df;--text:#17191c;--muted:#6b7177;--accent:#1d5bd6;--amber:#c97f00;--amber-soft:#f8ecd4;--ok:#2f7d4f;--err:#b3361f}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 "Noto Sans Georgian",-apple-system,"Segoe UI",sans-serif}
 main{max-width:560px;margin:0 auto;padding:20px 16px 48px}
-h1{font-size:26px;margin:4px 0 2px}h2{font-size:18px;margin:26px 0 10px}.muted{color:var(--muted);font-size:14px}
+h1{font-size:26px;margin:4px 0 2px;font-weight:800}h2{font-size:13px;margin:26px 0 10px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:700}.muted{color:var(--muted);font-size:14px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin:10px 0;display:flex;gap:12px;align-items:flex-start;cursor:pointer}
 .card input{margin-top:5px;accent-color:var(--accent)}.card .t{font-weight:700}.card .p{margin-left:auto;font-weight:700;white-space:nowrap}
 .card.best{border-color:var(--accent)}.badge{display:inline-block;background:var(--accent);color:#fff;border-radius:8px;font-size:11px;padding:1px 8px;margin-left:6px;vertical-align:middle}
@@ -46,6 +47,18 @@ a.btn{display:block;text-align:center;margin-top:12px;padding:13px;border-radius
 .legal{margin-top:8px}
 [hidden]{display:none!important}
 html.is-intl .ka,html.is-ge .en,html.is-intl .ka-only,html:not(.is-intl) .en-block,html.is-intl .gel,html:not(.is-intl) .usd{display:none}
+.plantabs{display:flex;gap:8px;margin:0 0 12px;position:relative}
+.tabbtn{flex:1;min-width:0;text-align:center;padding:11px 6px;background:var(--card);border:1.5px solid var(--border);border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;color:var(--muted);position:relative;display:block}
+.tabbtn.active{border-color:var(--accent);background:#eaf1fc;color:var(--accent)}
+.tabbtn .save{position:absolute;top:-8px;right:4px;font-size:10px;font-weight:700;color:var(--amber);background:var(--amber-soft);border-radius:6px;padding:1px 6px}
+.plandetail{background:var(--card);border:1.5px solid var(--accent);border-radius:14px;padding:16px;margin:0 0 16px}
+.vh{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.pd-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.pd-top .dtitle{font-size:16px;font-weight:700}.pd-top .dsub{font-size:12px;color:var(--muted);margin-top:2px}
+.pd-price{text-align:right;white-space:nowrap}.pd-price .anchor{font-size:11px;color:#9aa0a6;text-decoration:line-through}
+.pd-price .now{font-size:18px;font-weight:800;color:var(--accent)}
+ul.ck{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:6px}ul.ck li{padding-left:20px;position:relative;font-size:12.5px;color:var(--text)}
+ul.ck li:before{content:"";position:absolute;left:1px;top:.5em;width:8px;height:4.5px;border-left:2px solid var(--ok);border-bottom:2px solid var(--ok);transform:rotate(-45deg)}
 </style>
 """;
 
@@ -59,13 +72,13 @@ html.is-intl .ka,html.is-ge .en,html.is-intl .ka-only,html:not(.is-intl) .en-blo
             return new LegalInfo(
                 Clean(config["Site:LegalName"]) ?? "ი/მ ზურაბ ლაზაშვილი",
                 Clean(config["Site:LegalId"]),
-                Clean(config["Site:LegalAddress"]));
+                Clean(config["Site:LegalAddress"]) ?? "თბილისი, საქართველო");
         }
 
         public string FooterHtml()
         {
+            // The registration/personal ID is deliberately never shown publicly.
             var parts = new List<string> { WebUtility.HtmlEncode(Name) };
-            if (Id is not null) parts.Add("ს/კ · ID " + WebUtility.HtmlEncode(Id));
             if (Address is not null) parts.Add(WebUtility.HtmlEncode(Address));
             parts.Add("<a href=\"mailto:obd360support@gmail.com\">obd360support@gmail.com</a>");
             return "<div class=\"legal\">" + string.Join(" · ", parts) + "</div>";
@@ -73,7 +86,7 @@ html.is-intl .ka,html.is-ge .en,html.is-intl .ka-only,html:not(.is-intl) .en-blo
     }
 
     private const string Footer = """
-<footer><a href="/terms-of-use">გამოყენების პირობები · Terms</a> · <a href="/privacy-policy">კონფიდენციალურობა · Privacy</a> · <a href="/account/subscription">ჩემი გამოწერა · My subscription</a> · <a href="/support">დახმარება · Support</a>
+<footer><a href="/about">ჩვენს შესახებ · About us</a> · <a href="/terms-of-use">გამოყენების პირობები · Terms</a> · <a href="/privacy-policy">კონფიდენციალურობა · Privacy</a> · <a href="/account/subscription">ჩემი გამოწერა · My subscription</a> · <a href="/support">დახმარება · Support</a>
 """;
 
     /// <summary>Text in both languages; the page shows Georgian in Georgia and English elsewhere.</summary>
@@ -90,6 +103,36 @@ html.is-intl .ka,html.is-ge .en,html.is-intl .ka-only,html:not(.is-intl) .en-blo
 <div class="grow"><div class="t">{T(title, titleEn)}{(best ? $"<span class=\"badge\">{T("საუკეთესო", "Best value")}</span>" : "")}</div><div class="muted">{T(ka, en)}</div></div>
 <div class="p">{Prices(id)}</div></label>
 """;
+
+        string Li(string ka, string en) => $"<li>{T(ka, en)}</li>";
+
+        // A tab button (always visible, just highlighted when active) plus its
+        // own detail panel (shown only for the active one). Both stay in the DOM;
+        // JS (syncTabs, below) toggles .active / [hidden] on the form's change event.
+        (string Tab, string Detail) PlanTab(string id, string key, string title, string titleEn, string subKa, string subEn, string featuresHtml, bool check = false)
+        {
+            var anchor = WebPaymentService.AnchorPriceFor(id);
+            var price = WebPaymentService.PriceFor(id);
+            var save = anchor is { } a && a > 0 && price is { } p
+                ? $"<span class=\"save\">-{(int)Math.Round((1 - p / a) * 100)}%</span>"
+                : "";
+            var anchorHtml = anchor is { } a2
+                ? $"<div class=\"anchor\">{a2.ToString("0.##", CultureInfo.InvariantCulture)} ₾</div>"
+                : "";
+            // The radio lives next to the (always-visible) tab label, never inside
+            // the collapsible detail panel — a hidden ancestor would stop label-for
+            // clicks from reaching it in some browsers.
+            var tab = $"""
+<input type="radio" id="p-{key}" name="productId" value="{id}" class="vh"{(check ? " checked" : "")}><label class="tabbtn{(check ? " active" : "")}" for="p-{key}" data-key="{key}" data-sub="{(ProductCatalog.IsSubscription(id) ? "1" : "0")}" data-gel="{Gel(id)}" data-usd="{WebPaymentService.FormatPrice(WebPaymentService.UsdPriceFor(id) ?? 0, "USD")}">{T(title, titleEn)}{save}</label>
+""";
+            var detail = $"""
+<div class="plandetail" id="d-{key}"{(check ? "" : " hidden")}>
+<div class="pd-top"><div><div class="dtitle">{T(title, titleEn)}</div><div class="dsub">{T(subKa, subEn)}</div></div>
+<div class="pd-price">{anchorHtml}<div class="now">{Prices(id)}</div></div></div>
+{featuresHtml}</div>
+""";
+            return (tab, detail);
+        }
 
         var hasBog = providers.Contains("bog");
         var bankOptions = string.Join("", providers.Select(p =>
@@ -118,6 +161,13 @@ html.is-intl .ka,html.is-ge .en,html.is-intl .ka-only,html:not(.is-intl) .en-blo
 </div>
 """ : "";
 
+        var obdTab = PlanTab(ProductCatalog.ObdMonthly, "obd", "OBD PRO", "OBD PRO", "მანქანის სრული დიაგნოსტიკა", "Full car diagnostics",
+            $"<ul class=\"ck\">{Li("ყველა მოდულის სკანირება (ABS, SRS, ტრანსმისია…)", "Scan every module (ABS, SRS, transmission…)")}{Li("AI დიაგნოსტიკა და კონსულტაცია", "AI diagnostics and consultation")}{Li("ყიდვისწინა შემოწმება", "Pre-purchase check")}</ul>");
+        var vinTab = PlanTab(ProductCatalog.VinMonthly, "vin", "VIN PRO", "VIN PRO", "მანქანის ისტორია VIN კოდით", "Car history by VIN",
+            $"<ul class=\"ck\">{Li($"VIN: სრული ისტორია, {ProductCatalog.VinMonthlyQuota} ყოველთვე", $"VIN: full history, {ProductCatalog.VinMonthlyQuota} every month")}{Li("აუქციონის ფოტოები და დაზიანებები", "Auction photos and damage")}{Li("გარბენი და ტიტულის სტატუსი", "Mileage and title status")}</ul>");
+        var fullTab = PlanTab(ProductCatalog.FullMonthly, "full", "სრული PRO", "Full PRO", "OBD PRO და VIN PRO ერთად", "OBD PRO and VIN PRO together",
+            $"<ul class=\"ck\">{Li("PRO-ის ყველა ფუნქცია", "Everything in PRO")}{Li("VIN PRO-ის ყველა ფუნქცია", "Everything in VIN PRO")}</ul>", check: true);
+
         var note = autoRenewAvailable
             ? T("ყოველთვიური გადახდა შეგიძლია გააუქმო გვერდზე „ჩემი გამოწერა“ ან აპში. გადახდილი პერიოდი რჩება.",
                 "Cancel the monthly payment any time on “My subscription” or in the app. The paid period is kept.")
@@ -135,14 +185,14 @@ var ge=tz==='Asia/Tbilisi'||langs.some(function(l){return l.indexOf('ka')===0;})
 if(location.hash==='#usd')ge=false;
 var h=document.documentElement;h.classList.add(ge?'is-ge':'is-intl');h.lang=ge?'ka':'en';})();
 </script></head><body><main>
+<a class="logo" href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text);font-weight:800;font-size:15px;margin-bottom:10px"><img src="/assets/logo.png" alt="" width="34" height="25"><span>OBD360</span></a>
 <h1>OBD360 PRO</h1>
 <div class="muted">{{T("აირჩიე გეგმა და ჩართე შენს OBD360 ანგარიშზე", "Choose a plan for your OBD360 account")}}</div>
 {{unavailable}}
 <form id="f">
 <h2>{{T("გეგმები (30 დღე)", "Plans (30 days)")}}</h2>
-{{Plan(ProductCatalog.ObdMonthly, "OBD PRO", "OBD PRO", "ყველა მოდულის სკანირება, ცოცხალი მონაცემები, ყიდვისწინა შემოწმება, AI", "Scan every module, live data, pre-purchase check, AI diagnostics")}}
-{{Plan(ProductCatalog.VinMonthly, "VIN PRO", "VIN PRO", $"{ProductCatalog.VinMonthlyQuota} VIN ისტორია: აუქციონის ფოტოები, დაზიანება, გარბენი", $"{ProductCatalog.VinMonthlyQuota} VIN histories a month: auction photos, damage, mileage (US and Canada cars)")}}
-{{Plan(ProductCatalog.FullMonthly, "სრული PRO", "Full PRO", $"ყველა OBD PRO ფუნქცია + {ProductCatalog.VinMonthlyQuota} VIN ისტორია", $"Everything in OBD PRO + {ProductCatalog.VinMonthlyQuota} VIN histories", best: true, check: true)}}
+<div class="plantabs">{{obdTab.Tab}}{{vinTab.Tab}}{{fullTab.Tab}}</div>
+{{obdTab.Detail}}{{vinTab.Detail}}{{fullTab.Detail}}
 <h2>{{T("დამატებითი VIN", "Extra VIN checks")}}</h2>
 <div class="muted">{{T("+5 და +10 პაკეტი VIN PRO / სრული PRO გეგმისთვისაა. ვადა არ გასდის.", "+5 and +10 packs are for VIN PRO / Full PRO and never expire.")}}</div>
 {{Plan(ProductCatalog.VinPack5, "+5 VIN", "+5 VIN", "5 დამატებითი VIN ისტორია", "5 extra VIN histories")}}
@@ -166,6 +216,8 @@ const f=document.getElementById('f'),m=document.getElementById('m'),b=document.g
 const renew=document.getElementById('renew'),bank=document.getElementById('bank');
 const intl=document.documentElement.classList.contains('is-intl');
 const tr=(ka,en)=>intl?en:ka;
+// The app links here with ?email=... so only the password is left to type.
+(function(){var e=new URLSearchParams(location.search).get('email');if(e){document.getElementById('email').value=e;document.getElementById('password').focus();} })();
 const errors={INVALID_LOGIN:tr('ელ-ფოსტა ან პაროლი არასწორია.','Wrong e-mail or password.'),
 EMAIL_NOT_VERIFIED:tr('ჯერ დაადასტურე ელფოსტა OBD360 აპლიკაციაში (ანგარიში), შემდეგ სცადე ხელახლა.','Verify your email in the OBD360 app (Account) first, then try again.'),
 VIN_PLAN_REQUIRED:tr('+5 და +10 პაკეტი მხოლოდ VIN PRO ან სრული PRO გეგმითაა.','Packs need VIN PRO or Full PRO.'),
@@ -173,8 +225,14 @@ AUTO_RENEW_UNAVAILABLE:tr('ყოველთვიური გადახდ�
 NOT_AVAILABLE:tr('გადახდა დროებით მიუწვდომელია.','Payments are temporarily unavailable.'),
 TOO_MANY:tr('ძალიან ბევრი მცდელობა. სცადე 15 წუთში.','Too many attempts. Try again in 15 minutes.')};
 function selected(){return f.querySelector('input[name=productId]:checked');}
+// Keeps all 3 plan tabs visible; only the selected one is highlighted and
+// shows its detail panel. A VIN-pack radio (no "p-" id) clears all three, so
+// the tabs never look "stuck" — any of them can still be clicked to switch back.
+function syncTabs(){const p=selected();const key=p&&p.id.indexOf('p-')===0?p.id.slice(2):null;
+document.querySelectorAll('.plandetail').forEach(x=>{x.hidden=(x.id!=='d-'+key);});
+document.querySelectorAll('.tabbtn').forEach(t=>{t.classList.toggle('active',t.dataset.key===key);});}
 function auto(){const r=f.querySelector('input[name=mode]:checked');return !!renew&&!renew.hidden&&r&&r.value==='auto';}
-function update(){if(!renew)return;const p=selected();const card=p&&p.closest('label');const sub=card&&card.dataset.sub==='1';
+function update(){if(!renew)return;const p=selected();const card=p&&(document.querySelector('label[for="'+(p.id||'')+'"]')||p.closest('[data-sub]'));const sub=card&&card.dataset.sub==='1';
 const bogOk=intl||!bank||bank.value==='bog';renew.hidden=!(sub&&bogOk);
 const price=card?(intl?card.dataset.usd:card.dataset.gel):'';
 document.getElementById('sToday').textContent=price;document.getElementById('sAmount').textContent=price;
@@ -182,7 +240,7 @@ const d=new Date();d.setDate(d.getDate()+29);
 document.getElementById('sNext').textContent=intl?d.toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'}):String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear();
 const a=auto();document.getElementById('sNextRow').hidden=!a;document.getElementById('consentRow').hidden=!a;
 f.querySelectorAll('.opt').forEach(o=>o.classList.toggle('on',o.querySelector('input').checked));}
-f.addEventListener('change',update);update();
+f.addEventListener('change',()=>{syncTabs();update();});syncTabs();update();
 f.addEventListener('submit',async e=>{e.preventDefault();
 if(auto()&&!document.getElementById('consent').checked){m.className='msg err';m.textContent=tr('მონიშნე თანხმობა ყოველთვიურ გადახდაზე.','Please tick the box to agree to the monthly payment.');return;}
 m.className='msg';m.textContent=tr('მიმდინარეობს…','Please wait…');b.disabled=true;
