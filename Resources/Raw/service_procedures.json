@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": 10,
+  "catalogVersion": 12,
   "procedures": [
     {
       "id": "acura.rdx.2023.maintenance-minder-reset",
@@ -1778,6 +1778,57 @@
       ],
       "source": "Official Mazda 2020 CX-5 Owner's Manual — Maintenance Monitor",
       "systemName": "Maintenance Monitor",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
+    },
+    {
+      "id": "mazda.cx5.2017-2018.skyactiv-d-oil-data-reset",
+      "brand": "Mazda",
+      "model": "CX-5",
+      "minimumYear": 2017,
+      "maximumYear": 2018,
+      "category": "Oil Service",
+      "nameKa": "ძრავის ზეთის მონაცემების განულება (SKYACTIV-D 2.2)",
+      "nameEn": "Engine oil data reset (SKYACTIV-D 2.2)",
+      "descriptionKa": "ზეთის გამოცვლის შემდეგ ბორტკომპიუტერში ჩაწერილი ზეთის მნიშვნელობის განულება (ინიციალიზაცია). თუ ეს არ გაკეთდა, wrench ინდიკატორი შეიძლება არ ჩაქრეს ან ჩვეულებრივზე ადრე აინთოს. ეს დიზელის ზეთის ჩაწერილი მნიშვნელობაა და არა ზეთის რესურსის პროცენტი.",
+      "descriptionEn": "Initialize the engine oil value that the computer recorded, after an oil change. Without it the wrench indicator may stay on or come on early. This is the diesel's recorded oil value, not an oil-life percentage.",
+      "executionType": "Manual",
+      "oemOperationId": "",
+      "steps": [
+        {
+          "order": 1,
+          "textKa": "ანთება გამორთე (OFF).",
+          "textEn": "Switch the ignition OFF."
+        },
+        {
+          "order": 2,
+          "textKa": "ანთება ჩართე (ON) და ამავე დროს დააჭირე პანელის განათების (illumination) ღილაკს.",
+          "textEn": "Switch the ignition ON while pressing the instrument panel illumination knob."
+        },
+        {
+          "order": 3,
+          "textKa": "ღილაკი დაახლოებით 5 წამით გეჭიროს, სანამ master warning light-ი არ აციმციმდება.",
+          "textEn": "Keep it pressed for about 5 seconds, until the master warning light flashes."
+        },
+        {
+          "order": 4,
+          "textKa": "დაელოდე, სანამ master warning light-ი რამდენიმე წამით ციმციმებს; ამით ინიციალიზაცია სრულდება.",
+          "textEn": "Wait while the master warning light flashes for several seconds; that completes the initialization."
+        }
+      ],
+      "source": "Official Mazda CX-5 (2017 and 2018) Owner's Manual — Vehicle Engine Control Unit Reset Procedure (SKYACTIV-D 2.2); the manual also recommends having an authorized repairer do it",
+      "systemName": "Engine oil data (wrench indicator)",
+      "fuelTypes": [
+        "Diesel"
+      ],
+      "preconditions": [
+        {
+          "textKa": "გააკეთე მხოლოდ ძრავის ზეთის შეცვლის შემდეგ.",
+          "textEn": "Do it only after the engine oil has been changed."
+        }
+      ],
+      "expectedResultKa": "master warning light-ი რამდენიმე წამით ციმციმებს. სხვა დადასტურებას სახელმძღვანელო არ აღწერს.",
+      "expectedResultEn": "The master warning light flashes for several seconds. The manual describes no other check.",
       "verificationStatus": "SourceDocumented",
       "verificationMethod": "Dashboard"
     },
@@ -6908,9 +6959,63 @@
       "expectedResultEn": "The service indicator goes out. The app cannot check this; look at the dashboard.",
       "verificationStatus": "SourceDocumented",
       "verificationMethod": "Dashboard"
+    },
+    {
+      "id": "kia.ev6.2023.service-interval-reset",
+      "brand": "Kia",
+      "model": "EV6",
+      "minimumYear": 2023,
+      "maximumYear": 2023,
+      "category": "Maintenance",
+      "kind": "MaintenanceReset",
+      "systemName": "Service Interval",
+      "nameKa": "Service Interval-ის განულება",
+      "nameEn": "Service Interval reset",
+      "descriptionKa": "კიას 2023 EV6-ის ოფიციალური სახელმძღვანელოს მიხედვით, გეგმიური ტექმომსახურების შემდეგ Service Interval-ის შეხსენება განულდება მძღოლის მიერ, ინფოტეინმენტის მენიუდან — დილერის ხელსაწყო არ არის საჭირო.",
+      "descriptionEn": "Per Kia's own 2023 EV6 owner's manual, the Service Interval reminder is reset by the driver from the infotainment menu after scheduled maintenance — no dealer tool is needed for this model/year.",
+      "executionType": "Manual",
+      "oemOperationId": "",
+      "preconditions": [
+        {
+          "textKa": "გააკეთე მხოლოდ გეგმიური ტექმომსახურების შემდეგ.",
+          "textEn": "Do this only after scheduled maintenance has actually been carried out."
+        }
+      ],
+      "steps": [
+        {
+          "order": 1,
+          "textKa": "გახსენი Setup.",
+          "textEn": "Open Setup."
+        },
+        {
+          "order": 2,
+          "textKa": "აირჩიე Vehicle.",
+          "textEn": "Select Vehicle."
+        },
+        {
+          "order": 3,
+          "textKa": "აირჩიე Cluster.",
+          "textEn": "Select Cluster."
+        },
+        {
+          "order": 4,
+          "textKa": "აირჩიე Service Interval.",
+          "textEn": "Select Service Interval."
+        },
+        {
+          "order": 5,
+          "textKa": "აირჩიე Reset და დაადასტურე.",
+          "textEn": "Select Reset and confirm."
+        }
+      ],
+      "source": "2023 Kia EV6 Owner's Manual, official (ownersmanual.kia.com/full_webhelp/CV1/2023/en_US/topics/t00275.html, accessed 2026-10-21) — \"Service Interval\": Setup > Vehicle > Cluster > Service Interval > Reset; the 'Service in' reminder appears once 900 mi / 1,500 km or 30 days remain. Scoped to model year 2023 only: the 2024 US manual page at the same URL slug no longer carries the reset path there (Service Interval is only a navigation link on that page), so this was not extended to other EV6 model years without separately checking each one.",
+      "expectedResultKa": "Service Interval შეტყობინება არ გამოჩნდება შემდეგ ჩართვაზე.",
+      "expectedResultEn": "The Service Interval message no longer appears at the next ignition-on.",
+      "verificationStatus": "SourceDocumented",
+      "verificationMethod": "Dashboard"
     }
   ],
-  "catalogGenerated": "2026-10-18",
+  "catalogGenerated": "2026-10-21",
   "coverageNotes": [
     "Only source-backed Manual/Guided procedures are included.",
     "No guessed ECU write/reset/coding command is included.",
@@ -6922,7 +7027,9 @@
     "Researched but NOT added: battery registration and electronic-parking-brake service mode — no owner-level method could be established; they are workshop-tool functions and need exact diagnostic commands that must not be guessed.",
     "Catalog 10: Mercedes-Benz Sprinter (906, 2007-2018) guides, with and without steering-wheel controls, from the Mercedes-Benz Vans Canada Reset Service Indicator Guide for the Sprinter (an official document); and a Fiat/Abarth cluster-menu oil reminder guide (two independent sources).",
     "Catalog 10 research that was NOT added because no reliable source exists: Fiat Grande Punto trip-button and pedal sequences (contradictory reports, one owner reported that it did not work), Ford Transit / Transit Custom (only low-quality pages), Nissan Qashqai J10 (no reliable source), Land Rover / Jaguar official owner-information pages (dynamic pages that cannot be read automatically), Volvo service message (official pages only describe the message, not the reset).",
-    "No open dataset of oil-life reset commands (UDS 0x2E / 0x31 or GMLAN) for all cars exists on GitHub or elsewhere; the commercial scanner apps keep theirs closed. Automatic resets stay disabled until an exact, hardware-verified entry exists (see oem_operations.json)."
+    "No open dataset of oil-life reset commands (UDS 0x2E / 0x31 or GMLAN) for all cars exists on GitHub or elsewhere; the commercial scanner apps keep theirs closed. Automatic resets stay disabled until an exact, hardware-verified entry exists (see oem_operations.json).",
+    "Catalog 11: one guide added, the Mazda CX-5 (2017-2018) SKYACTIV-D 2.2 engine oil data reset, from the official owner's manual. It resets the diesel's recorded oil value (oil dilution), not an oil-life percentage. Research round 2 (research/primary-source-findings.md) read the manufacturers' own bulletins for GM, BMW, Kia, Stellantis and Honda: they name the module and tool function that executes each reset (for example the engine control module for GM, the instrument cluster for BMW F-series and Kia, the IPC and PCM routines of Stellantis) but publish no request bytes, so no automatic operation was added and none is claimed.",
+    "Catalog 12 (2026-10-21): researched Hyundai, Kia, Genesis, Nissan, Infiniti, Mitsubishi and Suzuki specifically (previously no catalog entry for any of these seven brands). One guide added: the Kia EV6 2023 Service Interval reset, from Kia's own official owner's-manual web help (ownersmanual.kia.com), scoped to that exact model year because the 2024 manual page at the same URL no longer carries the reset path. Not added, for lack of an official source: Hyundai (every result was a third-party blog or an SEO/content-farm page; no hyundaiusa.com or hyundai.com page with the actual steps was found), Nissan (the official nissan.ie / nissan.com.mt Juke owner's-manual pages confirm the reminder exists and must be reset after an oil change, but the step-by-step page they link to could not be read through this tool), Mitsubishi (no official manual page found; only third-party sites, several of them low-quality mirrors), Genesis, Infiniti and Suzuki (not reached in the time available). Also found, not added: Kia's own India Seltos manual page describes the reminder but not a driver-facing reset step, and a Kia TSB (ELE209) says some models need the dealer's KDS tool to switch the cluster from 'Workshop' to 'Customer Mode' before the counter can be set at all — so the EV6's driver-menu path must not be assumed to generalise to other Kia models without checking each one's own manual."
   ],
   "researchedButNotPinnedInThisCatalog": []
 }

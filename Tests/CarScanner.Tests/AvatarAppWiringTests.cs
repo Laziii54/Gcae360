@@ -45,4 +45,20 @@ public sealed class AvatarAppWiringTests
         Assert.Contains("SelectionLimit = 1", service);
         Assert.DoesNotContain("PickPhotoAsync(", service);
     }
+
+    [Fact]
+    public void ThePhotoIsShrunkOffTheScreenThread_ShowsAtOnce_AndAStoredCopyIsKeptOnThePhone()
+    {
+        var service = Read("Services", "AvatarService.cs");
+        Assert.Contains("await Task.Run(() => Shrink(stream))", service);              // the page does not freeze while a big photo is decoded
+        Assert.Contains("TimeSpan.FromSeconds(30)", service);                           // no minute-long wait before an error
+        Assert.Contains("SaveLocalCandidate(", service);
+
+        var page = Read("Views", "AccountPage.xaml.cs");
+        Assert.Contains("AvatarService.SaveLocalCandidate(email, jpeg)", page);          // the chosen photo appears before the upload ends
+        Assert.Contains("AvatarService.LocalFileFor(_account.Email)", page);             // and again every time the page opens, also offline
+        Assert.Contains("AvatarService.PruneLocal(_account.Email)", page);               // removed together with the photo on the server
+        Assert.Contains("WaitForApprovalAsync", page);                                   // the server finishes its check in the background
+        Assert.Contains("LocalFilePath", Read("Controls", "AvatarView.cs"));
+    }
 }

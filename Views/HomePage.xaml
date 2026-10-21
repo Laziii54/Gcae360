@@ -20,7 +20,7 @@
                     </Border.GestureRecognizers>
                     <Path Data="M15,5 L8,12 L15,19" Stroke="{DynamicResource Primary}" StrokeThickness="2.2" StrokeLineCap="Round" StrokeLineJoin="Round" WidthRequest="18" HeightRequest="18" Aspect="Uniform" HorizontalOptions="Center" VerticalOptions="Center" InputTransparent="True" />
                 </Border>
-                <Image Grid.Column="1" Source="obd360_mark.png" WidthRequest="38" HeightRequest="28" Aspect="AspectFit" VerticalOptions="Center" SemanticProperties.Description="OBD360" />
+                <Image Grid.Column="1" Source="obd360_mark.png" WidthRequest="36" HeightRequest="36" Aspect="AspectFit" VerticalOptions="Center" SemanticProperties.Description="OBD360" />
                 <Label Grid.Column="2" Text="OBD360" FontSize="17" FontAttributes="Bold" LineBreakMode="NoWrap" MaxLines="1" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
                 <Button Grid.Column="3" Text="{Binding ProButtonText}" Command="{Binding GoToProCommand}" BackgroundColor="{DynamicResource ProBadgeBg}" TextColor="{DynamicResource ProBadgeText}" BorderWidth="0" CornerRadius="18" Padding="12,0" HeightRequest="36" MinimumHeightRequest="36" MinimumWidthRequest="0" FontAttributes="Bold" FontSize="12" LineBreakMode="NoWrap" HorizontalOptions="End" VerticalOptions="Center" />
                 <!-- Language · Settings · Account in one capsule -->

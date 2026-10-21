@@ -41,6 +41,15 @@ public sealed class MileageFindingRow
     public Color TitleColor { get; init; } = Colors.Gray;
 }
 
+/// <summary>One reading listed by "Enter manually": the module, its value and how far it is from the number the person typed.</summary>
+public sealed class MileageMatchRow
+{
+    public string Title { get; init; } = string.Empty;
+    public string ValueText { get; init; } = string.Empty;
+    public string DetailText { get; init; } = string.Empty;
+    public Color DotColor { get; init; } = Colors.Gray;
+}
+
 /// <summary>One source that was tried (or deliberately not tried) and what came of it.</summary>
 public sealed class MileageAttemptRow
 {
@@ -109,6 +118,46 @@ public class MileageViewModel : BaseViewModel
     public bool HasContext => ContextReadings.Count > 0;
     public bool HasAttempts => Attempts.Count > 0;
 
+    // "Enter manually": the person types what the dashboard shows and the app looks for readings close to it
+    private bool _manualOpen;
+    private string _manualValue = string.Empty;
+    private string _manualResult = string.Empty;
+    private Color _manualResultColor = Grey;
+
+    public bool ManualOpen
+    {
+        get => _manualOpen;
+        set { _manualOpen = value; OnPropertyChanged(); OnPropertyChanged(nameof(ManualChevronRotation)); }
+    }
+
+    public string ManualValue
+    {
+        get => _manualValue;
+        set { _manualValue = value ?? string.Empty; OnPropertyChanged(); }
+    }
+
+    public string ManualResult
+    {
+        get => _manualResult;
+        private set { _manualResult = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasManualResult)); }
+    }
+
+    public Color ManualResultColor
+    {
+        get => _manualResultColor;
+        private set { _manualResultColor = value; OnPropertyChanged(); }
+    }
+
+    public bool HasManualResult => _manualResult.Length > 0;
+    public ObservableCollection<MileageMatchRow> ManualMatches { get; } = new();
+    public bool HasManualMatches => ManualMatches.Count > 0;
+
+    public string ManualCaption => L("ხელით შეყვანა", "Enter manually");
+    public double ManualChevronRotation => ManualOpen ? 180 : 0;
+    public string ManualPlaceholder => Lf("დაფაზე ნაჩვენები გარბენი ({0})", "Distance on the dashboard ({0})", _units.DistanceUnit);
+    public string ManualHint => L("ზუსტი ციფრი არ არის საჭირო: ახლო მაჩვენებლებიც (დაახლოებით 0,5%-ის ფარგლებში) ჩაითვლება.", "The exact number is not needed: readings within about 0.5 % count as close.");
+    public string ManualSearchText => L("ძებნა", "Search");
+
     // Log
     public string Log { get; set; } = string.Empty;
     public bool HasLog => !string.IsNullOrWhiteSpace(Log);
@@ -145,6 +194,8 @@ public class MileageViewModel : BaseViewModel
     public IAsyncRelayCommand CheckCommand { get; }
     public IAsyncRelayCommand CopyLogCommand { get; }
     public IRelayCommand ToggleLogCommand { get; }
+    public IRelayCommand ToggleManualCommand { get; }
+    public IAsyncRelayCommand SearchManualCommand { get; }
 
     public MileageViewModel(
         ActualMileageService mileage,
@@ -167,6 +218,8 @@ public class MileageViewModel : BaseViewModel
         CheckCommand = new AsyncRelayCommand(CheckAsync);
         CopyLogCommand = new AsyncRelayCommand(CopyLogAsync);
         ToggleLogCommand = new RelayCommand(() => ShowLog = !ShowLog);
+        ToggleManualCommand = new RelayCommand(() => ManualOpen = !ManualOpen);
+        SearchManualCommand = new AsyncRelayCommand(SearchManualAsync);
         Present();
     }
 
@@ -244,6 +297,7 @@ public class MileageViewModel : BaseViewModel
         try
         {
             IsBusy = true;
+            ClearManualResult();
             OnPropertyChanged(nameof(IsIntro));
             StatusMessage = L("მანქანის ამოცნობა…", "Identifying the car…");
             var vehicle = await _vehicle.IdentifyConnectedVehicleAsync();
@@ -281,6 +335,93 @@ public class MileageViewModel : BaseViewModel
             AddMileageToReport();
         }
     }
+
+    // ------------------------------------------------------------------
+    // Enter manually: which of the readings is close to the number on the dashboard
+    // ------------------------------------------------------------------
+
+    private string Lf(string ka, string en, params object[] args) =>
+        string.Format(CultureInfo.InvariantCulture, _localization.IsEnglish ? LocalizationService.T(en) : ka, args);
+
+    private void ClearManualResult()
+    {
+        ManualMatches.Clear();
+        OnPropertyChanged(nameof(HasManualMatches));
+        ManualResult = string.Empty;
+    }
+
+    private void ShowManualResult(string text, Color color)
+    {
+        ManualResultColor = color;
+        ManualResult = text;
+    }
+
+    private async Task SearchManualAsync()
+    {
+        if (IsBusy)
+            return;
+
+        var inMiles = _units.DistanceUnit == "mi";
+        if (!MileageManualMatch.TryParseTyped(ManualValue, out var typed))
+        {
+            ClearManualResult();
+            ShowManualResult(L("ჩაწერე დაფაზე ნაჩვენები გარბენი ციფრებით.", "Enter the distance the dashboard shows, in digits."), Grey);
+            return;
+        }
+
+        // Nothing read yet: read first (the same read-only reading as the button below), then look.
+        if (_lastResult is null)
+        {
+            await CheckAsync();
+            if (_lastResult is null)
+                return;   // the reason is already in StatusMessage
+        }
+
+        ClearManualResult();
+        var evidence = _lastResult.Evidence;
+        var ranked = MileageManualMatch.Rank(evidence, typed, inMiles);
+        if (ranked.Count == 0)
+        {
+            ShowManualResult(L("მანქანამ ჯამური ოდომეტრის მაჩვენებელი არ დააბრუნა, ამიტომ შესადარებელი არაფერია.",
+                "The car returned no total-odometer reading, so there is nothing to compare with."), Amber);
+            return;
+        }
+
+        var typedKm = inMiles ? typed * MileagePlausibility.KmPerMile : typed;
+        var tolerance = _units.FormatDistance(MileageManualMatch.ToleranceKm(typedKm), "0");
+        var close = ranked.Where(m => m.IsClose).ToList();
+
+        foreach (var match in close.Count > 0 ? close : ranked.Take(3).ToList())
+            ManualMatches.Add(ToMatchRow(match));
+        OnPropertyChanged(nameof(HasManualMatches));
+
+        if (close.Count > 0)
+        {
+            ShowManualResult(close[0].DifferenceKm < 1
+                ? Lf("{0} მაჩვენებელი ემთხვევა შეყვანილ რიცხვს.", "{0} reading(s) match the number you entered.", close.Count)
+                : Lf("{0} მაჩვენებელი ახლოსაა შეყვანილ რიცხვთან (დასაშვები სხვაობა {1}).", "{0} reading(s) are close to the number you entered (within {1}).", close.Count, tolerance), Green);
+            return;
+        }
+
+        var otherUnitClose = MileageManualMatch.Rank(evidence, typed, !inMiles).Any(m => m.IsClose);
+        var text = Lf("არცერთი მაჩვენებელი არ არის ახლოს ({0}-ის ფარგლებში). ყველაზე ახლოს მყოფი ქვემოთაა.",
+            "No reading is close (within {0}). The nearest ones are listed below.", tolerance);
+        if (otherUnitClose)
+            text += " " + (inMiles
+                ? L("შესაძლოა, რიცხვი კილომეტრებშია.", "The number may be in kilometres.")
+                : L("შესაძლოა, რიცხვი მილებშია.", "The number may be in miles."));
+        ShowManualResult(text, Amber);
+    }
+
+    private MileageMatchRow ToMatchRow(MileageMatch match) => new()
+    {
+        Title = ReadingTitle(match.Evidence),
+        ValueText = MileageWording.FormatValue(match.Evidence, _localization.IsEnglish),
+        DetailText = match.DifferenceKm < 1
+            ? L("იგივე რიცხვი", "Same number")
+            : Lf("სხვაობა {0}", "{0} apart", _units.FormatDistance(match.DifferenceKm, "0")),
+        DotColor = match.IsClose ? Green : Grey
+    };
 
     /// <summary>The readings become the "mileage" part of the combined report — worded as reported values.</summary>
     private void AddMileageToReport()

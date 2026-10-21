@@ -168,7 +168,7 @@ public sealed class EmailVerificationService
             issued.Code!,
             (int)Math.Round(_store.Lifetime.TotalMinutes),
             lang,
-            origin is null ? null : origin + "/assets/logo.png",
+            origin is null ? null : origin + "/assets/logo.png?v=2",
             origin is null ? null : $"{origin}/verify-email?l={lang}&t={Uri.EscapeDataString(issued.LinkToken!)}",
             _options.SupportEmail,
             _clock().Year);

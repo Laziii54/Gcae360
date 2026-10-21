@@ -57,7 +57,7 @@ public sealed class LoginCodeService
             issued.Code!,
             (int)Math.Round(LoginCodeStore.Lifetime.TotalMinutes),
             lang,
-            origin is null ? null : origin + "/assets/logo.png",
+            origin is null ? null : origin + "/assets/logo.png?v=2",
             null, // sign-in codes are entered in the app only — no confirmation link
             _options.SupportEmail,
             _clock().Year);

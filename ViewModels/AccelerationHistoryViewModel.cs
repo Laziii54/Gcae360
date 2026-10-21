@@ -37,6 +37,16 @@ public partial class AccelerationHistoryViewModel : BaseViewModel
                 viewModel.RefreshUnitPresentation();
                 await viewModel.RefreshAsync();
             }));
+        // Same reasoning, for language: ConfidenceText/best-result-text/history rows are built once from L(ka,en)
+        // inside RefreshAsync, so without this a language switch while this page is open leaves them stale.
+        WeakEventRelay.Attach(this, _localization,
+            static (service, handler) => service.LanguageChanged += handler,
+            static (service, handler) => service.LanguageChanged -= handler,
+            static viewModel => MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                viewModel.HistoryTitle = viewModel.L("0–100 km/h ისტორია", "0–100 km/h history");
+                await viewModel.RefreshAsync();
+            }));
         RefreshUnitPresentation();
     }
 

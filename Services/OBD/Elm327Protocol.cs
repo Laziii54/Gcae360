@@ -245,6 +245,7 @@ namespace CarScanner.Services.OBD
                     }
                 }
 
+                LogInitProbe(probeResponse, probeTimeout is not null);
                 ValidateInitialProbeResponse(probeResponse ?? string.Empty);
 
                 await DetectAndCacheProtocolAsync(cancellationToken).ConfigureAwait(false);
@@ -326,7 +327,9 @@ namespace CarScanner.Services.OBD
                         token).ConfigureAwait(false);
 
                     var command = string.Concat(payload.ToArray().Select(b => b.ToString("X2")));
+                    var requestStarted = System.Diagnostics.Stopwatch.GetTimestamp();
                     var answer = await SendReadRequestAsync(command, timeout, receiveCanId, payload.Span[0], token).ConfigureAwait(false);
+                    LogRead(transmitCanId, receiveCanId, extended29Bit, command, answer, requestStarted);
 
                     // No hardware filter on this adapter: keep only the asked module frames, as a hardware filter would.
                     if ((receiveFilter & PhysicalFilterState.Hardware) == 0)
@@ -358,6 +361,7 @@ namespace CarScanner.Services.OBD
                     }
 
                     _lastPhysicalReadSetupNote = DescribePhysicalSetup(rejectedSetup, receiveFilter);
+                    LogReadSetup(transmitCanId, extended29Bit, _lastPhysicalReadSetupNote);
                 }
             }
             finally
@@ -490,7 +494,9 @@ namespace CarScanner.Services.OBD
                     var command = string.Concat(
                         payload.ToArray().Select(value => value.ToString("X2")));
 
+                    var requestStarted = System.Diagnostics.Stopwatch.GetTimestamp();
                     var answer = await SendReadRequestAsync(command, timeout, receiveCanId, payload.Span[0], token).ConfigureAwait(false);
+                    LogRead(transmitCanId, receiveCanId, extended29Bit, command, answer, requestStarted);
 
                     // No hardware filter on this adapter: keep the frames of the asked module only, exactly as the
                     // adapter would have delivered them, so no caller ever sees another module's frames.
@@ -564,6 +570,7 @@ namespace CarScanner.Services.OBD
                     }
 
                     _lastPhysicalReadSetupNote = DescribePhysicalSetup(rejectedSetup, receiveFilter);
+                    LogReadSetup(transmitCanId, extended29Bit, _lastPhysicalReadSetupNote);
                 }
             }
             finally
@@ -651,6 +658,23 @@ namespace CarScanner.Services.OBD
                 ? PhysicalFilterState.Hardware | PhysicalFilterState.NeedsClear
                 : PhysicalFilterState.NeedsClear;   // half a filter is set: it must be cleared, and it filters nothing reliably
         }
+
+        /// <summary>One connection-log line for a finished physical read: who was asked, who answered, what that adds up to. Never throws.</summary>
+        private static void LogRead(int transmitCanId, int? receiveCanId, bool extended29Bit, string requestHex, string? reply, long startedAt)
+        {
+            try
+            {
+                LinkEventLog.Add(AdapterExchangeClassifier.DescribeRead(
+                    transmitCanId, receiveCanId, extended29Bit, requestHex, reply, System.Diagnostics.Stopwatch.GetElapsedTime(startedAt)));
+            }
+            catch
+            {
+                // A log line must never affect a diagnostic read.
+            }
+        }
+
+        private static void LogReadSetup(int transmitCanId, bool extended29Bit, string note) =>
+            LinkEventLog.Add($"Read setup for tx {transmitCanId.ToString(extended29Bit ? "X8" : "X3")}: {note}");
 
         private static string DescribePhysicalSetup(IReadOnlyList<string> rejected, PhysicalFilterState filter)
         {
@@ -754,6 +778,8 @@ namespace CarScanner.Services.OBD
                         $"Active vehicle protocol '{_currentProtocol}' is not ISO 15765 CAN.");
 
                 var session = new DtcModuleSession(this, _currentProtocol);
+                var tally = _sessionTally = new ExchangeTally();
+                var sessionStarted = System.Diagnostics.Stopwatch.GetTimestamp();
                 try
                 {
                     await session.PrepareAsync(token).ConfigureAwait(false);
@@ -762,6 +788,9 @@ namespace CarScanner.Services.OBD
                 finally
                 {
                     await session.RestoreAsync().ConfigureAwait(false);
+                    _sessionTally = null;
+                    LinkEventLog.Add($"Module session over {AdapterDiagnosticCapture.TransportLabel}: {session.RequestCount} send(s) in " +
+                                     $"{(long)System.Diagnostics.Stopwatch.GetElapsedTime(sessionStarted).TotalMilliseconds} ms; {tally}");
 
                     // A long scan leaves the adapter with many changed settings and a lot of traffic behind it; cheap adapters
                     // then drift (the symptom: data stops after several features, until a reconnect). A full reset puts it back
@@ -837,6 +866,14 @@ namespace CarScanner.Services.OBD
             // filtered by CAN ID in software (headers are on, ATH1).
             private string? _softwareFilterId;
             private bool _hardwareFilterViaMask;
+            private readonly HashSet<string> _loggedOnce = new(StringComparer.Ordinal);
+
+            /// <summary>Writes a setup finding to the connection log the first time only: a scan configures many modules the same way.</summary>
+            private void LogOnce(string key, string text)
+            {
+                if (_loggedOnce.Add(key))
+                    LinkEventLog.Add(text);
+            }
 
             public DtcModuleSession(Elm327Protocol elm, ObdProtocol originalProtocol)
             {
@@ -854,9 +891,15 @@ namespace CarScanner.Services.OBD
                 // D0 and CFC1 are the adapter defaults: some clones reject the
                 // commands themselves, which must not stop the whole scan.
                 if (!await TryAsync("ATD0", token).ConfigureAwait(false))
+                {
+                    LinkEventLog.Add("Module session setup: ATD0 not accepted; the adapter's default is used");
                     _elm._logger.LogInformation("Module session: adapter rejected ATD0; continuing with its default.");
+                }
                 if (!await TryAsync("ATCFC1", token).ConfigureAwait(false))
+                {
+                    LinkEventLog.Add("Module session setup: ATCFC1 not accepted; the adapter's default is used");
                     _elm._logger.LogInformation("Module session: adapter rejected ATCFC1; continuing with its default.");
+                }
             }
 
             /// <summary>
@@ -875,12 +918,14 @@ namespace CarScanner.Services.OBD
                 if (await TryAsync($"ATCF{receive}", token).ConfigureAwait(false) &&
                     await TryAsync($"ATCM{mask}", token).ConfigureAwait(false))
                 {
+                    LogOnce("filter-mask", "Module session: ATCRA not accepted; an ATCF/ATCM filter is used instead");
                     _elm._logger.LogInformation("Module session: ATCRA rejected; using ATCF/ATCM filter for {Receive}.", receive);
                     _hardwareFilterViaMask = true;
                     _softwareFilterId = null;
                     return;
                 }
 
+                LogOnce("filter-software", "Module session: no receive-filter command accepted; frames are filtered by CAN id in the app");
                 _elm._logger.LogWarning("Module session: adapter has no receive filter; filtering {Receive} in software.", receive);
                 _softwareFilterId = receive;
             }
@@ -909,6 +954,17 @@ namespace CarScanner.Services.OBD
                     }
 
                     sawFrame = true;
+
+                    // Several frames in one line (the protocol layer has joined the adapter's lines with spaces): split them into
+                    // frames, keep the asked module's frames, each on a line of its own as the adapter printed them, and drop the
+                    // frames of other modules. They are never merged and no byte is changed. Text that is not made of frames alone
+                    // (an echoed command, a status word) is not split and is judged as one line, as before.
+                    if (CarScanner.Services.OemDiagnostics.ModuleReplyAnalysis.SplitFrameTexts(line, id.Length > 3) is { Count: >= 2 } several)
+                    {
+                        kept.AddRange(several.Where(item => string.Equals(item.Header, id, StringComparison.Ordinal)).Select(item => item.Text));
+                        continue;
+                    }
+
                     if (compact.Length > id.Length && compact.StartsWith(id, StringComparison.Ordinal))
                         kept.Add(line);
                 }
@@ -1009,7 +1065,10 @@ namespace CarScanner.Services.OBD
                               await TryAsync("ATFCSM1", token).ConfigureAwait(false)));
                         _flowControlSet = _flowControlSupported;
                         if (!_flowControlSupported)
+                        {
+                            LogOnce("flow-control", "Module session: user flow control (ATFCSH/ATFCSD/ATFCSM1) not accepted; the adapter's automatic flow control is used");
                             _elm._logger.LogInformation("Module session: adapter rejected user flow control (ATFCSH/ATFCSM1); using automatic flow control.");
+                        }
                     }
                 }
 
@@ -1046,7 +1105,10 @@ namespace CarScanner.Services.OBD
                 if (_timing != timing)
                 {
                     if (!await TryAsync(timing, token).ConfigureAwait(false))
+                    {
+                        LogOnce("timing-" + timing, $"Module session: {timing} not accepted; the adapter keeps its own answer window");
                         _elm._logger.LogInformation("Module session: adapter rejected {Timing}; keeping its timeout.", timing);
+                    }
                     _timing = timing;
                 }
             }
@@ -1058,12 +1120,15 @@ namespace CarScanner.Services.OBD
                 ValidateCanIdentifiers(transmitCanId, receiveCanId, extended29Bit);
                 await ConfigureAsync(transmitCanId, receiveCanId, extended29Bit, caf: true, longWait, token, extendedAddress).ConfigureAwait(false);
                 var command = string.Concat(payload.Select(b => b.ToString("X2")));
-                var answer = ApplySoftwareFilter(await _elm.SendCommandInternalAsync(
+                var received = await _elm.SendCommandInternalAsync(
                     command,
                     TimeSpan.FromSeconds(longWait ? 4 : 2.5),
                     maxRetries: 1,
                     treatNegativeStatusAsError: false,
-                    token).ConfigureAwait(false));
+                    token).ConfigureAwait(false);
+                // Who answered is noted before the software filter turns other modules' frames into "NO DATA".
+                _elm.NoteSessionSenders(received, receiveCanId, extended29Bit);
+                var answer = ApplySoftwareFilter(received);
 
                 // Only the read services are reported (never clears or anything else that passes through here), and
                 // under the CAN id the reply really came from: when the adapter delivers the engine ECU's frames for
@@ -1559,6 +1624,7 @@ namespace CarScanner.Services.OBD
                     : latencies.Count / (totalQueryMs / 1000d);
 
                 progress?.Report(new AdapterTestProgress(94, "Adapter capability შედეგების დამუშავება…"));
+                LogCapabilityChecks(checks, attempted, passed, latencies);
                 return new AdapterCapabilitySnapshot
                 {
                     DeviceDescription = SafeEvidence(deviceDescription),
@@ -1585,6 +1651,23 @@ namespace CarScanner.Services.OBD
                 {
                     _sessionGate.Release();
                 }
+            }
+        }
+
+        /// <summary>The result of the user-started adapter test, one line per check, so a copied connection log carries it. Never throws.</summary>
+        private static void LogCapabilityChecks(IReadOnlyList<AdapterCapabilityCheck> checks, int attempted, int passed, IReadOnlyList<long> latencies)
+        {
+            try
+            {
+                LinkEventLog.Add($"Adapter test over {AdapterDiagnosticCapture.TransportLabel}: {passed}/{attempted} safe commands passed" +
+                                 (latencies.Count == 0 ? string.Empty : $"; 0100 latency min/avg/max {latencies.Min()}/{(long)Math.Round(latencies.Average())}/{latencies.Max()} ms"));
+                foreach (var check in checks)
+                    LinkEventLog.Add($"Adapter test: {check.Id} = {check.State}" +
+                                     (check.State == AdapterCapabilityCheckState.Passed ? string.Empty : $" ({AdapterDiagnosticCapture.Brief(check.Evidence, 80)})"));
+            }
+            catch
+            {
+                // A log line must never affect the adapter test.
             }
         }
 
@@ -1914,12 +1997,16 @@ namespace CarScanner.Services.OBD
                 token).ConfigureAwait(false);
 
             if (!IsAffirmativeAtResponse(response))
+            {
+                LinkEventLog.Add($"Setup: required command {command} NOT accepted (reply \"{AdapterDiagnosticCapture.Brief(response)}\", " +
+                                 $"{AdapterExchangeClassifier.Classify(command, response)})");
                 throw new Elm327CommandException(
                     $"Adapter does not support required command '{command}'.",
                     response)
                 {
                     UnsupportedCommand = command
                 };
+            }
         }
 
         /// <summary>Sends an AT command and reports whether the adapter accepted it. Never throws except on cancellation.</summary>
@@ -2078,6 +2165,7 @@ namespace CarScanner.Services.OBD
         {
             _logger.LogDebug("Init step: {Description} ({Command})", description, command);
 
+            var stepStarted = System.Diagnostics.Stopwatch.GetTimestamp();
             try
             {
                 var response = await SendCommandInternalAsync(
@@ -2086,6 +2174,7 @@ namespace CarScanner.Services.OBD
                     DefaultMaxRetries,
                     treatNegativeStatusAsError: false,
                     cancellationToken).ConfigureAwait(false);
+                LogInitStep(command, response, stepStarted);
 
                 if (!IsAffirmativeAtResponse(response))
                 {
@@ -2098,9 +2187,39 @@ namespace CarScanner.Services.OBD
             }
             catch (Elm327TimeoutException ex)
             {
+                LinkEventLog.Add($"Init {command}: no reply in time ({(long)System.Diagnostics.Stopwatch.GetElapsedTime(stepStarted).TotalMilliseconds} ms) — initialization stops here");
                 _logger.LogError(ex, "Init step '{Description}' ({Command}) timed out.", description, command);
                 throw new Elm327InitializationException(
                     $"Initialization failed at step '{description}' ({command}): timed out.", ex);
+            }
+        }
+
+        /// <summary>One connection-log line for an init command: accepted or not, what the adapter said, how long it took. Never throws.</summary>
+        private static void LogInitStep(string command, string? response, long startedAt)
+        {
+            try
+            {
+                var verdict = IsAffirmativeAtResponse(response ?? string.Empty) ? "accepted" : "NOT accepted";
+                LinkEventLog.Add($"Init {command}: {verdict} (reply \"{AdapterDiagnosticCapture.Brief(response)}\", " +
+                                 $"{AdapterExchangeClassifier.Classify(command, response)}), {(long)System.Diagnostics.Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds} ms");
+            }
+            catch
+            {
+                // A log line must never affect initialization.
+            }
+        }
+
+        /// <summary>The adapter's own banner after ATZ (for example "ELM327 v1.5") and how it is reached: identification without any extra command.</summary>
+        private static void LogAdapterBanner(string? response, long startedAt)
+        {
+            try
+            {
+                LinkEventLog.Add($"Init ATZ: banner \"{AdapterDiagnosticCapture.Brief(response)}\" over {AdapterDiagnosticCapture.TransportLabel}, " +
+                                 $"{(long)System.Diagnostics.Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds} ms");
+            }
+            catch
+            {
+                // A log line must never affect initialization.
             }
         }
 
@@ -2120,6 +2239,7 @@ namespace CarScanner.Services.OBD
 
         private async Task ExecuteResetInternalAsync(CancellationToken cancellationToken)
         {
+            var resetStarted = System.Diagnostics.Stopwatch.GetTimestamp();
             try
             {
                 var response = await SendCommandInternalAsync(
@@ -2129,15 +2249,31 @@ namespace CarScanner.Services.OBD
                     treatNegativeStatusAsError: false,
                     cancellationToken).ConfigureAwait(false);
 
+                LogAdapterBanner(response, resetStarted);
                 _logger.LogDebug("ATZ response: '{Response}'", response);
             }
             catch (Elm327TimeoutException ex)
             {
+                LinkEventLog.Add($"Init ATZ: no reply in time ({(long)System.Diagnostics.Stopwatch.GetElapsedTime(resetStarted).TotalMilliseconds} ms) over {AdapterDiagnosticCapture.TransportLabel}");
                 _logger.LogError(ex, "ATZ (reset) timed out.");
                 throw new Elm327InitializationException("ELM327 did not respond to reset (ATZ) in time.", ex);
             }
 
             await Task.Delay(PostResetSettleDelay, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>The result of the 0100 probe that ends initialization, and whether the automatic search had to give up first. Never throws.</summary>
+        private static void LogInitProbe(string? response, bool automaticSearchTimedOut)
+        {
+            try
+            {
+                LinkEventLog.Add($"Init 0100 probe: {AdapterExchangeClassifier.Classify(CMD_TEST_PID_0100, response)}" +
+                                 (automaticSearchTimedOut ? " (the automatic protocol search timed out first)" : string.Empty));
+            }
+            catch
+            {
+                // A log line must never affect initialization.
+            }
         }
 
         private static bool ProbeNeedsProtocolFallback(string probeResponse)
@@ -2172,6 +2308,7 @@ namespace CarScanner.Services.OBD
                 cancellationToken.ThrowIfCancellationRequested();
                 if (elapsed.Elapsed > ProtocolFallbackBudget)
                 {
+                    LinkEventLog.Add("Protocol search: time budget used up before every protocol was tried");
                     _logger.LogWarning("Protocol fallback stopped: time budget used up.");
                     break;
                 }
@@ -2188,7 +2325,10 @@ namespace CarScanner.Services.OBD
                     var selected = await SendCommandInternalAsync(
                         $"ATSP{number}", InitCommandTimeout, 1, treatNegativeStatusAsError: false, cancellationToken).ConfigureAwait(false);
                     if (!IsAffirmativeAtResponse(selected))
+                    {
+                        LinkEventLog.Add($"Protocol search: ATSP{number} NOT accepted (reply \"{AdapterDiagnosticCapture.Brief(selected)}\")");
                         continue;
+                    }
 
                     // ATST is in 4 ms units: C8 ≈ 800 ms for slow K-line ECUs, 32 ≈ 200 ms default.
                     await SendCommandInternalAsync(
@@ -2197,6 +2337,7 @@ namespace CarScanner.Services.OBD
                     var response = await SendCommandInternalAsync(
                         CMD_TEST_PID_0100, probeTimeout, 1, treatNegativeStatusAsError: false, cancellationToken).ConfigureAwait(false);
 
+                    LinkEventLog.Add($"Protocol search: ATSP{number} -> 0100 {AdapterExchangeClassifier.Classify(CMD_TEST_PID_0100, response)}");
                     if (Regex.IsMatch(response.ToUpperInvariant(), @"41\s*00"))
                     {
                         _logger.LogInformation("Protocol fallback: ATSP{Number} answered 0100.", number);
@@ -2207,15 +2348,18 @@ namespace CarScanner.Services.OBD
                 }
                 catch (Elm327TimeoutException ex)
                 {
+                    LinkEventLog.Add($"Protocol search: ATSP{number} -> no reply in time");
                     _logger.LogDebug(ex, "Protocol fallback: ATSP{Number} timed out.", number);
                 }
                 catch (Elm327CommandException ex)
                 {
+                    LinkEventLog.Add($"Protocol search: ATSP{number} -> adapter said \"{AdapterDiagnosticCapture.Brief(ex.RawResponse)}\"");
                     _logger.LogDebug(ex, "Protocol fallback: ATSP{Number} failed.", number);
                 }
             }
 
             // Nothing answered: leave the adapter in automatic mode as before.
+            LinkEventLog.Add("Protocol search: no protocol answered 0100; the adapter goes back to automatic");
             try
             {
                 await SendCommandInternalAsync("ATST32", InitCommandTimeout, 1, treatNegativeStatusAsError: false, cancellationToken).ConfigureAwait(false);
@@ -2313,6 +2457,7 @@ namespace CarScanner.Services.OBD
                 _currentProtocol = InferProtocolFromDescription(_currentProtocolRawDescription!);
             }
 
+            LinkEventLog.Add($"Protocol: ATDPN \"{AdapterDiagnosticCapture.Brief(protocolNumberRaw)}\", ATDP \"{AdapterDiagnosticCapture.Brief(_currentProtocolRawDescription, 60)}\" -> {_currentProtocol}");
             _logger.LogInformation(
                 "Detected OBD protocol: {Protocol} (raw number response: '{RawNumber}', description: '{Description}')",
                 _currentProtocol, protocolNumberRaw ?? "<none>", _currentProtocolRawDescription ?? "<none>");
@@ -2484,6 +2629,7 @@ namespace CarScanner.Services.OBD
                 var answer = await SendCommandCoreAsync(command, timeout, maxRetries, treatNegativeStatusAsError, cancellationToken).ConfigureAwait(false);
                 if (countable)
                 {
+                    _sessionTally?.Add(AdapterExchangeClassifier.Classify(command, answer));
                     var failed = IsAdapterLevelFailure(answer);
                     Load.Record(System.Diagnostics.Stopwatch.GetElapsedTime(started), ok: !failed);
                     if (failed)
@@ -2496,9 +2642,11 @@ namespace CarScanner.Services.OBD
             }
             catch (Elm327TimeoutException)
             {
-                LinkEventLog.Add($"Timeout: {command.Trim()} (streak {Volatile.Read(ref _failureStreak) + (IsDataRequest(command.Trim()) ? 1 : 0)})");
+                LinkEventLog.Add($"Timeout: {command.Trim()} (streak {Volatile.Read(ref _failureStreak) + (IsDataRequest(command.Trim()) ? 1 : 0)}); " +
+                                 $"no reply within {AdapterDiagnosticCapture.Seconds(timeout)} s, {maxRetries} attempt(s), {(long)System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds} ms spent");
                 if (countable)
                 {
+                    _sessionTally?.Add(new ExchangeAssessment(ExchangeKind.TimedOut));
                     Load.Record(System.Diagnostics.Stopwatch.GetElapsedTime(started), ok: false);
                     Interlocked.Increment(ref _failureStreak);
                 }
@@ -2506,10 +2654,39 @@ namespace CarScanner.Services.OBD
             }
             catch (Elm327CommandException ex) when (countable && IsAdapterLevelFailure(ex.RawResponse))
             {
+                _sessionTally?.Add(AdapterExchangeClassifier.Classify(ex));
                 Load.Record(System.Diagnostics.Stopwatch.GetElapsedTime(started), ok: false);
                 Interlocked.Increment(ref _failureStreak);
                 throw;
             }
+            catch (Exception ex) when (TallyOtherFailure(countable, ex))
+            {
+                throw;   // not reached: the filter only counts the failure for the module-session summary and returns false
+            }
+        }
+
+        /// <summary>The one module session that is running (null otherwise): a count of what its data requests turned out to be.</summary>
+        private volatile ExchangeTally? _sessionTally;
+
+        /// <summary>Notes which CAN ids the frames of a module-session reply came from. Never throws.</summary>
+        private void NoteSessionSenders(string? reply, int expectedReceiveId, bool extended29Bit)
+        {
+            try
+            {
+                _sessionTally?.NoteSenders(reply, expectedReceiveId, extended29Bit);
+            }
+            catch
+            {
+                // Observation must never affect a diagnostic request.
+            }
+        }
+
+        /// <summary>Exception filter for the module-session summary. It never catches anything: it always returns false.</summary>
+        private bool TallyOtherFailure(bool countable, Exception exception)
+        {
+            if (countable)
+                _sessionTally?.Add(AdapterExchangeClassifier.Classify(exception));
+            return false;
         }
 
         /// <summary>Runs inside the session gate, before an operation: resets and re-initialises a failing adapter.</summary>
@@ -2572,21 +2749,29 @@ namespace CarScanner.Services.OBD
                             await Task.Delay(gap - quiet, cancellationToken).ConfigureAwait(false);
                     }
 
+                    var sentAt = System.Diagnostics.Stopwatch.GetTimestamp();
                     try
                     {
                         rawResponse = await _bluetooth.SendCommandAsync(command, timeout, cancellationToken).ConfigureAwait(false);
                     }
                     catch (TimeoutException)
                     {
+                        AdapterDiagnosticCapture.RecordTimeout(command, attempt, maxRetries, timeout, System.Diagnostics.Stopwatch.GetElapsedTime(sentAt));
                         throw new Elm327TimeoutException(
                             $"Command '{command}' timed out after {timeout.TotalSeconds:F1}s on attempt {attempt}/{maxRetries}.");
                     }
                     catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
                     {
+                        AdapterDiagnosticCapture.RecordTimeout(command, attempt, maxRetries, timeout, System.Diagnostics.Stopwatch.GetElapsedTime(sentAt));
                         throw new Elm327TimeoutException(
                             $"Command '{command}' timed out after {timeout.TotalSeconds:F1}s on attempt {attempt}/{maxRetries}.");
                     }
+                    catch (Exception ex) when (ObserveTransportFailure(command, attempt, maxRetries, timeout, sentAt, ex))
+                    {
+                        throw;   // not reached: the filter only records the failure for the optional raw capture and returns false
+                    }
 
+                    AdapterDiagnosticCapture.RecordReply(command, attempt, maxRetries, timeout, System.Diagnostics.Stopwatch.GetElapsedTime(sentAt), rawResponse);
                     var cleaned = CleanResponse(rawResponse);
 
                     _logger.LogDebug(
@@ -2755,6 +2940,16 @@ namespace CarScanner.Services.OBD
             }
 
             return otherPositive;
+        }
+
+        /// <summary>
+        /// Exception filter that only hands the failure to the optional raw capture (a no-op unless somebody switched it on).
+        /// It never catches anything: it always returns false, so the exception travels on exactly as before.
+        /// </summary>
+        private static bool ObserveTransportFailure(string command, int attempt, int attempts, TimeSpan budget, long sentAt, Exception exception)
+        {
+            AdapterDiagnosticCapture.RecordFailure(command, attempt, attempts, budget, System.Diagnostics.Stopwatch.GetElapsedTime(sentAt), exception);
+            return false;
         }
 
         private static async Task DelayBeforeRetryAsync(int attempt, CancellationToken cancellationToken)

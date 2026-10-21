@@ -155,7 +155,7 @@ FROM QrReports WHERE TokenHash=$t LIMIT 1";
         return """
 <!doctype html><html lang="ka"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark">
 <title>OBD360 — QR Report</title>
-<link rel="icon" type="image/png" href="/assets/favicon.png"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/assets/favicon.png?v=2"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=2">
 <style>
 :root{--bg:#fafaf8;--paper:#fff;--ink:#1c2128;--muted:#667085;--line:#e4e7ec;--mark:#d99a00}
 @media (prefers-color-scheme:dark){:root{--bg:#14171b;--paper:#1b1f24;--ink:#eceff3;--muted:#9aa4b2;--line:#2c333b;--mark:#e6b422}}
@@ -175,7 +175,7 @@ section p{margin:0;font-size:16.5px;overflow-wrap:anywhere}
 section p.small{margin-top:8px;font-size:13px;color:var(--muted)}
 .foot{margin-top:30px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px;line-height:1.6}
 </style></head><body><div class="wrap">
-<header><img src="/assets/mark.png" alt=""><b>OBD360</b></header>
+<header><img src="/assets/mark.png?v=2" alt=""><b>OBD360</b></header>
 <h1>__VEHICLE__</h1>
 <div class="sub">წაკითხვის დრო / Read at: __CHECKED__<br>ბმული ძალაშია / Link available until: __EXPIRES____VIN__</div>
 __NOTE__
@@ -205,7 +205,7 @@ __SERVICE__
     public static string RenderExpiredHtml() => """
 <!doctype html><html lang="ka"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark">
 <title>OBD360 — Link expired</title>
-<link rel="icon" type="image/png" href="/assets/favicon.png"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/assets/favicon.png?v=2"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=2">
 <style>
 :root{--bg:#fafaf8;--ink:#1c2128;--muted:#667085;--line:#e4e7ec}
 @media (prefers-color-scheme:dark){:root{--bg:#14171b;--ink:#eceff3;--muted:#9aa4b2;--line:#2c333b}}
@@ -216,7 +216,7 @@ header{display:flex;align-items:center;gap:10px;padding-bottom:14px;border-botto
 header img{height:26px;width:auto}header b{font-size:17px}
 h1{font-size:22px;margin:24px 0 6px}p{margin:0;color:var(--muted)}h1+p{margin-bottom:22px}
 </style></head>
-<body><div class="wrap"><header><img src="/assets/mark.png" alt=""><b>OBD360</b></header>
+<body><div class="wrap"><header><img src="/assets/mark.png?v=2" alt=""><b>OBD360</b></header>
 <h1>ბმულს ვადა გაუვიდა</h1><p>QR ანგარიშის ბმული ხელმისაწვდომია 30 დღე, რადგან ძველი ანგარიში აღარ ასახავს ავტომობილის მიმდინარე მდგომარეობას.</p>
 <h1>Link expired</h1><p>A QR report link is available for 30 days because an older report no longer reflects the vehicle's current condition.</p></div></body></html>
 """;

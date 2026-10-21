@@ -33,7 +33,8 @@ public sealed class AvatarService
     public const int MaxSidePixels = 256;
 
     private readonly AccountService _account;
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(60) };
+    // The server answers within about ten seconds (a slow check no longer holds the upload back), so a long wait means a real problem.
+    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(30) };
 
     public AvatarService(AccountService account) => _account = account;
 
@@ -59,8 +60,8 @@ public sealed class AvatarService
         {
             Title = "OBD360",
             SelectionLimit = 1,
-            MaximumWidth = 1024,
-            MaximumHeight = 1024,
+            MaximumWidth = 512,
+            MaximumHeight = 512,
             RotateImage = true
         });
         var file = files?.FirstOrDefault();
@@ -68,7 +69,8 @@ public sealed class AvatarService
             return null;
 
         await using var stream = await file.OpenReadAsync();
-        return Shrink(stream);
+        // Decoding and shrinking a phone photo takes a moment: not on the screen thread, or the page freezes while it works.
+        return await Task.Run(() => Shrink(stream));
     }
 
     /// <summary>Re-encodes any picture as a JPEG whose longest side is at most 256 px (about 20-60 KB).</summary>
@@ -80,6 +82,79 @@ public sealed class AvatarService
             : image;
         try { return small.AsBytes(ImageFormat.Jpeg, 0.85f); }
         finally { small.Dispose(); }
+    }
+
+    // ---- the own picture kept on the phone ----------------------------------------------------------------------------
+    // The picture belongs to the account on the server. A copy of what the person chose is also kept here, so it shows at
+    // once (also while the server still checks it, and without a network) every time the account page opens. The file name
+    // changes with every new picture, because the image control may cache a picture by its file name.
+
+    private static string LocalPrefix(string? email)
+    {
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes((email ?? string.Empty).Trim().ToLowerInvariant()));
+        return "profile-photo-" + Convert.ToHexString(hash, 0, 6).ToLowerInvariant() + "-";
+    }
+
+    /// <summary>The newest kept copy of the picture of this account; empty when there is none.</summary>
+    public static string LocalFileFor(string? email)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return string.Empty;
+            var prefix = LocalPrefix(email);
+            return Directory.EnumerateFiles(FileSystem.AppDataDirectory, prefix + "*.jpg")
+                .OrderByDescending(Path.GetFileName, StringComparer.Ordinal)
+                .FirstOrDefault() ?? string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    /// <summary>Keeps a new copy next to the older ones (they are removed by <see cref="PruneLocal"/> once the upload succeeded). Empty when it could not be written.</summary>
+    public static string SaveLocalCandidate(string? email, byte[] jpeg)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return string.Empty;
+            var path = Path.Combine(FileSystem.AppDataDirectory, LocalPrefix(email) + DateTime.UtcNow.Ticks.ToString("D19") + ".jpg");
+            File.WriteAllBytes(path, jpeg);
+            return path;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    /// <summary>Removes every kept copy of the picture of this account except <paramref name="keep"/> (empty keep = remove all).</summary>
+    public static void PruneLocal(string? email, string keep = "")
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return;
+            foreach (var file in Directory.EnumerateFiles(FileSystem.AppDataDirectory, LocalPrefix(email) + "*.jpg"))
+                if (!string.Equals(file, keep, StringComparison.Ordinal))
+                    TryDelete(file);
+        }
+        catch
+        {
+        }
+    }
+
+    public static void DeleteLocalFile(string? path)
+    {
+        if (!string.IsNullOrWhiteSpace(path))
+            TryDelete(path);
+    }
+
+    private static void TryDelete(string path)
+    {
+        try { File.Delete(path); } catch { }
     }
 
     public async Task<AvatarUploadResult> UploadAsync(byte[] jpeg, CancellationToken token = default)

@@ -59,7 +59,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
     [ObservableProperty] private string aiThinkingText = "AI აანალიზებს...";
 
     /// <summary>Start button — marked PRO until PRO is active (the page is open to everyone).</summary>
-    public string AnalyzeButtonText => CarScanner.Services.Localization.LocalizationService.T("AI დიაგნოსტიკის დაწყება") + ProGate.Suffix;
+    public string AnalyzeButtonText => _localization.Translate("AI დიაგნოსტიკის დაწყება") + ProGate.Suffix;
 
     public AiDiagnosticViewModel(
         AiDiagnosticService ai,
@@ -81,10 +81,10 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         // A new connection may be a different car: the next question must
         // not be answered from the previous connection's scan.
         _connection.ConnectionChanged += (_, _) => _scannedThisConnection = false;
-        AiThinkingText = _localization.IsEnglish ? "AI is analyzing..." : "AI აანალიზებს...";
+        AiThinkingText = _localization.IsEnglish ? "AI is analyzing..." : _localization.Translate("AI აანალიზებს...");
         _localization.LanguageChanged += (_, __) =>
             MainThread.BeginInvokeOnMainThread(() =>
-                AiThinkingText = _localization.IsEnglish ? "AI is analyzing..." : "AI აანალიზებს...");
+                AiThinkingText = _localization.IsEnglish ? "AI is analyzing..." : _localization.Translate("AI აანალიზებს..."));
         Title = "AI Diagnostic";
         RestoreSession();
     }
@@ -101,20 +101,20 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         {
             IsBusy = true;
             IsAnalyzing = true;
-            Result = "AI-სთვის რეალური მონაცემები მზადდება…";
+            Result = _localization.Translate("AI-სთვის რეალური მონაცემები მზადდება…");
             ChatMessages.Clear();
             ResetScanPresentation();
             _scanTime = null;
             _scannedThisConnection = false;
 
-            SetStage(5, "1/7 OBD adapter და ECU კავშირის შემოწმება…");
+            SetStage(5, _localization.Translate("1/7 OBD adapter და ECU კავშირის შემოწმება…"));
             if (!_obd.IsInitialized)
                 await _obd.InitializeAsync();
 
             ConnectionStatus = "ECU Connected";
-            ModuleSummary = $"ECU მონაცემთა წყარო: Generic OBD-II · {_obd.CurrentProtocolDescription}";
+            ModuleSummary = _localization.Translate($"ECU მონაცემთა წყარო: Generic OBD-II · {_obd.CurrentProtocolDescription}");
 
-            SetStage(18, "2/7 VIN და ავტომობილის ინფორმაციის წაკითხვა…");
+            SetStage(18, _localization.Translate("2/7 VIN და ავტომობილის ინფორმაციის წაკითხვა…"));
             // Quick identity intentionally avoids a long Mode 09 sequence on
             // inexpensive adapters. It returns only values confirmed by ECU
             // or the exact VIN's existing local profile.
@@ -122,41 +122,41 @@ public partial class AiDiagnosticViewModel : BaseViewModel
             VehicleSummary = FormatVehicle(_vehicle);
             VinText = $"VIN: {Known(_vehicle.VIN)}";
 
-            SetStage(34, "3/7 შეცდომის კოდების წაკითხვა…");
+            SetStage(34, _localization.Translate("3/7 შეცდომის კოდების წაკითხვა…"));
             _codes = await _diagnostic.ScanForErrorsAsync();
             DtcSummary = _codes.Count == 0
-                ? "აქტიური DTC: 0 — Generic OBD სკანზე კოდი არ აღმოჩნდა"
-                : $"აქტიური DTC: {_codes.Count} — ნახე AI-ის სავარაუდო მიზეზები ქვემოთ";
+                ? _localization.Translate("აქტიური DTC: 0 — Generic OBD სკანზე კოდი არ აღმოჩნდა")
+                : _localization.Translate($"აქტიური DTC: {_codes.Count} — ნახე AI-ის სავარაუდო მიზეზები ქვემოთ");
 
-            SetStage(50, "4/7 Freeze Frame-ის შემოწმება…");
+            SetStage(50, _localization.Translate("4/7 Freeze Frame-ის შემოწმება…"));
             var freezeFrame = _codes.Count == 0
                 ? null
                 : await _obd.ReadFreezeFrameQuickAsync(_codes[0].Code);
             FreezeFrameSummary = freezeFrame is null || freezeFrame.Values.Count == 0
-                ? "Freeze Frame: ECU-ში ამ DTC-ის snapshot არ აღმოჩნდა."
-                : $"Freeze Frame: {freezeFrame.Values.Count} რეალური მნიშვნელობა · Trigger: {Known(freezeFrame.TriggerCode)}";
+                ? _localization.Translate("Freeze Frame: ECU-ში ამ DTC-ის snapshot არ აღმოჩნდა.")
+                : _localization.Translate($"Freeze Frame: {freezeFrame.Values.Count} რეალური მნიშვნელობა · Trigger: {Known(freezeFrame.TriggerCode)}");
 
-            SetStage(64, "5/7 სწრაფი Live Data snapshot-ის წაკითხვა…");
+            SetStage(64, _localization.Translate("5/7 სწრაფი Live Data snapshot-ის წაკითხვა…"));
             _sensors = (await _obd.ReadAllSupportedValuesAsync()).ToList();
             LiveDataSummary = _sensors.Count == 0
-                ? "Live Data: ECU-მ snapshot მნიშვნელობა არ დააბრუნა"
-                : $"Live Data: {_sensors.Count} რეალური PID snapshot-დან";
+                ? _localization.Translate("Live Data: ECU-მ snapshot მნიშვნელობა არ დააბრუნა")
+                : _localization.Translate($"Live Data: {_sensors.Count} რეალური PID snapshot-დან");
 
-            SetStage(77, "6/7 Emissions / Readiness-ის შემოწმება…");
+            SetStage(77, _localization.Translate("6/7 Emissions / Readiness-ის შემოწმება…"));
             ReadinessInfo? readiness = null;
             try { readiness = await _obd.ReadReadinessAsync(); }
             catch { /* unavailable is a valid ECU result, not a fault-free result */ }
             _lastReadiness = readiness;
             EmissionsSummary = readiness is null
-                ? "Emissions: Readiness მონაცემი მიუწვდომელია"
+                ? _localization.Translate("Emissions: Readiness მონაცემი მიუწვდომელია")
                 : $"Emissions: MIL {(readiness.MilOn ? "ON" : "OFF")} · ECU DTC count: {readiness.StoredDtcCount}";
 
             EvidenceSummary = BuildEvidenceSummary(_codes, _sensors, readiness, freezeFrame);
             _scanTime = DateTime.Now;
             _scannedThisConnection = true;
-            LastScanText = $"ბოლო AI სკანი: {_scanTime:dd.MM.yyyy HH:mm}";
+            LastScanText = _localization.Translate($"ბოლო AI სკანი: {_scanTime:dd.MM.yyyy HH:mm}");
 
-            SetStage(90, "7/7 AI აანალიზებს მიღებულ მტკიცებულებას…");
+            SetStage(90, _localization.Translate("7/7 AI აანალიზებს მიღებულ მტკიცებულებას…"));
             try
             {
                 Result = await _ai.AnalyzeAsync(
@@ -167,24 +167,24 @@ public partial class AiDiagnosticViewModel : BaseViewModel
 
                 ChatMessages.Add(_localization.IsEnglish
                     ? "AI: The scan is complete. Ask me anything about this data."
-                    : "AI: სკანი დასრულდა. დამისვი კითხვა ამ კონკრეტული მონაცემების შესახებ.");
-                SetStage(100, "AI დიაგნოსტიკა მზადაა — დასკვნები არის სავარაუდო, არა საბოლოო რემონტის დადასტურება.");
+                    : _localization.Translate("AI: სკანი დასრულდა. დამისვი კითხვა ამ კონკრეტული მონაცემების შესახებ."));
+                SetStage(100, _localization.Translate("AI დიაგნოსტიკა მზადაა — დასკვნები არის სავარაუდო, არა საბოლოო რემონტის დადასტურება."));
             }
             catch (Exception ex)
             {
                 // The OBD scan above completed successfully. An AI/network
                 // outage must not be presented as an ECU disconnection and
                 // must not discard the confirmed evidence already on screen.
-                Result = $"OBD სკანი წარმატებით დასრულდა, მაგრამ AI პასუხი ამჯერად ვერ მივიღეთ. {UserError.Describe(ex)}";
-                ChatMessages.Add("AI: OBD მონაცემები შენარჩუნებულია. AI სერვისის აღდგენის შემდეგ სცადე თავიდან.");
-                SetStage(100, "OBD სკანი დასრულდა — AI პასუხი დროებით მიუწვდომელია.");
+                Result = _localization.Translate($"OBD სკანი წარმატებით დასრულდა, მაგრამ AI პასუხი ამჯერად ვერ მივიღეთ. {UserError.Describe(ex)}");
+                ChatMessages.Add(_localization.Translate("AI: OBD მონაცემები შენარჩუნებულია. AI სერვისის აღდგენის შემდეგ სცადე თავიდან."));
+                SetStage(100, _localization.Translate("OBD სკანი დასრულდა — AI პასუხი დროებით მიუწვდომელია."));
             }
         }
         catch (Exception ex)
         {
-            ConnectionStatus = "ECU მონაცემი მიუწვდომელია";
-            Result = "AI დიაგნოსტიკა ვერ დასრულდა. შეამოწმე OBD კავშირი და ინტერნეტი, შემდეგ სცადე თავიდან.";
-            EvidenceSummary = $"მიზეზი: {UserError.Describe(ex)}";
+            ConnectionStatus = _localization.Translate("ECU მონაცემი მიუწვდომელია");
+            Result = _localization.Translate("AI დიაგნოსტიკა ვერ დასრულდა. შეამოწმე OBD კავშირი და ინტერნეტი, შემდეგ სცადე თავიდან.");
+            EvidenceSummary = _localization.Translate($"მიზეზი: {UserError.Describe(ex)}");
             // A half-finished scan (e.g. VIN read, codes not) must not be
             // used later as if it described this car completely.
             if (_scanTime is null || !_scannedThisConnection)
@@ -194,7 +194,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
                 _sensors = new();
                 _lastReadiness = null;
             }
-            SetStage(100, "სკანი შეწყდა — რეალური მონაცემები ვერ მივიღეთ.");
+            SetStage(100, _localization.Translate("სკანი შეწყდა — რეალური მონაცემები ვერ მივიღეთ."));
         }
         finally
         {
@@ -225,7 +225,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         var section = new CarScanner.Services.Reports.ReportSectionItem
         {
             Kind = "ai",
-            Title = english ? "AI conclusion" : "AI დასკვნა",
+            Title = english ? "AI conclusion" : _localization.Translate("AI დასკვნა"),
             Status = CarScanner.Services.Reports.ReportStatus.Info,
             Summary = paragraphs.FirstOrDefault() is { } first ? (first.Length > 160 ? first[..160] + "…" : first) : string.Empty
         };
@@ -281,7 +281,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
             if (_vehicle is null || !_scannedThisConnection)
             {
                 ChatMessages.Add(L(
-                    "AI: დაკავშირებული მანქანის სკანი ვერ დასრულდა, ამიტომ კითხვაზე პასუხს ძველ მონაცემებზე არ დავაფუძნებ. შეამოწმე კავშირი და სცადე თავიდან.",
+                    _localization.Translate("AI: დაკავშირებული მანქანის სკანი ვერ დასრულდა, ამიტომ კითხვაზე პასუხს ძველ მონაცემებზე არ დავაფუძნებ. შეამოწმე კავშირი და სცადე თავიდან."),
                     "AI: The scan of the connected car did not finish, so I won't answer from old data. Check the connection and try again."));
                 return;
             }
@@ -290,7 +290,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         if (_vehicle is null)
         {
             ChatMessages.Add(L(
-                "AI: ჯერ გაუშვი Start AI Diagnostic, რომ პასუხი ამ მანქანის რეალურ OBD მონაცემებს დაეყრდნოს.",
+                _localization.Translate("AI: ჯერ გაუშვი Start AI Diagnostic, რომ პასუხი ამ მანქანის რეალურ OBD მონაცემებს დაეყრდნოს."),
                 "AI: Run Start AI Diagnostic first so the answer is based on this car's real OBD data."));
             return;
         }
@@ -298,13 +298,13 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         // Not connected: the answer can only come from the saved scan — say so.
         var sourceNote = connected ? null : SavedScanNote();
 
-        ChatMessages.Add(AiDiagnosticService.AnswerInEnglish(question) ? $"You: {question}" : $"თქვენ: {question}");
+        ChatMessages.Add(AiDiagnosticService.AnswerInEnglish(question) ? $"You: {question}" : _localization.Translate($"თქვენ: {question}"));
         ChatInput = string.Empty;
         try
         {
             IsBusy = true;
             IsAiThinking = true;
-            AiThinkingText = _localization.IsEnglish ? "AI is analyzing..." : "AI აანალიზებს...";
+            AiThinkingText = _localization.IsEnglish ? "AI is analyzing..." : _localization.Translate("AI აანალიზებს...");
 
             // The question was just added to the chat and is sent separately,
             // so it must not be repeated inside the history.
@@ -321,7 +321,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            ChatMessages.Add(L("AI: პასუხი ვერ მივიღე — ", "AI: Could not get an answer — ") + UserError.Describe(ex));
+            ChatMessages.Add(L(_localization.Translate("AI: პასუხი ვერ მივიღე — "), "AI: Could not get an answer — ") + UserError.Describe(ex));
         }
         finally
         {
@@ -357,7 +357,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
 
             DiscardSession();
             Result = L(
-                "წინა AI სკანი სხვა ან ამოუცნობ მანქანას ეკუთვნის, ან 24 საათზე ძველია. დაიწყე ახალი AI დიაგნოსტიკა — ან უბრალოდ დასვი კითხვა და ჯერ მანქანას წავიკითხავ.",
+                _localization.Translate("წინა AI სკანი სხვა ან ამოუცნობ მანქანას ეკუთვნის, ან 24 საათზე ძველია. დაიწყე ახალი AI დიაგნოსტიკა — ან უბრალოდ დასვი კითხვა და ჯერ მანქანას წავიკითხავ."),
                 "The previous AI scan belongs to another or unidentified car, or is older than 24 hours. Start a new AI diagnostic — or just ask a question and the car will be read first.");
         }
         catch (Exception exception)
@@ -404,19 +404,19 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         _scannedThisConnection = false;
         ChatMessages.Clear();
 
-        VehicleSummary = L("ავტომობილი: —", "Vehicle: —");
+        VehicleSummary = L(_localization.Translate("ავტომობილი: —"), "Vehicle: —");
         VinText = "VIN: —";
-        ModuleSummary = L("ECU მოდულები: —", "ECU modules: —");
-        DtcSummary = L("აქტიური DTC: —", "Active DTC: —");
+        ModuleSummary = L(_localization.Translate("ECU მოდულები: —"), "ECU modules: —");
+        DtcSummary = L(_localization.Translate("აქტიური DTC: —"), "Active DTC: —");
         LiveDataSummary = "Live Data: —";
         EmissionsSummary = "Emissions: —";
         FreezeFrameSummary = "Freeze Frame: —";
-        EvidenceSummary = L("მტკიცებულება: ჯერ არ არის წაკითხული.", "Evidence: not read yet.");
-        LastScanText = L("ბოლო AI სკანი: —", "Last AI scan: —");
-        ConnectionStatus = L("ECU ჯერ არ შემოწმებულა", "ECU not checked yet");
+        EvidenceSummary = L(_localization.Translate("მტკიცებულება: ჯერ არ არის წაკითხული."), "Evidence: not read yet.");
+        LastScanText = L(_localization.Translate("ბოლო AI სკანი: —"), "Last AI scan: —");
+        ConnectionStatus = L(_localization.Translate("ECU ჯერ არ შემოწმებულა"), "ECU not checked yet");
         ScanProgress = 0;
         ScanProgressValue = 0;
-        ScanStage = L("დააჭირე „Start AI Diagnostic“-ს.", "Tap \u201cStart AI Diagnostic\u201d.");
+        ScanStage = L(_localization.Translate("დააჭირე „Start AI Diagnostic“-ს."), "Tap \u201cStart AI Diagnostic\u201d.");
 
         try
         {
@@ -438,10 +438,10 @@ public partial class AiDiagnosticViewModel : BaseViewModel
             : string.Join(" ", new[] { vehicle.Manufacturer, vehicle.Model, vehicle.Year }
                 .Where(part => !string.IsNullOrWhiteSpace(part) && !part.Equals("Unknown", StringComparison.OrdinalIgnoreCase)));
         if (string.IsNullOrWhiteSpace(name))
-            name = L("მანქანის", "the car");
+            name = L(_localization.Translate("მანქანის"), "the car");
         var when = _scanTime is { } time ? time.ToString("dd.MM.yyyy HH:mm") : "—";
         return L(
-            $"(მანქანა არ არის დაკავშირებული — პასუხი ეყრდნობა {name} სკანს {when}-დან.)",
+            _localization.Translate($"(მანქანა არ არის დაკავშირებული — პასუხი ეყრდნობა {name} სკანს {when}-დან.)"),
             $"(No car connected — based on the scan of {name} from {when}.)");
     }
 
@@ -585,13 +585,13 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         try
         {
             IsBusy = true;
-            GuidedTestResult = "უსაფრთხოების შემოწმება მიმდინარეობს…";
+            GuidedTestResult = _localization.Translate("უსაფრთხოების შემოწმება მიმდინარეობს…");
             if (!_obd.IsInitialized)
                 await _obd.InitializeAsync();
 
             if (!_obd.IsPidSupported(0x06) && !_obd.IsPidSupported(0x07))
             {
-                GuidedTestResult = "Guided Test მიუწვდომელია: ამ ECU-მ Fuel Trim Bank 1 PID არ დაადასტურა.";
+                GuidedTestResult = _localization.Translate("Guided Test მიუწვდომელია: ამ ECU-მ Fuel Trim Bank 1 PID არ დაადასტურა.");
                 return;
             }
 
@@ -602,15 +602,15 @@ public partial class AiDiagnosticViewModel : BaseViewModel
                 CarScanner.Services.Localization.LocalizationService.T("გაუქმება"));
             if (!continueAtIdle)
             {
-                GuidedTestResult = "Guided Test გაუქმდა მომხმარებლის მიერ.";
+                GuidedTestResult = _localization.Translate("Guided Test გაუქმდა მომხმარებლის მიერ.");
                 return;
             }
 
-            GuidedTestResult = "Idle Fuel Trim იკითხება…";
+            GuidedTestResult = _localization.Translate("Idle Fuel Trim იკითხება…");
             var idle = await ReadFuelTrimAsync();
             if (idle is null)
             {
-                GuidedTestResult = "Idle Fuel Trim ECU-მ არ დააბრუნა — შედარება ვერ შესრულდება.";
+                GuidedTestResult = _localization.Translate("Idle Fuel Trim ECU-მ არ დააბრუნა — შედარება ვერ შესრულდება.");
                 return;
             }
 
@@ -621,16 +621,16 @@ public partial class AiDiagnosticViewModel : BaseViewModel
                 CarScanner.Services.Localization.LocalizationService.T("გაუქმება"));
             if (!continueAtRpm)
             {
-                GuidedTestResult = $"Idle შედეგი: {idle.Name} {idle.Value} {idle.Unit}. მეორე წაკითხვა გაუქმდა.";
+                GuidedTestResult = _localization.Translate($"Idle შედეგი: {idle.Name} {idle.Value} {idle.Unit}. მეორე წაკითხვა გაუქმდა.");
                 return;
             }
 
-            GuidedTestResult = "2500 RPM-ზე 10-წამიანი სტაბილიზაცია და წაკითხვა მიმდინარეობს…";
+            GuidedTestResult = _localization.Translate("2500 RPM-ზე 10-წამიანი სტაბილიზაცია და წაკითხვა მიმდინარეობს…");
             await Task.Delay(TimeSpan.FromSeconds(10));
             var elevated = await ReadFuelTrimAsync();
             if (elevated is null)
             {
-                GuidedTestResult = $"Idle: {idle.Name} {idle.Value} {idle.Unit}. 2500 RPM-ზე ECU-მ მნიშვნელობა არ დააბრუნა.";
+                GuidedTestResult = _localization.Translate($"Idle: {idle.Name} {idle.Value} {idle.Unit}. 2500 RPM-ზე ECU-მ მნიშვნელობა არ დააბრუნა.");
                 return;
             }
 
@@ -638,7 +638,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            GuidedTestResult = $"Guided Test ვერ შესრულდა: {UserError.Describe(ex)}";
+            GuidedTestResult = _localization.Translate($"Guided Test ვერ შესრულდა: {UserError.Describe(ex)}");
         }
         finally
         {
@@ -659,7 +659,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         if (!await EnsureProAsync()) return;
         if (_vehicle is null || IsUnknownVin(_vehicle.VIN))
         {
-            RepairVerificationSummary = "Before Repair baseline ვერ შეინახება: მიმდინარე სკანის VIN მიუწვდომელია. ჯერ გაუშვი AI Diagnostic დაკავშირებულ მანქანაზე.";
+            RepairVerificationSummary = _localization.Translate("Before Repair baseline ვერ შეინახება: მიმდინარე სკანის VIN მიუწვდომელია. ჯერ გაუშვი AI Diagnostic დაკავშირებულ მანქანაზე.");
             return;
         }
 
@@ -679,7 +679,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         };
 
         Preferences.Default.Set(RepairBaselinePreferenceKey, JsonSerializer.Serialize(baseline));
-        RepairVerificationSummary = $"Before Repair baseline შენახულია: {baseline.CapturedAt:dd.MM.yyyy HH:mm} · DTC: {baseline.DtcCodes.Count} · PID: {baseline.Sensors.Count}.";
+        RepairVerificationSummary = _localization.Translate($"Before Repair baseline შენახულია: {baseline.CapturedAt:dd.MM.yyyy HH:mm} · DTC: {baseline.DtcCodes.Count} · PID: {baseline.Sensors.Count}.");
         }
         catch (Exception commandException)
         {
@@ -698,26 +698,26 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         var baseline = LoadBaseline();
         if (baseline is null)
         {
-            RepairVerificationSummary = "შენახული Before Repair baseline ვერ მოიძებნა. რემონტამდე გაუშვი AI Diagnostic და დააჭირე „Save Before Repair“.";
+            RepairVerificationSummary = _localization.Translate("შენახული Before Repair baseline ვერ მოიძებნა. რემონტამდე გაუშვი AI Diagnostic და დააჭირე „Save Before Repair“.");
             return;
         }
 
         try
         {
             IsBusy = true;
-            RepairVerificationSummary = "After Repair რეალური OBD მონაცემები იკითხება…";
+            RepairVerificationSummary = _localization.Translate("After Repair რეალური OBD მონაცემები იკითხება…");
             if (!_obd.IsInitialized)
                 await _obd.InitializeAsync();
 
             var currentVehicle = await _vehicleService.IdentifyConnectedVehicleAsync();
             if (IsUnknownVin(currentVehicle.VIN))
             {
-                RepairVerificationSummary = "VIN ვერ წავიკითხეთ, ამიტომ სხვა მანქანის მონაცემებთან უსაფრთხო შედარება შეუძლებელია.";
+                RepairVerificationSummary = _localization.Translate("VIN ვერ წავიკითხეთ, ამიტომ სხვა მანქანის მონაცემებთან უსაფრთხო შედარება შეუძლებელია.");
                 return;
             }
             if (!string.Equals(baseline.Vin, currentVehicle.VIN, StringComparison.OrdinalIgnoreCase))
             {
-                RepairVerificationSummary = "შენახული Before Repair baseline სხვა VIN-ს ეკუთვნის. შედარება შეჩერდა, რათა არასწორი დასკვნა არ მივიღოთ.";
+                RepairVerificationSummary = _localization.Translate("შენახული Before Repair baseline სხვა VIN-ს ეკუთვნის. შედარება შეჩერდა, რათა არასწორი დასკვნა არ მივიღოთ.");
                 return;
             }
 
@@ -730,7 +730,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            RepairVerificationSummary = $"Repair Verification ვერ დასრულდა: {UserError.Describe(ex)}";
+            RepairVerificationSummary = _localization.Translate($"Repair Verification ვერ დასრულდა: {UserError.Describe(ex)}");
         }
         finally
         {
@@ -752,14 +752,14 @@ public partial class AiDiagnosticViewModel : BaseViewModel
     {
         ScanProgress = 0;
         ScanProgressValue = 0;
-        ConnectionStatus = "კავშირი მოწმდება…";
-        VehicleSummary = "ავტომობილი: იკითხება…";
-        VinText = "VIN: იკითხება…";
-        ModuleSummary = "ECU მოდულები: იკითხება…";
-        DtcSummary = "აქტიური DTC: იკითხება…";
-        LiveDataSummary = "Live Data: იკითხება…";
-        EmissionsSummary = "Emissions: იკითხება…";
-        FreezeFrameSummary = "Freeze Frame: იკითხება…";
+        ConnectionStatus = _localization.Translate("კავშირი მოწმდება…");
+        VehicleSummary = _localization.Translate("ავტომობილი: იკითხება…");
+        VinText = _localization.Translate("VIN: იკითხება…");
+        ModuleSummary = _localization.Translate("ECU მოდულები: იკითხება…");
+        DtcSummary = _localization.Translate("აქტიური DTC: იკითხება…");
+        LiveDataSummary = _localization.Translate("Live Data: იკითხება…");
+        EmissionsSummary = _localization.Translate("Emissions: იკითხება…");
+        FreezeFrameSummary = _localization.Translate("Freeze Frame: იკითხება…");
     }
 
     private void SetStage(int percent, string text)
@@ -769,15 +769,15 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         ScanStage = text;
     }
 
-    private static string FormatVehicle(VehicleInfo vehicle)
+    private string FormatVehicle(VehicleInfo vehicle)
     {
         var make = Known(vehicle.Manufacturer);
         var model = Known(vehicle.Model);
         var year = Known(vehicle.Year);
-        return $"ავტომობილი: {make} {model} · {year} · საწვავი: {Known(vehicle.FuelType)}";
+        return _localization.Translate($"ავტომობილი: {make} {model} · {year} · საწვავი: {Known(vehicle.FuelType)}");
     }
 
-    private static string BuildEvidenceSummary(
+    private string BuildEvidenceSummary(
         IReadOnlyCollection<ErrorCode> codes,
         IReadOnlyCollection<SensorValue> sensors,
         ReadinessInfo? readiness,
@@ -788,17 +788,17 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         {
             $"DTC: {codes.Count}",
             $"Live PID: {sensors.Count}",
-            readiness is null ? "Readiness: მიუწვდომელია" : $"MIL: {(readiness.MilOn ? "ON" : "OFF")}",
-            freezeFrame is { Values.Count: > 0 } ? $"Freeze Frame: {freezeFrame.Values.Count}" : "Freeze Frame: არ არის"
+            readiness is null ? _localization.Translate("Readiness: მიუწვდომელია") : $"MIL: {(readiness.MilOn ? "ON" : "OFF")}",
+            freezeFrame is { Values.Count: > 0 } ? $"Freeze Frame: {freezeFrame.Values.Count}" : _localization.Translate("Freeze Frame: არ არის")
         };
         if (attentionSensors.Length > 0)
-            parts.Add($"ყურადღების PID: {string.Join(", ", attentionSensors)}");
+            parts.Add(_localization.Translate($"ყურადღების PID: {string.Join(", ", attentionSensors)}"));
         return string.Join(" · ", parts);
     }
 
-    private static string Known(string? value) =>
+    private string Known(string? value) =>
         string.IsNullOrWhiteSpace(value) || value.Equals("Unknown", StringComparison.OrdinalIgnoreCase)
-            ? "მიუწვდომელია"
+            ? _localization.Translate("მიუწვდომელია")
             : value;
 
     private async Task<SensorValue?> ReadFuelTrimAsync()
@@ -807,17 +807,17 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         return longTerm ?? await _obd.ReadSensorAsync(0x06);
     }
 
-    private static string BuildGuidedFuelTrimConclusion(SensorValue idle, SensorValue elevated)
+    private string BuildGuidedFuelTrimConclusion(SensorValue idle, SensorValue elevated)
     {
-        var header = $"რეალური Fuel Trim · Idle: {idle.Value} {idle.Unit} · ~2500 RPM: {elevated.Value} {elevated.Unit}. ";
+        var header = _localization.Translate($"რეალური Fuel Trim · Idle: {idle.Value} {idle.Unit} · ~2500 RPM: {elevated.Value} {elevated.Unit}. ");
         if (!TryNumber(idle.Value, out var idleValue) || !TryNumber(elevated.Value, out var elevatedValue))
-            return header + "რიცხვითი შედარება ვერ გაკეთდა; ნახე ეს მნიშვნელობები Live Data-ში.";
+            return header + _localization.Translate("რიცხვითი შედარება ვერ გაკეთდა; ნახე ეს მნიშვნელობები Live Data-ში.");
 
         if (idleValue >= 10 && elevatedValue <= idleValue - 7)
-            return header + "ეს შაბლონი შესაძლოა უფრო შეესაბამებოდეს vacuum/intake leak-ს idle-ზე. დაათვალიერე ჰაერის შლანგები და დაადასტურე სხვა ტესტებით.";
+            return header + _localization.Translate("ეს შაბლონი შესაძლოა უფრო შეესაბამებოდეს vacuum/intake leak-ს idle-ზე. დაათვალიერე ჰაერის შლანგები და დაადასტურე სხვა ტესტებით.");
         if (Math.Abs(idleValue) >= 10 && Math.Abs(elevatedValue) >= 10)
-            return header + "Fuel Trim ორივე რეჟიმში მაღალია. ეს შეიძლება მიუთითებდეს ჰაერის/MAF-ის ან საწვავის მიწოდების საკითხზე; მხოლოდ ამ ტესტით ნაწილი ვერ დადასტურდება.";
-        return header + "მნიშვნელობების განსხვავება ამ მოკლე ტესტში საკმარისი არ არის კონკრეტული მიზეზის დასასკვნელად.";
+            return header + _localization.Translate("Fuel Trim ორივე რეჟიმში მაღალია. ეს შეიძლება მიუთითებდეს ჰაერის/MAF-ის ან საწვავის მიწოდების საკითხზე; მხოლოდ ამ ტესტით ნაწილი ვერ დადასტურდება.");
+        return header + _localization.Translate("მნიშვნელობების განსხვავება ამ მოკლე ტესტში საკმარისი არ არის კონკრეტული მიზეზის დასასკვნელად.");
     }
 
     private static bool TryNumber(string text, out double value) =>
@@ -839,7 +839,7 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         }
     }
 
-    private static string BuildRepairVerification(
+    private string BuildRepairVerification(
         AiRepairBaseline baseline,
         IReadOnlyCollection<ErrorCode> currentCodes,
         IReadOnlyCollection<SensorValue> currentSensors,
@@ -854,8 +854,8 @@ public partial class AiDiagnosticViewModel : BaseViewModel
         var currentCodeSet = currentCodes.Select(code => code.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var cleared = baseline.DtcCodes.Where(code => !currentCodeSet.Contains(code)).ToArray();
         var remaining = baseline.DtcCodes.Where(currentCodeSet.Contains).ToArray();
-        if (cleared.Length > 0) lines.Add($"აღარ იკითხება: {string.Join(", ", cleared)}");
-        if (remaining.Length > 0) lines.Add($"ჯერ ისევ იკითხება: {string.Join(", ", remaining)}");
+        if (cleared.Length > 0) lines.Add(_localization.Translate($"აღარ იკითხება: {string.Join(", ", cleared)}"));
+        if (remaining.Length > 0) lines.Add(_localization.Translate($"ჯერ ისევ იკითხება: {string.Join(", ", remaining)}"));
 
         var currentByPid = currentSensors.ToDictionary(sensor => sensor.Pid);
         var comparisons = baseline.Sensors
@@ -864,23 +864,23 @@ public partial class AiDiagnosticViewModel : BaseViewModel
             .Select(sensor =>
             {
                 var after = currentByPid[sensor.Pid];
-                return $"{sensor.Name}: ადრე {sensor.Value} {sensor.Unit} → ახლა {after.Value} {after.Unit}";
+                return _localization.Translate($"{sensor.Name}: ადრე {sensor.Value} {sensor.Unit} → ახლა {after.Value} {after.Unit}");
             })
             .Take(6)
             .ToArray();
         if (comparisons.Length > 0)
         {
-            lines.Add("რეალური PID შედარება:");
+            lines.Add(_localization.Translate("რეალური PID შედარება:"));
             lines.AddRange(comparisons);
         }
 
         if (baseline.DtcCodes.Count > 0 && currentCodes.Count < baseline.DtcCodes.Count && currentReadiness?.MilOn == false)
-            lines.Add("ECU ახლა ნაკლებ DTC-ს აჩვენებს და MIL გამორთულია. შედეგი დადებითია, მაგრამ drive cycle-ისა და Readiness-ის დასრულებამდე რემონტი საბოლოოდ დადასტურებულად არ ჩაითვალოს.");
+            lines.Add(_localization.Translate("ECU ახლა ნაკლებ DTC-ს აჩვენებს და MIL გამორთულია. შედეგი დადებითია, მაგრამ drive cycle-ისა და Readiness-ის დასრულებამდე რემონტი საბოლოოდ დადასტურებულად არ ჩაითვალოს."));
         else
-            lines.Add("შედარება აჩვენებს მხოლოდ ECU-ს ამჟამინდელ პასუხს. საბოლოო დასკვნამდე გადაამოწმე დარჩენილი DTC-ები და Readiness drive cycle-ის შემდეგ.");
+            lines.Add(_localization.Translate("შედარება აჩვენებს მხოლოდ ECU-ს ამჟამინდელ პასუხს. საბოლოო დასკვნამდე გადაამოწმე დარჩენილი DTC-ები და Readiness drive cycle-ის შემდეგ."));
 
         return string.Join("\n", lines);
     }
 
-    private static string FormatMil(bool? milOn) => milOn is null ? "მიუწვდომელია" : milOn.Value ? "ON" : "OFF";
+    private string FormatMil(bool? milOn) => milOn is null ? _localization.Translate("მიუწვდომელია") : milOn.Value ? "ON" : "OFF";
 }

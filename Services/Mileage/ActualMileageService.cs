@@ -47,7 +47,7 @@ public sealed class ActualMileageService
         }
         catch (Exception ex)
         {
-            MileageTrace.Add($"adapter not ready: {ex.GetType().Name}");
+            MileageTrace.Add($"adapter not ready: {ex.GetType().Name} — {MileageReadDiagnosis.OfException(ex, linkDown: !_obd.IsAdapterConnected)}");
         }
 
         foreach (var provider in _providers)
@@ -66,8 +66,8 @@ public sealed class ActualMileageService
             }
             catch (Exception ex)
             {
-                MileageTrace.Add($"[{provider.Name}] error: {ex.GetType().Name}");
-                MileageTrace.Attempt(new MileageAttempt(provider.Name, string.Empty, MileageAttemptOutcome.ModuleNotResponding, ex.GetType().Name));
+                MileageTrace.Add($"[{provider.Name}] error: {ex.GetType().Name} — {MileageReadDiagnosis.OfException(ex, linkDown: !_obd.IsAdapterConnected)}");
+                MileageTrace.Attempt(new MileageAttempt(provider.Name, string.Empty, MileageAttemptOutcome.ModuleNotResponding, MileageReadDiagnosis.ErrorDetail(ex, linkDown: !_obd.IsAdapterConnected)));
                 // One provider failing must not stop the whole scan.
             }
         }

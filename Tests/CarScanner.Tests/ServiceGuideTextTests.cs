@@ -18,7 +18,9 @@ public sealed class ServiceGuideTextTests
     [Fact]
     public void Catalog10_HasTheNewGuides_AndTheCatalogStillLoadsWithoutIssues()
     {
-        Assert.Equal(10, ServiceTestData.Real.CatalogVersion);
+        // Catalog 10 added these guides; the exact version is pinned in ServiceCatalogContentTests, so a later bump
+        // does not need to touch this test.
+        Assert.True(ServiceTestData.Real.CatalogVersion >= 10);
         Assert.DoesNotContain(ServiceTestData.Real.Issues, issue => issue.Excluded);
         Assert.Contains(Real, p => p.Id == "mercedes-benz.sprinter.2007-2018.service-reset-no-steering-controls");
         Assert.Contains(Real, p => p.Id == "mercedes-benz.sprinter.2007-2018.service-reset-steering-controls");
@@ -119,6 +121,24 @@ public sealed class ServiceGuideTextTests
     {
         var porsche = GuidesFor("Porsche", "Cayenne", "2012");
         Assert.DoesNotContain(porsche, g => g.Id == "general.porsche.1997-plus.diagnostic-tool-only");
+    }
+
+    [Fact]
+    public void AKiaEv6_2023_GetsTheServiceIntervalGuide_ButOtherYearsDoNot()
+    {
+        var list2023 = ServiceProcedureCatalogView.Build(Real, ServiceTestData.Facts("Kia", "EV6", "2023"));
+        var entry = Assert.Single(list2023, e => e.Definition.Id == "kia.ev6.2023.service-interval-reset");
+        Assert.Equal(ServiceCompatibilityStatus.ManualProcedureOnly, entry.Compatibility.Status);
+        Assert.Equal(ServiceMethod.Manual, entry.Compatibility.Method);
+        Assert.Equal(ServiceKind.MaintenanceReset, ServiceKindClassifier.KindOf(entry.Definition));
+
+        // The source page does not carry this reset path for other model years; the guide is not extended beyond 2023.
+        var list2024 = ServiceProcedureCatalogView.Build(Real, ServiceTestData.Facts("Kia", "EV6", "2024"));
+        Assert.DoesNotContain(list2024, e => e.Definition.Id == "kia.ev6.2023.service-interval-reset");
+
+        // A different Kia model is unaffected.
+        var sportage = ServiceProcedureCatalogView.Build(Real, ServiceTestData.Facts("Kia", "Sportage", "2023"));
+        Assert.DoesNotContain(sportage, e => e.Definition.Id == "kia.ev6.2023.service-interval-reset");
     }
 
     [Fact]

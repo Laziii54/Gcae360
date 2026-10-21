@@ -318,6 +318,7 @@ internal static partial class LanguagePacks
         ["Saving result…"] = "Guardando resultado…",
         ["Scan"] = "Escanear",
         ["Scan for Errors"] = "Buscar errores",
+        ["Scooter"] = "Escúter",
         ["Scan result"] = "Resultado del escaneo",
         ["Scan results will appear here."] = "Los resultados del escaneo aparecerán aquí.",
         ["Scan stopped"] = "Escaneo detenido",

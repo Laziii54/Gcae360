@@ -1365,7 +1365,7 @@ public partial class HomeViewModel : BaseViewModel
     {
         try
         {
-            CarScanner.Services.Reports.ReportToast.Show(L("მალე დაემატება", "Coming soon"));
+            CarScanner.Services.Reports.ReportToast.Show(_localization.Translate(L("მალე დაემატება", "Coming soon")));
         }
         catch (Exception commandException)
         {

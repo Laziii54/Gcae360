@@ -47,10 +47,41 @@ public partial class MaintenancePartViewModel : BaseViewModel
         _tracker = tracker;
         _localization = localization;
         _procedures = procedures;
+
+        // This page is reached via [QueryProperty(nameof(PartKey), "part")]: OnPartKeyChanged only re-fires when
+        // the query parameter actually changes, so re-navigating to the SAME part after a language switch would
+        // never refresh it. Subscribing directly to LanguageChanged covers both that case and simply switching
+        // language while this page is already open. Weak: this view model is created every time the page opens,
+        // LocalizationService lives for the whole run.
+        WeakEventRelay.Attach(this, _localization,
+            static (service, handler) => service.LanguageChanged += handler,
+            static (service, handler) => service.LanguageChanged -= handler,
+            static viewModel => MainThread.BeginInvokeOnMainThread(() =>
+            {
+                viewModel.Reload();
+                viewModel.NotifyLocalizedTextsChanged();
+            }));
     }
 
     private bool English => _localization.IsEnglish;
     private string L(string ka, string en) => English ? en : ka;
+
+    private void NotifyLocalizedTextsChanged()
+    {
+        OnPropertyChanged(nameof(IntervalCaption));
+        OnPropertyChanged(nameof(KmCaption));
+        OnPropertyChanged(nameof(MonthsCaption));
+        OnPropertyChanged(nameof(SaveIntervalText));
+        OnPropertyChanged(nameof(RestoreText));
+        OnPropertyChanged(nameof(OtherDateText));
+        OnPropertyChanged(nameof(DateCaption));
+        OnPropertyChanged(nameof(KmAtChangeCaption));
+        OnPropertyChanged(nameof(SaveRecordText));
+        OnPropertyChanged(nameof(HistoryCaption));
+        OnPropertyChanged(nameof(RemoveLastText));
+        OnPropertyChanged(nameof(InstructionCaption));
+        OnPropertyChanged(nameof(InstructionNote));
+    }
 
     public string IntervalCaption => L("ინტერვალი", "Interval");
     public string KmCaption => MaintenanceText.DistanceUnit;

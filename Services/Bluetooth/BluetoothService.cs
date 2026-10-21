@@ -359,7 +359,8 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
                 throw;
             }
 
-            CarScanner.Services.OBD.LinkEventLog.Add("Connected");
+            CarScanner.Services.OBD.AdapterDiagnosticCapture.TransportLabel = item.IsClassicBluetooth ? "Classic SPP" : "BLE";
+            CarScanner.Services.OBD.LinkEventLog.Add($"Connected over {CarScanner.Services.OBD.AdapterDiagnosticCapture.TransportLabel}");
 
             _lastDevice = item;
             _userDisconnect = false;
@@ -628,10 +629,14 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
             await DrainStaleInputAsync()
                 .ConfigureAwait(false);
 
-            _pendingResponse =
+            // This request keeps its own pending response from here on. A lost link (MarkBleDisconnected) fails that
+            // response and then clears the shared field; a request that read the field again once it was woken up would
+            // dereference null and end with a NullReferenceException instead of the IOException that was set.
+            var pending =
                 new TaskCompletionSource<string>(
                     TaskCreationOptions
                         .RunContinuationsAsynchronously);
+            _pendingResponse = pending;
 
             var isMonitor =
                 CarScanner.Services.OBD.ObdMonitorCommand.TryParse(
@@ -652,11 +657,11 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
             {
                 // Collect broadcast frames, then stop monitoring with a carriage return.
                 await Task.WhenAny(
-                        _pendingResponse.Task,
+                        pending.Task,
                         Task.Delay(monitorMilliseconds, cancellationToken))
                     .ConfigureAwait(false);
 
-                if (!_pendingResponse.Task.IsCompleted)
+                if (!pending.Task.IsCompleted)
                 {
                     await WriteBlePayloadAsync(
                         Encoding.ASCII.GetBytes("\r"),
@@ -666,12 +671,12 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
 
                 var stopped =
                     await Task.WhenAny(
-                        _pendingResponse.Task,
+                        pending.Task,
                         Task.Delay(2500, cancellationToken))
                         .ConfigureAwait(false);
 
-                if (stopped == _pendingResponse.Task)
-                    return await _pendingResponse.Task.ConfigureAwait(false);
+                if (stopped == pending.Task)
+                    return await pending.Task.ConfigureAwait(false);
 
                 lock (_responseBuffer)
                 {
@@ -688,7 +693,7 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
 
             var completed =
                 await Task.WhenAny(
-                    _pendingResponse.Task,
+                    pending.Task,
                     timeoutTask)
                     .ConfigureAwait(false);
 
@@ -701,7 +706,7 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
                     $"OBD2 ადაპტერმა არ უპასუხა: {command}");
             }
 
-            var answer = await _pendingResponse.Task
+            var answer = await pending.Task
                 .ConfigureAwait(false);
             _failedAdapterChecks = 0;
             return answer;
@@ -842,6 +847,9 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
             if (write != null &&
                 notify != null)
             {
+                CarScanner.Services.OBD.LinkEventLog.Add(
+                    $"BLE profile: known UART service {profile.Service}, write {profile.Write}, notify {profile.Notify}");
+
                 await AttachCharacteristicsAsync(
                     write,
                     notify)
@@ -876,6 +884,9 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
             throw new InvalidOperationException(
                 "ეს BLE მოწყობილობა OBD-II ადაპტერად ვერ დადასტურდა.");
         }
+
+        CarScanner.Services.OBD.LinkEventLog.Add(
+            $"BLE profile: no known UART service matched; using the first writable ({writeFallback.Id}) and notifying ({notifyFallback.Id}) characteristics");
 
         await AttachCharacteristicsAsync(
             writeFallback,
@@ -1746,11 +1757,13 @@ public sealed class BluetoothService : IBluetoothService, IDisposable
         IsConnected = false;
         ConnectedDeviceName = string.Empty;
 
-        _pendingResponse?
+        // Taken out of the field in one step: the request that was waiting on it fails with the IOException, and a request
+        // that starts right after this point is not failed or cleared by mistake.
+        Interlocked.Exchange(
+                ref _pendingResponse,
+                null)?
             .TrySetException(
                 new IOException(reason));
-
-        _pendingResponse = null;
 
         if (wasConnected)
         {

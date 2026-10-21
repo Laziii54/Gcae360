@@ -124,6 +124,56 @@
                     </Label>
                 </Grid>
 
+                <!-- Enter manually: type what the dashboard shows (oil % or a distance); the app looks for a close value in every service value it can read -->
+                <Border Style="{StaticResource ListCardStyle}" Padding="14,0">
+                    <VerticalStackLayout>
+                        <Grid ColumnDefinitions="*,Auto" HeightRequest="48">
+                            <Label Text="{Binding ManualSearchCaption}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                            <Path Grid.Column="1" Data="M6,9 L12,15 L18,9" Stroke="{DynamicResource SubTextColor}" StrokeThickness="2" StrokeLineCap="Round" StrokeLineJoin="Round" Aspect="Uniform" WidthRequest="18" HeightRequest="18" Rotation="{Binding ManualSearchChevronRotation}" VerticalOptions="Center" />
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ToggleSearchCommand}" />
+                            </Grid.GestureRecognizers>
+                        </Grid>
+                        <VerticalStackLayout IsVisible="{Binding ShowSearch}" Spacing="10" Padding="0,0,0,14">
+                            <BoxView Style="{StaticResource RowDividerStyle}" />
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <Border StrokeShape="RoundRectangle 10" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" BackgroundColor="{DynamicResource PageBg}" Padding="10,0">
+                                    <Entry AutomationId="DynamicTextServiceManualInput" Text="{Binding DashboardOilPercentText}" Placeholder="{Binding DiscoveryPlaceholderText}" Keyboard="Numeric" FontSize="15" TextColor="{DynamicResource TextColor}" ReturnType="Search" ReturnCommand="{Binding RunQuickOilDiscoveryCommand}" />
+                                </Border>
+                                <Button Grid.Column="1" AutomationId="DynamicTextServiceManualSearch" Text="{Binding ManualSearchButtonText}" Command="{Binding RunQuickOilDiscoveryCommand}" IsEnabled="{Binding IsDiscoveryIdle}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="10" HeightRequest="44" Padding="18,0" />
+                            </Grid>
+                            <Label Text="{Binding ManualSearchHint}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                            <HorizontalStackLayout IsVisible="{Binding IsDiscoveryRunning}" Spacing="8">
+                                <ActivityIndicator IsRunning="{Binding IsDiscoveryRunning}" HeightRequest="16" WidthRequest="16" Color="{DynamicResource Primary}" />
+                                <Label Text="{Binding DiscoveryProgressText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" VerticalTextAlignment="Center" />
+                                <Label Text="{Binding DiscoveryCancelText}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource Primary}" VerticalTextAlignment="Center">
+                                    <Label.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding CancelOilDiscoveryCommand}" />
+                                    </Label.GestureRecognizers>
+                                </Label>
+                            </HorizontalStackLayout>
+                            <Label IsVisible="{Binding HasDiscoveryResult}" Text="{Binding DiscoveryResultText}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                            <!-- Every value that answered; a close one is ticked, tap a row to remember it for this car -->
+                            <VerticalStackLayout IsVisible="{Binding HasSearchHits}" Spacing="8" BindableLayout.ItemsSource="{Binding SearchHits}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ServiceSearchHitRow">
+                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                                            <Grid.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnSearchHitTapped" />
+                                            </Grid.GestureRecognizers>
+                                            <controls:Icon Kind="{Binding Mark}" Tint="{Binding MarkColor}" WidthRequest="15" HeightRequest="15" VerticalOptions="Start" Margin="0,2,0,0" />
+                                            <VerticalStackLayout Grid.Column="1" Spacing="0">
+                                                <Label Text="{Binding Title}" FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" />
+                                                <Label Text="{Binding Detail}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="TailTruncation" />
+                                            </VerticalStackLayout>
+                                        </Grid>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
+
                 <!-- Car without any service value: one short line only -->
                 <Label AutomationId="DynamicTextService9" IsVisible="{Binding ShowNoServiceContent}" Text="{Binding NoServiceContentText}" HorizontalTextAlignment="Center" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" Margin="0,20,0,0" />
 

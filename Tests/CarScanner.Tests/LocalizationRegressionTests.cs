@@ -105,6 +105,31 @@ public sealed class LocalizationRegressionTests
         return colon > 0 && keys.Contains(text[..colon].Trim());
     }
 
+    /// <summary>Exact Georgian key → first English value seen, from the same dictionaries as <see cref="GeorgianKeys"/>.</summary>
+    private static Dictionary<string, string> GeorgianToEnglishMap()
+    {
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var file in Directory.EnumerateFiles(Path.Combine(Root, "Services", "Localization"), "*.cs")
+                     .Where(path => !Path.GetFileName(path).StartsWith("LanguagePacks", StringComparison.Ordinal)))
+        {
+            var text = File.ReadAllText(file);
+            foreach (Match match in Pair.Matches(text))
+            {
+                var ka = Unescape(match.Groups[1].Value);
+                var en = Unescape(match.Groups[2].Value);
+                if (Georgian.IsMatch(ka) && !Georgian.IsMatch(en)) map.TryAdd(ka, en);
+            }
+            foreach (Match match in Tuple.Matches(text))
+            {
+                var ka = Unescape(match.Groups[1].Value);
+                var en = Unescape(match.Groups[2].Value);
+                if (Georgian.IsMatch(ka) && !Georgian.IsMatch(en)) map.TryAdd(ka, en);
+            }
+        }
+
+        return map;
+    }
+
     private static IEnumerable<(string File, string Text)> XamlLiterals()
     {
         var attribute = new Regex("\\b(Text|Title|Placeholder|Header|Description|Subtitle|Content|ButtonText|Caption)\\s*=\\s*\"([^\"{][^\"]*)\"");
@@ -125,6 +150,32 @@ public sealed class LocalizationRegressionTests
             .ToList();
 
         Assert.True(missing.Count == 0, "Georgian XAML text without a translation:\n" + string.Join("\n", missing));
+    }
+
+    [Fact]
+    public void TheEnglishValueOfEveryGeorgianXamlLiteral_IsCoveredInEveryLanguagePack()
+    {
+        // The two existing XAML tests only check (1) that a Georgian literal has *some* English mapping, and
+        // (2) that a literal already written in English has pack coverage. Neither ever checked the English
+        // VALUE a Georgian literal's dictionary entry resolves to - so a Georgian button whose dictionary entry
+        // maps correctly to English, but whose English result has no row in the French/German/etc. packs, was
+        // invisible to the existing test suite. Found 26 such cases across the app this way (a handful were
+        // false positives - the exact-case English form existed under different capitalization, which the real
+        // runtime lookup treats as equivalent via OrdinalIgnoreCase, so this test does too).
+        var map = GeorgianToEnglishMap();
+        var packs = LoadPacks(out _);
+
+        var missing = XamlLiterals()
+            .Where(item => Georgian.IsMatch(item.Text) && map.ContainsKey(item.Text.Trim()))
+            .SelectMany(item =>
+            {
+                var en = map[item.Text.Trim()];
+                return Languages.Where(code => !packs[code].Has(en)).Select(code => $"{code}: {item.File}: {item.Text} -> {en}");
+            })
+            .Distinct()
+            .ToList();
+
+        Assert.True(missing.Count == 0, "Georgian XAML literal's English value missing from a language pack:\n" + string.Join("\n", missing.Take(40)));
     }
 
     private sealed class PackIndex
@@ -515,5 +566,274 @@ public sealed class LocalizationRegressionTests
             .ToList();
 
         Assert.True(missing.Count == 0, "Coding text without a translation:\n" + string.Join("\n", missing.Take(30)));
+    }
+
+    // ---------------------------------------------------------------- the Bluetooth scan button regression
+    //
+    // Reported bug: with English selected, the Bluetooth device-discovery button still showed the Georgian
+    // "ძებნა". Root cause: the button's Text was a bare XAML literal with no binding at all, so its correctness
+    // depended entirely on a platform-conditional runtime hook (LocalizationService.RegisterDisplayTranslation,
+    // Android/iOS only) that this test project cannot execute — LocalizationService.cs needs Microsoft.Maui.Controls
+    // and Microsoft.Maui.Storage.Preferences, neither of which this plain-library test project references (see the
+    // curated <Compile Include> list in CarScanner.Tests.csproj), so the real Translate() pipeline has never run
+    // under `dotnet test`. The fix routes BluetoothPage's static texts through ViewModel-owned properties that are
+    // computed once from LocalizationService and refreshed on every LanguageChanged event, which these tests can
+    // verify at the source level without a MAUI host.
+
+    private static string BluetoothViewModelSource =>
+        File.ReadAllText(Path.Combine(Root, "ViewModels", "BluetoothViewModel.cs"));
+
+    private static string BluetoothPageXaml =>
+        File.ReadAllText(Path.Combine(Root, "Views", "BluetoothPage.xaml"));
+
+    [Fact]
+    public void BluetoothPageButtons_AreBoundToViewModelProperties_NotHardcodedGeorgianLiterals()
+    {
+        var xaml = BluetoothPageXaml;
+
+        // The exact regression: a bare Georgian literal on the Scan button's Text, with no binding.
+        Assert.DoesNotContain("Text=\"ძებნა\"", xaml);
+        Assert.DoesNotContain("Text=\"გათიშვა\"", xaml);
+        Assert.DoesNotContain("Text=\"დაკავშირება\"", xaml);
+        Assert.DoesNotContain("Text=\"OBD-II ადაპტერი ვერ მოიძებნა\"", xaml);
+
+        foreach (var binding in new[]
+        {
+            "Text=\"{Binding PageTitleText}\"", "Text=\"{Binding ScanButtonText}\"", "Text=\"{Binding DisconnectButtonText}\"",
+            "Text=\"{Binding SearchingText}\"", "Text=\"{Binding EmptyStateTitleText}\"", "Text=\"{Binding EmptyStateHintText}\"",
+            "Text=\"{Binding WifiSectionTitleText}\"", "Text=\"{Binding IpAddressLabelText}\"", "Text=\"{Binding TcpPortLabelText}\"",
+            "Text=\"{Binding ConnectWifiButtonText}\"", "Text=\"{Binding DisconnectWifiButtonText}\"",
+            "Path=ConnectButtonText"
+        })
+            Assert.Contains(binding, xaml);
+    }
+
+    [Fact]
+    public void BluetoothViewModel_RefreshesItsLocalizedTexts_OnConstructionAndOnEveryLiveLanguageChange()
+    {
+        var code = BluetoothViewModelSource;
+        var ctorStart = code.IndexOf("public BluetoothViewModel(", StringComparison.Ordinal);
+        var refreshDeclaration = code.IndexOf("private void RefreshLocalizedTexts()", StringComparison.Ordinal);
+        Assert.True(ctorStart > 0 && refreshDeclaration > ctorStart, "RefreshLocalizedTexts must be declared after the constructor");
+
+        var ctorBody = code.Substring(ctorStart, refreshDeclaration - ctorStart);
+
+        // Called once when the page's ViewModel is created...
+        Assert.Contains("RefreshLocalizedTexts();", ctorBody);
+
+        // ...and again inside the LanguageChanged handler, so switching language while this page is open updates
+        // it immediately on the same ViewModel instance — no navigation away/back and no app restart required.
+        var languageChangedIndex = ctorBody.IndexOf("_localization.LanguageChanged +=", StringComparison.Ordinal);
+        Assert.True(languageChangedIndex >= 0, "BluetoothViewModel must subscribe to LanguageChanged");
+        var handlerBody = ctorBody.Substring(languageChangedIndex);
+        Assert.Contains("RefreshLocalizedTexts();", handlerBody);
+    }
+
+    private static readonly Regex TranslateCall = new(
+        @"_localization\.Translate\(\s*\$?" + Lit + @"\s*\)",
+        RegexOptions.Compiled);
+
+    private static IEnumerable<string> BluetoothTranslateArguments()
+    {
+        foreach (Match match in TranslateCall.Matches(BluetoothViewModelSource))
+        {
+            var numbered = 0;
+            yield return Interpolation.Replace(Unescape(match.Groups[1].Value), _ => "{" + numbered++ + "}");
+        }
+    }
+
+    [Fact]
+    public void EveryGeorgianTextPassedToTranslateInBluetoothViewModel_HasAnEnglishTranslation()
+    {
+        var keys = GeorgianKeys();
+        var arguments = BluetoothTranslateArguments().ToList();
+
+        Assert.True(arguments.Count >= 15, $"too few _localization.Translate(...) calls were read ({arguments.Count}); the extraction regex may be stale");
+
+        var missing = arguments.Where(text => Georgian.IsMatch(text) && !Covered(text, keys)).ToList();
+        Assert.True(missing.Count == 0, "BluetoothViewModel.cs calls Translate() with Georgian text that has no dictionary entry:\n" + string.Join("\n", missing));
+    }
+
+    [Fact]
+    public void TheScanButtonAndTheStopScanStatus_UseTheSameEnglishVerb()
+    {
+        // Phase-5 terminology check: the button says "Scan", so every status message about the same action must
+        // say "Scan" too. Before this fix, StopScan used a Georgian variant (with a trailing period) that only had
+        // an English counterpart of "Search stopped." — inconsistent with the "Scan" button on the very same page.
+        var service = File.ReadAllText(Path.Combine(Root, "Services", "Localization", "LocalizationService.cs"));
+
+        Assert.Contains("[\"ძებნა\"] = \"Scan\"", service);
+        Assert.Contains("[\"ძებნა შეჩერდა\"] = \"Scan stopped\"", service);
+
+        // The old, inconsistent mapping used by StopScan() must not be reachable from BluetoothViewModel any more.
+        Assert.DoesNotContain("\"ძებნა შეჩერდა.\"", BluetoothViewModelSource);
+    }
+
+    [Fact]
+    public void TheFoundAdaptersCountTemplate_HasExactlyOneEnglishTranslation_AndItIsCoveredInEveryLanguagePack()
+    {
+        // Pins a real bug found while fixing the Bluetooth regression: the Georgian count template
+        // "ნაპოვნია {0} OBD-II ადაპტერი." used to appear twice in the ka→en template table with two different
+        // English translations ("Found {0} OBD-II adapters." and "{0} OBD-II adapters found."). Because
+        // TranslateTemplate returns on the first regex match, only the first entry was ever reachable - and that
+        // one (unlike its unreachable duplicate) had no row in any of the seven language packs, so a German/French/
+        // etc. user who found an adapter would always see the English sentence, regardless of the data looking
+        // complete at a glance.
+        var service = File.ReadAllText(Path.Combine(Root, "Services", "Localization", "LocalizationService.cs"));
+        var occurrences = Regex.Matches(service, Regex.Escape("(\"ნაპოვნია {0} OBD-II ადაპტერი.\",")).Count;
+        Assert.Equal(1, occurrences);
+
+        var packs = LoadPacks(out _);
+        foreach (var code in Languages)
+            Assert.True(packs[code].Has("{0} OBD-II adapters found."), $"{code}: the reachable adapters-found template has no pack translation");
+    }
+
+    // ---------------------------------------------------------------- whole-app audit: duplicate templates
+
+    [Fact]
+    public void NoKaToEnTemplateSource_AppearsTwiceWithDifferentEnglishTranslations()
+    {
+        // General version of the adapters-found bug above, across the whole ka→en template table
+        // (LocalizationService.cs + LocalizationService.Extra.cs): TranslateTemplate always returns the FIRST
+        // regex match, so a duplicated Georgian source with two different English translations silently strands
+        // the second one as dead code - and that dead one is sometimes the only one with real pack coverage.
+        // This does not re-check every duplicate's pack coverage (that would also flag long-standing, cosmetic
+        // wording differences that were never reachable bugs); it only pins that no NEW duplicate is introduced
+        // on top of the batch fixed together with this test (see LanguagePacks.Extra34.cs).
+        var sources = new[] { "LocalizationService.cs", "LocalizationService.Extra.cs" }
+            .Select(name => File.ReadAllText(Path.Combine(Root, "Services", "Localization", name)));
+
+        var seen = new Dictionary<string, string>(StringComparer.Ordinal);
+        var duplicates = new List<string>();
+        foreach (var text in sources)
+        {
+            foreach (Match match in Tuple.Matches(text))
+            {
+                var ka = Unescape(match.Groups[1].Value);
+                var en = Unescape(match.Groups[2].Value);
+                if (!Georgian.IsMatch(ka))
+                    continue;
+
+                if (seen.TryGetValue(ka, out var existing))
+                {
+                    if (!string.Equals(existing, en, StringComparison.Ordinal))
+                        duplicates.Add($"{ka} -> \"{existing}\" vs \"{en}\"");
+                }
+                else
+                {
+                    seen[ka] = en;
+                }
+            }
+        }
+
+        // 36 known, pre-existing duplicates (cosmetic wording differences such as "responds"/"answering",
+        // "could not finish"/"did not finish", or a 3-way duplicate counted against its first occurrence twice)
+        // were found during this audit and are out of scope to fix one by one here (their first/reachable entry
+        // was checked to still have a translation; this test only guards against a *new* duplicate being added).
+        Assert.True(duplicates.Count <= 36, "new duplicate ka→en templates introduced:\n" + string.Join("\n", duplicates.Take(20)));
+    }
+
+    // ---------------------------------------------------------------- whole-app audit: other concrete fixes
+
+    [Fact]
+    public void TheHomeTabsShellContentTitle_IsBoundNotHardcoded()
+    {
+        // AppShell has two top-level ShellContent items with no TabBar wrapper, which MAUI renders as an implicit
+        // native tab bar - so ShellContent.Title is a real on-screen caption. It is navigation metadata, not part
+        // of the visual tree, so it is reached by neither LocalizationService.ApplyNodeCore's page walk nor the
+        // Android/iOS display-translation handler hook (both only touch Label/Button/Page and the Shell/page
+        // TitleView). Before this fix it was a bare Georgian literal ("მთავარი"), permanently wrong for every
+        // other of the 9 supported languages regardless of selection.
+        var xaml = File.ReadAllText(Path.Combine(Root, "AppShell.xaml"));
+        Assert.DoesNotContain("Title=\"მთავარი\"", xaml);
+        Assert.Contains("Title=\"{Binding HomeTabTitle}\"", xaml);
+
+        var vm = File.ReadAllText(Path.Combine(Root, "ViewModels", "ShellStatusViewModel.cs"));
+        Assert.Contains("LanguageChanged += ", vm);
+        Assert.Contains("HomeTabTitle = _localization.Translate(", vm);
+    }
+
+    [Theory]
+    [InlineData("DiagnosticReportPage")]
+    [InlineData("VehicleHealthPage")]
+    [InlineData("BatteryPage")]
+    public void PageCodeBehind_CallsLocalizationApplyOnAppearing(string pageName)
+    {
+        // These three pages had no OnAppearing override at all (or one that never called it), so their nav-bar
+        // title - set in English in the ViewModel constructor - was never retranslated by
+        // LocalizationService.Apply/ApplyNodeCore. Unlike the Bluetooth bug, this was wrong even for Georgian
+        // (the app's own default language), not just the added languages.
+        var code = File.ReadAllText(Path.Combine(Root, "Views", $"{pageName}.xaml.cs"));
+        Assert.Contains("OnAppearing()", code);
+        Assert.Contains("localization?.Apply(this)", code);
+    }
+
+    [Fact]
+    public void ThrottleTranslatesToGeorgian_InsteadOfMappingToItself()
+    {
+        // EnToKa["Throttle"] used to equal "Throttle" (an identity no-op) even though the reverse
+        // ExtraKaToEn["დროსელი"] = "Throttle" already existed - so AccelerationPage's bare English "Throttle"
+        // Label stayed in English for Georgian users, who see every other label on that page in Georgian.
+        var service = File.ReadAllText(Path.Combine(Root, "Services", "Localization", "LocalizationService.cs"));
+        Assert.Contains("[\"Throttle\"] = \"დროსელი\"", service);
+        Assert.DoesNotContain("[\"Throttle\"] = \"Throttle\"", service);
+    }
+
+    [Theory]
+    [InlineData("Module Live Data")]
+    [InlineData("Pre-purchase check")]
+    [InlineData("AI consultation")]
+    public void PageTitlesSetOnlyInEnglishByTheirViewModel_HaveAReverseGeorgianTranslation(string englishTitle)
+    {
+        // ModuleLiveDataViewModel/PrePurchaseViewModel/PrePurchaseAiViewModel set Title to a bare English string
+        // in their constructor. The Georgian→English pair already existed (KaToEn/UiKaToEn), but with no matching
+        // English→Georgian entry, LocalizationService.Translate could never map the title back to Georgian - so
+        // these three pages' nav-bar title stayed in English even for Georgian (the app's own default), despite
+        // every other string on the page being correctly localized.
+        var service = File.ReadAllText(Path.Combine(Root, "Services", "Localization", "LocalizationService.cs"));
+        Assert.Contains($"[\"{englishTitle}\"] = \"", service);
+    }
+
+    [Fact]
+    public void ToastMessages_AreTranslatedForEveryAddedLanguage_NotJustEnglish()
+    {
+        // ReportToast.Show dispatches straight to native platform toast code - never a MAUI Label/Button - so the
+        // display-translation handler hook never sees it. Before this fix, three call sites built an English
+        // string via L(ka,en)/IsEnglish and handed it straight to ReportToast.Show, so Turkish/German/Polish/
+        // Spanish/Portuguese/French/Italian users always saw the raw English toast instead of their own language.
+        var homeViewModel = File.ReadAllText(Path.Combine(Root, "ViewModels", "HomeViewModel.cs"));
+        Assert.Contains("ReportToast.Show(_localization.Translate(L(\"მალე დაემატება\", \"Coming soon\")))", homeViewModel);
+
+        var vehicleReportService = File.ReadAllText(Path.Combine(Root, "Services", "Reports", "VehicleReportService.cs"));
+        Assert.Contains("ReportToast.Show(_localization.Translate(L($\"", vehicleReportService);
+
+        var advancedViewModels = File.ReadAllText(Path.Combine(Root, "ViewModels", "AdvancedViewModels.cs"));
+        Assert.Contains("ReportToast.Show(_localization.Translate(_localization.IsEnglish ? \"Coming soon\" : \"მალე დაემატება\"))", advancedViewModels);
+
+        var packs = LoadPacks(out _);
+        foreach (var code in Languages)
+        {
+            Assert.True(packs[code].Has("Coming soon"), $"{code}: \"Coming soon\" toast has no pack translation");
+            Assert.True(packs[code].Has("Added to the report · {0} checks"), $"{code}: the report-added toast has no pack translation");
+        }
+    }
+
+    [Fact]
+    public void TheAdapterCenterTestAndCopyLogButtons_AreBoundNotHardcoded()
+    {
+        // Confirmed on a real Android emulator (separate session, 2026-10-21): Views/AdapterCenterPage.xaml had
+        // "TEST" and "Copy connection log" as bare literal Button.Text with no binding at all, and both stayed
+        // untranslated even though dictionary/pack rows exist for both - the exact same root cause as the fixed
+        // Bluetooth scan-button regression (a static hardcoded literal depends entirely on the Android/iOS-only
+        // display-translation hook, which this test project cannot execute).
+        var xaml = File.ReadAllText(Path.Combine(Root, "Views", "AdapterCenterPage.xaml"));
+        Assert.DoesNotContain("Text=\"TEST\"", xaml);
+        Assert.DoesNotContain("Text=\"Copy connection log\"", xaml);
+        Assert.Contains("Text=\"{Binding TestButtonText}\"", xaml);
+        Assert.Contains("Text=\"{Binding CopyLogButtonText}\"", xaml);
+
+        var vm = File.ReadAllText(Path.Combine(Root, "ViewModels", "AdapterCenterViewModel.cs"));
+        Assert.Contains("TestButtonText = _localization.Translate(\"TEST\")", vm);
+        Assert.Contains("CopyLogButtonText = _localization.Translate(\"Copy connection log\")", vm);
     }
 }

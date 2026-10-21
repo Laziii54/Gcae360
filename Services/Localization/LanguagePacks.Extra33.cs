@@ -698,6 +698,14 @@ internal static partial class LanguagePacks
           "Questa è la degradazione dell'olio, non la vita residua: più è alta, più l'olio è usurato. La definizione proviene dal catalogo pubblico OBDb e non è stata verificata da OBD360 su un veicolo."),
 
         // Mileage page: records the modules keep of the past, kept apart from the current odometer.
+        R("A reply to this request was recorded for this model year in OBDb's own tests.",
+          "Bu istek için yanıt, OBDb'nin kendi testlerinde bu model yılı için kaydedildi.",
+          "Eine Antwort auf diese Anfrage wurde in den eigenen Tests von OBDb für dieses Modelljahr aufgezeichnet.",
+          "Odpowiedź na to zapytanie została zapisana w testach OBDb dla tego rocznika.",
+          "En las pruebas propias de OBDb se registró una respuesta a esta solicitud para este año modelo.",
+          "Nos testes próprios do OBDb foi registada uma resposta a este pedido para este ano-modelo.",
+          "Une réponse à cette requête a été enregistrée pour cette année-modèle dans les tests propres d'OBDb.",
+          "Nei test di OBDb è stata registrata una risposta a questa richiesta per questo anno modello."),
         R("The public definition is still marked as under test in the catalog.",
           "Genel tanım katalogda hâlâ test aşamasında olarak işaretli.",
           "Die öffentliche Definition ist im Katalog noch als in Erprobung markiert.",

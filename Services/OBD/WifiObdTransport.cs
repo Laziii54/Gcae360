@@ -57,6 +57,10 @@ public sealed class WifiObdTransport : IObdTransport, IDisposable
             cancellationToken,
             timeoutCts.Token);
 
+        AdapterDiagnosticCapture.TransportLabel = "Wi-Fi TCP";
+        var connectStarted = System.Diagnostics.Stopwatch.GetTimestamp();
+        LinkEventLog.Add($"Wi-Fi: connecting to {DescribeEndpoint(address, options.Port)}");
+
         try
         {
             await client.ConnectAsync(address, options.Port, linkedCts.Token).ConfigureAwait(false);
@@ -72,9 +76,13 @@ public sealed class WifiObdTransport : IObdTransport, IDisposable
                 var probe = await ExchangeCommandAsync("ATI", ProbeTimeout, cancellationToken).ConfigureAwait(false);
                 if (string.IsNullOrWhiteSpace(RemovePromptAndEcho(probe, "ATI")))
                     throw new ObdAdapterNotRespondingException("The Wi-Fi adapter did not return an ELM327 response.");
+
+                LinkEventLog.Add($"Wi-Fi: TCP connected, adapter answered ATI (\"{AdapterDiagnosticCapture.Brief(RemovePromptAndEcho(probe, "ATI"))}\") " +
+                                 $"after {(long)System.Diagnostics.Stopwatch.GetElapsedTime(connectStarted).TotalMilliseconds} ms");
             }
             catch (TimeoutException ex)
             {
+                LinkEventLog.Add($"Wi-Fi: TCP connected, but the adapter did not answer ATI within {AdapterDiagnosticCapture.Seconds(ProbeTimeout)} s");
                 throw new ObdAdapterNotRespondingException("The Wi-Fi adapter is connected, but is not responding.", ex);
             }
 
@@ -83,12 +91,14 @@ public sealed class WifiObdTransport : IObdTransport, IDisposable
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
+            LinkEventLog.Add($"Wi-Fi: connect timed out after {AdapterDiagnosticCapture.Seconds(ConnectTimeout)} s");
             client.Dispose();
             CloseConnection(notify: false);
             throw new TimeoutException("Wi-Fi OBD connection timed out.");
         }
-        catch
+        catch (Exception connectError)
         {
+            LinkEventLog.Add($"Wi-Fi: connect failed: {connectError.GetType().Name}");
             client.Dispose();
             CloseConnection(notify: false);
             throw;
@@ -142,11 +152,13 @@ public sealed class WifiObdTransport : IObdTransport, IDisposable
         }
         catch (Exception ex) when (ex is IOException or SocketException or ObjectDisposedException)
         {
+            LinkEventLog.Add($"Wi-Fi: connection lost during {command.Trim()} ({ex.GetType().Name})");
             CloseConnection(notify: true);
             throw new ObdConnectionLostException("Wi-Fi OBD connection was lost.", ex);
         }
         catch (LinkSilentException ex)
         {
+            LinkEventLog.Add($"Wi-Fi: adapter stopped answering ({SilentTimeoutLimit} timeouts in a row, none followed by an answer to the resync); closing the connection");
             CloseConnection(notify: true);
             throw new ObdConnectionLostException("The Wi-Fi OBD adapter stopped answering.", ex);
         }
@@ -218,6 +230,11 @@ public sealed class WifiObdTransport : IObdTransport, IDisposable
                 Volatile.Write(ref _silentTimeouts, 0);
             else if (timedOut && Interlocked.Increment(ref _silentTimeouts) >= SilentTimeoutLimit)
                 throw new LinkSilentException();
+
+            LinkEventLog.Add(timedOut
+                ? $"Wi-Fi: no reply to {command.Trim()} within {AdapterDiagnosticCapture.Seconds(timeout)} s; the resync {(adapterAnswered ? "was answered (adapter alive, just slow)" : "got no answer")}, " +
+                  $"silent timeouts in a row {Volatile.Read(ref _silentTimeouts)}/{SilentTimeoutLimit}"
+                : $"Wi-Fi: {command.Trim()} cancelled by the caller; the resync {(adapterAnswered ? "was answered" : "got no answer")}");
 
             if (timedOut)
                 throw new TimeoutException("The Wi-Fi OBD adapter is not responding.");
@@ -331,6 +348,25 @@ public sealed class WifiObdTransport : IObdTransport, IDisposable
         return response.ToString();
     }
 
+    /// <summary>
+    /// The adapter's address for the connection log: only when it is a local network address (the usual Wi-Fi adapter
+    /// 192.168.x.x, 10.x.x.x …); anything else is not written down.
+    /// </summary>
+    internal static string DescribeEndpoint(IPAddress address, int port)
+    {
+        var local = IPAddress.IsLoopback(address) || address.IsIPv6LinkLocal || address.IsIPv6SiteLocal;
+        if (!local && address.AddressFamily == AddressFamily.InterNetwork)
+        {
+            var bytes = address.GetAddressBytes();
+            local = bytes[0] == 10 ||
+                    (bytes[0] == 172 && bytes[1] is >= 16 and <= 31) ||
+                    (bytes[0] == 192 && bytes[1] == 168) ||
+                    (bytes[0] == 169 && bytes[1] == 254);
+        }
+
+        return local ? $"{address}:{port}" : $"a non-local address (port {port})";
+    }
+
     private static string RemovePromptAndEcho(string response, string command) =>
         response
             .Replace(">", string.Empty, StringComparison.Ordinal)
@@ -342,6 +378,9 @@ public sealed class WifiObdTransport : IObdTransport, IDisposable
     private void CloseConnection(bool notify)
     {
         var wasConnected = IsConnected;
+
+        if (wasConnected)
+            LinkEventLog.Add("Wi-Fi: connection closed");
 
         IsConnected = false;
         ConnectedDeviceName = string.Empty;

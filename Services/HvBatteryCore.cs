@@ -1,4 +1,5 @@
 using System.Globalization;
+using CarScanner.Services.OemDiagnostics;
 
 namespace CarScanner.Services;
 
@@ -82,12 +83,13 @@ public static class HvPackProtocol
         var width = request.Ext29 ? 8 : 3;
         var header = request.Rx.ToString(request.Ext29 ? "X8" : "X3", CultureInfo.InvariantCulture);
         var frames = new List<byte[]>();
-        // One frame per line; spaces between bytes (ATS1) are removed.
-        foreach (var line in raw.Split(new[] { '\r', '\n', '>' }, StringSplitOptions.RemoveEmptyEntries))
+
+        // The text of ONE frame of this request's reply id (spaces between bytes, ATS1, are removed); anything else is skipped.
+        void AddFrame(string frameText)
         {
-            var text = line.Replace(" ", string.Empty).Replace("\t", string.Empty).Trim().ToUpperInvariant();
+            var text = frameText.Replace(" ", string.Empty).Replace("\t", string.Empty).Trim().ToUpperInvariant();
             if (text.Length <= width || (text.Length - width) % 2 != 0 || !text.StartsWith(header, StringComparison.Ordinal) || !text.All(Uri.IsHexDigit))
-                continue;
+                return;
             var frame = new byte[(text.Length - width) / 2];
             for (var i = 0; i < frame.Length; i++)
                 frame[i] = byte.Parse(text.AsSpan(width + i * 2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
@@ -95,10 +97,27 @@ public static class HvPackProtocol
             if (request.ExtendedAddress is not null)
             {
                 if (frame.Length < 2 || frame[0] != 0xF1)
-                    continue;
+                    return;
                 frame = frame[1..];
             }
             frames.Add(frame);
+        }
+
+        foreach (var line in raw.Split(new[] { '\r', '\n', '>' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            // The protocol layer joins the adapter's lines with spaces, so one line may hold several frames, possibly from several
+            // modules. They are split into frames first, each tied to the id that sent it, and only this request's id is kept: frames
+            // of other modules are dropped, never merged into the message. Text that is not made of frames alone (an echoed command,
+            // a status word, an impossible token) is not split and is handled as a single line as before.
+            if (ModuleReplyAnalysis.SplitFrameTexts(line, request.Ext29) is { Count: >= 2 } several)
+            {
+                foreach (var part in several.Where(item => string.Equals(item.Header, header, StringComparison.Ordinal)))
+                    AddFrame(part.Text);
+                continue;
+            }
+
+            // One frame per line.
+            AddFrame(line);
         }
 
         var positive = (byte)(request.Payload[0] + 0x40);

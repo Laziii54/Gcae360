@@ -27,7 +27,7 @@ public partial class ServicePage : ContentPage
                 }
                 catch (Exception)
                 {
-                    await this.DisplayAlertLocalizedAsync("Service log", "Log export failed / ლოგის ექსპორტი ვერ შესრულდა", "OK");
+                    await this.DisplayAlertLocalizedAsync("Service log", "Log export failed", "OK");
                 }
             })
         });

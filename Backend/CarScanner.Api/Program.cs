@@ -234,7 +234,7 @@ app.MapGet("/about", (IConfiguration config) =>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>OBD360 — About Us / ჩვენს შესახებ</title>
+    <title>OBD360 — About Us / ჩვენს შესახებ</title><link rel="icon" type="image/png" href="/assets/favicon.png?v=2"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=2">
     <style>
         body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.7;max-width:900px;margin:0 auto;padding:30px 20px;color:#222;background:#fff}
         h1{font-size:30px;margin-bottom:8px}
@@ -246,7 +246,7 @@ app.MapGet("/about", (IConfiguration config) =>
 </head>
 <body>
 
-<a href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:#222;font-weight:700;font-size:15px;margin-bottom:18px"><img src="/assets/logo.png" alt="" style="height:28px;width:auto"><span>OBD360</span></a>
+<a href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:#222;font-weight:700;font-size:15px;margin-bottom:18px"><img src="/assets/logo.png?v=2" alt="" style="height:28px;width:auto"><span>OBD360</span></a>
 
 <h1>About Us — OBD360</h1>
 
@@ -290,7 +290,7 @@ app.MapGet("/privacy-policy", () =>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>OBD360 — Privacy Policy / კონფიდენციალურობის პოლიტიკა</title>
+    <title>OBD360 — Privacy Policy / კონფიდენციალურობის პოლიტიკა</title><link rel="icon" type="image/png" href="/assets/favicon.png?v=2"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=2">
     <style>
         body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.7;max-width:900px;margin:0 auto;padding:30px 20px;color:#222;background:#fff}
         h1{font-size:30px;margin-bottom:8px}
@@ -305,7 +305,7 @@ app.MapGet("/privacy-policy", () =>
 </head>
 <body>
 
-<a href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:#222;font-weight:700;font-size:15px;margin-bottom:18px"><img src="/assets/logo.png" alt="" style="height:28px;width:auto"><span>OBD360</span></a>
+<a href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:#222;font-weight:700;font-size:15px;margin-bottom:18px"><img src="/assets/logo.png?v=2" alt="" style="height:28px;width:auto"><span>OBD360</span></a>
 
 <h1>Privacy Policy — OBD360</h1>
 <p class="updated">Last updated: October 8, 2026 · ბოლო განახლება: 2026 წლის 8 ოქტომბერი</p>
@@ -403,11 +403,11 @@ app.MapGet("/support", () =>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>OBD360 — Support</title>
+    <title>OBD360 — Support</title><link rel="icon" type="image/png" href="/assets/favicon.png?v=2"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=2">
     <style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.65;max-width:900px;margin:auto;padding:30px 20px;color:#222}h1{font-size:32px}h2{margin-top:28px}</style>
 </head>
 <body>
-<a href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:#222;font-weight:700;font-size:15px;margin-bottom:18px"><img src="/assets/logo.png" alt="" style="height:28px;width:auto"><span>OBD360</span></a>
+<a href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:#222;font-weight:700;font-size:15px;margin-bottom:18px"><img src="/assets/logo.png?v=2" alt="" style="height:28px;width:auto"><span>OBD360</span></a>
 <h1>OBD360 Support</h1>
 <p>For help, purchase questions or a data-deletion request, email <a href="mailto:obd360support@gmail.com">obd360support@gmail.com</a>.</p>
 <h2>Before contacting support</h2>
@@ -436,11 +436,11 @@ app.MapGet("/terms-of-use", () =>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>OBD360 — Terms of Use</title>
+    <title>OBD360 — Terms of Use</title><link rel="icon" type="image/png" href="/assets/favicon.png?v=2"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=2">
     <style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.65;max-width:900px;margin:auto;padding:30px 20px;color:#222}h1{font-size:32px}h2{margin-top:28px}</style>
 </head>
 <body>
-<a href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:#222;font-weight:700;font-size:15px;margin-bottom:18px"><img src="/assets/logo.png" alt="" style="height:28px;width:auto"><span>OBD360</span></a>
+<a href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:#222;font-weight:700;font-size:15px;margin-bottom:18px"><img src="/assets/logo.png?v=2" alt="" style="height:28px;width:auto"><span>OBD360</span></a>
 <h1>Terms of Use — OBD360</h1>
 <p>Last updated: October 1, 2026</p>
 <h2>1. Diagnostic information</h2>
@@ -2372,9 +2372,17 @@ app.MapPost(
 
         var logger = http.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Avatar");
         var apiKey = config["Gemini:ApiKey"] ?? Environment.GetEnvironmentVariable("GEMINI_API_KEY");
-        var verdict = string.IsNullOrWhiteSpace(apiKey)
-            ? AvatarVerdict.Unavailable
-            : await AvatarModeration.CheckAsync(clients.CreateClient(), apiKey, jpeg, logger, ct);
+
+        // The check runs on its own clock, not the phone's: a slow provider or a phone that leaves the screen must never lose
+        // the picture (it used to be stored only after the whole check, so a slow check meant "nothing saved").
+        // A verdict that arrives quickly decides at once. A slow one stores the picture hidden ("Pending") right away and the
+        // check finishes in the background, which then shows or removes it.
+        var checkTask = string.IsNullOrWhiteSpace(apiKey)
+            ? Task.FromResult(AvatarVerdict.Unavailable)
+            : AvatarModeration.CheckWithBudgetAsync(clients.CreateClient(), apiKey, jpeg, logger, AvatarModeration.TotalBudget);
+        AvatarVerdict? verdict = null;
+        if (await Task.WhenAny(checkTask, Task.Delay(AvatarModeration.FastWait)) == checkTask)
+            verdict = await checkTask;
 
         if (verdict == AvatarVerdict.Unsafe)
         {
@@ -2387,7 +2395,31 @@ app.MapPost(
         // an administrator approves it, unless the server is set to publish in that case (GCS_AVATAR_PUBLISH_UNCHECKED=true).
         var publishUnchecked = bool.TryParse(config["Avatars:PublishUnchecked"] ?? Environment.GetEnvironmentVariable("GCS_AVATAR_PUBLISH_UNCHECKED"), out var flag) && flag;
         var status = verdict == AvatarVerdict.Safe || publishUnchecked ? AvatarStatus.Approved : AvatarStatus.Pending;
-        var record = await avatars.SaveAsync(identity.AccountId, jpeg, status, ct);
+        // The picture has been received completely: storing it must not depend on the phone still being connected.
+        var record = await avatars.SaveAsync(identity.AccountId, jpeg, status, CancellationToken.None);
+
+        if (verdict is null)
+        {
+            var accountId = identity.AccountId;
+            var storedId = record.PublicId;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var late = await checkTask;
+                    // Only while that very picture is still the person's current one (a newer upload or a removal wins).
+                    if (late == AvatarVerdict.Safe)
+                        await avatars.SetStatusAsync(accountId, AvatarStatus.Approved, CancellationToken.None, onlyIfPublicId: storedId);
+                    else if (late == AvatarVerdict.Unsafe)
+                        await avatars.DeleteIfCurrentAsync(accountId, storedId, CancellationToken.None);
+                }
+                catch (Exception exception)
+                {
+                    logger.LogWarning(exception, "Finishing the profile picture check failed.");
+                }
+            });
+        }
+
         return Results.Ok(new { success = true, status = record.Status.ToString(), avatarUrl = record.Url });
     });
 

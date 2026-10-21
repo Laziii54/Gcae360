@@ -58,7 +58,7 @@ public sealed class PasswordResetService
             issued.Code!,
             (int)Math.Round(PasswordResetStore.Lifetime.TotalMinutes),
             lang,
-            origin is null ? null : origin + "/assets/logo.png",
+            origin is null ? null : origin + "/assets/logo.png?v=2",
             null, // entered in the app only — no confirmation link
             _options.SupportEmail,
             _clock().Year);

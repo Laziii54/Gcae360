@@ -5,7 +5,7 @@
     "E0": "Nothing found. A negative finding.",
     "E1": "A lead: the function is known to exist (closed tool, vendor claim, forum post) but no protocol detail is public.",
     "E2": "A public definition (standard, community data) that says where a value is. Not reviewed against a vehicle by this project.",
-    "E3": "The vehicle maker's own procedure for an exact vehicle (owner's manual, bulletin) for a manual, dashboard-level reset.",
+    "E3": "The vehicle maker's own document names the procedure or tool function for an exact vehicle (owner's manual, service bulletin). For a dashboard-level reset that is the whole procedure; for a scan-tool function it names the module and the function but does not publish the request.",
     "E4": "Reviewed against a recorded exchange of that exact vehicle (read-only observation).",
     "E5": "Verified on that exact vehicle by this project: write or routine, read-back and dashboard result, with hashed evidence (the project's own promotion checklist). No operation in the repository has this."
   },
@@ -24,15 +24,15 @@
       "kind": "community data",
       "licence": "CC-BY-SA-4.0",
       "licenceChecked": "2026-10-19 through the GitHub API: all 880 vehicle repositories report CC-BY-SA-4.0. The organisation README says the text is mostly CC BY-SA 4.0. Infrastructure repositories differ (vscode-obdb is Apache-2.0; the website and editor repositories have none) and were not used.",
-      "accessed": "2026-10-18 (all 880 default signal sets, signalsets/v3/default.json); 2026-10-19 (shipped catalog)",
+      "accessed": "2026-10-18 (default signal sets); 2026-10-19 (all 860 downloaded vehicle repositories, including tests and year-range files; the shipped catalog)",
       "read": "The default signal set of every vehicle repository, and the OBDb rows of the catalog the app ships (source id 5, revision 3fd5afe5ecf68a6d6b06beb7b4e86f23ee6df69b of 2026-10-17; the catalog's meta table records a different revision, bc13d91a..., 2026-10-03).",
       "evidence": "E2",
       "use": "Counted, never copied: the coverage tables in this folder are derived from it. The app already bundles it with attribution (THIRD_PARTY_NOTICES.md).",
       "limits": [
         "All commands are read services (22, 21, 01); there is no write, routine or security-access command.",
-        "About 60% of the rows in the shipped catalog are flagged debug.",
-        "Year-range override files were not read, and the catalog has no model-year filter.",
-        "A definition is community work. Its being listed does not mean a car answers it."
+        "About 60% of the rows in the shipped catalog are flagged debug, and 61,598 more carry a dbgfilter (debug in some model years) that the catalog dropped.",
+        "The catalog has no model-year filter; OBDb has one per command (filter) and, in four repositories, year-range signal sets.",
+        "A definition is community work. Its being listed does not mean a car answers it; a recorded reply (obdb-tests) is the evidence that one did."
       ],
       "attributionRequired": true,
       "shareAlike": true
@@ -45,10 +45,12 @@
       "licence": "CC-BY-SA-4.0",
       "licenceChecked": "2026-10-19 through the GitHub API",
       "accessed": "2026-10-19",
-      "read": "The schema file, to learn what the 'dbg' flag is documented to mean: 'Whether to debug the signal responses'.",
+      "read": "The schema file (the 'dbg' flag: 'Whether to debug the signal responses'; filterObject: from, to, years) and the Python reference code: can/signals.py (Filter.matches, the year semantics), signalsets/loader.py and year_range.py (which signal set applies to a year), signals_testing.py (the layout of the tests).",
       "evidence": "E2",
-      "use": "Wording of the 'definition is still marked as under test' line and of the non-debug / debug split in the reports.",
-      "limits": ["The schema does not say 'unverified'. The app words the flag as 'still marked as under test in the catalog' and no stronger."],
+      "use": "Wording of the 'definition is still marked as under test' line; the exact year semantics implemented in Services/OemDiagnostics/ObdbYearEvidence.cs and research/tools/evidence-obdb.js.",
+      "limits": [
+        "The schema does not say 'unverified'. The app words the flag as 'still marked as under test in the catalog' and no stronger."
+      ],
       "attributionRequired": true,
       "shareAlike": true
     },
@@ -60,10 +62,13 @@
       "licence": "MIT",
       "licenceChecked": "2026-10-19 through the GitHub API",
       "accessed": "2026-10-17 (upstream clone, commit 48c7f06c6f27c41e7169242acb03ef9775658deb); 2026-10-19 (the copy inside the shipped catalog)",
-      "read": "The odometer-named signals of the DBC files, upstream and as imported into the shipped catalog (can_signals, 36,205 rows).",
+      "read": "The odometer-named signals of the DBC files (upstream and as imported), and for this round the Ford oil messages in ford_lincoln_base_pt.dbc and ford_cgea1_2_ptcan_2011.dbc: Cluster_Info1_FD1 0x430 (EngOilLife_B_RqReset, bit 43), EngineData_7 0x179 / Engine_Data_7_CG1 0x159 (EngOilLife_Pc_Actl, 7 bits), EngineData_17 0x17D (EngOilLife_T_Actl, DistToNextOilChange, EngOilSrvcMsgTxt_D_Rq); a search of every DBC for oil, service and maintenance found no GM or BMW oil-life or reset signal.",
       "evidence": "E2",
-      "use": "Already used by the app (BroadcastOdometerProvider). The candidate list in mileage-source-catalog.json assesses the remaining odometer fields; none is added.",
-      "limits": ["The catalog records no revision for its opendbc snapshot ('user-provided snapshot').", "Several odometer signals give no unit or scale."],
+      "use": "Already used by the app (BroadcastOdometerProvider). The Ford messages are recorded as the mechanism of the dashboard reset and as a way to recognise a reset in a recording; nothing is sent or decoded by the app.",
+      "limits": [
+        "The catalog records no revision for its opendbc snapshot ('user-provided snapshot').",
+        "Several odometer signals give no unit or scale."
+      ],
       "attributionRequired": true,
       "shareAlike": false
     },
@@ -78,7 +83,9 @@
       "read": "Rows for PIDs 21, 31, 4D, 4E, 5B, 5C and A6 (4E: name only), and the whole page for any PID about oil life, service or maintenance: only 5C, engine oil temperature, mentions oil.",
       "evidence": "E2",
       "use": "Confirms the standard odometer PID (A6: four bytes, divided by 10, km) and that no standard PID exists for oil life or a service interval. Facts only; no text is copied.",
-      "limits": ["A public summary of SAE J1979; the standard (paid) was not read."],
+      "limits": [
+        "A public summary of SAE J1979; the standard (paid) was not read."
+      ],
       "attributionRequired": true,
       "shareAlike": true
     },
@@ -89,11 +96,13 @@
       "kind": "community tool",
       "licence": "GPL-3.0",
       "licenceChecked": "2026-10-19 through the GitHub API",
-      "accessed": "2026-10-19 (search summary of the README; the repository was not cloned)",
-      "read": "Its description: an Arduino sketch that sends raw UDS / KWP frames to PSA modules. Nothing about a service reset was found in the part described.",
+      "accessed": "2026-10-19 (cloned and searched)",
+      "read": "Cloned and searched for oil, service, maintenance and reset: the repository documents UDS session and unlock services for PSA coding zones (BMF, TELEMAT) and DTC tables; it has no service reset.",
       "evidence": "E0",
       "use": "Not used. The project already quarantines its data in the shipped catalog (source id 4, 0 active rows).",
-      "limits": ["GPL-3.0 cannot be merged into the closed app."],
+      "limits": [
+        "GPL-3.0 cannot be merged into the closed app."
+      ],
       "attributionRequired": false,
       "shareAlike": false
     },
@@ -108,7 +117,10 @@
       "read": "The whole page (284,883 characters) in three parts. The tool reported the 2.3.40 section of the first part as cut off.",
       "evidence": "E1",
       "use": "Proof that per-vehicle PCM service procedures 'Reset oil change indicator' and 'Reset Engine Oil Deterioration Learned Value' exist for named Ford and Mazda models (2.1.14 to 2.3.67). Names the vehicles only.",
-      "limits": ["No request bytes are public.", "Since 2.3.46 FORScan shows manual instructions when a PCM does not support the function."],
+      "limits": [
+        "No request bytes are public.",
+        "Since 2.3.46 FORScan shows manual instructions when a PCM does not support the function."
+      ],
       "attributionRequired": false,
       "shareAlike": false
     },
@@ -119,11 +131,13 @@
       "kind": "vendor documentation (closed tool)",
       "licence": "proprietary page; nothing copied",
       "licenceChecked": "n/a",
-      "accessed": "2026-10-19",
-      "read": "The page: the service interval is reset through the instrument cluster's service channels; oil service, time- and distance-based service and inspection are distinguished; newer UDS clusters use an ESI function; the generic option fails on many 2008+ Audis; the interval itself is a separate setting in km.",
+      "accessed": "2026-10-19 (the SRI Reset page, the VW Golf VII cluster page and the Audi service-interval page, each in full)",
+      "read": "In the instrument cluster (module 17, adaptation) the items 'ESI: Resetting ESI', 'FIX: Distance covered since last mileage-dependent inspection', 'FIX: Time since last time-dependent inspection', 'SID / SIA: maximum value of distance / time to service'; numbered channels 02 and 05 to 08 for older Audis. No identifier or request bytes on any of the pages.",
       "evidence": "E1",
       "use": "Shapes the operation taxonomy (reset versus set interval; oil versus inspection). No request bytes are given and none is used.",
-      "limits": ["Procedure level only."],
+      "limits": [
+        "Procedure level only."
+      ],
       "attributionRequired": false,
       "shareAlike": false
     },
@@ -135,10 +149,12 @@
       "licence": "GM copyright; nothing copied",
       "licenceChecked": "n/a",
       "accessed": "2026-10-19 (search summary only; the PDFs were not opened)",
-      "read": "The search summary says that a 2013 bulletin tells the technician to use a scan tool to reset the Engine Oil Life Remaining back to the percentage recorded before an ECM reprogramming, and that a later bulletin describes how the monitor works.",
+      "read": "The search summary says that a 2013 bulletin tells the technician to use a scan tool to reset the Engine Oil Life Remaining back to the percentage recorded before an ECM reprogramming, and that a later bulletin describes how the monitor works. [Superseded on 2026-10-19: the bulletin was downloaded and read in full, see gm-bulletin-12312a.]",
       "evidence": "E1",
-      "use": "The only hint found that a service tool can set a chosen oil-life percentage. No protocol.",
-      "limits": ["Second-hand: confirm in the PDF before relying on the wording."],
+      "use": "Superseded by gm-bulletin-12312a.",
+      "limits": [
+        "Second-hand: confirm in the PDF before relying on the wording."
+      ],
       "attributionRequired": false,
       "shareAlike": false
     },
@@ -153,7 +169,9 @@
       "read": "A post shows one Mode 22 request for oil life on a Bosch ECM; the poster saw the value fall to zero at shutdown and found the reset value in a broadcast, not in a Mode 22 reply.",
       "evidence": "E1",
       "use": "Not used.",
-      "limits": ["Unverified, single module, no reset."],
+      "limits": [
+        "Unverified, single module, no reset."
+      ],
       "attributionRequired": false,
       "shareAlike": false
     },
@@ -164,11 +182,13 @@
       "kind": "community capture",
       "licence": "none (the GitHub API reports no licence)",
       "licenceChecked": "2026-10-19 through the GitHub API",
-      "accessed": "2026-10-19 (metadata only; the content was not opened)",
-      "read": "Repository metadata: a README and one 1.3 MB capture file, last pushed 2020-11-01.",
+      "accessed": "2026-10-19 (README read in full; the capture file was not opened)",
+      "read": "README: high-speed GMLAN messages from an E38 PCM and T43 TCM car. 0x1F1 (sent by the gateway) lists 'Engine oil life reset request' together with the power-takeoff and remote-start requests and the immobilizer pre-release password; 0x1F3 lists 'Transmission oil life reset request'. No bit layout is given.",
       "evidence": "E1",
-      "use": "Not used. A lead already recorded in oem_operations.json: an 'engine oil life reset request' signal on CAN message 0x1F1 of some platforms (a broadcast, not a diagnostic request).",
-      "limits": ["No licence: all rights reserved."],
+      "use": "Recorded as the mechanism of the GM dashboard reset; the app never sends 0x1F1 because the same frame carries a remote-start request and the immobilizer pre-release password.",
+      "limits": [
+        "No licence: all rights reserved."
+      ],
       "attributionRequired": false,
       "shareAlike": false
     },
@@ -179,11 +199,13 @@
       "kind": "documentation of BMW diagnostic description files",
       "licence": "none (the GitHub API reports no licence for the repository)",
       "licenceChecked": "2026-10-19 through the GitHub API",
-      "accessed": "2026-10-19 (licence check only; the pages were not opened)",
-      "read": "Nothing beyond the licence field.",
+      "accessed": "2026-10-19 (the job index and the CBS_RESET job of the d72n47a0 page; 300,000 of 618,000 characters)",
+      "read": "Job index and the CBS_RESET job: UDS 2E; arguments CBS_KENNUNG (item: Oel, Br_v, Br_h, NOx_a, Brfl, Sic, Sic_v, TUV, AU, Ueb, Efk), availability percentage, number of services, target month and year, remaining distance with unit, forecast distance and time intervals; CBS_RESET_DATEN_LESEN reads DID 0x4050; STEUERN_CBS_DATEN_SICHERN is routine F0ED (31 01), its status 31 03 F0ED; STATUS_CBSMOTOROELHIST 22 404F; STATUS_CODIERUNG_OEL 22 3701. The identifier that CBS_RESET writes is not shown.",
       "evidence": "E1",
-      "use": "Not used. The project's candidate records, from these pages, that CBS_RESET is a WriteDataByIdentifier (0x2E) with a save routine 31 01 F0 ED and that the payload is built per CBS item.",
-      "limits": ["No licence. The content derives from BMW's proprietary description files."],
+      "use": "Read for research only; nothing is used. The page derives from BMW's proprietary description file and carries no licence.",
+      "limits": [
+        "No licence. The content derives from BMW's proprietary description files."
+      ],
       "attributionRequired": false,
       "shareAlike": false
     },
@@ -195,10 +217,12 @@
       "licence": "vendor copyright; nothing copied",
       "licenceChecked": "n/a",
       "accessed": "2026-10-19 (search summary only)",
-      "read": "The summary: CBS brake-pad parameters can be reset with a diagnostic unit, or manually in the cluster. A BMW bulletin on NHTSA (MC-10147976-9999) names ISTA as the tool for incorrect CBS dates. A commercial tool (AutoEnginuity, vehicleservicepros.com, 2013) resets CBS oil service without a PC.",
+      "read": "Search summary only: CBS brake-pad parameters can be reset with a diagnostic unit or in the cluster; a commercial tool resets CBS oil service. (BMW's own bulletins were read in full: see bmw-si-b620613.)",
       "evidence": "E1",
       "use": "Context only: the function exists in closed tools.",
-      "limits": ["No routine id, no payload."],
+      "limits": [
+        "No routine id, no payload."
+      ],
       "attributionRequired": false,
       "shareAlike": false
     },
@@ -213,7 +237,9 @@
       "read": "The summary: the reset is a XENTRY service function or a cluster key sequence; the blogs disagree on the menu path; a plain UDS 0x14 clear affects fault memory only.",
       "evidence": "E0",
       "use": "Not used. No official or open routine was found.",
-      "limits": ["Low-quality and contradictory."],
+      "limits": [
+        "Low-quality and contradictory."
+      ],
       "attributionRequired": false,
       "shareAlike": false
     },
@@ -228,7 +254,9 @@
       "read": "The article: a Bosch tester function lists the mileage stored in various control units (the seat memory and the electronic parking assistant are named) and compares it with the speedometer reading.",
       "evidence": "E1",
       "use": "Shows that several modules store mileage and that comparison is done by commercial tools. No protocol; no module list beyond the two named.",
-      "limits": ["A mismatch is presented by the article as a sign of possible manipulation; this app reports it as an observation with the other explanations."],
+      "limits": [
+        "A mismatch is presented by the article as a sign of possible manipulation; this app reports it as an observation with the other explanations."
+      ],
       "attributionRequired": false,
       "shareAlike": false
     },
@@ -243,7 +271,9 @@
       "read": "The summary: engine, ABS and body modules are named as holders of mileage; some cars store mileage only in the cluster; in one case a transmission module read about three times the dashboard value and was judged a corrupted counter rather than real mileage.",
       "evidence": "E1",
       "use": "Supports the rule that a difference is an observation, never a verdict.",
-      "limits": ["Single-author blog; second-hand."],
+      "limits": [
+        "Single-author blog; second-hand."
+      ],
       "attributionRequired": false,
       "shareAlike": false
     },
@@ -258,7 +288,9 @@
       "read": "Service ids (0x22 read, 0x2E write by identifier, 0x19 read DTC information) and the usual session / security-access sequence. Nothing names an oil-service or odometer identifier; those are manufacturer-defined (the ISO 14229-1 identifier annex is paid and was not read).",
       "evidence": "E0",
       "use": "Context for the protocol vocabulary only.",
-      "limits": ["No evidence that DTC snapshots carry the odometer."],
+      "limits": [
+        "No evidence that DTC snapshots carry the odometer."
+      ],
       "attributionRequired": false,
       "shareAlike": false
     },
@@ -270,10 +302,12 @@
       "licence": "project",
       "licenceChecked": "n/a",
       "accessed": "2026-10-19",
-      "read": "All 164 procedures: manual, SourceDocumented, dashboard verification, from owner's manuals and manufacturer documents; none VehicleVerified.",
+      "read": "All 165 procedures (164 when first read, 165 after the Mazda CX-5 SKYACTIV-D guide of 2026-10-19): manual, SourceDocumented, dashboard verification, from owner's manuals and manufacturer documents; none VehicleVerified.",
       "evidence": "E3",
       "use": "The guided-reset side of service-operation-coverage.json.",
-      "limits": ["Its own coverage notes: a missing vehicle means no sufficiently specific source has been pinned yet, not that no procedure exists."],
+      "limits": [
+        "Its own coverage notes: a missing vehicle means no sufficiently specific source has been pinned yet, not that no procedure exists."
+      ],
       "attributionRequired": false,
       "shareAlike": false
     },
@@ -288,7 +322,9 @@
       "read": "operations is empty; 12 family and 73 vehicle research candidates, all non-executable, with the promotion checklist.",
       "evidence": "E1",
       "use": "The gate this research keeps: no write operation without exact per-vehicle evidence.",
-      "limits": ["Generated 2026-09-20."],
+      "limits": [
+        "Generated 2026-09-20."
+      ],
       "attributionRequired": false,
       "shareAlike": false
     },
@@ -303,7 +339,9 @@
       "read": "The project's comparison of 14 scanner apps and its verification audit of 2026-09-28: oil/service reset is not part of SAE J1979; apps send only the verified command of the identified car; no open database of reset commands exists; the generic 22 -> 2E write for GM 4DC0, Ford 054B and Mazda 0519 and the inferred GMLAN $3B write-back were disabled. The notes also say the GM reset was done on a Volt 2013.",
       "evidence": "E1",
       "use": "Agrees with this research, which reached the same conclusions from other sources. Its claim of a working Volt reset has no capture or evidence file, so it is not used as evidence.",
-      "limits": ["Dated 2026-09; the app comparison is from vendor pages, not from tests."],
+      "limits": [
+        "Dated 2026-09; the app comparison is from vendor pages, not from tests."
+      ],
       "attributionRequired": false,
       "shareAlike": false
     },
@@ -318,7 +356,9 @@
       "read": "Four capture files (Volt 2013, BMW 320i 2018, Ford Escape 2012, Toyota Camry) recorded by the app: PID A6 returned NO DATA in all four; BMW 19 04 got NO DATA; vehicle identity is a label, not an established fact.",
       "evidence": "observation only (the audit itself says: not verification)",
       "use": "The only vehicle observations in the repository. Cited where they bear on a source.",
-      "limits": ["Observations of unreviewed captures; identity not established."],
+      "limits": [
+        "Observations of unreviewed captures; identity not established."
+      ],
       "attributionRequired": false,
       "shareAlike": false
     },
@@ -336,6 +376,240 @@
       "limits": [],
       "attributionRequired": false,
       "shareAlike": false
+    },
+    {
+      "attributionRequired": true,
+      "shareAlike": true,
+      "id": "obdb-tests",
+      "name": "OBDb recorded test replies (tests/test_cases/<model year>/commands/*.yaml and command_support.yaml in every vehicle repository)",
+      "url": "https://github.com/OBDb",
+      "kind": "community data",
+      "licence": "CC-BY-SA-4.0",
+      "licenceChecked": "2026-10-19 through the GitHub API (all 880 vehicle repositories)",
+      "accessed": "2026-10-19",
+      "read": "All 860 downloaded repositories parsed by research/tools/evidence-obdb.js: per signal and model year, whether the command applies (filter), is still debug (dbg, dbgfilter), is listed as supported (command_support.yaml) and has recorded replies with the values OBDb expects them to decode to.",
+      "evidence": "E4 (a reply recorded for that model year; recorded by contributors, not by OBD360)",
+      "use": "Derived tables only: research/obdb-evidence-*.json and .md, research/oil-life-capability-matrix.*, and the compact Resources/Raw/obdb_year_evidence.json the app reads. The raw repositories are not in this repository.",
+      "limits": [
+        "The model year is the folder name; OBDb does not say how it was determined.",
+        "Replies of different commands may come from different cars.",
+        "A missing reply does not make a definition wrong."
+      ]
+    },
+    {
+      "attributionRequired": false,
+      "shareAlike": false,
+      "id": "gm-bulletin-12312a",
+      "name": "GM Customer Satisfaction Program 12312A, 'Oil Life Monitor Update', August 2013 (NHTSA files MC-10114191-9999 and MC-10246678-9999, the same text)",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2013/MC-10114191-9999.pdf",
+      "kind": "manufacturer bulletin",
+      "licence": "GM copyright; facts only",
+      "licenceChecked": "n/a",
+      "accessed": "2026-10-19 (downloaded, converted with pdftotext, read in full)",
+      "read": "2010-2011 Buick LaCrosse, 2011-2012 Buick Regal, 2010-2012 Chevrolet Equinox and GMC Terrain with the 2.4L engine (RPO LAF, LEA, LUK): reprogram the engine control module, then 'use a scan tool to reset the Engine Oil Life Remaining back to the original percentage recorded before'.",
+      "evidence": "E3 (function), E1 (request)",
+      "use": "The one documented case of a maker's tool setting a chosen oil-life percentage. Names the executing module (engine control module). No request is published.",
+      "limits": [
+        "The scan tool is not named; a restored percentage is not proof that other engines accept a chosen value."
+      ]
+    },
+    {
+      "attributionRequired": false,
+      "shareAlike": false,
+      "id": "gm-bulletin-18-na-125",
+      "name": "GM Service Bulletin 18-NA-125 (May 2024), PIP5282A (September 2016) and PIP6076 (June 2025)",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2024/MC-11001327-0001.pdf",
+      "kind": "manufacturer bulletin",
+      "licence": "GM copyright; facts only",
+      "licenceChecked": "n/a",
+      "accessed": "2026-10-19 (read in full; also MC-10099532-2280 and MC-11019871-0001)",
+      "read": "The oil life monitor calculates the percentage from engine revolutions, mileage since the reset (capped at 7,500 miles from model year 2013, Volt excepted) and time (one year; two for the Volt); it starts after the first 50 miles and restarts at each reset. PIP6076: the Corvette transmission fluid life has its own reset, and after it the percentage may drop quickly (under investigation).",
+      "evidence": "E3",
+      "use": "What a post-reset read-back should show and why the value then falls; that transmission oil life is a separate reset item.",
+      "limits": []
+    },
+    {
+      "attributionRequired": false,
+      "shareAlike": false,
+      "id": "bmw-si-b620613",
+      "name": "BMW SI B62 06 13, Condition Based Service due date is reset to 01/2000 (February 2014: MC-10147976-9999; May 2014: MC-10148333-9999)",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2014/MC-10147976-9999.pdf",
+      "kind": "manufacturer bulletin",
+      "licence": "BMW copyright; facts only",
+      "licenceChecked": "n/a",
+      "accessed": "2026-10-19 (read in full)",
+      "read": "F01, F02, F04, F06, F07, F10, F12, F13, F25 and F30 cars: the CBS due dates for 'Oil Services' and 'Check Vehicle' fall back to 01/2000 because of a software error in the instrument cluster; the correction is the cluster's test function #25 'Software reset' (hold the left soft key for more than 10 seconds), then setting the date, then checking the CBS data on the CID; if still wrong, the ISTA/D test plan for resetting and adjusting the CBS data.",
+      "evidence": "E3 (where CBS lives and that ISTA has a test plan), E0 (request)",
+      "use": "Shows that the CBS data of these cars is held in the instrument cluster and that test function #25 is a repair, not a service reset.",
+      "limits": []
+    },
+    {
+      "attributionRequired": false,
+      "shareAlike": false,
+      "id": "kia-tsb-ele209",
+      "name": "Kia TSB ELE209 (Rev 3, 16 August 2022), 'Service reminder setting reset procedure' (MC-10217892-0001; first issue MC-10180656-0001)",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2022/MC-10217892-0001.pdf",
+      "kind": "manufacturer bulletin",
+      "licence": "Kia copyright; facts only",
+      "licenceChecked": "n/a",
+      "accessed": "2026-10-19 (read in full)",
+      "read": "2019MY and later Kia: with the dealer tool KDS, 'Cluster Module', 'S/W Management', 'Service Reminder Setting': change the service type from workshop to customer and enter the mileage and time.",
+      "evidence": "E3 (function), E0 (request)",
+      "use": "The service reminder of these cars is set in the instrument cluster by a dealer tool function.",
+      "limits": [
+        "Dealer tool only (KDS with a VCI-II)."
+      ]
+    },
+    {
+      "attributionRequired": false,
+      "shareAlike": false,
+      "id": "kia-tsb-eng241",
+      "name": "Kia TSB ENG241 (September 2022), 'Oil life management system (OLMS) and maintenance reminder feature' (MC-10220347-0001)",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2022/MC-10220347-0001.pdf",
+      "kind": "manufacturer bulletin",
+      "licence": "Kia copyright; facts only",
+      "licenceChecked": "n/a",
+      "accessed": "2026-10-19 (read in full)",
+      "read": "2023MY and later with OLMS: the oil life is set to 100% at the factory; the owner resets it from the head unit ('Vehicle Settings', 'Cluster', 'Oil Change Reminder', 'Reset') after an oil change, and the remaining oil life is shown there.",
+      "evidence": "E3",
+      "use": "An owner-level oil-life reset that needs no tool; consistent with the shipped Kia guides.",
+      "limits": []
+    },
+    {
+      "attributionRequired": false,
+      "shareAlike": false,
+      "id": "stellantis-star-s2309000009",
+      "name": "Stellantis STAR case S2309000009, 'GG/GC Oil Change Monitor Reset' (October 2023; NHTSA file MC-10247449-9999)",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2023/MC-10247449-9999.pdf",
+      "kind": "manufacturer service record",
+      "licence": "Stellantis copyright; facts only",
+      "licenceChecked": "n/a",
+      "accessed": "2026-10-19 (read in full, two pages)",
+      "read": "After an oil change, with the scan tool: in the instrument panel cluster ('IPC'), 'Miscellaneous Functions', run the 'Reset Service Information' routine; and in the PCM, 'Miscellaneous Functions', run the 'Reset oil change indicator' procedure.",
+      "evidence": "E3 (function), E0 (request)",
+      "use": "Names the two modules and the two routines the dealer tool runs for the vehicles of the case.",
+      "limits": [
+        "The vehicles of the case are named only by the codes GG and GC."
+      ]
+    },
+    {
+      "attributionRequired": false,
+      "shareAlike": false,
+      "id": "mazda-owners-manual-skyactiv-d",
+      "name": "Mazda CX-5 owner's manual, 'Vehicle Engine Control Unit Reset Procedure (SKYACTIV-D 2.2)' (2018 and 2017 editions)",
+      "url": "https://owners-manual.mazda.com/gen/en/cx-5/cx-5_8gj7eo18b/contents/07030404.html",
+      "kind": "manufacturer owner manual",
+      "licence": "Mazda copyright; facts only",
+      "licenceChecked": "n/a",
+      "accessed": "2026-10-19 (the 2018 page read in full; the 2017 edition is a separate page of the same title, not fetched)",
+      "read": "'Engine oil data resetting' initializes the oil value recorded by the computer after an oil change; otherwise the wrench indicator may stay on or come on early. Driver method: ignition off, then on while the instrument-panel illumination knob is pressed, hold about 5 seconds until the master warning light flashes, wait for it to flash for several seconds. The manual also recommends having a repairer do it.",
+      "evidence": "E3",
+      "use": "The new shipped guide mazda.cx5.2017-2018.skyactiv-d-oil-data-reset.",
+      "limits": [
+        "The 2017 edition was not opened; the guide is limited to the years of the manuals found (2017-2018) and to diesel."
+      ]
+    },
+    {
+      "attributionRequired": false,
+      "shareAlike": false,
+      "id": "ford-tsb-22-2484",
+      "name": "Ford TSB 22-2484 and SSM 49728 (2021 F-150 5.0L, PCM update and oil change reminder reset)",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2021/MC-10191091-0001.pdf",
+      "kind": "manufacturer bulletin",
+      "licence": "Ford copyright; facts only",
+      "licenceChecked": "n/a",
+      "accessed": "2026-10-19 (search summaries only; the PDFs were not opened)",
+      "read": "The summaries say that after the PCM is reprogrammed and the oil changed the technician resets the engine oil change reminder 'referring to the vehicle Owner's Manual'.",
+      "evidence": "E1",
+      "use": "Context: Ford's own bulletins treat the reminder reset as an owner's-manual step.",
+      "limits": [
+        "Second-hand; confirm in the PDFs."
+      ]
+    },
+    {
+      "attributionRequired": false,
+      "shareAlike": false,
+      "id": "mbvans-booklets",
+      "name": "Mercedes-Benz Sprinter maintenance booklets 2010-2014 (mbvans.com)",
+      "url": "https://www.mbvans.com/content/dam/mb-vans/us/owner-manuals/2013-Mercedes-Benz-Sprinter-Maintenance-Manual.pdf",
+      "kind": "manufacturer manual",
+      "licence": "Mercedes-Benz copyright; facts only",
+      "licenceChecked": "n/a",
+      "accessed": "2026-10-19 (search summary only)",
+      "read": "The summaries say the authorized dealer resets the ASSYST service interval display after every maintenance service and that resetting it without the service may cause engine damage.",
+      "evidence": "E1",
+      "use": "Who resets ASSYST on the Sprinter.",
+      "limits": [
+        "Second-hand; confirm in the booklets."
+      ]
+    },
+    {
+      "attributionRequired": false,
+      "shareAlike": false,
+      "id": "toyota-lexus-tsb",
+      "name": "Lexus bulletin T-SB-0022-23 (May 2023; NHTSA MC-10238134-9999)",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2023/MC-10238134-9999.pdf",
+      "kind": "manufacturer bulletin",
+      "licence": "Toyota copyright; facts only",
+      "licenceChecked": "n/a",
+      "accessed": "2026-10-19 (search summary only)",
+      "read": "The summary says the Maintenance Required reminder is cleared from the multi-information display's vehicle settings menu and that Techstream appears in such bulletins for other jobs.",
+      "evidence": "E1",
+      "use": "Where the Toyota/Lexus reminder is cleared.",
+      "limits": [
+        "Second-hand; confirm in the PDF."
+      ]
+    },
+    {
+      "attributionRequired": false,
+      "shareAlike": false,
+      "id": "honda-tsb",
+      "name": "Honda and Acura bulletins 23-073 (MC-10242219-0001) and 14-049 (MC-10110849-9999)",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2023/MC-10242219-0001.pdf",
+      "kind": "manufacturer bulletin",
+      "licence": "Honda copyright; facts only",
+      "licenceChecked": "n/a",
+      "accessed": "2026-10-19 (search summaries only)",
+      "read": "The summaries name the older HDS path 'Body Electrical, Adjustment, Maintenance Minder, Reset, maintenance sub-item' and, for newer cars, i-HDS or the multi-information display depending on the item.",
+      "evidence": "E1",
+      "use": "Where the Honda Maintenance Minder is reset.",
+      "limits": [
+        "Second-hand; confirm in the PDFs."
+      ]
+    },
+    {
+      "attributionRequired": false,
+      "shareAlike": false,
+      "id": "forscan-forum",
+      "name": "FORScan forum threads on oil resets (t=19160, t=21428; t=18282 and t=17187 returned HTTP 403)",
+      "url": "https://forum.forscan.org/viewtopic.php?t=21428",
+      "kind": "forum",
+      "licence": "forum content; nothing copied",
+      "licenceChecked": "n/a",
+      "accessed": "2026-10-19 (the two readable threads read in full)",
+      "read": "No hex requests, identifiers or logs are posted. A poster says that on a Mazda 5 diesel FORScan's service procedure resets the learned oil dilution value and shows the dilution in grams.",
+      "evidence": "E1",
+      "use": "The meaning of 'Reset Engine Oil Deterioration Learned Value' on Mazda diesels (oil dilution, not a percentage of oil life).",
+      "limits": [
+        "Single forum posters."
+      ]
+    },
+    {
+      "attributionRequired": false,
+      "shareAlike": false,
+      "id": "carscanner-coding",
+      "name": "Car Scanner ELM OBD2, coding and service functions page",
+      "url": "https://www.carscanner.info/coding/",
+      "kind": "vendor page",
+      "licence": "vendor page; nothing copied",
+      "licenceChecked": "n/a",
+      "accessed": "2026-10-19",
+      "read": "Names a 'Reset service reminder' function for GM with CAN bus (Opel, Chevrolet, Vauxhall, Holden) and CVT oil degradation resets for some Mitsubishi and Nissan models; shows no service id, identifier or byte.",
+      "evidence": "E1",
+      "use": "Existence of a GM service-reminder function in a consumer app; nothing more.",
+      "limits": [
+        "No protocol detail on the page."
+      ]
     }
   ]
 }

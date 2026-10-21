@@ -1,0 +1,4988 @@
+{
+  "schema": "obd360.research.obdb-evidence/1",
+  "about": "Per signal: the model years in which the OBDb command applies (filter), is still being debugged (dbg, dbgfilter), is supported and has a recorded reply in OBDb's own tests. Derived from the OBDb vehicle repositories (CC BY-SA 4.0).",
+  "yearFilterSemantics": "OBDb/.schemas python/can/signals.py Filter.matches: from<to is an inclusive range; from>=to means year>=from or year<=to; a lone to or from is open-ended; years[] adds single years. dbgfilter uses the same object.",
+  "vehiclesWithTestCases": 497,
+  "vehiclesRead": 509,
+  "summary": [
+    {
+      "class": "mileage:ComponentDistance",
+      "signals": 42,
+      "vehicles": 32,
+      "withARecordedReply": 1,
+      "vehiclesWithARecordedReply": 1,
+      "withASupportedYear": 11,
+      "commandFlaggedDebug": 41,
+      "onlyDebugFilterNoDbg": 1,
+      "withAYearFilter": 2,
+      "verifiedForAtLeastOneRecordedYear": 1
+    },
+    {
+      "class": "mileage:Excluded",
+      "signals": 11,
+      "vehicles": 11,
+      "withARecordedReply": 0,
+      "vehiclesWithARecordedReply": 0,
+      "withASupportedYear": 3,
+      "commandFlaggedDebug": 11,
+      "onlyDebugFilterNoDbg": 0,
+      "withAYearFilter": 0,
+      "verifiedForAtLeastOneRecordedYear": 0
+    },
+    {
+      "class": "mileage:ModuleInstallRecord",
+      "signals": 57,
+      "vehicles": 33,
+      "withARecordedReply": 4,
+      "vehiclesWithARecordedReply": 4,
+      "withASupportedYear": 18,
+      "commandFlaggedDebug": 53,
+      "onlyDebugFilterNoDbg": 4,
+      "withAYearFilter": 0,
+      "verifiedForAtLeastOneRecordedYear": 4
+    },
+    {
+      "class": "mileage:OdometerAtEvent",
+      "signals": 1073,
+      "vehicles": 127,
+      "withARecordedReply": 441,
+      "vehiclesWithARecordedReply": 58,
+      "withASupportedYear": 725,
+      "commandFlaggedDebug": 529,
+      "onlyDebugFilterNoDbg": 543,
+      "withAYearFilter": 55,
+      "verifiedForAtLeastOneRecordedYear": 441
+    },
+    {
+      "class": "mileage:TotalOdometer",
+      "signals": 1711,
+      "vehicles": 461,
+      "withARecordedReply": 874,
+      "vehiclesWithARecordedReply": 334,
+      "withASupportedYear": 1272,
+      "commandFlaggedDebug": 757,
+      "onlyDebugFilterNoDbg": 942,
+      "withAYearFilter": 235,
+      "verifiedForAtLeastOneRecordedYear": 872
+    },
+    {
+      "class": "service:DaysToNextService",
+      "signals": 1,
+      "vehicles": 1,
+      "withARecordedReply": 0,
+      "vehiclesWithARecordedReply": 0,
+      "withASupportedYear": 0,
+      "commandFlaggedDebug": 1,
+      "onlyDebugFilterNoDbg": 0,
+      "withAYearFilter": 0,
+      "verifiedForAtLeastOneRecordedYear": 0
+    },
+    {
+      "class": "service:DistanceSinceOilChange",
+      "signals": 108,
+      "vehicles": 108,
+      "withARecordedReply": 33,
+      "vehiclesWithARecordedReply": 33,
+      "withASupportedYear": 85,
+      "commandFlaggedDebug": 75,
+      "onlyDebugFilterNoDbg": 33,
+      "withAYearFilter": 13,
+      "verifiedForAtLeastOneRecordedYear": 33
+    },
+    {
+      "class": "service:DistanceToNextService",
+      "signals": 40,
+      "vehicles": 30,
+      "withARecordedReply": 2,
+      "vehiclesWithARecordedReply": 2,
+      "withASupportedYear": 22,
+      "commandFlaggedDebug": 38,
+      "onlyDebugFilterNoDbg": 2,
+      "withAYearFilter": 0,
+      "verifiedForAtLeastOneRecordedYear": 2
+    },
+    {
+      "class": "service:MaintenanceCounter",
+      "signals": 185,
+      "vehicles": 23,
+      "withARecordedReply": 30,
+      "vehiclesWithARecordedReply": 4,
+      "withASupportedYear": 129,
+      "commandFlaggedDebug": 155,
+      "onlyDebugFilterNoDbg": 30,
+      "withAYearFilter": 27,
+      "verifiedForAtLeastOneRecordedYear": 30
+    },
+    {
+      "class": "service:OilChangeInterval",
+      "signals": 19,
+      "vehicles": 11,
+      "withARecordedReply": 1,
+      "vehiclesWithARecordedReply": 1,
+      "withASupportedYear": 6,
+      "commandFlaggedDebug": 18,
+      "onlyDebugFilterNoDbg": 1,
+      "withAYearFilter": 0,
+      "verifiedForAtLeastOneRecordedYear": 1
+    },
+    {
+      "class": "service:OilDegradationPercent",
+      "signals": 11,
+      "vehicles": 11,
+      "withARecordedReply": 2,
+      "vehiclesWithARecordedReply": 2,
+      "withASupportedYear": 9,
+      "commandFlaggedDebug": 9,
+      "onlyDebugFilterNoDbg": 2,
+      "withAYearFilter": 1,
+      "verifiedForAtLeastOneRecordedYear": 2
+    },
+    {
+      "class": "service:OilLifePercent",
+      "signals": 157,
+      "vehicles": 95,
+      "withARecordedReply": 38,
+      "vehiclesWithARecordedReply": 38,
+      "withASupportedYear": 86,
+      "commandFlaggedDebug": 118,
+      "onlyDebugFilterNoDbg": 39,
+      "withAYearFilter": 37,
+      "verifiedForAtLeastOneRecordedYear": 38
+    }
+  ],
+  "signalsThatFollowTheOdometer": [
+    {
+      "repo": "BMW-3-Series",
+      "signalId": "3SERIES_OIL_CHANGE_DIST",
+      "name": "Distance since last oil change",
+      "request": "22 DFE7",
+      "header": "6F1",
+      "eax": "19",
+      "recordedYears": "2019-2022",
+      "followsOdometer": {
+        "samples": 72,
+        "withinTolerance": 49,
+        "fraction": 0.681
+      },
+      "values": {
+        "min": 17724,
+        "max": 100022
+      }
+    },
+    {
+      "repo": "BMW-5-Series",
+      "signalId": "5SERIES_OIL_CHANGE_DIST",
+      "name": "Distance since last oil change",
+      "request": "22 DFE7",
+      "header": "6F1",
+      "eax": "19",
+      "recordedYears": "2018-2022",
+      "followsOdometer": {
+        "samples": 134,
+        "withinTolerance": 74,
+        "fraction": 0.552
+      },
+      "values": {
+        "min": 19664,
+        "max": 239253
+      }
+    },
+    {
+      "repo": "BMW-7-Series",
+      "signalId": "7SERIES_OIL_CHANGE_DIST",
+      "name": "Distance since last oil change",
+      "request": "22 DFE7",
+      "header": "6F1",
+      "eax": "19",
+      "recordedYears": "2017, 2020",
+      "followsOdometer": {
+        "samples": 52,
+        "withinTolerance": 30,
+        "fraction": 0.577
+      },
+      "values": {
+        "min": 5989,
+        "max": 158000
+      }
+    },
+    {
+      "repo": "BMW-X5",
+      "signalId": "X5_OIL_CHANGE_DIST",
+      "name": "Distance since last oil change",
+      "request": "22 DFE7",
+      "header": "6F1",
+      "eax": "19",
+      "recordedYears": "2020-2022",
+      "followsOdometer": {
+        "samples": 83,
+        "withinTolerance": 51,
+        "fraction": 0.614
+      },
+      "values": {
+        "min": 2268,
+        "max": 166000
+      }
+    }
+  ],
+  "odometerModules": {
+    "note": "Distances are converted to kilometres with the unit each definition declares before they are compared. Pairs of modules, in one model year, that both have at least 3 recorded odometer values. \"tracking\": at least 3 values of the pair agree within max(50 km, 0.2 %) and at least half of the smaller list does. Recorded cases of different commands may come from different cars, so this shows that two definitions read the same kind of number, not that two modules of one car agree.",
+    "vehiclesWithTwoModulesRecordedInTheSameYear": 140,
+    "vehiclesWithATrackingPair": 116,
+    "pairsRecorded": 695,
+    "pairsTracking": 423,
+    "pairsNotTracking": 47,
+    "pairsThatLookLikeMilesVersusKilometres": 5,
+    "trackingPairs": [
+      {
+        "repo": "Acura-MDX",
+        "year": 2019,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 11,
+        "of": 6
+      },
+      {
+        "repo": "Acura-TLX",
+        "year": 2015,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 6,
+        "of": 4
+      },
+      {
+        "repo": "Audi-A3",
+        "year": 2016,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 10,
+        "of": 10
+      },
+      {
+        "repo": "Audi-A3",
+        "year": 2017,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "Audi-A3",
+        "year": 2019,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 6,
+        "of": 8
+      },
+      {
+        "repo": "Audi-A3",
+        "year": 2022,
+        "modules": [
+          "714",
+          "7E1"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "Audi-A5",
+        "year": 2017,
+        "modules": [
+          "714",
+          "7E0"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "Audi-A5",
+        "year": 2022,
+        "modules": [
+          "714",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Audi-Q2",
+        "year": 2017,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 12,
+        "of": 12
+      },
+      {
+        "repo": "Audi-Q2",
+        "year": 2020,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Audi-Q3",
+        "year": 2021,
+        "modules": [
+          "714",
+          "7E1"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Audi-Q7",
+        "year": 2018,
+        "modules": [
+          "714",
+          "7E0"
+        ],
+        "matched": 5,
+        "of": 4
+      },
+      {
+        "repo": "Audi-Q7",
+        "year": 2021,
+        "modules": [
+          "714",
+          "7E1"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "Audi-Q8",
+        "year": 2019,
+        "modules": [
+          "714",
+          "7E0"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "Audi-Q8",
+        "year": 2019,
+        "modules": [
+          "714",
+          "7E1"
+        ],
+        "matched": 5,
+        "of": 3
+      },
+      {
+        "repo": "Audi-Q8",
+        "year": 2019,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Audi-Q8",
+        "year": 2025,
+        "modules": [
+          "714",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Audi-S3",
+        "year": 2018,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 4,
+        "of": 5
+      },
+      {
+        "repo": "Audi-S4",
+        "year": 2020,
+        "modules": [
+          "714",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Audi-TT",
+        "year": 2015,
+        "modules": [
+          "714",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "Audi-TT",
+        "year": 2017,
+        "modules": [
+          "714",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-1-Series",
+        "year": 2014,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 7,
+        "of": 7
+      },
+      {
+        "repo": "BMW-1-Series",
+        "year": 2016,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-1-Series",
+        "year": 2018,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 4,
+        "of": 6
+      },
+      {
+        "repo": "BMW-1-Series",
+        "year": 2018,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 6
+      },
+      {
+        "repo": "BMW-1-Series",
+        "year": 2018,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 6,
+        "of": 8
+      },
+      {
+        "repo": "BMW-1-Series",
+        "year": 2019,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "BMW-1-Series",
+        "year": 2020,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-1-Series",
+        "year": 2021,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "BMW-1-Series",
+        "year": 2022,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-2-Series",
+        "year": 2015,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 5,
+        "of": 6
+      },
+      {
+        "repo": "BMW-2-Series",
+        "year": 2015,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 6
+      },
+      {
+        "repo": "BMW-2-Series",
+        "year": 2015,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "BMW-2-Series",
+        "year": 2016,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 7,
+        "of": 8
+      },
+      {
+        "repo": "BMW-2-Series",
+        "year": 2017,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "BMW-2-Series",
+        "year": 2017,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "BMW-2-Series",
+        "year": 2017,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 6,
+        "of": 7
+      },
+      {
+        "repo": "BMW-2-Series",
+        "year": 2018,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 4,
+        "of": 6
+      },
+      {
+        "repo": "BMW-2-Series",
+        "year": 2018,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 6
+      },
+      {
+        "repo": "BMW-2-Series",
+        "year": 2020,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-2-Series",
+        "year": 2020,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-2-Series",
+        "year": 2020,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "BMW-2-Series",
+        "year": 2022,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "BMW-2-Series",
+        "year": 2022,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "BMW-2-Series",
+        "year": 2023,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-2-Series",
+        "year": 2023,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "BMW-2-Series",
+        "year": 2024,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2012,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 9,
+        "of": 9
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2013,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 5,
+        "of": 6
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2013,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 6
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2013,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 6,
+        "of": 8
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2014,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2014,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 6
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2015,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2016,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2017,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 7
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2018,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2019,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 9,
+        "of": 8
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2020,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 6
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2020,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 6
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2021,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2021,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2021,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 6,
+        "of": 7
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2022,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2022,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 7
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2023,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2024,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 7,
+        "of": 7
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2024,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 7,
+        "of": 8
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2024,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 7
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2025,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 6
+      },
+      {
+        "repo": "BMW-3-Series-eDrive",
+        "year": 2017,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-3-Series-eDrive",
+        "year": 2017,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-3-Series-eDrive",
+        "year": 2017,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 7,
+        "of": 7
+      },
+      {
+        "repo": "BMW-3-Series-eDrive",
+        "year": 2018,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 3,
+        "of": 6
+      },
+      {
+        "repo": "BMW-3-Series-eDrive",
+        "year": 2018,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 6
+      },
+      {
+        "repo": "BMW-3-Series-eDrive",
+        "year": 2018,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 8
+      },
+      {
+        "repo": "BMW-3-Series-eDrive",
+        "year": 2020,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "BMW-3-Series-eDrive",
+        "year": 2020,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "BMW-3-Series-eDrive",
+        "year": 2020,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-3-Series-eDrive",
+        "year": 2021,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "BMW-3-Series-eDrive",
+        "year": 2022,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "BMW-3-Series-eDrive",
+        "year": 2022,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 6
+      },
+      {
+        "repo": "BMW-3-Series-eDrive",
+        "year": 2022,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 6
+      },
+      {
+        "repo": "BMW-3-Series-eDrive",
+        "year": 2024,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-3-Series-eDrive",
+        "year": 2024,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-3-Series-eDrive",
+        "year": 2024,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2012,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2013,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 6
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2014,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2015,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2016,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 6
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2017,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2017,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 6,
+        "of": 8
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2018,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2018,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 5
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2019,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2019,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2019,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 6
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2020,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2020,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 6
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2021,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 4,
+        "of": 5
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2021,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2021,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2022,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 10,
+        "of": 4
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2022,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 10,
+        "of": 10
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2022,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2023,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-6-Series-Gran-Coupe",
+        "year": 2015,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-6-Series-Gran-Turismo",
+        "year": 2021,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "BMW-6-Series-Gran-Turismo",
+        "year": 2021,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "BMW-6-Series-Gran-Turismo",
+        "year": 2021,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-7-Series",
+        "year": 2012,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-7-Series",
+        "year": 2017,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "BMW-7-Series",
+        "year": 2017,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 5
+      },
+      {
+        "repo": "BMW-7-Series",
+        "year": 2017,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "BMW-7-Series",
+        "year": 2020,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 4,
+        "of": 6
+      },
+      {
+        "repo": "BMW-7-Series",
+        "year": 2020,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 6
+      },
+      {
+        "repo": "BMW-7-Series",
+        "year": 2020,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 8,
+        "of": 10
+      },
+      {
+        "repo": "BMW-ALPINA-XB7",
+        "year": 2024,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 7,
+        "of": 7
+      },
+      {
+        "repo": "BMW-i8",
+        "year": 2015,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "BMW-i8",
+        "year": 2018,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 5
+      },
+      {
+        "repo": "BMW-M2",
+        "year": 2017,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 7
+      },
+      {
+        "repo": "BMW-M2",
+        "year": 2019,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-M2",
+        "year": 2023,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-M2",
+        "year": 2024,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-M2",
+        "year": 2024,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-M2",
+        "year": 2024,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "BMW-M2",
+        "year": 2025,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-M2",
+        "year": 2025,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-M2",
+        "year": 2025,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-M3",
+        "year": 2023,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "BMW-M3-CS",
+        "year": 2018,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-M4",
+        "year": 2015,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 8,
+        "of": 8
+      },
+      {
+        "repo": "BMW-M4",
+        "year": 2022,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-M4",
+        "year": 2022,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-M4",
+        "year": 2022,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-M4",
+        "year": 2025,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "BMW-M4",
+        "year": 2026,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "BMW-M5",
+        "year": 2023,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-M5",
+        "year": 2023,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-M5",
+        "year": 2023,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 5
+      },
+      {
+        "repo": "BMW-X1",
+        "year": 2017,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 5
+      },
+      {
+        "repo": "BMW-X1",
+        "year": 2021,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 6
+      },
+      {
+        "repo": "BMW-X1",
+        "year": 2022,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-X3",
+        "year": 2012,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-X3",
+        "year": 2017,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-X3",
+        "year": 2019,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 7,
+        "of": 7
+      },
+      {
+        "repo": "BMW-X3",
+        "year": 2020,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 6
+      },
+      {
+        "repo": "BMW-X3",
+        "year": 2022,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 8,
+        "of": 8
+      },
+      {
+        "repo": "BMW-X3",
+        "year": 2023,
+        "modules": [
+          "6F1/12",
+          "6F1/40"
+        ],
+        "matched": 5,
+        "of": 3
+      },
+      {
+        "repo": "BMW-X3",
+        "year": 2023,
+        "modules": [
+          "6F1/12",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "BMW-X3",
+        "year": 2023,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-X3",
+        "year": 2024,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-X4",
+        "year": 2015,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-X5",
+        "year": 2014,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "BMW-X5",
+        "year": 2014,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 5
+      },
+      {
+        "repo": "BMW-X5",
+        "year": 2015,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 7,
+        "of": 7
+      },
+      {
+        "repo": "BMW-X5",
+        "year": 2017,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 7,
+        "of": 7
+      },
+      {
+        "repo": "BMW-X5",
+        "year": 2017,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 7,
+        "of": 7
+      },
+      {
+        "repo": "BMW-X5",
+        "year": 2017,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 10,
+        "of": 10
+      },
+      {
+        "repo": "BMW-X5",
+        "year": 2020,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-X5",
+        "year": 2020,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-X5",
+        "year": 2020,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "BMW-X5",
+        "year": 2021,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 4,
+        "of": 6
+      },
+      {
+        "repo": "BMW-X5",
+        "year": 2021,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 6
+      },
+      {
+        "repo": "BMW-X5",
+        "year": 2021,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 7
+      },
+      {
+        "repo": "BMW-X5",
+        "year": 2022,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-X5",
+        "year": 2022,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-X5",
+        "year": 2022,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 6
+      },
+      {
+        "repo": "BMW-X5",
+        "year": 2023,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "BMW-X5-M",
+        "year": 2016,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 7,
+        "of": 7
+      },
+      {
+        "repo": "BMW-X5-M",
+        "year": 2016,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 7,
+        "of": 7
+      },
+      {
+        "repo": "BMW-X5-M",
+        "year": 2016,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 10,
+        "of": 8
+      },
+      {
+        "repo": "BMW-X6",
+        "year": 2018,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "BMW-X6",
+        "year": 2018,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "BMW-X6",
+        "year": 2018,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 7,
+        "of": 7
+      },
+      {
+        "repo": "BMW-X7",
+        "year": 2020,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "BMW-X7",
+        "year": 2022,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "BMW-Z4",
+        "year": 2019,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 5,
+        "of": 4
+      },
+      {
+        "repo": "BMW-Z4",
+        "year": 2019,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "BMW-Z4",
+        "year": 2019,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Chevrolet-Silverado-2500",
+        "year": 2025,
+        "modules": [
+          "DA1A",
+          "DA40"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Ford-C-Max",
+        "year": 2013,
+        "modules": [
+          "726",
+          "760"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Ford-C-Max",
+        "year": 2013,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Ford-C-Max",
+        "year": 2013,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Ford-C-Max-Energi",
+        "year": 2016,
+        "modules": [
+          "726",
+          "760"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "Ford-C-Max-Energi",
+        "year": 2016,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "Ford-C-Max-Energi",
+        "year": 2016,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "Ford-C-Max-Energi",
+        "year": 2017,
+        "modules": [
+          "726",
+          "760"
+        ],
+        "matched": 4,
+        "of": 5
+      },
+      {
+        "repo": "Ford-C-Max-Energi",
+        "year": 2017,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 5,
+        "of": 4
+      },
+      {
+        "repo": "Ford-C-Max-Energi",
+        "year": 2017,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Ford-C-Max-Hybrid",
+        "year": 2013,
+        "modules": [
+          "726",
+          "760"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Ford-C-Max-Hybrid",
+        "year": 2013,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Ford-C-Max-Hybrid",
+        "year": 2013,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Ford-C-Max-Hybrid",
+        "year": 2017,
+        "modules": [
+          "726",
+          "760"
+        ],
+        "matched": 9,
+        "of": 9
+      },
+      {
+        "repo": "Ford-C-Max-Hybrid",
+        "year": 2017,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 9,
+        "of": 9
+      },
+      {
+        "repo": "Ford-C-Max-Hybrid",
+        "year": 2017,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 9,
+        "of": 9
+      },
+      {
+        "repo": "Ford-Everest",
+        "year": 2024,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Ford-Expedition",
+        "year": 2016,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 5
+      },
+      {
+        "repo": "Ford-Expedition",
+        "year": 2023,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "Ford-Expedition",
+        "year": 2024,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Ford-Expedition",
+        "year": 2025,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "Ford-Explorer",
+        "year": 2026,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 5,
+        "of": 6
+      },
+      {
+        "repo": "Ford-F-150",
+        "year": 2022,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 6
+      },
+      {
+        "repo": "Ford-F-150",
+        "year": 2025,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "Ford-F-150-Lightning",
+        "year": 2022,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 5
+      },
+      {
+        "repo": "Ford-F-150-Lightning",
+        "year": 2022,
+        "modules": [
+          "730",
+          "760"
+        ],
+        "matched": 8,
+        "of": 8
+      },
+      {
+        "repo": "Ford-F-250",
+        "year": 2016,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 3
+      },
+      {
+        "repo": "Ford-F-250",
+        "year": 2022,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 6
+      },
+      {
+        "repo": "Ford-F-250",
+        "year": 2023,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "Ford-F-250",
+        "year": 2024,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Ford-F-250",
+        "year": 2024,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 4,
+        "of": 3
+      },
+      {
+        "repo": "Ford-F-250",
+        "year": 2025,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "Ford-Fiesta",
+        "year": 2013,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Ford-Flex",
+        "year": 2016,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 5
+      },
+      {
+        "repo": "Ford-Focus",
+        "year": 2013,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "Ford-Focus-RS",
+        "year": 2013,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "Ford-Focus-RS",
+        "year": 2013,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 7,
+        "of": 7
+      },
+      {
+        "repo": "Ford-Focus-RS",
+        "year": 2017,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "Ford-Focus-ST",
+        "year": 2013,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "Ford-Focus-ST",
+        "year": 2013,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 7,
+        "of": 7
+      },
+      {
+        "repo": "Ford-Focus-ST",
+        "year": 2017,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "Ford-Maverick",
+        "year": 2026,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "Ford-Mustang",
+        "year": 2024,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Ford-Mustang",
+        "year": 2026,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Ford-Mustang-Mach-E",
+        "year": 2021,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "Ford-Mustang-Mach-E",
+        "year": 2022,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 5
+      },
+      {
+        "repo": "Ford-Mustang-Mach-E",
+        "year": 2023,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "Ford-Mustang-Mach-E",
+        "year": 2025,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Ford-Taurus",
+        "year": 2013,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Ford-Taurus",
+        "year": 2018,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 13,
+        "of": 16
+      },
+      {
+        "repo": "Ford-Transit",
+        "year": 2018,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 3
+      },
+      {
+        "repo": "Ford-Transit",
+        "year": 2025,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Honda-Accord",
+        "year": 2018,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "Honda-Accord",
+        "year": 2025,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 9,
+        "of": 5
+      },
+      {
+        "repo": "Honda-Accord-Hybrid",
+        "year": 2021,
+        "modules": [
+          "DA0E",
+          "DA60"
+        ],
+        "matched": 25,
+        "of": 5
+      },
+      {
+        "repo": "Honda-Accord-Hybrid",
+        "year": 2025,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 8,
+        "of": 6
+      },
+      {
+        "repo": "Honda-City",
+        "year": 2023,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 16,
+        "of": 5
+      },
+      {
+        "repo": "Honda-Civic",
+        "year": 2017,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 4,
+        "of": 6
+      },
+      {
+        "repo": "Honda-Civic",
+        "year": 2018,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 4,
+        "of": 7
+      },
+      {
+        "repo": "Honda-Civic",
+        "year": 2023,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "Honda-Civic",
+        "year": 2026,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 4,
+        "of": 6
+      },
+      {
+        "repo": "Honda-Clarity",
+        "year": 2018,
+        "modules": [
+          "DA0E",
+          "DA60"
+        ],
+        "matched": 11,
+        "of": 7
+      },
+      {
+        "repo": "Honda-CR-V",
+        "year": 2017,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 16,
+        "of": 3
+      },
+      {
+        "repo": "Honda-CR-V",
+        "year": 2023,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 16,
+        "of": 6
+      },
+      {
+        "repo": "Honda-CR-V",
+        "year": 2024,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "Honda-CR-V-Hybrid",
+        "year": 2023,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "Honda-CR-V-Hybrid",
+        "year": 2025,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 10,
+        "of": 3
+      },
+      {
+        "repo": "Honda-CR-V-Hybrid",
+        "year": 2027,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 14,
+        "of": 4
+      },
+      {
+        "repo": "Honda-HR-V",
+        "year": 2023,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 19,
+        "of": 5
+      },
+      {
+        "repo": "Honda-Insight",
+        "year": 2021,
+        "modules": [
+          "DA0E",
+          "DA60"
+        ],
+        "matched": 18,
+        "of": 6
+      },
+      {
+        "repo": "Honda-Jazz",
+        "year": 2024,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 20,
+        "of": 6
+      },
+      {
+        "repo": "Honda-Odyssey",
+        "year": 2018,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 4,
+        "of": 5
+      },
+      {
+        "repo": "Honda-Odyssey",
+        "year": 2020,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 22,
+        "of": 4
+      },
+      {
+        "repo": "Honda-Odyssey",
+        "year": 2021,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 14,
+        "of": 5
+      },
+      {
+        "repo": "Honda-Pilot",
+        "year": 2017,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 8,
+        "of": 16
+      },
+      {
+        "repo": "Honda-Pilot",
+        "year": 2024,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 26,
+        "of": 6
+      },
+      {
+        "repo": "Honda-Prelude",
+        "year": 2026,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 14,
+        "of": 6
+      },
+      {
+        "repo": "Honda-Ridgeline",
+        "year": 2021,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 18,
+        "of": 5
+      },
+      {
+        "repo": "Honda-Ridgeline",
+        "year": 2023,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 5,
+        "of": 7
+      },
+      {
+        "repo": "Honda-Ridgeline",
+        "year": 2024,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 17,
+        "of": 6
+      },
+      {
+        "repo": "Honda-Ridgeline",
+        "year": 2025,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 15,
+        "of": 6
+      },
+      {
+        "repo": "Honda-Ridgeline",
+        "year": 2026,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 12,
+        "of": 6
+      },
+      {
+        "repo": "Lexus-NX",
+        "year": 2021,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Lexus-NX",
+        "year": 2024,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 4,
+        "of": 5
+      },
+      {
+        "repo": "Lexus-NX",
+        "year": 2025,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Lexus-NX",
+        "year": 2026,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "Lexus-NX-350h",
+        "year": 2024,
+        "modules": [
+          "700",
+          "747"
+        ],
+        "matched": 9,
+        "of": 4
+      },
+      {
+        "repo": "Lexus-NX-350h",
+        "year": 2024,
+        "modules": [
+          "700",
+          "7D2"
+        ],
+        "matched": 9,
+        "of": 7
+      },
+      {
+        "repo": "Lexus-NX-350h",
+        "year": 2024,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Lexus-NX-350h",
+        "year": 2026,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Lexus-UX",
+        "year": 2023,
+        "modules": [
+          "700",
+          "7D2"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "Lincoln-Navigator",
+        "year": 2021,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 8,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-2",
+        "year": 2015,
+        "modules": [
+          "720",
+          "760"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Mazda-2",
+        "year": 2015,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Mazda-2",
+        "year": 2015,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Mazda-2",
+        "year": 2017,
+        "modules": [
+          "720",
+          "760"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Mazda-2",
+        "year": 2020,
+        "modules": [
+          "720",
+          "760"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-2",
+        "year": 2020,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-2",
+        "year": 2020,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-2",
+        "year": 2025,
+        "modules": [
+          "720",
+          "760"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-2",
+        "year": 2025,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-2",
+        "year": 2025,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-6",
+        "year": 2014,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-6",
+        "year": 2017,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-6",
+        "year": 2020,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Mazda-CX-30",
+        "year": 2021,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-CX-30",
+        "year": 2022,
+        "modules": [
+          "723",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Mazda-CX-30",
+        "year": 2022,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-CX-30",
+        "year": 2023,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-CX-30",
+        "year": 2025,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-CX-30",
+        "year": 2026,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Mazda-CX-5",
+        "year": 2016,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 6,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-CX-5",
+        "year": 2018,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "Mazda-CX-5",
+        "year": 2023,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "Mazda-CX-5",
+        "year": 2025,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 10,
+        "of": 10
+      },
+      {
+        "repo": "Mazda-CX-60",
+        "year": 2022,
+        "modules": [
+          "723",
+          "726"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-CX-60",
+        "year": 2022,
+        "modules": [
+          "723",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-CX-60",
+        "year": 2022,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-CX-60",
+        "year": 2023,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-CX-60",
+        "year": 2024,
+        "modules": [
+          "723",
+          "726"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-CX-60",
+        "year": 2024,
+        "modules": [
+          "723",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-CX-60",
+        "year": 2024,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-Mazdaspeed-3",
+        "year": 2019,
+        "modules": [
+          "723",
+          "726"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-Mazdaspeed-3",
+        "year": 2019,
+        "modules": [
+          "723",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-Mazdaspeed-3",
+        "year": 2019,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-Mazdaspeed-3",
+        "year": 2021,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "Mazda-MX-30",
+        "year": 2022,
+        "modules": [
+          "723",
+          "726"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-MX-30",
+        "year": 2022,
+        "modules": [
+          "723",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Mazda-MX-30",
+        "year": 2022,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "MG-ZS-EV",
+        "year": 2020,
+        "modules": [
+          "710",
+          "760"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "MINI-Clubman",
+        "year": 2024,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "MINI-Cooper",
+        "year": 2016,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "MINI-Cooper",
+        "year": 2019,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 9,
+        "of": 9
+      },
+      {
+        "repo": "MINI-Cooper",
+        "year": 2023,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "MINI-Countryman",
+        "year": 2020,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 3,
+        "of": 5
+      },
+      {
+        "repo": "MINI-Countryman",
+        "year": 2022,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "MINI-Countryman",
+        "year": 2023,
+        "modules": [
+          "6F1/12",
+          "6F1/40"
+        ],
+        "matched": 6,
+        "of": 5
+      },
+      {
+        "repo": "MINI-Countryman",
+        "year": 2023,
+        "modules": [
+          "6F1/12",
+          "6F1/60"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "MINI-Hardtop",
+        "year": 2020,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 5,
+        "of": 7
+      },
+      {
+        "repo": "MINI-Hardtop",
+        "year": 2023,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "Seat-Ateca",
+        "year": 2021,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Seat-Ateca",
+        "year": 2024,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Seat-Ateca",
+        "year": 2025,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 10,
+        "of": 8
+      },
+      {
+        "repo": "Seat-Ibiza",
+        "year": 2023,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 6,
+        "of": 8
+      },
+      {
+        "repo": "Seat-Leon",
+        "year": 2012,
+        "modules": [
+          "714",
+          "7E0"
+        ],
+        "matched": 11,
+        "of": 8
+      },
+      {
+        "repo": "Seat-Leon",
+        "year": 2017,
+        "modules": [
+          "714",
+          "7E1"
+        ],
+        "matched": 10,
+        "of": 14
+      },
+      {
+        "repo": "Toyota-C-HR",
+        "year": 2023,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Toyota-C-HR",
+        "year": 2025,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Toyota-Camry",
+        "year": 2023,
+        "modules": [
+          "700",
+          "701"
+        ],
+        "matched": 9,
+        "of": 9
+      },
+      {
+        "repo": "Toyota-Camry",
+        "year": 2024,
+        "modules": [
+          "700",
+          "701"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Toyota-Camry-Hybrid",
+        "year": 2019,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Toyota-Camry-Hybrid",
+        "year": 2022,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "Toyota-Camry-Hybrid",
+        "year": 2023,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "Toyota-GR-Corolla",
+        "year": 2026,
+        "modules": [
+          "700",
+          "701"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Toyota-GR-Supra",
+        "year": 2020,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "Toyota-GR-Supra",
+        "year": 2020,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "Toyota-GR-Supra",
+        "year": 2020,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "Toyota-GR-Supra",
+        "year": 2021,
+        "modules": [
+          "6F1/18",
+          "6F1/40"
+        ],
+        "matched": 7,
+        "of": 8
+      },
+      {
+        "repo": "Toyota-GR-Supra",
+        "year": 2021,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 7,
+        "of": 8
+      },
+      {
+        "repo": "Toyota-GR-Supra",
+        "year": 2021,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 9,
+        "of": 9
+      },
+      {
+        "repo": "Toyota-GR-Supra",
+        "year": 2022,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 4,
+        "of": 5
+      },
+      {
+        "repo": "Toyota-Grand-Highlander",
+        "year": 2026,
+        "modules": [
+          "700",
+          "7D2"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Toyota-Grand-Highlander-Hybrid",
+        "year": 2025,
+        "modules": [
+          "701",
+          "7D2"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Toyota-Mirai",
+        "year": 2023,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Toyota-Prius",
+        "year": 2017,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Toyota-Prius",
+        "year": 2020,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Toyota-Prius",
+        "year": 2021,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Toyota-Prius",
+        "year": 2025,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Toyota-Prius-Prime",
+        "year": 2020,
+        "modules": [
+          "700",
+          "747"
+        ],
+        "matched": 7,
+        "of": 7
+      },
+      {
+        "repo": "Toyota-Prius-Prime",
+        "year": 2020,
+        "modules": [
+          "700",
+          "7D2"
+        ],
+        "matched": 7,
+        "of": 7
+      },
+      {
+        "repo": "Toyota-Prius-Prime",
+        "year": 2020,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 7,
+        "of": 7
+      },
+      {
+        "repo": "Toyota-Prius-Prime",
+        "year": 2023,
+        "modules": [
+          "700",
+          "747"
+        ],
+        "matched": 10,
+        "of": 10
+      },
+      {
+        "repo": "Toyota-Prius-Prime",
+        "year": 2023,
+        "modules": [
+          "700",
+          "7D2"
+        ],
+        "matched": 10,
+        "of": 10
+      },
+      {
+        "repo": "Toyota-Prius-Prime",
+        "year": 2023,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 10,
+        "of": 10
+      },
+      {
+        "repo": "Toyota-RAV4",
+        "year": 2021,
+        "modules": [
+          "700",
+          "701"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "Toyota-Sequoia",
+        "year": 2024,
+        "modules": [
+          "701",
+          "7D2"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Toyota-Sequoia",
+        "year": 2025,
+        "modules": [
+          "701",
+          "7D2"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Toyota-Sienna-Hybrid",
+        "year": 2021,
+        "modules": [
+          "700",
+          "7D2"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Toyota-Tacoma",
+        "year": 2018,
+        "modules": [
+          "700",
+          "701"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Toyota-Tacoma",
+        "year": 2019,
+        "modules": [
+          "700",
+          "701"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Toyota-Tacoma",
+        "year": 2021,
+        "modules": [
+          "700",
+          "701"
+        ],
+        "matched": 6,
+        "of": 6
+      },
+      {
+        "repo": "Toyota-Tacoma",
+        "year": 2022,
+        "modules": [
+          "700",
+          "701"
+        ],
+        "matched": 7,
+        "of": 6
+      },
+      {
+        "repo": "Toyota-Tacoma",
+        "year": 2023,
+        "modules": [
+          "700",
+          "701"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Toyota-Tacoma",
+        "year": 2024,
+        "modules": [
+          "700",
+          "701"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Toyota-Tacoma",
+        "year": 2025,
+        "modules": [
+          "700",
+          "701"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Toyota-Tacoma",
+        "year": 2026,
+        "modules": [
+          "700",
+          "701"
+        ],
+        "matched": 10,
+        "of": 10
+      },
+      {
+        "repo": "Toyota-Tundra",
+        "year": 2022,
+        "modules": [
+          "701",
+          "7D2"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Toyota-Tundra",
+        "year": 2023,
+        "modules": [
+          "701",
+          "7D2"
+        ],
+        "matched": 3,
+        "of": 6
+      },
+      {
+        "repo": "Toyota-Venza",
+        "year": 2021,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Toyota-Venza",
+        "year": 2023,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Toyota-Yaris",
+        "year": 2024,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Toyota-Yaris",
+        "year": 2025,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Toyota-Yaris-Cross",
+        "year": 2022,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 5,
+        "of": 5
+      },
+      {
+        "repo": "Toyota-Yaris-Cross",
+        "year": 2025,
+        "modules": [
+          "747",
+          "7D2"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Toyota-Yaris-iA",
+        "year": 2018,
+        "modules": [
+          "720",
+          "760"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "Toyota-Yaris-iA",
+        "year": 2018,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "Toyota-Yaris-iA",
+        "year": 2018,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 8,
+        "of": 8
+      },
+      {
+        "repo": "Volkswagen-Arteon",
+        "year": 2020,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Volkswagen-Arteon",
+        "year": 2021,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Volkswagen-Atlas",
+        "year": 2018,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 5,
+        "of": 4
+      },
+      {
+        "repo": "Volkswagen-Atlas",
+        "year": 2023,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 16,
+        "of": 6
+      },
+      {
+        "repo": "Volkswagen-Crafter",
+        "year": 2024,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 4,
+        "of": 4
+      },
+      {
+        "repo": "Volkswagen-Jetta",
+        "year": 2024,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 5,
+        "of": 4
+      },
+      {
+        "repo": "Volkswagen-Passat",
+        "year": 2015,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 3,
+        "of": 4
+      },
+      {
+        "repo": "Volkswagen-Passat",
+        "year": 2017,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 6,
+        "of": 9
+      },
+      {
+        "repo": "Volkswagen-Passat",
+        "year": 2018,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 7,
+        "of": 13
+      },
+      {
+        "repo": "Volkswagen-T-Cross",
+        "year": 2024,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 8,
+        "of": 6
+      },
+      {
+        "repo": "Volkswagen-T-Roc",
+        "year": 2022,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 8,
+        "of": 10
+      },
+      {
+        "repo": "Volkswagen-Taos",
+        "year": 2022,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 10,
+        "of": 16
+      },
+      {
+        "repo": "Volkswagen-Taos",
+        "year": 2024,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 5,
+        "of": 10
+      },
+      {
+        "repo": "Volkswagen-Tiguan",
+        "year": 2018,
+        "modules": [
+          "714",
+          "7E0"
+        ],
+        "matched": 16,
+        "of": 13
+      },
+      {
+        "repo": "Volkswagen-Tiguan",
+        "year": 2019,
+        "modules": [
+          "714",
+          "7E0"
+        ],
+        "matched": 8,
+        "of": 9
+      },
+      {
+        "repo": "Volkswagen-Tiguan",
+        "year": 2019,
+        "modules": [
+          "714",
+          "7E1"
+        ],
+        "matched": 8,
+        "of": 4
+      },
+      {
+        "repo": "Volkswagen-Tiguan",
+        "year": 2020,
+        "modules": [
+          "714",
+          "7E1"
+        ],
+        "matched": 8,
+        "of": 4
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "720",
+          "726"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "720",
+          "736"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "720",
+          "737"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "720",
+          "756"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "720",
+          "760"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "720",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "720",
+          "7E1"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "726",
+          "736"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "726",
+          "737"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "726",
+          "756"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "726",
+          "760"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "726",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "726",
+          "7E1"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "736",
+          "737"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "736",
+          "756"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "736",
+          "760"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "736",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "736",
+          "7E1"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "737",
+          "756"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "737",
+          "760"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "737",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "737",
+          "7E1"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "756",
+          "760"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "756",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "756",
+          "7E1"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "760",
+          "7E1"
+        ],
+        "matched": 3,
+        "of": 3
+      },
+      {
+        "repo": "Volvo-V60",
+        "year": 2015,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 3,
+        "of": 3
+      }
+    ],
+    "notTrackingPairs": [
+      {
+        "repo": "Acura-TLX",
+        "year": 2025,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 0,
+        "of": 10,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Audi-Q2",
+        "year": 2018,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Audi-Q5",
+        "year": 2021,
+        "modules": [
+          "714",
+          "7E0"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Audi-S3",
+        "year": 2016,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 0,
+        "of": 6,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "BMW-3-Series",
+        "year": 2016,
+        "modules": [
+          "6F1/18",
+          "6F1/60"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2021,
+        "modules": [
+          "6F1/12",
+          "6F1/18"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2021,
+        "modules": [
+          "6F1/12",
+          "6F1/40"
+        ],
+        "matched": 0,
+        "of": 6,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "BMW-5-Series",
+        "year": 2021,
+        "modules": [
+          "6F1/12",
+          "6F1/60"
+        ],
+        "matched": 0,
+        "of": 10,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Ford-F-150-Lightning",
+        "year": 2022,
+        "modules": [
+          "720",
+          "730"
+        ],
+        "matched": 0,
+        "of": 6,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Ford-F-150-Lightning",
+        "year": 2022,
+        "modules": [
+          "720",
+          "760"
+        ],
+        "matched": 0,
+        "of": 6,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Ford-F-150-Lightning",
+        "year": 2022,
+        "modules": [
+          "730",
+          "7E0"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Ford-F-150-Lightning",
+        "year": 2022,
+        "modules": [
+          "760",
+          "7E0"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Ford-Mustang-Mach-E",
+        "year": 2023,
+        "modules": [
+          "730",
+          "7E0"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Honda-Civic",
+        "year": 2016,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 0,
+        "of": 6,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Honda-Civic",
+        "year": 2022,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 0,
+        "of": 7,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Honda-Civic",
+        "year": 2025,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Honda-Fit",
+        "year": 2022,
+        "modules": [
+          "DA0E",
+          "DA60"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Honda-Pilot",
+        "year": 2023,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Honda-Pilot",
+        "year": 2025,
+        "modules": [
+          "DA10",
+          "DA60"
+        ],
+        "matched": 0,
+        "of": 8,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Kia-Rio",
+        "year": 2021,
+        "modules": [
+          "7C6",
+          "7E0"
+        ],
+        "matched": 0,
+        "of": 11,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Kia-Rio",
+        "year": 2022,
+        "modules": [
+          "7C6",
+          "7E0"
+        ],
+        "matched": 0,
+        "of": 8,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Lexus-IS",
+        "year": 2022,
+        "modules": [
+          "701",
+          "7E0"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "MINI-Cooper",
+        "year": 2021,
+        "modules": [
+          "6F1/12",
+          "6F1/40"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "MINI-Cooper",
+        "year": 2021,
+        "modules": [
+          "6F1/12",
+          "6F1/60"
+        ],
+        "matched": 0,
+        "of": 8,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "MINI-Cooper",
+        "year": 2021,
+        "modules": [
+          "6F1/40",
+          "6F1/60"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Seat-Mii",
+        "year": 2019,
+        "modules": [
+          "714",
+          "7E0"
+        ],
+        "matched": 0,
+        "of": 8,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Seat-Tarraco",
+        "year": 2022,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 0,
+        "of": 10,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Subaru-Impreza",
+        "year": 2024,
+        "modules": [
+          "7A2",
+          "7E0"
+        ],
+        "matched": 0,
+        "of": 8,
+        "milesVsKilometres": 4
+      },
+      {
+        "repo": "Toyota-GR-Corolla",
+        "year": 2023,
+        "modules": [
+          "700",
+          "7B1"
+        ],
+        "matched": 0,
+        "of": 7,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Toyota-Prius",
+        "year": 2016,
+        "modules": [
+          "700",
+          "7E0"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Toyota-Prius",
+        "year": 2016,
+        "modules": [
+          "7D2",
+          "7E0"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Toyota-Prius",
+        "year": 2024,
+        "modules": [
+          "700",
+          "7D2"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Toyota-Sienna-Hybrid",
+        "year": 2023,
+        "modules": [
+          "700",
+          "7D2"
+        ],
+        "matched": 0,
+        "of": 6,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Volkswagen-Jetta",
+        "year": 2016,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 0,
+        "of": 9,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Volkswagen-Jetta",
+        "year": 2020,
+        "modules": [
+          "714",
+          "7E0"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Volkswagen-Passat",
+        "year": 2019,
+        "modules": [
+          "714",
+          "7E0"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Volkswagen-Passat",
+        "year": 2019,
+        "modules": [
+          "714",
+          "7E1"
+        ],
+        "matched": 0,
+        "of": 10,
+        "milesVsKilometres": 6
+      },
+      {
+        "repo": "Volkswagen-Passat",
+        "year": 2022,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Volkswagen-Polo",
+        "year": 2021,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 0,
+        "of": 7,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Volkswagen-T-Roc",
+        "year": 2021,
+        "modules": [
+          "714",
+          "7E0"
+        ],
+        "matched": 0,
+        "of": 8,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Volkswagen-T-Roc",
+        "year": 2021,
+        "modules": [
+          "714",
+          "7E1"
+        ],
+        "matched": 0,
+        "of": 12,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Volkswagen-T6-Transporter",
+        "year": 2021,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 0,
+        "of": 5,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Volkswagen-Tiguan",
+        "year": 2018,
+        "modules": [
+          "714",
+          "7E1"
+        ],
+        "matched": 0,
+        "of": 17,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Volkswagen-Tiguan",
+        "year": 2018,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 0,
+        "of": 13,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Volkswagen-Tiguan",
+        "year": 2023,
+        "modules": [
+          "714",
+          "7E0"
+        ],
+        "matched": 0,
+        "of": 6,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Volkswagen-Tiguan",
+        "year": 2023,
+        "modules": [
+          "714",
+          "7E1"
+        ],
+        "matched": 0,
+        "of": 6,
+        "milesVsKilometres": 0
+      },
+      {
+        "repo": "Volkswagen-Tiguan",
+        "year": 2023,
+        "modules": [
+          "7E0",
+          "7E1"
+        ],
+        "matched": 0,
+        "of": 9,
+        "milesVsKilometres": 0
+      }
+    ]
+  },
+  "note": "recordedYears: model years with at least one recorded reply for the signal in tests/test_cases/<year>/commands. supportedYears: command_support.yaml lists the signal. verifiedYears: applicable years that are not debug years."
+}

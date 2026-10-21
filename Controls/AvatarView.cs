@@ -24,6 +24,10 @@ public sealed class AvatarView : ContentView
     public static readonly BindableProperty AvatarUrlProperty = BindableProperty.Create(
         nameof(AvatarUrl), typeof(string), typeof(AvatarView), string.Empty, propertyChanged: (b, _, _) => ((AvatarView)b).Apply());
 
+    /// <summary>A picture file on this phone (the person's own picture, kept locally); it wins over <see cref="AvatarUrl"/> while the file exists.</summary>
+    public static readonly BindableProperty LocalFilePathProperty = BindableProperty.Create(
+        nameof(LocalFilePath), typeof(string), typeof(AvatarView), string.Empty, propertyChanged: (b, _, _) => ((AvatarView)b).Apply());
+
     public static readonly BindableProperty SizeProperty = BindableProperty.Create(
         nameof(Size), typeof(double), typeof(AvatarView), 38d, propertyChanged: (b, _, _) => ((AvatarView)b).Apply());
 
@@ -57,6 +61,7 @@ public sealed class AvatarView : ContentView
 
     public string Name { get => (string)GetValue(NameProperty); set => SetValue(NameProperty, value); }
     public string AvatarUrl { get => (string)GetValue(AvatarUrlProperty); set => SetValue(AvatarUrlProperty, value); }
+    public string LocalFilePath { get => (string)GetValue(LocalFilePathProperty); set => SetValue(LocalFilePathProperty, value); }
     public double Size { get => (double)GetValue(SizeProperty); set => SetValue(SizeProperty, value); }
 
     /// <summary>The colour of a name (stable between runs and devices).</summary>
@@ -78,8 +83,11 @@ public sealed class AvatarView : ContentView
         _frame.BackgroundColor = ColorFor(Name);
         _car.WidthRequest = _car.HeightRequest = size * 0.6;
 
-        var hasPicture = Uri.TryCreate(AvatarUrl, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps;
-        _image.Source = hasPicture ? ImageSource.FromUri(uri) : null;
+        var hasLocal = !string.IsNullOrWhiteSpace(LocalFilePath) && File.Exists(LocalFilePath);
+        var hasPicture = hasLocal || (Uri.TryCreate(AvatarUrl, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps);
+        _image.Source = hasLocal
+            ? ImageSource.FromFile(LocalFilePath)
+            : hasPicture && Uri.TryCreate(AvatarUrl, UriKind.Absolute, out var remote) ? ImageSource.FromUri(remote) : null;
         _image.IsVisible = hasPicture;
         SemanticProperties.SetDescription(this, string.IsNullOrWhiteSpace(Name) ? "Profile photo" : Name);
     }

@@ -176,7 +176,7 @@ ul.ck li:before{content:"";position:absolute;left:1px;top:.5em;width:8px;height:
 
         return $$"""
 <!doctype html><html lang="ka"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>OBD360 PRO</title>{{Style}}
+<title>OBD360 PRO</title><link rel="icon" type="image/png" href="/assets/favicon.png?v=2"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=2">{{Style}}
 <script>
 // Lari for Georgia, US dollars everywhere else (charged in USD by the bank).
 (function(){var tz='';try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'';}catch(e){}
@@ -185,7 +185,7 @@ var ge=tz==='Asia/Tbilisi'||langs.some(function(l){return l.indexOf('ka')===0;})
 if(location.hash==='#usd')ge=false;
 var h=document.documentElement;h.classList.add(ge?'is-ge':'is-intl');h.lang=ge?'ka':'en';})();
 </script></head><body><main>
-<a class="logo" href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text);font-weight:800;font-size:15px;margin-bottom:10px"><img src="/assets/logo.png" alt="" width="25" height="25"><span>OBD360</span></a>
+<a class="logo" href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text);font-weight:800;font-size:15px;margin-bottom:10px"><img src="/assets/logo.png?v=2" alt="" width="25" height="25"><span>OBD360</span></a>
 <h1>OBD360 PRO</h1>
 <div class="muted">{{T("აირჩიე გეგმა და ჩართე შენს OBD360 ანგარიშზე", "Choose a plan for your OBD360 account")}}</div>
 {{unavailable}}
@@ -259,8 +259,8 @@ b.disabled=false;});
     /// <summary>"My subscription": status, payment history, cancel and pay-now.</summary>
     public static string SubscriptionPage(LegalInfo legal) => $$"""
 <!doctype html><html lang="ka"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>OBD360 · ჩემი გამოწერა</title>{{Style}}</head><body><main>
-<a class="logo" href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text);font-weight:800;font-size:15px;margin-bottom:10px"><img src="/assets/logo.png" alt="" width="25" height="25"><span>OBD360</span></a>
+<title>OBD360 · ჩემი გამოწერა</title><link rel="icon" type="image/png" href="/assets/favicon.png?v=2"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=2">{{Style}}</head><body><main>
+<a class="logo" href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text);font-weight:800;font-size:15px;margin-bottom:10px"><img src="/assets/logo.png?v=2" alt="" width="25" height="25"><span>OBD360</span></a>
 <h1>ჩემი გამოწერა</h1>
 <div class="muted">My subscription · OBD360 PRO</div>
 <form id="login">
@@ -327,8 +327,8 @@ try{render(await call('/api/web/subscription/cancel'));m.className='msg ok';m.te
     public static string DeleteAccountPage(LegalInfo legal, string formToken) => $$"""
 <!doctype html><html lang="ka"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="index,follow">
-<title>OBD360 · ანგარიშის წაშლა · Delete account</title>{{Style}}</head><body><main>
-<a class="logo" href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text);font-weight:800;font-size:15px;margin-bottom:10px"><img src="/assets/logo.png" alt="" width="25" height="25"><span>OBD360</span></a>
+<title>OBD360 · ანგარიშის წაშლა · Delete account</title><link rel="icon" type="image/png" href="/assets/favicon.png?v=2"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=2">{{Style}}</head><body><main>
+<a class="logo" href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text);font-weight:800;font-size:15px;margin-bottom:10px"><img src="/assets/logo.png?v=2" alt="" width="25" height="25"><span>OBD360</span></a>
 <h1>ანგარიშის წაშლა</h1>
 <div class="muted">Delete your OBD360 account</div>
 
@@ -439,7 +439,7 @@ go.disabled=false;});
 
         return $$"""
 <!doctype html><html lang="{{(en ? "en" : "ka")}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">{{refresh}}
-<title>OBD360 PRO</title>{{Style}}</head><body><main class="center">
+<title>OBD360 PRO</title><link rel="icon" type="image/png" href="/assets/favicon.png?v=2"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=2">{{Style}}</head><body><main class="center">
 <div class="big {{cls}}">{{icon}}</div><h1>{{title}}</h1><p class="muted">{{text}}</p>{{renewText}}
 <p><a href="/pro" class="muted">← OBD360 PRO</a></p></main></body></html>
 """;
@@ -482,7 +482,7 @@ go.disabled=false;});
 
         return $$"""
 <!doctype html><html lang="ka"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">{{refresh}}
-<title>OBD360 · VIN</title>{{Style}}</head><body><main class="center">
+<title>OBD360 · VIN</title><link rel="icon" type="image/png" href="/assets/favicon.png?v=2"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=2">{{Style}}</head><body><main class="center">
 <div class="big {{cls}}">{{icon}}</div><h1>{{title}}</h1><p class="muted">{{text}}</p>
 <p class="muted">ეს ფანჯარა შეგიძლია დახურო.</p></main></body></html>
 """;

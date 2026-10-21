@@ -217,6 +217,7 @@ internal static partial class LanguagePacks
         ["MODE 06 MONITORS"] = "Mode 06 monitörleri",
         ["Mode 06 results appear after the test."] = "Mode 06 sonuçları testten sonra görünür.",
         ["Module scan results"] = "Modül tarama sonuçları",
+        ["Moped"] = "Moped",
         ["Motorcycle"] = "Motosiklet",
         ["Motorcycle / Moped scanner"] = "Motosiklet / Moped tarayıcısı",
         ["Motorcycle / Scooter / Moped"] = "Motosiklet / Skuter / Moped",

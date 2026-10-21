@@ -768,7 +768,7 @@ public sealed partial class LocalizationService
             ["Supported PIDs"] = "მხარდაჭერილი PID-ები",
             ["Terms of Use"] = "გამოყენების პირობები",
             ["Test Results"] = "ტესტის შედეგები",
-            ["Throttle"] = "Throttle",
+            ["Throttle"] = "დროსელი",
             ["Time since DTC clear"] = "დრო DTC-ის გასუფთავების შემდეგ",
             ["Time with MIL ON"] = "დრო ანთებული MIL-ით",
             ["Trip Analytics"] = "მგზავრობის ანალიტიკა",
@@ -1908,6 +1908,12 @@ public sealed partial class LocalizationService
     private static readonly Dictionary<string, string> UiEnToKa =
         new(StringComparer.OrdinalIgnoreCase)
         {
+            // Page titles set directly in a ViewModel constructor (e.g. ModuleLiveDataViewModel.cs,
+            // PrePurchaseViewModel.cs, PrePurchaseAiViewModel.cs) with only the English text — the Georgian→English
+            // pair exists elsewhere (KaToEn/UiKaToEn) but translating back to Georgian needs its own entry here.
+            ["Module Live Data"] = "მოდულების ცოცხალი მონაცემები",
+            ["Pre-purchase check"] = "ყიდვისწინა შემოწმება",
+            ["AI consultation"] = "AI კონსულტაცია",
             ["TEST"] = "ტესტი",
             ["DETECTION STATUS"] = "აღმოჩენის სტატუსი",
             ["Universal OBD-II"] = "უნივერსალური OBD-II",
@@ -2082,7 +2088,6 @@ public sealed partial class LocalizationService
         ("კოდი წაკითხულ სერვისებში არ აღმოჩნდა, მაგრამ DTC წაკითხვა ნაწილობრივ დასრულდა ({0}/{1}).", "No code in the services read, but DTC reading finished only partly ({0}/{1})."),
         ("მიზეზი: {0}", "Reason: {0}"),
         ("მოგზაურობა შენახულია: {0} · {1}.", "Trip saved: {0} · {1}."),
-        ("ნაპოვნია {0} OBD-II ადაპტერი.", "Found {0} OBD-II adapters."),
         ("ნაპოვნია {0} კოდი", "Found {0} codes"),
         ("რეალურ დროში ახლდება · {0}", "Updating in real time · {0}"),
         ("რეალური ECU პასუხი · Vehicle Speed PID 01 0D · {0}", "Real ECU response · Vehicle Speed PID 01 0D · {0}"),

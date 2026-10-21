@@ -87,6 +87,8 @@ public partial class AccountPage : ContentPage
         UpdateSignInCards(signedIn);
         EmailValueLabel.Text = _account.Email;
         AccountAvatar.Name = _account.Email;
+        // The kept copy of the own picture shows immediately, also offline; the server answer below confirms or clears it.
+        AccountAvatar.LocalFilePath = signedIn ? AvatarService.LocalFileFor(_account.Email) : string.Empty;
         if (signedIn)
         {
             _ = RefreshEmailStatusAsync();
@@ -120,6 +122,17 @@ public partial class AccountPage : ContentPage
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
                 _hasAvatar = info.HasAvatar;
+                if (info.HasAvatar)
+                {
+                    AccountAvatar.LocalFilePath = AvatarService.LocalFileFor(_account.Email);
+                }
+                else
+                {
+                    // Removed on the server (another phone, or the check refused it): the kept copy goes too.
+                    AvatarService.PruneLocal(_account.Email);
+                    AccountAvatar.LocalFilePath = string.Empty;
+                }
+
                 AccountAvatar.AvatarUrl = string.Equals(info.Status, "Approved", StringComparison.OrdinalIgnoreCase) ? info.AvatarUrl ?? string.Empty : string.Empty;
                 AvatarHintLabel.Text = string.Equals(info.Status, "Pending", StringComparison.OrdinalIgnoreCase)
                     ? L("ფოტო შენახულია და დადასტურებას ელოდება", "Photo saved, waiting for approval")
@@ -175,8 +188,25 @@ public partial class AccountPage : ContentPage
             if (jpeg is null)
                 return;
 
+            // The chosen picture appears at once; the upload runs behind it.
+            var email = _account.Email;
+            var candidate = AvatarService.SaveLocalCandidate(email, jpeg);
+            if (candidate.Length > 0)
+                AccountAvatar.LocalFilePath = candidate;
+
             ShowStatus(L("ფოტო იტვირთება…", "Uploading photo…"), error: false);
             var result = await _avatars.UploadAsync(jpeg);
+            if (result.Outcome is AvatarOutcome.Added or AvatarOutcome.WaitingForApproval)
+            {
+                if (candidate.Length > 0)
+                    AvatarService.PruneLocal(email, candidate);
+            }
+            else
+            {
+                AvatarService.DeleteLocalFile(candidate);
+                AccountAvatar.LocalFilePath = AvatarService.LocalFileFor(email);
+            }
+
             switch (result.Outcome)
             {
                 case AvatarOutcome.Added:
@@ -188,6 +218,7 @@ public partial class AccountPage : ContentPage
                     _hasAvatar = true;
                     AvatarHintLabel.Text = L("ფოტო შენახულია და დადასტურებას ელოდება", "Photo saved, waiting for approval");
                     ShowStatus(L("ფოტო შენახულია. ის სხვებს დადასტურების შემდეგ დაუჩანს.", "Photo saved. Others will see it after it is approved."), error: false);
+                    _ = WaitForApprovalAsync();
                     break;
                 case AvatarOutcome.Rejected:
                     ShowStatus(L("ეს ფოტო ვერ გამოვიყენებთ. აირჩიე სხვა.", "This photo can't be used. Choose another one."), error: true);
@@ -209,6 +240,52 @@ public partial class AccountPage : ContentPage
         }
     }
 
+    /// <summary>After "saved, waiting": the server finishes its check in the background. Look a few times and show the outcome.</summary>
+    private async Task WaitForApprovalAsync()
+    {
+        try
+        {
+            for (var attempt = 0; attempt < 6; attempt++)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5));
+                if (!_account.IsSignedIn)
+                    return;
+
+                var info = await _avatars.GetMineAsync();
+                if (info is null)
+                    continue;
+
+                if (!info.HasAvatar)
+                {
+                    await MainThread.InvokeOnMainThreadAsync(() =>
+                    {
+                        _hasAvatar = false;
+                        AvatarService.PruneLocal(_account.Email);
+                        AccountAvatar.LocalFilePath = string.Empty;
+                        AvatarHintLabel.Text = L("ფოტოს შეცვლა", "Change photo");
+                        ShowStatus(L("ეს ფოტო ვერ გამოვიყენეთ. აირჩიე სხვა.", "This photo can't be used. Choose another one."), error: true);
+                    });
+                    return;
+                }
+
+                if (string.Equals(info.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+                {
+                    await MainThread.InvokeOnMainThreadAsync(() =>
+                    {
+                        AccountAvatar.AvatarUrl = info.AvatarUrl ?? string.Empty;
+                        AvatarHintLabel.Text = L("ფოტოს შეცვლა", "Change photo");
+                        ShowStatus(L("ფოტო დაემატა.", "Photo added."), error: false);
+                    });
+                    return;
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            CarScanner.Services.CommandErrors.Report(exception, "AccountPage.WaitForApprovalAsync");
+        }
+    }
+
     private async Task RemoveAvatarAsync()
     {
         _busy = true;
@@ -217,6 +294,8 @@ public partial class AccountPage : ContentPage
             if (await _avatars.DeleteAsync())
             {
                 _hasAvatar = false;
+                AvatarService.PruneLocal(_account.Email);
+                AccountAvatar.LocalFilePath = string.Empty;
                 AccountAvatar.AvatarUrl = string.Empty;
                 AvatarHintLabel.Text = L("ფოტოს შეცვლა", "Change photo");
                 ShowStatus(L("ფოტო წაიშალა.", "Photo removed."), error: false);

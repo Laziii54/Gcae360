@@ -27,6 +27,40 @@ public static class AvatarModeration
         "insulting or abusive text, or any content a reasonable person would find offensive. " +
         "SAFE otherwise (cars, people in normal clothing, logos, animals, landscapes, drawings and similar are SAFE).";
 
+    /// <summary>How long the upload request waits for the verdict before it stores the picture hidden and lets the check finish later.</summary>
+    public static readonly TimeSpan FastWait = TimeSpan.FromSeconds(8);
+
+    /// <summary>The check never runs longer than this in total (all models together).</summary>
+    public static readonly TimeSpan TotalBudget = TimeSpan.FromSeconds(40);
+
+    /// <summary>
+    /// The check on its own clock: at most <paramref name="budget"/> in total, independent of any request, never throws.
+    /// Running out of time (or any other failure) means <see cref="AvatarVerdict.Unavailable"/>, never "safe".
+    /// </summary>
+    public static async Task<AvatarVerdict> CheckWithBudgetAsync(
+        HttpClient client,
+        string apiKey,
+        byte[] jpeg,
+        ILogger logger,
+        TimeSpan budget)
+    {
+        using var cts = new CancellationTokenSource(budget);
+        try
+        {
+            return await CheckAsync(client, apiKey, jpeg, logger, cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            logger.LogWarning("Avatar check ran out of time ({Seconds} s).", (int)budget.TotalSeconds);
+            return AvatarVerdict.Unavailable;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Avatar check failed.");
+            return AvatarVerdict.Unavailable;
+        }
+    }
+
     public static async Task<AvatarVerdict> CheckAsync(
         HttpClient client,
         string apiKey,

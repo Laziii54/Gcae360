@@ -14,8 +14,8 @@
             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Margin="0,0,0,20">
                 <Image
                     Source="obd360_mark.png"
-                    WidthRequest="63"
-                    HeightRequest="46"
+                    WidthRequest="52"
+                    HeightRequest="52"
                     Aspect="AspectFit"
                     VerticalOptions="Center"
                     SemanticProperties.Description="OBD360" />

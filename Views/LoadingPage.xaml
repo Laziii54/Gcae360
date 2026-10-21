@@ -3,12 +3,12 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     x:Class="CarScanner.Views.LoadingPage"
-    BackgroundColor="#000000"
+    BackgroundColor="#002B69"
     Shell.NavBarIsVisible="False"
     NavigationPage.HasNavigationBar="False">
 
-    <!-- Same colour as the splash screen, so the start is one smooth picture. -->
-    <Grid x:Name="Root" BackgroundColor="#000000">
+    <!-- Same colour as the splash screen (MauiSplashScreen Color in CarScanner.csproj), so the start is one smooth picture. -->
+    <Grid x:Name="Root" BackgroundColor="#002B69">
         <Image
             x:Name="Logo"
             Source="obd360_loading.png"

@@ -142,7 +142,7 @@ public sealed class VehicleReportService
 
             SectionAdded?.Invoke(this, section);
             ReportChanged?.Invoke(this, EventArgs.Empty);
-            ReportToast.Show(L($"დაემატა ანგარიშს · {report.Sections.Count} შემოწმება", $"Added to the report · {report.Sections.Count} checks"));
+            ReportToast.Show(_localization.Translate(L($"დაემატა ანგარიშს · {report.Sections.Count} შემოწმება", $"Added to the report · {report.Sections.Count} checks")));
         }
         catch (Exception ex)
         {

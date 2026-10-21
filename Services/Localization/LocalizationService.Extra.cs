@@ -331,7 +331,12 @@ public sealed partial class LocalizationService
             ["ჰიბრიდი / Plug-in"] = "Hybrid / Plug-in",
             ["დროსელი"] = "Throttle",
             ["უკან"] = "Back",
-            ["ანგარიში"] = "Account",
+            ["პასუხი არასრულია"] = "answered, code list incomplete",
+            // "ანგარიში" = "Account" is intentionally not registered here: UiKaToEn already maps it to "Report"
+            // (used by VehicleReportPage) and is checked first in TranslateExact/TranslateWord, so an "Account"
+            // entry for the same exact word would always be unreachable — a trap for the next person who adds a
+            // bare "Account" literal expecting this word to resolve to it. Nothing in the app currently needs
+            // "ანგარიში" to mean "Account"; AccountPage already uses its own, unambiguous Georgian/English pairs.
             ["GM HV: მანქანა CAN პროტოკოლზე არ არის — პირდაპირი წაკითხვა გამოტოვებულია."] = "GM HV: the car is not on a CAN protocol — direct reading skipped.",
             ["Hyundai/Kia HV: მანქანა CAN პროტოკოლზე არ არის — პირდაპირი წაკითხვა გამოტოვებულია."] = "Hyundai/Kia HV: the car is not on a CAN protocol — direct reading skipped.",
             ["Leaf HV: მანქანა CAN პროტოკოლზე არ არის — პირდაპირი წაკითხვა გამოტოვებულია."] = "Leaf HV: the car is not on a CAN protocol — direct reading skipped.",
@@ -694,11 +699,27 @@ public sealed partial class LocalizationService
             ["ჰიბრიდის / კოლოფის მართვა"] = "Hybrid / transmission control",
             ["ენერგიის მოდული"] = "Energy module",
             ["ბატარეის მართვა"] = "Battery control",
+            // Adapter Center: the opt-in raw capture (support) and the copy-log message that says it was included.
+            ["Raw capture: გამორთულია — დასაწყებად დააჭირე (დიაგნოსტიკისთვის)"] = "Raw capture: OFF — tap to start (for support)",
+            ["კავშირის ლოგი და raw capture დაკოპირდა — გამომიგზავნე."] = "Connection log and raw capture copied — send it to me.",
+            // Hybrid battery: why the check of a Volt / Bolt ended without a result (see HybridReadDiagnosis).
+            ["ბატარეის მოდულმა მოთხოვნებს არ უპასუხა. მიზეზი რამდენიმე შეიძლება იყოს — მაგალითად, მანქანა ჩართული (READY) არ არის ან ადაპტერს ამ მოდულთან წვდომა არ აქვს. შეამოწმე მანქანის მდგომარეობა და სცადე თავიდან."] =
+                "The battery module did not respond to the requests. There can be several causes — for example the car is not switched on (READY), or the adapter cannot reach this module. Check the car's state and try again.",
+            ["ადაპტერმა პასუხი სხვა მოდულიდან დააბრუნა და არა ბატარეის მოდულიდან. შესაძლოა ადაპტერი კონკრეტულ მოდულთან მიმართვას ვერ უჭერს მხარს."] =
+                "The adapter returned a reply from another module, not from the battery module. It may not support addressing a specific module.",
+            ["ბატარეის მოდულიდან პასუხი მოვიდა, მაგრამ მისი წაკითხვა ვერ მოხერხდა (დაზიანებული ან მოულოდნელი ფორმატი). სცადე თავიდან; თუ განმეორდა, გამომიგზავნე კავშირის ლოგი „ადაპტერის“ გვერდიდან."] =
+                "A reply came back from the battery module, but it could not be read (damaged or unexpected format). Try again; if it keeps happening, send the connection log from the Adapter page.",
+            ["შემოწმების დროს ადაპტერთან კავშირი გაწყდა. თავიდან დააკავშირე ადაპტერი და სცადე ისევ."] =
+                "The connection to the adapter was lost during the check. Reconnect the adapter and try again.",
             ["მოდულებმა არ უპასუხეს. ჩართე მანქანა (ანთება ან READY) და სცადე თავიდან."] = "No module answered. Turn the car on (ignition or READY) and try again.",
         };
 
     private static readonly (string Ka, string En)[] ExtraTemplateItems =
     {
+        ("Raw capture: ჩართულია, დარჩა დაახლოებით {0} წთ — გასაჩერებლად დააჭირე", "Raw capture: ON, about {0} min left — tap to stop"),
+        ("ადაპტერი არ იღებს ბატარეის შემოწმებისთვის საჭირო პარამეტრს ({0}). სცადე სხვა ადაპტერი.", "This adapter does not accept a setting the battery check needs ({0}). Try a different adapter."),
+        ("ბატარეის 96 უჯრედიდან მხოლოდ {0}-მა დააბრუნა სწორი მნიშვნელობა — საიმედო შედეგისთვის ეს საკმარისი არ არის. სცადე თავიდან; თუ ერთი და იგივე უჯრედები აკლია, გამომიგზავნე კავშირის ლოგი „ადაპტერის“ გვერდიდან.",
+            "Only {0} of the battery's 96 cells returned a valid value — not enough for a reliable result. Try again; if the same cells keep missing, send the connection log from the Adapter page."),
         ("ჟანგბადის სენსორი {0} — ძაბვა", "O2 sensor {0} voltage"),
         ("ჟანგბადის სენსორი {0} — ლამბდა", "O2 sensor {0} lambda"),
         ("ჟანგბადის სენსორი {0} — ლამბდა (ფართოზოლოვანი)", "O2 sensor {0} lambda (wide-band)"),
@@ -835,9 +856,14 @@ public sealed partial class LocalizationService
         ("{0} წმ", "{0} s"),
         ("{0} უჯრედი", "{0} cells"),
         ("ტევადობა {0} Ah · ახალზე ≈ {1} Ah", "Capacity {0} Ah · when new ≈ {1} Ah"),
-        ("{0}: ვადა გავიდა, დროა შეცვალო.", "{0}: overdue, time to replace it."),
+        ("{0}: ვადა გავიდა, დროა შეცვალო.", "{0}: overdue. Time to replace it."),
         ("{0}: მალე შესაცვლელია (დარჩა {1}).", "{0}: due soon ({1} left)."),
         ("{0}: შეცვლის ვადაა {1}.", "{0}: replacement is due {1}."),
+        ("ხვალ შესასრულებელია: {0}", "Due tomorrow: {0}"),
+        ("დღეს შესასრულებელია: {0}", "Due today: {0}"),
+        ("3 დღეში {0} განახლდება: {1}.", "{0} renews in 3 days: {1}."),
+        ("3 დღეში {0} განახლდება.", "{0} renews in 3 days."),
+        ("პასუხი არასრულია · {0} შეცდომა მიღებული", "answered, code list incomplete · {0} fault(s) received"),
         ("≤{0} წ.", "≤{0} yrs"),
         (">{0} წ.", ">{0} yrs"),
         ("ჰიბრიდი −{0}%", "Hybrid −{0}%"),

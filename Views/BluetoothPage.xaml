@@ -9,12 +9,12 @@
     x:Class="CarScanner.Views.BluetoothPage"
     x:DataType="vm:BluetoothViewModel"
     BackgroundColor="{DynamicResource PageBg}"
-    Title="OBD კავშირი">
+    Title="{Binding PageTitleText}">
 
     <ScrollView>
         <VerticalStackLayout Padding="16,14,16,32" Spacing="12">
 
-            <Label Text="OBD კავშირი" Style="{StaticResource PageTitleStyle}" />
+            <Label Text="{Binding PageTitleText}" Style="{StaticResource PageTitleStyle}" />
 
             <!-- Bluetooth / Wi-Fi segmented switch -->
             <Border Style="{StaticResource ListCardStyle}" Padding="3">
@@ -65,7 +65,7 @@
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
                     <BoxView WidthRequest="10" HeightRequest="10" CornerRadius="5" Color="{Binding StatusColor}" VerticalOptions="Center" />
                     <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                        <Label Text="კავშირის სტატუსი" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                        <Label Text="{Binding ConnectionStatusLabelText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                         <Label
                             AutomationId="ConnectionStatusLabel"
                             Text="{Binding Status}"
@@ -86,14 +86,14 @@
             <VerticalStackLayout IsVisible="{Binding IsBluetoothTab}" Spacing="12">
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
                     <Button
-                        Text="ძებნა"
+                        Text="{Binding ScanButtonText}"
                         Command="{Binding StartScanCommand}"
                         Style="{StaticResource PrimaryButtonStyle}"
                         CornerRadius="12"
                         HeightRequest="48" />
                     <Button
                         Grid.Column="1"
-                        Text="გათიშვა"
+                        Text="{Binding DisconnectButtonText}"
                         Command="{Binding DisconnectCommand}"
                         BackgroundColor="Transparent"
                         TextColor="{DynamicResource TextColor}"
@@ -112,7 +112,7 @@
                         WidthRequest="20"
                         VerticalOptions="Center" />
                     <Label
-                        Text="ვეძებ OBD-II ადაპტერებს..."
+                        Text="{Binding SearchingText}"
                         FontSize="13"
                         TextColor="{DynamicResource SubTextColor}"
                         VerticalOptions="Center" />
@@ -122,16 +122,16 @@
                     <!-- Negative top margin hides the first row's top divider under the card edge -->
                     <CollectionView ItemsSource="{Binding Devices}" SelectionMode="None" Margin="0,-1,0,0">
                         <CollectionView.EmptyView>
-                            <VerticalStackLayout Padding="16,24" Spacing="6">
+                            <VerticalStackLayout Padding="16,24" Spacing="6" BindingContext="{Binding Source={RelativeSource AncestorType={x:Type vm:BluetoothViewModel}}}">
                                 <Label
-                                    Text="OBD-II ადაპტერი ვერ მოიძებნა"
+                                    Text="{Binding EmptyStateTitleText}"
                                     TextColor="{DynamicResource TextColor}"
                                     FontSize="15"
                                     FontAttributes="Bold"
                                     HorizontalOptions="Center"
                                     HorizontalTextAlignment="Center" />
                                 <Label
-                                    Text="ჩართე მანქანის კონტაქტი და დარწმუნდი, რომ OBD-II ადაპტერი შეერთებულია."
+                                    Text="{Binding EmptyStateHintText}"
                                     TextColor="{DynamicResource SubTextColor}"
                                     FontSize="12"
                                     HorizontalOptions="Center"
@@ -159,7 +159,7 @@
                                             MinimumWidthRequest="150" />
                                         <Button
                                             Grid.Column="2"
-                                            Text="დაკავშირება"
+                                            Text="{Binding x:DataType=vm:BluetoothViewModel, Source={RelativeSource AncestorType={x:Type vm:BluetoothViewModel}}, Path=ConnectButtonText}"
                                             Command="{Binding x:DataType=vm:BluetoothViewModel, Source={RelativeSource AncestorType={x:Type vm:BluetoothViewModel}}, Path=ConnectCommand}"
                                             CommandParameter="{Binding .}"
                                             BackgroundColor="Transparent"
@@ -195,13 +195,13 @@
 
             <!-- Wi-Fi ELM327 TCP tab -->
             <VerticalStackLayout IsVisible="{Binding IsWifiTab}" Spacing="12">
-                <Label Text="Wi-Fi OBD ადაპტერი" Style="{StaticResource SectionCaptionStyle}" />
+                <Label Text="{Binding WifiSectionTitleText}" Style="{StaticResource SectionCaptionStyle}" />
 
                 <Border Style="{StaticResource ListCardStyle}">
                     <VerticalStackLayout Spacing="0">
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,4">
                             <Path Data="M3,9 C8,4 16,4 21,9 M6,12.5 C9.5,9 14.5,9 18,12.5 M9,16 C10.5,14.5 13.5,14.5 15,16 M12,19 L12,19.5" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="IP მისამართი" Style="{StaticResource RowTitleStyle}" />
+                            <Label Grid.Column="1" Text="{Binding IpAddressLabelText}" Style="{StaticResource RowTitleStyle}" />
                             <Entry
                                 Grid.Column="2"
                                 Text="{Binding WifiIpAddress}"
@@ -219,7 +219,7 @@
                         <BoxView Style="{StaticResource RowDividerStyle}" />
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="14,4">
                             <Path Data="M6,4 L6,20 M18,4 L18,20 M6,9 L18,9 M6,15 L18,15" Style="{StaticResource RowIconStyle}" />
-                            <Label Grid.Column="1" Text="TCP პორტი" Style="{StaticResource RowTitleStyle}" />
+                            <Label Grid.Column="1" Text="{Binding TcpPortLabelText}" Style="{StaticResource RowTitleStyle}" />
                             <Entry
                                 Grid.Column="2"
                                 Text="{Binding WifiPort}"
@@ -253,7 +253,7 @@
                     HorizontalOptions="Center" />
 
                 <Button
-                    Text="დაკავშირება"
+                    Text="{Binding ConnectWifiButtonText}"
                     Command="{Binding ConnectWifiCommand}"
                     IsVisible="{Binding IsWifiConnected, Converter={StaticResource InverseBoolConverter}}"
                     IsEnabled="{Binding IsWifiConnecting, Converter={StaticResource InverseBoolConverter}}"
@@ -261,7 +261,7 @@
                     CornerRadius="12" />
 
                 <Button
-                    Text="გათიშვა"
+                    Text="{Binding DisconnectWifiButtonText}"
                     Command="{Binding DisconnectWifiCommand}"
                     IsVisible="{Binding IsWifiConnected}"
                     BackgroundColor="Transparent"

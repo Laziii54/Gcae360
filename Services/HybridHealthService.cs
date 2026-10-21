@@ -108,14 +108,25 @@ public sealed partial class HybridHealthService
             // Volt / Bolt (also recognised from the VIN when the model name is missing).
             // Any other GM car answers nothing within 3 cells, so this costs ~1 s.
             progress?.Report("ბატარეის უჯრედების კითხვა…");
-            pack = await ReadGmPackAsync(vehicle, GmKind(vehicle) == true, log, progress, token).ConfigureAwait(false);
+            try
+            {
+                pack = await ReadGmPackAsync(vehicle, GmKind(vehicle) == true, log, progress, token).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (HybridReadDiagnosis.FromException(ex) is { } thrown)
+            {
+                // A refused setup command or a lost link says what it is; any other exception (and cancellation) still
+                // reaches the page's own handler as before.
+                return Empty(profile, vehicleName, HybridReadDiagnosis.StatusText(thrown), ValidationText(profile, false), thrown);
+            }
+
             if (pack is null && (GmKind(vehicle) is not null || profile == HybridProfileKind.ChevroletVolt))
             {
-                // A Volt / Bolt whose BECM did not answer: the car is not READY.
-                // The generic module search would only take long and find the same.
-                return Empty(profile, vehicleName,
-                    "ბატარეამ არ უპასუხა. ჩართე მანქანა (READY) და სცადე თავიდან.",
-                    ValidationText(profile, false));
+                // A Volt / Bolt whose BECM gave no pack. The generic module search would only take long and find the same.
+                // The reason is told only when the requests of this read decide it; otherwise the old sentence stays (a failed
+                // request alone does not show that the car is off).
+                var failure = HybridReadDiagnosis.Decide(
+                    LastGmEvidence ?? new HybridReadEvidence(), MinimumGmCells, transportDown: !_obd.IsAdapterConnected);
+                return Empty(profile, vehicleName, HybridReadDiagnosis.StatusText(failure), ValidationText(profile, false), failure);
             }
         }
 
@@ -437,7 +448,9 @@ public sealed partial class HybridHealthService
         HybridProfileKind profile,
         string vehicleName,
         string status,
-        string validation) =>
+        string validation,
+        HybridFailure? failure = null) =>
         new(profile, vehicleName, null, "ვერ შეფასდა", null, null, null, null, null,
-            null, false, 0, 0, status, validation, "დადასტურებული მნიშვნელობა არ დაბრუნდა");
+            null, false, 0, 0, status, validation, "დადასტურებული მნიშვნელობა არ დაბრუნდა",
+            Failure: failure);
 }

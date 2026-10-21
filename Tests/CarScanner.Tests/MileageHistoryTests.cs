@@ -507,7 +507,7 @@ public sealed class MileageHistoryTests
         Assert.Contains("debug AS Debug", provider);
         Assert.Contains("row.Debug != 0", provider);
         Assert.Contains("DefinitionUnderTest = signal.UnderTest", provider);
-        Assert.Contains("DefinitionText = evidence.DefinitionUnderTest ? MileageWording.DefinitionUnderTest(en) : string.Empty", Read("ViewModels", "MileageViewModel.cs"));
+        Assert.Contains("evidence.DefinitionUnderTest ? MileageWording.DefinitionUnderTest(en) : string.Empty", Read("ViewModels", "MileageViewModel.cs"));
         Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(Read("Views", "MileagePage.xaml"), "Text=\"\\{Binding DefinitionText\\}\"").Count);
     }
 

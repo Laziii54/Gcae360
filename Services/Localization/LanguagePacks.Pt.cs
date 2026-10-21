@@ -319,6 +319,7 @@ internal static partial class LanguagePacks
         ["Saving result…"] = "Salvando resultado…",
         ["Scan"] = "Varrer",
         ["Scan for Errors"] = "Buscar erros",
+        ["Scooter"] = "Scooter",
         ["Scan result"] = "Resultado da varredura",
         ["Scan results will appear here."] = "Os resultados da varredura aparecerão aqui.",
         ["Scan stopped"] = "Varredura interrompida",

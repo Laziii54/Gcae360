@@ -17,7 +17,7 @@ public partial class AppShell : Shell
     {
         InitializeComponent();
         _pro = pro;
-        BindingContext = new ShellStatusViewModel(pro, bluetooth, vehicleContext);
+        BindingContext = new ShellStatusViewModel(pro, bluetooth, vehicleContext, localization);
         Navigating += OnNavigating;
         Navigated += (_, __) =>
         {

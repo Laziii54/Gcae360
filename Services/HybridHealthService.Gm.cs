@@ -8,6 +8,15 @@ namespace CarScanner.Services;
 /// <summary>Chevrolet Volt / Bolt family: direct read of the BECM (read-only).</summary>
 public sealed partial class HybridHealthService
 {
+    /// <summary>
+    /// What the requests of the last Volt / Bolt cell read showed (replies and exceptions the reader already received); the scan
+    /// uses it to tell the causes of an empty result apart. Reset at the start of each read.
+    /// </summary>
+    internal HybridReadEvidence? LastGmEvidence { get; private set; }
+
+    /// <summary>Fewest valid cells from which the Volt / Bolt reader returns a pack at all.</summary>
+    internal const int MinimumGmCells = 80;
+
     public async Task<HvPackReading?> ReadGmPackAsync(
         VehicleInfo vehicle,
         bool bolt,
@@ -15,6 +24,9 @@ public sealed partial class HybridHealthService
         IProgress<string>? progress,
         CancellationToken token)
     {
+        var evidence = new HybridReadEvidence();
+        LastGmEvidence = evidence;
+
         if (!_obd.IsCanProtocol)
         {
             log.AppendLine("GM HV: მანქანა CAN პროტოკოლზე არ არის — პირდაპირი წაკითხვა გამოტოვებულია.");
@@ -33,7 +45,10 @@ public sealed partial class HybridHealthService
                 token.ThrowIfCancellationRequested();
                 if (index % 8 == 0)
                     progress?.Report($"უჯრედების კითხვა… {index}/{GM.CellCount}");
-                var value = GM.DecodeCell(await AskAsync(session, GM.CellRequest(index), index < 3 ? log : null, token).ConfigureAwait(false));
+                var cellData = await AskAsync(session, GM.CellRequest(index), index < 3 ? log : null, token, evidence).ConfigureAwait(false);
+                var value = GM.DecodeCell(cellData);
+                if (cellData is not null && value is null)
+                    evidence.RecordImplausibleValue();
                 if (value is { } volts)
                 {
                     cells.Add(volts);
@@ -46,8 +61,9 @@ public sealed partial class HybridHealthService
                 }
             }
 
+            evidence.ValidCells = cells.Count;
             log.AppendLine($"GM BECM 7E7 22 4181…4240: {cells.Count}/{GM.CellCount} უჯრედმა უპასუხა");
-            if (cells.Count < 80)
+            if (cells.Count < MinimumGmCells)
             {
                 log.AppendLine("GM: ძალიან ბევრმა უჯრედმა არ უპასუხა — ჩართე მანქანა (READY) და გაიმეორე.");
                 return;

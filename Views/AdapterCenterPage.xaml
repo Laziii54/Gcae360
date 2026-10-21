@@ -28,8 +28,9 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Button Text="TEST" Command="{Binding TestCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" />
-            <Button Text="Copy connection log" Command="{Binding CopyLinkLogCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.2" CornerRadius="12" />
+            <Button Text="{Binding TestButtonText}" Command="{Binding TestCommand}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="12" />
+            <Button Text="{Binding CopyLogButtonText}" Command="{Binding CopyLinkLogCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.2" CornerRadius="12" />
+            <Button Text="{Binding CaptureButtonText}" Command="{Binding ToggleCaptureCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" BorderColor="{DynamicResource SubTextColor}" BorderWidth="1" CornerRadius="12" FontSize="12" LineBreakMode="WordWrap" Padding="12,8" />
 
             <!-- Test results -->
             <Label Text="Test Results" Style="{StaticResource SectionCaptionStyle}" />

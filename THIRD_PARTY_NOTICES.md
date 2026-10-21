@@ -23,8 +23,11 @@ Signal names and identifiers of OBDb (same licence, same credit) also appear in
 the name rules `Services/Mileage/MileageSignalClassifier.cs` and
 `Services/OemDiagnostics/ServiceMetricClassifier.cs`, in their tests
 (`Tests/CarScanner.Tests/MileageHistoryTests.cs`, `ServiceOilSemanticsTests.cs`,
-`TestData/obdb-distance-signal-names.txt`), and, counted and grouped, in the
-research tables under `research/` (see `research/README.md`). Those tables are
+`TestData/obdb-distance-signal-names.txt`), in the model-year evidence the app
+reads (`Resources/Raw/obdb_year_evidence.json`: for each signal the model years
+in which OBDb says the command applies, is still being debugged, and has a reply
+recorded in its tests), and, counted and grouped, in the research tables under
+`research/` (see `research/README.md`). The evidence file and those tables are
 offered under CC BY-SA 4.0. The CAN odometer fields listed there come from
 opendbc (MIT, Copyright (c) 2020, Comma.ai, Inc.).
 

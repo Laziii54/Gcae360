@@ -21,6 +21,7 @@ internal static partial class LanguagePacks
         ["Activate promo"] = "Aktywuj kod promocyjny",
         ["Active tests"] = "Testy aktywne",
         ["Actuator Test"] = "Test elementów wykonawczych",
+        ["Adapter"] = "Adapter",
         ["Adapter connected. OBD initialization in progress…"] = "Adapter połączony. Trwa inicjalizacja OBD…",
         ["Adapter status"] = "Stan adaptera",
         ["Add Refuel"] = "Dodaj tankowanie",

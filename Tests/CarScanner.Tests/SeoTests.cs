@@ -89,7 +89,8 @@ public sealed class SeoTests
 
             var image = Regex.Match(html, "property=\"og:image\" content=\"([^\"]+)\"").Groups[1].Value;
             Assert.StartsWith("https://obd360.ge/assets/", image);
-            var file = Path.Combine(Root, "Backend", "CarScanner.Api", "wwwroot", "assets", Path.GetFileName(image));
+            // The URL carries a cache-busting ?v=N; the file on disk has no query string.
+            var file = Path.Combine(Root, "Backend", "CarScanner.Api", "wwwroot", "assets", Path.GetFileName(image.Split('?')[0]));
             Assert.True(File.Exists(file), "social image must exist: " + file);
         }
     }

@@ -4,22 +4,6 @@ using SQLite;
 
 namespace CarScanner.Services.OemDiagnostics;
 
-/// <summary>One value that answered during the service search.</summary>
-public sealed record ServiceSearchHit(
-    string SourceKey,
-    string CatalogMake,
-    string Name,
-    ServiceMetricKind Kind,
-    double Value,
-    string Unit,
-    string Request,
-    string Module,
-    bool OwnBrand)
-{
-    /// <summary>Set after the search when the value equals what the dashboard shows.</summary>
-    public bool MatchesDashboard { get; init; }
-}
-
 public sealed record ServiceSearchResult(
     IReadOnlyList<ServiceSearchHit> Hits,
     int RequestsTried,
@@ -136,14 +120,10 @@ public sealed partial class ServiceDataReaderService
         return new ServiceSearchResult(distinct, groups.Length, answered);
     }
 
-    /// <summary>Marks oil-life hits that equal the dashboard % (±2).</summary>
-    public static IReadOnlyList<ServiceSearchHit> MatchDashboard(IReadOnlyList<ServiceSearchHit> hits, double? dashboardPercent) =>
-        hits.Select(hit => hit with
-        {
-            MatchesDashboard = dashboardPercent is { } percent &&
-                               hit.Kind == ServiceMetricKind.OilLifePercent &&
-                               Math.Abs(hit.Value - percent) <= 2
-        }).ToArray();
+    /// <summary>Marks the hits that are close to what the person typed from the dashboard (see <see cref="ServiceSearchMatching"/>).</summary>
+    public static IReadOnlyList<ServiceSearchHit> MatchDashboard(
+        IReadOnlyList<ServiceSearchHit> hits, double? dashboardPercent, double? dashboardDistanceKm = null) =>
+        ServiceSearchMatching.MatchDashboard(hits, dashboardPercent, dashboardDistanceKm);
 
     /// <summary>Remembers the confirmed sources for this car (VIN, or make|model|year).</summary>
     public void SavePreferredSources(VehicleInfo vehicle, IEnumerable<string> sourceKeys)

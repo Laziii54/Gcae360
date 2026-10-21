@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using CarScanner.Models;
 using CarScanner.Services.OBD;
 using CarScanner.Services.OemDiagnostics;
+using CarScanner.Services.ServiceProcedures;
 using CarScanner.Services.UDS;
 using SQLite;
 
@@ -94,7 +95,7 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
 
         // The replies of this scan, by request: a record signal that shares its identifier with a current-odometer signal
         // is decoded from the reply that was already received instead of asking the module again.
-        var replies = new Dictionary<string, (byte[]? Data, OdometerDecodeFailure Failure, int? Responder)>();
+        var replies = new Dictionary<string, (byte[]? Data, OdometerDecodeFailure Failure, int? Responder, MileageReadObservation? Observed)>();
 
         // One request per module/identifier; the first signal that decodes is used.
         foreach (var group in signals
@@ -106,7 +107,7 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
             var first = group.First();
             var method = $"0x{first.ServiceId:X2} 0x{first.Identifier:X4} @ {first.Header}";
 
-            (byte[]? Data, OdometerDecodeFailure Failure, int? Responder) reply;
+            (byte[]? Data, OdometerDecodeFailure Failure, int? Responder, MileageReadObservation? Observed) reply;
             try
             {
                 reply = await ReadAsync(first, cancellationToken).ConfigureAwait(false);
@@ -118,23 +119,24 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
             }
             catch (Exception ex)
             {
-                MileageTrace.Add($"{method}: error ({ex.GetType().Name})");
-                MileageTrace.Attempt(new MileageAttempt(Name, method, MileageAttemptOutcome.ModuleNotResponding, ex.GetType().Name, assessment.Status, assessment.Reason));
+                // The outcome stays "not responding"; the log says what kind of failure it was (see MileageReadDiagnosis).
+                MileageTrace.Add(MileageReadDiagnosis.ErrorLine(method, ex, records: false, linkDown: !_obd.IsAdapterConnected));
+                MileageTrace.Attempt(new MileageAttempt(Name, method, MileageAttemptOutcome.ModuleNotResponding, MileageReadDiagnosis.ErrorDetail(ex, linkDown: !_obd.IsAdapterConnected), assessment.Status, assessment.Reason));
                 continue;
             }
 
             if (reply.Data is null)
             {
-                MileageTrace.Add($"{method}: {reply.Failure}");
+                MileageTrace.Add(MileageReadDiagnosis.FailureLine(method, reply.Failure, reply.Observed!, records: false));
                 MileageTrace.Attempt(new MileageAttempt(Name, method, reply.Failure switch
                 {
                     OdometerDecodeFailure.Negative => MileageAttemptOutcome.ReadingUnavailable,
                     OdometerDecodeFailure.NotPositiveForRequest => MileageAttemptOutcome.InvalidReading,
                     _ => MileageAttemptOutcome.ModuleNotResponding
-                }, reply.Failure == OdometerDecodeFailure.ForeignReply
+                }, MileageReadDiagnosis.FailureDetail(reply.Failure == OdometerDecodeFailure.ForeignReply
                     // Frames came back, but from another module: not an answer from the one that was asked.
                     ? $"Reply came from 0x{reply.Responder:X3}, not from this module; not used."
-                    : reply.Failure.ToString(), assessment.Status, assessment.Reason));
+                    : reply.Failure.ToString(), reply.Observed!), assessment.Status, assessment.Reason));
                 continue;
             }
 
@@ -151,7 +153,8 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
                 {
                     // The module answered with a value nobody should believe: keep it visible for review, never use it.
                     evidence.Add(Build(signal, decoded, method, MileageReadStatus.Implausible, reply.Responder, reply.Data));
-                    MileageTrace.Attempt(new MileageAttempt(Name, method, MileageAttemptOutcome.InvalidReading, "Implausible value.", assessment.Status, assessment.Reason));
+                    MileageTrace.Attempt(new MileageAttempt(Name, method, MileageAttemptOutcome.InvalidReading,
+                        MileageReadDiagnosis.FailureDetail("Implausible value.", MileageReadDiagnosis.OfDecodeFailure(OdometerDecodeFailure.Implausible)), assessment.Status, assessment.Reason));
                     decodedAny = true;
                     break;
                 }
@@ -163,8 +166,10 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
                 }
 
                 evidence.Add(Build(signal, decoded, method, MileageReadStatus.Ok, reply.Responder, reply.Data));
-                MileageTrace.Add($"{method}: {decoded.Km:0} km");
-                MileageTrace.Attempt(new MileageAttempt(Name, method, MileageAttemptOutcome.Read, string.Empty, assessment.Status, assessment.Reason));
+                // The log also says when the value came from another ECU than the addressed module, or from a definition under test.
+                var valueNote = MileageReadDiagnosis.OfDecodedValue(signal.UnderTest, signal.Address.TransmitCanId, signal.Address.ReceiveCanId, reply.Responder);
+                MileageTrace.Add(MileageReadDiagnosis.ValueLine(method, decoded.Km!.Value, valueNote));
+                MileageTrace.Attempt(new MileageAttempt(Name, method, MileageAttemptOutcome.Read, MileageReadDiagnosis.ValueDetail(valueNote), assessment.Status, assessment.Reason));
                 decodedAny = true;
                 break;
             }
@@ -174,9 +179,10 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
 
             if (!decodedAny)
             {
-                MileageTrace.Add($"{method}: reply could not be decoded ({lastFailure?.Failure}) {Convert.ToHexString(reply.Data.Take(8).ToArray())}");
+                var undecoded = MileageReadDiagnosis.OfDecodeFailure(lastFailure?.Failure ?? OdometerDecodeFailure.None);
+                MileageTrace.Add(MileageReadDiagnosis.UndecodedLine(method, lastFailure?.Failure, Convert.ToHexString(reply.Data.Take(8).ToArray()), undecoded));
                 MileageTrace.Attempt(new MileageAttempt(Name, method, MileageAttemptOutcome.InvalidReading,
-                    lastFailure?.Failure.ToString() ?? "Undecodable", assessment.Status, assessment.Reason));
+                    MileageReadDiagnosis.FailureDetail(lastFailure?.Failure.ToString() ?? "Undecodable", undecoded), assessment.Status, assessment.Reason));
             }
         }
 
@@ -192,7 +198,7 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
     /// </summary>
     private async Task ReadRecordsAsync(
         IReadOnlyList<OdometerSignal> signals,
-        Dictionary<string, (byte[]? Data, OdometerDecodeFailure Failure, int? Responder)> replies,
+        Dictionary<string, (byte[]? Data, OdometerDecodeFailure Failure, int? Responder, MileageReadObservation? Observed)> replies,
         List<MileageEvidence> evidence,
         MileageSourceAssessment assessment,
         CancellationToken cancellationToken)
@@ -212,7 +218,7 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
             var first = group.First();
             var method = $"0x{first.ServiceId:X2} 0x{first.Identifier:X4} @ {first.Header}";
 
-            (byte[]? Data, OdometerDecodeFailure Failure, int? Responder) reply;
+            (byte[]? Data, OdometerDecodeFailure Failure, int? Responder, MileageReadObservation? Observed) reply;
             if (!replies.TryGetValue(group.Key, out reply))
             {
                 try
@@ -225,23 +231,23 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
                 }
                 catch (Exception ex)
                 {
-                    MileageTrace.Add($"{method}: records error ({ex.GetType().Name})");
-                    MileageTrace.Attempt(new MileageAttempt(Name + " · records", method, MileageAttemptOutcome.ModuleNotResponding, ex.GetType().Name, assessment.Status, assessment.Reason));
+                    MileageTrace.Add(MileageReadDiagnosis.ErrorLine(method, ex, records: true, linkDown: !_obd.IsAdapterConnected));
+                    MileageTrace.Attempt(new MileageAttempt(Name + " · records", method, MileageAttemptOutcome.ModuleNotResponding, MileageReadDiagnosis.ErrorDetail(ex, linkDown: !_obd.IsAdapterConnected), assessment.Status, assessment.Reason));
                     continue;
                 }
             }
 
             if (reply.Data is null)
             {
-                MileageTrace.Add($"{method}: records {reply.Failure}");
+                MileageTrace.Add(MileageReadDiagnosis.FailureLine(method, reply.Failure, reply.Observed!, records: true));
                 MileageTrace.Attempt(new MileageAttempt(Name + " · records", method, reply.Failure switch
                 {
                     OdometerDecodeFailure.Negative => MileageAttemptOutcome.ReadingUnavailable,
                     OdometerDecodeFailure.NotPositiveForRequest => MileageAttemptOutcome.InvalidReading,
                     _ => MileageAttemptOutcome.ModuleNotResponding
-                }, reply.Failure == OdometerDecodeFailure.ForeignReply
+                }, MileageReadDiagnosis.FailureDetail(reply.Failure == OdometerDecodeFailure.ForeignReply
                     ? $"Reply came from 0x{reply.Responder:X3}, not from this module; not used."
-                    : reply.Failure.ToString(), assessment.Status, assessment.Reason));
+                    : reply.Failure.ToString(), reply.Observed!), assessment.Status, assessment.Reason));
                 continue;
             }
 
@@ -301,6 +307,7 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
             },
             EventKind = signal.EventKind,
             DefinitionUnderTest = signal.UnderTest,
+            RecordedReplyForModelYear = signal.RecordedForYear,
             SignalName = signal.SignalName,
             RawHex = data is null ? string.Empty : Convert.ToHexString(data.Take(64).ToArray()),
             Status = status,
@@ -332,7 +339,8 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
         bool Meters = false,
         MileageSignalClass Class = MileageSignalClass.TotalOdometer,
         MileageEventKind EventKind = MileageEventKind.None,
-        bool UnderTest = false)
+        bool UnderTest = false,
+        bool RecordedForYear = false)
     {
         public bool IsMetric => !Miles;
     }
@@ -343,6 +351,7 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
         public string? Model { get; set; }
         public string? Header { get; set; }
         public string? CommandJson { get; set; }
+        public string? ParameterId { get; set; }
         public string? Name { get; set; }
         public string? Unit { get; set; }
         public int BitLength { get; set; }
@@ -375,7 +384,7 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
                 rows.AddRange(await connection.QueryAsync<Row>(
                     """
                     SELECT make AS Make, model AS Model, header AS Header, command_json AS CommandJson,
-                           name AS Name, unit AS Unit, bit_length AS BitLength, bit_offset AS BitOffset,
+                           parameter_id AS ParameterId, name AS Name, unit AS Unit, bit_length AS BitLength, bit_offset AS BitOffset,
                            eax AS Eax, format_json AS FormatJson, raw_json AS RawJson, debug AS Debug
                     FROM pid_definitions
                     WHERE lower(make) = lower(?)
@@ -392,6 +401,11 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
 
         var model = Normalize(vehicle.Model);
         var signals = new List<OdometerSignal>();
+
+        // What OBDb says per model year (see ObdbYearEvidence). Without a known model year, or for a request the evidence does not list,
+        // nothing is concluded and the catalog's own flag stands, as before.
+        var yearEvidence = await ObdbYearEvidenceStore.GetAsync(token).ConfigureAwait(false);
+        var modelYear = ModelYearOf(vehicle);
 
         foreach (var row in rows)
         {
@@ -416,6 +430,10 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
             var exact = model.Length > 0 && rowModel.Length > 0 &&
                         (rowModel == model || rowModel.Contains(model) || model.Contains(rowModel));
 
+            var evidenceForYear = yearEvidence.For(row.Make, row.Model, row.ParameterId, modelYear);
+            if (evidenceForYear.Known && !evidenceForYear.Applicable)
+                continue; // OBDb: this request does not apply to the vehicle's model year, so it is not sent
+
             signals.Add(new OdometerSignal(
                 $"{serviceId:X2}|{address.TransmitCanId:X8}|{address.ExtendedAddress?.ToString("X2") ?? "--"}|{identifier:X4}",
                 row.Name,
@@ -433,7 +451,8 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
                 unit.StartsWith("meter", StringComparison.Ordinal),
                 signalClass,
                 eventKind,
-                row.Debug != 0));
+                evidenceForYear.Known ? evidenceForYear.UnderTest : row.Debug != 0,
+                evidenceForYear.Known && evidenceForYear.RecordedReply));
         }
 
         // Exact model first, then the identifiers most models of the brand
@@ -444,6 +463,10 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
             .ThenByDescending(signal => shared[signal.Key])
             .ToArray();
     }
+
+    /// <summary>The model year when the app knows it (a year the vehicle information has no origin for is not used).</summary>
+    private static int? ModelYearOf(VehicleInfo vehicle) =>
+        vehicle.YearOrigin == VehicleDataOrigin.Unknown ? null : ServiceMatching.ParseYear(vehicle.Year);
 
     private static bool TryParseCommand(string? json, out int serviceId, out int identifier)
     {
@@ -493,7 +516,7 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
     // Reading + decoding
     // ------------------------------------------------------------------
 
-    private async Task<(byte[]? Data, OdometerDecodeFailure Failure, int? Responder)> ReadAsync(OdometerSignal signal, CancellationToken token)
+    private async Task<(byte[]? Data, OdometerDecodeFailure Failure, int? Responder, MileageReadObservation? Observed)> ReadAsync(OdometerSignal signal, CancellationToken token)
     {
         var request = signal.ServiceId == 0x21
             ? new byte[] { 0x21, (byte)signal.Identifier }
@@ -501,7 +524,11 @@ public sealed class CatalogOdometerProvider : IActualMileageProvider
 
         var raw = await _obd.ReadPhysicalCanReadOnlyAsync(signal.Address, request, RequestTimeout, token).ConfigureAwait(false);
         var data = OdometerResponseDecoder.ExtractPayload(raw, signal.ServiceId, signal.Identifier, signal.Address.ReceiveCanId, out var failure, out var responder);
-        return (data, failure, responder);
+        // What the reply showed, in words for the log: computed from the same text, it changes nothing about the read.
+        var observed = data is null
+            ? MileageReadDiagnosis.OfReply(raw, signal.Address.ReceiveCanId, signal.ServiceId, signal.Identifier)
+            : null;
+        return (data, failure, responder, observed);
     }
 
     // ------------------------------------------------------------------

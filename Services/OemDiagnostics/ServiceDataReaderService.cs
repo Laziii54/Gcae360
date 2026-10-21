@@ -227,7 +227,8 @@ public sealed partial class ServiceDataReaderService
                         candidate.Name,
                         value,
                         candidate.Unit,
-                        $"REAL ECU READ · 0x{candidate.ServiceId:X2} ID 0x{candidate.DataIdentifier:X4} · {candidate.Address.Detail}",
+                        $"REAL ECU READ · 0x{candidate.ServiceId:X2} ID 0x{candidate.DataIdentifier:X4} · {candidate.Address.Detail}" +
+                        (candidate.RecordedForYear ? " · a reply to this request is recorded in OBDb's tests for this model year" : string.Empty),
                         candidate.SourceCatalog,
                         candidate.Address.TransmitCanId,
                         candidate.DataIdentifier,
@@ -1642,6 +1643,14 @@ public sealed partial class ServiceDataReaderService
             var candidates = new List<ServicePidCandidate>();
             var unsupportedAddressCount = 0;
 
+            // What OBDb says per model year: the years a request applies to, the years it is still being debugged, and the years a reply
+            // was recorded for. Used only when the model year is verified; otherwise the catalog's own flag stands, as before.
+            var yearEvidence = await ObdbYearEvidenceStore.GetAsync(token).ConfigureAwait(false);
+            int? modelYear = vehicle.Year.IsVerified &&
+                             int.TryParse(vehicle.Year.Value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var parsedYear)
+                ? parsedYear
+                : null;
+
             // Exact model (only when the model is verified).
             if (vehicle.HasVerifiedModel)
             {
@@ -1652,8 +1661,25 @@ public sealed partial class ServiceDataReaderService
                     var candidate = TryBuildCandidate(row, out var addressSupported);
                     if (!addressSupported)
                         unsupportedAddressCount++;
-                    if (candidate is not null)
-                        candidates.Add(candidate);
+                    if (candidate is null)
+                        continue;
+
+                    // A definition whose recorded replies show it holds something else than its name says is never shown under that name.
+                    if (KnownMislabelledDefinitions.TryFind(row.Make, candidate.ServiceId, candidate.DataIdentifier, row.Name, out _))
+                        continue;
+
+                    var evidenceForYear = yearEvidence.For(row.Make, row.Model, row.ParameterId, modelYear);
+                    if (evidenceForYear.Known)
+                    {
+                        // OBDb says this request does not apply to the car's model year: it is not sent.
+                        if (!evidenceForYear.Applicable)
+                            continue;
+
+                        // The flag that counts is the one for the car's model year, not the command-level one alone.
+                        candidate = candidate with { Debug = evidenceForYear.UnderTest, RecordedForYear = evidenceForYear.RecordedReply };
+                    }
+
+                    candidates.Add(candidate);
                 }
             }
 
@@ -1668,6 +1694,8 @@ public sealed partial class ServiceDataReaderService
             {
                 var candidate = TryBuildCandidate(row, out _);
                 if (candidate is null || !IsBrandWideKind(candidate.Kind))
+                    continue;
+                if (KnownMislabelledDefinitions.TryFind(row.Make, candidate.ServiceId, candidate.DataIdentifier, row.Name, out _))
                     continue;
 
                 var key = $"{candidate.ServiceId:X2}|{AddressKey(candidate.Address, candidate.DataIdentifier)}|{candidate.BitOffset}|{candidate.BitLength}";
@@ -2084,7 +2112,8 @@ public sealed partial class ServiceDataReaderService
         string SourceCatalog,
         bool Debug,
         bool BrandFallback = false,
-        int ServiceId = 0x22);
+        int ServiceId = 0x22,
+        bool RecordedForYear = false);
 
     private sealed record CandidateLoadResult(
         IReadOnlyList<ServicePidCandidate> Candidates,

@@ -16,7 +16,7 @@ public static class SeoPages
     public const string CanonicalOrigin = "https://obd360.ge";
 
     /// <summary>Square brand image that exists in wwwroot/assets (512 x 512).</summary>
-    public const string SocialImagePath = "/assets/icon-512.png";
+    public const string SocialImagePath = "/assets/icon-512.png?v=2";
 
     public sealed record Page(string Path, string Language, string Title, string Description);
 

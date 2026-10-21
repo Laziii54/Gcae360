@@ -211,15 +211,28 @@ ON CONFLICT(AccountId) DO UPDATE SET PublicId=$p, Status=$s, UpdatedAt=$u, Bytes
     }
 
     /// <summary>Approves or hides the picture of an account. False when the account has no picture.</summary>
-    public async Task<bool> SetStatusAsync(string accountId, AvatarStatus status, CancellationToken ct)
+    public async Task<bool> SetStatusAsync(string accountId, AvatarStatus status, CancellationToken ct, string? onlyIfPublicId = null)
     {
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(ct);
         await using var command = connection.CreateCommand();
-        command.CommandText = "UPDATE AccountAvatars SET Status=$s WHERE AccountId=$a";
+        // With onlyIfPublicId the change applies only while that very picture is still the account's current one.
+        command.CommandText = onlyIfPublicId is null
+            ? "UPDATE AccountAvatars SET Status=$s WHERE AccountId=$a"
+            : "UPDATE AccountAvatars SET Status=$s WHERE AccountId=$a AND PublicId=$p";
         command.Parameters.AddWithValue("$s", status.ToString());
         command.Parameters.AddWithValue("$a", accountId);
+        if (onlyIfPublicId is not null)
+            command.Parameters.AddWithValue("$p", onlyIfPublicId);
         return await command.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    /// <summary>Removes the picture only while <paramref name="publicId"/> is still the account's current one.</summary>
+    public async Task DeleteIfCurrentAsync(string accountId, string publicId, CancellationToken ct)
+    {
+        var current = await GetForAccountAsync(accountId, ct);
+        if (current is not null && string.Equals(current.PublicId, publicId, StringComparison.Ordinal))
+            await DeleteAsync(accountId, ct);
     }
 
     private static AvatarRecord ReadRecord(SqliteDataReader reader) => new(

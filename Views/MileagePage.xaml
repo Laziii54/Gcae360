@@ -144,6 +144,44 @@
             <Button IsVisible="{Binding HasResult}" Text="{Binding CheckButtonText}" Command="{Binding CheckCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" CornerRadius="12" HeightRequest="48" FontAttributes="Bold" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource TextColor}" BorderWidth="1.2" />
             <Label IsVisible="{Binding IsIntro}" Text="{Binding IntroHint}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
 
+            <!-- Enter manually: type what the dashboard shows; the readings close to it are listed (collapsed by default) -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,0">
+                <VerticalStackLayout>
+                    <Grid ColumnDefinitions="*,Auto" HeightRequest="48">
+                        <Label Text="{Binding ManualCaption}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                        <Path Grid.Column="1" Data="M6,9 L12,15 L18,9" Stroke="{DynamicResource SubTextColor}" StrokeThickness="2" StrokeLineCap="Round" StrokeLineJoin="Round" Aspect="Uniform" WidthRequest="18" HeightRequest="18" Rotation="{Binding ManualChevronRotation}" VerticalOptions="Center" />
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ToggleManualCommand}" />
+                        </Grid.GestureRecognizers>
+                    </Grid>
+                    <VerticalStackLayout IsVisible="{Binding ManualOpen}" Spacing="10" Padding="0,0,0,14">
+                        <BoxView Style="{StaticResource RowDividerStyle}" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                            <Border StrokeShape="RoundRectangle 10" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" BackgroundColor="{DynamicResource PageBg}" Padding="10,0">
+                                <Entry Text="{Binding ManualValue}" Placeholder="{Binding ManualPlaceholder}" Keyboard="Numeric" FontSize="15" TextColor="{DynamicResource TextColor}" ReturnType="Search" ReturnCommand="{Binding SearchManualCommand}" />
+                            </Border>
+                            <Button Grid.Column="1" Text="{Binding ManualSearchText}" Command="{Binding SearchManualCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" Style="{StaticResource PrimaryButtonStyle}" CornerRadius="10" HeightRequest="44" Padding="18,0" />
+                        </Grid>
+                        <Label Text="{Binding ManualHint}" FontSize="12" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
+                        <Label IsVisible="{Binding HasManualResult}" Text="{Binding ManualResult}" FontSize="13" FontAttributes="Bold" TextColor="{Binding ManualResultColor}" LineBreakMode="WordWrap" />
+                        <VerticalStackLayout IsVisible="{Binding HasManualMatches}" Spacing="8" BindableLayout.ItemsSource="{Binding ManualMatches}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="vm:MileageMatchRow">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                        <Ellipse WidthRequest="8" HeightRequest="8" Fill="{Binding DotColor}" VerticalOptions="Center" />
+                                        <VerticalStackLayout Grid.Column="1" Spacing="0">
+                                            <Label Text="{Binding Title}" FontSize="13" TextColor="{DynamicResource TextColor}" LineBreakMode="TailTruncation" />
+                                            <Label Text="{Binding DetailText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
+                                        </VerticalStackLayout>
+                                        <Label Grid.Column="2" Text="{Binding ValueText}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" HorizontalTextAlignment="End" />
+                                    </Grid>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" />
             <Label AutomationId="DynamicTextMileageProgress" Text="{Binding StatusMessage}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
 

@@ -51,7 +51,7 @@ public sealed class BrandingTests
     [InlineData("Resources/AppIcon/appicon.png", 1024, 1024)]
     [InlineData("Resources/Splash/obd360_splash.png", 1024, 1024)]
     [InlineData("Resources/Images/obd360_loading.png", 512, 512)]
-    [InlineData("Resources/Images/obd360_mark.png", 256, 188)]
+    [InlineData("Resources/Images/obd360_mark.png", 256, 256)]   // square app-icon tile, no transparent margin
     [InlineData("Platforms/Android/Resources/mipmap-xxxhdpi/ic_gcar_light.png", 192, 192)]
     [InlineData("Platforms/Android/Resources/mipmap-xxxhdpi/ic_gcar_dark_round.png", 192, 192)]
     [InlineData("Platforms/Android/Resources/mipmap-xxxhdpi/ic_gcar_light_foreground.png", 432, 432)]

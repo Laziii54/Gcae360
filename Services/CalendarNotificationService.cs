@@ -67,9 +67,14 @@ public sealed class CalendarNotificationService
         {
             NotificationId = NotificationId(reminder.Id, slot),
             Title = CarScanner.Services.Localization.LocalizationService.T(L("OBD360 · სერვისის კალენდარი", "OBD360 · Service calendar")),
-            Description = CarScanner.Services.Localization.LocalizationService.T(tomorrow
-                ? L($"ხვალ შესასრულებელია: {reminder.Title}", $"Due tomorrow: {reminder.Title}")
-                : L($"დღეს შესასრულებელია: {reminder.Title}", $"Due today: {reminder.Title}")),
+            // reminder.Title must be substituted AFTER translation: T() only matches exact (or {0}-style
+            // template) source text, so interpolating it in first meant this notification could never match a
+            // dictionary/pack row and always showed English regardless of the other 7 added languages.
+            Description = string.Format(
+                CarScanner.Services.Localization.LocalizationService.T(tomorrow
+                    ? "ხვალ შესასრულებელია: {0}"
+                    : "დღეს შესასრულებელია: {0}"),
+                reminder.Title),
             ReturningData = $"calendar-reminder:{reminder.Id}",
             Schedule = new NotificationRequestSchedule
             {

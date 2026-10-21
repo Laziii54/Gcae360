@@ -1,4 +1,4 @@
-﻿using CarScanner.AI;
+using CarScanner.AI;
 using CarScanner.Models;
 using CarScanner.Services;
 using CarScanner.Services.Localization;
@@ -2001,6 +2001,9 @@ public partial class ServiceViewModel : BaseViewModel
         "chevrolet", "gmc", "buick", "cadillac", "opel", "vauxhall", "holden", "pontiac", "saturn", "hummer"
     };
 
+    private static bool UserSeesMiles() =>
+        Application.Current?.Handler?.MauiContext?.Services.GetService<UnitSystemService>()?.DistanceUnit == "mi";
+
     private bool IsGmVehicle(VehicleInfo? vehicle)
     {
         static string Key(string? v) => new string((v ?? string.Empty).Where(char.IsLetter).ToArray()).ToLowerInvariant();
@@ -2118,9 +2121,16 @@ public partial class ServiceViewModel : BaseViewModel
         if (IsBusy || IsDiscoveryRunning)
             return;
 
-        double? percent = int.TryParse(DashboardOilPercentText?.Trim().TrimEnd('%'), out var p) && p is >= 0 and <= 100
-            ? p
-            : null;
+        // What the person typed from the dashboard: up to 100 is the oil life in %, more is a distance (in the unit the app shows).
+        double? percent = null;
+        double? distanceKm = null;
+        if (CarScanner.Services.Mileage.MileageManualMatch.TryParseTyped(DashboardOilPercentText, out var typedValue))
+        {
+            if (typedValue <= 100)
+                percent = Math.Round(typedValue);
+            else
+                distanceKm = UserSeesMiles() ? typedValue * CarScanner.Services.Mileage.MileagePlausibility.KmPerMile : typedValue;
+        }
 
         _discoveryCancellation?.Dispose();
         _discoveryCancellation = new CancellationTokenSource(TimeSpan.FromMinutes(25));
@@ -2144,10 +2154,10 @@ public partial class ServiceViewModel : BaseViewModel
             var progress = new System.Progress<string>(step =>
                 DiscoveryProgressText = L($"მოწმდება {step}…", $"Checking {step}…"));
             var search = await _serviceDataReader.SearchAllSourcesAsync(vehicle, progress, token);
-            var hits = ServiceDataReaderService.MatchDashboard(search.Hits, percent);
+            var hits = ServiceDataReaderService.MatchDashboard(search.Hits, percent, distanceKm);
 
             report.AppendLine($"OBD360 service search · {vehicle.Manufacturer} {vehicle.Model} {vehicle.Year}");
-            report.AppendLine($"tried {search.RequestsTried} · answered {search.RequestsAnswered} · dashboard {(percent.HasValue ? $"{percent}%" : "—")}");
+            report.AppendLine($"tried {search.RequestsTried} · answered {search.RequestsAnswered} · dashboard {(percent.HasValue ? $"{percent}%" : distanceKm.HasValue ? $"{distanceKm:0} km" : "—")}");
             foreach (var hit in hits)
             {
                 report.AppendLine($"{(hit.MatchesDashboard ? "MATCH" : "·")} {hit.Name} = {hit.Value:0.##} {hit.Unit} · {hit.Request} · {hit.Module} · {hit.CatalogMake}");
@@ -2195,11 +2205,11 @@ public partial class ServiceViewModel : BaseViewModel
                 : hits.Count == 0
                     ? L("ვერცერთმა ცნობილმა გზამ ვერ უპასუხა. ამ მანქანისთვის ჯერ წყარო არ გვაქვს — ინსტრუქცია ქვემოთაა.",
                         "None of the known sources answered. We have no source for this car yet — instructions are below.")
-                    : percent is null
+                    : percent is null && distanceKm is null
                         ? L($"უპასუხა {hits.Count} მნიშვნელობამ. ჩაწერე პანელის ზეთის % და გაიმეორე, რომ სწორი ავარჩიოთ.",
                             $"{hits.Count} value(s) answered. Enter the dashboard oil % and repeat to pick the right one.")
-                        : L($"უპასუხა {hits.Count} მნიშვნელობამ, მაგრამ არცერთი არ უდრის {percent}%-ს. შეამოწმე პანელის %.",
-                            $"{hits.Count} value(s) answered, but none equals {percent}%. Check the dashboard %.");
+                        : L($"უპასუხა {hits.Count} მნიშვნელობამ, მაგრამ არცერთი არ არის ახლოს {(percent is not null ? $"{percent}%-თან" : $"{distanceKm:0} კმ-თან")}. შეამოწმე პანელის მნიშვნელობა.",
+                            $"{hits.Count} value(s) answered, but none is close to {(percent is not null ? $"{percent}%" : $"{distanceKm:0} km")}. Check the value on the dashboard.");
         }
         catch (OperationCanceledException)
         {
@@ -2707,6 +2717,7 @@ public partial class ServiceViewModel : BaseViewModel
     private async Task RefreshLanguageAsync()
     {
         ApplyLanguageTexts();
+        NotifySimplePageTextsChanged();
 
         if (ShowAppOilReminder && _appOilVehicleKey is not null)
             ApplyAppOilStatus(_appOilReminder.Peek(_appOilVehicleKey, _appOilMake));
@@ -4431,8 +4442,8 @@ public partial class ModuleScanViewModel : BaseViewModel
     public bool HasFaults => ModuleFaults.Count > 0;
     public string FreezeFrameHintText => _localization.IsEnglish
         ? "Engine conditions at the moment the fault was stored"
-        : "ძრავის მდგომარეობა შეცდომის დაფიქსირების მომენტში";
-    public string RepairCostButtonText => _localization.IsEnglish ? "How much will it cost?" : "რამდენი დამიჯდება?";
+        : _localization.Translate("ძრავის მდგომარეობა შეცდომის დაფიქსირების მომენტში");
+    public string RepairCostButtonText => _localization.IsEnglish ? "How much will it cost?" : _localization.Translate("რამდენი დამიჯდება?");
     public ObservableCollection<ModuleFaultItem> ModuleFaults { get; } = new();
     public ObservableCollection<ModuleStatusRow> ModuleRows { get; } = new();
     [ObservableProperty] private bool hasModuleRows;
@@ -4512,7 +4523,7 @@ public partial class ModuleScanViewModel : BaseViewModel
 
         Attach();
 
-        Title = "შეცდომების სკანი";
+        Title = _localization.Translate("შეცდომების სკანი");
     }
 
     // ModuleScanPage should call Attach() on appearing and Detach() on leaving.
@@ -4534,15 +4545,15 @@ public partial class ModuleScanViewModel : BaseViewModel
 
     private void OnLanguageChanged(object? sender, EventArgs e) =>
         MainThread.BeginInvokeOnMainThread(UpdateLanguageTexts);
-    /// <summary>Big report title: "2 შეცდომა" / "DTC კოდები" before a scan.</summary>
+    /// <summary>Big report title: _localization.Translate("2 შეცდომა") / _localization.Translate("DTC კოდები") before a scan.</summary>
     public string FaultSummaryTitle => ModuleFaults.Count switch
     {
-        0 => _localization.IsEnglish ? "Trouble code scan" : "შეცდომების სკანი",
-        1 => _localization.IsEnglish ? "1 fault" : "1 შეცდომა",
-        var count => _localization.IsEnglish ? $"{count} faults" : $"{count} შეცდომა"
+        0 => _localization.IsEnglish ? "Trouble code scan" : _localization.Translate("შეცდომების სკანი"),
+        1 => _localization.IsEnglish ? "1 fault" : _localization.Translate("1 შეცდომა"),
+        var count => _localization.IsEnglish ? $"{count} faults" : _localization.Translate($"{count} შეცდომა")
     };
 
-    public string ModulesCaptionText => _localization.IsEnglish ? "Modules" : "მოდულები";
+    public string ModulesCaptionText => _localization.IsEnglish ? "Modules" : _localization.Translate("მოდულები");
 
     private void UpdateLanguageTexts()
     {
@@ -4558,9 +4569,9 @@ public partial class ModuleScanViewModel : BaseViewModel
         }
         else
         {
-            ScanButtonText = "სკანირების დაწყება";
-            ClearDtcButtonText = "DTC კოდების წაშლა";
-            ModuleLiveButtonText = "მოდულების ცოცხალი მონაცემები";
+            ScanButtonText = _localization.Translate("სკანირების დაწყება");
+            ClearDtcButtonText = _localization.Translate("DTC კოდების წაშლა");
+            ModuleLiveButtonText = _localization.Translate("მოდულების ცოცხალი მონაცემები");
         }
     }
 
@@ -4592,11 +4603,11 @@ public partial class ModuleScanViewModel : BaseViewModel
             ScanProgressFraction = 0;
             ScanState = "LOADING";
             ScanStateColor = "#60A5FA";
-            ScanStateDetail = "Generic OBD-II შესაძლებლობები მოწმდება. მხოლოდ რეალურად პასუხმგებელი ECU დაემატება.";
-            TopologyText = "Diagnostic path მოწმდება…";
-            TopologySummary = "სკანირება მიმდინარეობს";
-            TopologyNotice = "OEM ECU მოთხოვნა მხოლოდ verified definition-ის არსებობისას გაიგზავნება.";
-            Status = "OBD-II სკანირება იწყება…";
+            ScanStateDetail = _localization.Translate("Generic OBD-II შესაძლებლობები მოწმდება. მხოლოდ რეალურად პასუხმგებელი ECU დაემატება.");
+            TopologyText = _localization.Translate("Diagnostic path მოწმდება…");
+            TopologySummary = _localization.Translate("სკანირება მიმდინარეობს");
+            TopologyNotice = _localization.Translate("OEM ECU მოთხოვნა მხოლოდ verified definition-ის არსებობისას გაიგზავნება.");
+            Status = _localization.Translate("OBD-II სკანირება იწყება…");
 
             var progress = new Progress<ModuleScanProgress>(step =>
             {
@@ -4634,15 +4645,15 @@ public partial class ModuleScanViewModel : BaseViewModel
             await EnrichFaultsAsync();
 
             ModuleFaultEmptyMessage = Report.DtcServicesRead == 0
-                ? "DTC მონაცემი ამ ECU-დან ვერ წაიკითხა. ეს არ ნიშნავს, რომ კოდი არ არის."
+                ? _localization.Translate("DTC მონაცემი ამ ECU-დან ვერ წაიკითხა. ეს არ ნიშნავს, რომ კოდი არ არის.")
                 : Report.HasFaults
                     ? ""
                     : Report.DtcServicesRead == Report.DtcServicesExpected
-                        ? "აქტიური, Pending და Permanent შეცდომის კოდები არ აღმოჩნდა."
-                        : $"DTC-ის ნაწილი წაკითხულია ({Report.DtcServicesRead}/{Report.DtcServicesExpected}); დარჩენილი სერვისები ECU-მ არ დააბრუნა.";
+                        ? _localization.Translate("აქტიური, Pending და Permanent შეცდომის კოდები არ აღმოჩნდა.")
+                        : _localization.Translate($"DTC-ის ნაწილი წაკითხულია ({Report.DtcServicesRead}/{Report.DtcServicesExpected}); დარჩენილი სერვისები ECU-მ არ დააბრუნა.");
 
             FreezeFrameText = Report.FreezeFrames.Count == 0
-                ? "Freeze Frame მონაცემი ამ სკანზე ECU-მ არ დააბრუნა."
+                ? _localization.Translate("Freeze Frame მონაცემი ამ სკანზე ECU-მ არ დააბრუნა.")
                 : string.Join("\n", Report.FreezeFrames.SelectMany(frame => frame.Values.Select(value => $"{value.Key}: {value.Value}")));
             ShowFreezeFrame(Report);
 
@@ -4650,15 +4661,15 @@ public partial class ModuleScanViewModel : BaseViewModel
             {
                 var readiness = Report.ReadinessRead && Report.Readiness is not null
                     ? $"Readiness: {Report.Readiness.StatusText}"
-                    : "Readiness: ECU-მ მონაცემი არ დააბრუნა";
+                    : _localization.Translate("Readiness: ECU-მ მონაცემი არ დააბრუნა");
                 var liveData = Report.SnapshotPidsRequested == 0
-                    ? "Live Data snapshot: ამ ECU-მ თავსებადი სტანდარტული PID არ გამოაცხადა"
+                    ? _localization.Translate("Live Data snapshot: ამ ECU-მ თავსებადი სტანდარტული PID არ გამოაცხადა")
                     : Report.Sensors.Count == 0
-                        ? $"Live Data snapshot: მოთხოვნილი {Report.SnapshotPidsRequested} PID-დან დეკოდირებადი პასუხი არ დაბრუნებულა"
-                        : $"Live Data snapshot: {Report.Sensors.Count}/{Report.SnapshotPidsRequested} რეალური მნიშვნელობა · სულ მხარდაჭერილი PID: {Report.PidStats.Advertised}";
+                        ? _localization.Translate($"Live Data snapshot: მოთხოვნილი {Report.SnapshotPidsRequested} PID-დან დეკოდირებადი პასუხი არ დაბრუნებულა")
+                        : _localization.Translate($"Live Data snapshot: {Report.Sensors.Count}/{Report.SnapshotPidsRequested} რეალური მნიშვნელობა · სულ მხარდაჭერილი PID: {Report.PidStats.Advertised}");
                 var vehicleInfo = Report.VehicleInfoRead
                     ? $"VIN: {DisplayValue(Report.Vehicle.VIN)}"
-                    : "VIN / Vehicle Info: მიუწვდომელია";
+                    : _localization.Translate("VIN / Vehicle Info: მიუწვდომელია");
                 var ecu = new ModuleScanItem
                 {
                     Id = "OBD-ECU",
@@ -4669,7 +4680,7 @@ public partial class ModuleScanViewModel : BaseViewModel
                     IsDiscovered = true,
                     AvailabilityText = "AVAILABLE",
                     AvailabilityColor = "#4ADE80",
-                    CommunicationText = "Communication OK — OBD პასუხი დადასტურებულია",
+                    CommunicationText = _localization.Translate("Communication OK — OBD პასუხი დადასტურებულია"),
                     CommunicationColor = "#4ADE80",
                     StoredFaultCount = Report.StoredCodes.Count,
                     PendingFaultCount = Report.PendingCodes.Count,
@@ -4689,7 +4700,7 @@ public partial class ModuleScanViewModel : BaseViewModel
                     DtcCapability = Report.DtcServicesRead > 0 ? "DTC.READ: Available" : "DTC.READ: Not Available",
                     LiveDataCapability = Report.Sensors.Count > 0 ? "DATA.READ: Available" : "DATA.READ: Not Available",
                     FreezeFrameCapability = Report.FreezeFrames.Count > 0 ? "FREEZEFRAME.READ: Available" : "FREEZEFRAME.READ: Not Available",
-                    SourceText = "წყარო: Standard OBD-II Mode 01 / 03 / 07 / 0A",
+                    SourceText = _localization.Translate("წყარო: Standard OBD-II Mode 01 / 03 / 07 / 0A"),
                     LastScanAt = Report.FinishedAt
                 };
                 Modules.Add(ecu);
@@ -4699,7 +4710,7 @@ public partial class ModuleScanViewModel : BaseViewModel
                 TopologySummary = genericTopology.Summary;
                 ScanState = "AVAILABLE";
                 ScanStateColor = "#4ADE80";
-                ScanStateDetail = "1 რეალურად პასუხმგებელი Generic OBD-II ECU აღმოჩნდა. OEM მისამართის გარეშე ABS/SRS/BCM/TCM არ არის ნაჩვენები.";
+                ScanStateDetail = _localization.Translate("1 რეალურად პასუხმგებელი Generic OBD-II ECU აღმოჩნდა. OEM მისამართის გარეშე ABS/SRS/BCM/TCM არ არის ნაჩვენები.");
 
                 // OEM discovery never guesses module IDs. It runs only if a
                 // verified model/address/read-only probe has been registered.
@@ -4728,7 +4739,7 @@ public partial class ModuleScanViewModel : BaseViewModel
                                 Status = dtc.StatusText,
                                 Severity = (dtc.StatusByte & (byte)UdsDtcStatus.WarningIndicatorRequested) != 0
                                     ? "Warning indicator requested"
-                                    : "შესამოწმებელი"
+                                    : _localization.Translate("შესამოწმებელი")
                             });
                         }
                     }
@@ -4754,12 +4765,12 @@ public partial class ModuleScanViewModel : BaseViewModel
                             OemDtcSummary = OemDtcSummary(ecuDtc),
                             OemFreezeFrameSummary = OemFreezeFrameSummary(ecuFreezeFrames),
                             DataSummary = $"{probe.Detail}\nDiagnostic bus: {probe.CanBus}\nResponse time: {probe.ElapsedMilliseconds} ms\nDefinition: {probe.DefinitionId}",
-                            CapabilitiesSummary = capabilityProfile?.Summary ?? "Capability probe არ შესრულებულა — ECU-ს დადებითი/შეზღუდული პასუხი არ დადასტურდა.",
+                            CapabilitiesSummary = capabilityProfile?.Summary ?? _localization.Translate("Capability probe არ შესრულებულა — ECU-ს დადებითი/შეზღუდული პასუხი არ დადასტურდა."),
                             IdentificationCapability = CapabilityStatus(capabilityProfile, "IDENTIFICATION.READ"),
                             DtcCapability = CapabilityStatus(capabilityProfile, "DTC.READ"),
                             LiveDataCapability = CapabilityStatus(capabilityProfile, "DATA.READ"),
                             FreezeFrameCapability = OemFreezeFrameCapability(ecuFreezeFrames, capabilityProfile),
-                            SourceText = $"დადასტურებული წყარო: {probe.Source}",
+                            SourceText = _localization.Translate($"დადასტურებული წყარო: {probe.Source}"),
                             LastScanAt = DateTime.Now
                         });
                     }
@@ -4769,8 +4780,8 @@ public partial class ModuleScanViewModel : BaseViewModel
                     TopologySummary = topology.Summary;
                     TopologyNotice = oem.Detail;
                     ScanStateDetail = oem.Probes.Count == 0
-                        ? $"Generic ECU დადასტურდა. OEM discovery: {oem.Detail}"
-                        : $"Generic ECU დადასტურდა; {oem.Probes.Count} verified OEM მისამართი შემოწმდა, დადებითი პასუხი: {oem.Modules.Count}.";
+                        ? _localization.Translate($"Generic ECU დადასტურდა. OEM discovery: {oem.Detail}")
+                        : _localization.Translate($"Generic ECU დადასტურდა; {oem.Probes.Count} verified OEM მისამართი შემოწმდა, დადებითი პასუხი: {oem.Modules.Count}.");
                     if (capabilityDetection.Ecus.Count > 0)
                         ScanStateDetail += $" Capability detection: {capabilityDetection.Detail}";
                     if (oemDtcScan.Ecus.Count > 0)
@@ -4789,9 +4800,9 @@ public partial class ModuleScanViewModel : BaseViewModel
                 {
                     // A failed OEM extension must never erase the completed
                     // generic scan or turn it into a false vehicle failure.
-                    TopologyText += "\n  └── OEM discovery ვერ დასრულდა";
-                    TopologyNotice = "OEM extension შეცდომით დასრულდა; Generic OBD შედეგი უცვლელად შენარჩუნდა.";
-                    ScanStateDetail = "Generic ECU დადასტურდა. OEM discovery ვერ დასრულდა; Generic შედეგი შენახულია.";
+                    TopologyText += _localization.Translate("\n  └── OEM discovery ვერ დასრულდა");
+                    TopologyNotice = _localization.Translate("OEM extension შეცდომით დასრულდა; Generic OBD შედეგი უცვლელად შენარჩუნდა.");
+                    ScanStateDetail = _localization.Translate("Generic ECU დადასტურდა. OEM discovery ვერ დასრულდა; Generic შედეგი შენახულია.");
                     System.Diagnostics.Debug.WriteLine($"OEM discovery failed: {ex}");
                     Status = $"{Status} OEM: {UserError.Describe(ex)}";
                 }
@@ -4801,12 +4812,12 @@ public partial class ModuleScanViewModel : BaseViewModel
                 var unavailableTopology = VehicleNetworkTopologyBuilder.Build(false, Report.Protocol, null);
                 TopologyText = unavailableTopology.TreeText;
                 TopologySummary = unavailableTopology.Summary;
-                TopologyNotice = "ECU diagnostic path ვერ დადასტურდა.";
+                TopologyNotice = _localization.Translate("ECU diagnostic path ვერ დადასტურდა.");
                 ScanState = "NOT SUPPORTED";
                 ScanStateColor = "#F59E0B";
-                ScanStateDetail = "Adapter დაკავშირებულია, მაგრამ სტანდარტულ OBD ECU-ს პასუხი არ დაუბრუნებია. fake მოდული არ შექმნილა.";
-                SelectedDetails = "რეალური მოდული ვერ დადასტურდა. შეამოწმე კონტაქტი ON, adapter, Bluetooth და ავტომობილის OBD-II მხარდაჭერა.";
-                FreezeFrameText = "Freeze Frame არ შემოწმებულა — პასუხმგებელი OBD ECU ვერ დადასტურდა.";
+                ScanStateDetail = _localization.Translate("Adapter დაკავშირებულია, მაგრამ სტანდარტულ OBD ECU-ს პასუხი არ დაუბრუნებია. fake მოდული არ შექმნილა.");
+                SelectedDetails = _localization.Translate("რეალური მოდული ვერ დადასტურდა. შეამოწმე კონტაქტი ON, adapter, Bluetooth და ავტომობილის OBD-II მხარდაჭერა.");
+                FreezeFrameText = _localization.Translate("Freeze Frame არ შემოწმებულა — პასუხმგებელი OBD ECU ვერ დადასტურდა.");
             }
 
             if (Report.EcuResponded && (Report.Modules.Count > 0 || !string.IsNullOrWhiteSpace(Report.ModuleScanNote)))
@@ -4817,14 +4828,14 @@ public partial class ModuleScanViewModel : BaseViewModel
                 BuildSelectedDetails();
 
             Status = !Report.EcuResponded
-                ? "სკანირება დასრულდა — სტანდარტული OBD ECU პასუხი ვერ დადასტურდა."
+                ? _localization.Translate("სკანირება დასრულდა — სტანდარტული OBD ECU პასუხი ვერ დადასტურდა.")
                 : Report.DtcServicesRead == 0
-                    ? "სკანირება დასრულდა — ECU პასუხობს, მაგრამ DTC მონაცემი მიუწვდომელია."
+                    ? _localization.Translate("სკანირება დასრულდა — ECU პასუხობს, მაგრამ DTC მონაცემი მიუწვდომელია.")
                 : Report.HasFaults
-                    ? "სკანირება დასრულდა — შეცდომები ნაპოვნია."
+                    ? _localization.Translate("სკანირება დასრულდა — შეცდომები ნაპოვნია.")
                     : Report.DtcServicesRead == Report.DtcServicesExpected
-                        ? "სკანირება დასრულდა — აქტიური DTC არ არის."
-                        : "სკანირება დასრულდა — DTC მონაცემი ნაწილობრივ წაკითხულია.";
+                        ? _localization.Translate("სკანირება დასრულდა — აქტიური DTC არ არის.")
+                        : _localization.Translate("სკანირება დასრულდა — DTC მონაცემი ნაწილობრივ წაკითხულია.");
             await _notifications.MarkScanCompletedAsync();
             AddScanToReport();
         }
@@ -4836,13 +4847,13 @@ public partial class ModuleScanViewModel : BaseViewModel
             Report = null;
             ScanState = "ERROR";
             ScanStateColor = "#EF4444";
-            ScanStateDetail = "OBD მოდულის სკანირება ვერ დასრულდა. მონაცემი არ არის გამოგონილი.";
-            ModuleFaultEmptyMessage = "DTC კოდები ვერ წაიკითხა — სკანირება შეცდომით შეწყდა.";
-            FreezeFrameText = "Freeze Frame არ იკითხება, რადგან სკანირება ვერ დასრულდა.";
+            ScanStateDetail = _localization.Translate("OBD მოდულის სკანირება ვერ დასრულდა. მონაცემი არ არის გამოგონილი.");
+            ModuleFaultEmptyMessage = _localization.Translate("DTC კოდები ვერ წაიკითხა — სკანირება შეცდომით შეწყდა.");
+            FreezeFrameText = _localization.Translate("Freeze Frame არ იკითხება, რადგან სკანირება ვერ დასრულდა.");
             System.Diagnostics.Debug.WriteLine($"Full scan failed: {ex}");
             var scanError = UserError.Describe(ex);
             Status = string.Equals(scanError, UserError.Describe(null), StringComparison.Ordinal)
-                ? "სრული სკანირება ვერ დასრულდა. შეამოწმე adapter და მანქანის კონტაქტი."
+                ? _localization.Translate("სრული სკანირება ვერ დასრულდა. შეამოწმე adapter და მანქანის კონტაქტი.")
                 : scanError;
         }
         finally
@@ -4923,10 +4934,10 @@ public partial class ModuleScanViewModel : BaseViewModel
             var targets = new List<ModuleDtcReport>(modulesWithCodes);
             if (modulesWithCodes.Count > 0)
             {
-                var allText = ClearL($"ყველა (ძრავი + {modulesWithCodes.Count} მოდული)", $"Everything (engine + {modulesWithCodes.Count} modules)");
+                var allText = ClearL(_localization.Translate($"ყველა (ძრავი + {modulesWithCodes.Count} მოდული)"), $"Everything (engine + {modulesWithCodes.Count} modules)");
                 var engineText = ClearL("მხოლოდ ძრავი", "Engine only");
                 var moduleTexts = modulesWithCodes
-                    .Select(module => ClearL($"{ModuleTitle(module)} · {module.Codes.Count} კოდი", $"{ModuleTitle(module)} · {module.Codes.Count} codes"))
+                    .Select(module => ClearL(_localization.Translate($"{ModuleTitle(module)} · {module.Codes.Count} კოდი"), $"{ModuleTitle(module)} · {module.Codes.Count} codes"))
                     .ToList();
                 var options = new[] { allText, engineText }.Concat(moduleTexts).ToArray();
                 var picked = await Shell.Current.DisplayActionSheetLocalizedAsync(
@@ -4969,12 +4980,12 @@ public partial class ModuleScanViewModel : BaseViewModel
                 "After clearing I will rescan and show what was cleared and what came back."));
 
             var scopeText = clearEngine
-                ? (targets.Count > 0 ? ClearL($"ძრავი + {targets.Count} მოდული", $"engine + {targets.Count} modules") : ClearL("ძრავი", "engine"))
+                ? (targets.Count > 0 ? ClearL(_localization.Translate($"ძრავი + {targets.Count} მოდული"), $"engine + {targets.Count} modules") : ClearL("ძრავი", "engine"))
                 : ModuleTitle(targets[0]);
 
             var confirmed = await Shell.Current.DisplayAlertLocalizedAsync(
                 ClearL("შეცდომების წაშლა", "Clear trouble codes"),
-                ClearL($"წაიშლება: {scopeText}\n\n", $"Will clear: {scopeText}\n\n") + string.Join("\n\n", notes),
+                ClearL(_localization.Translate($"წაიშლება: {scopeText}\n\n"), $"Will clear: {scopeText}\n\n") + string.Join("\n\n", notes),
                 ClearL("წაშლა", "Clear"),
                 ClearL("გაუქმება", "Cancel"));
             if (!confirmed)
@@ -5011,7 +5022,7 @@ public partial class ModuleScanViewModel : BaseViewModel
             }
             catch (Exception ex)
             {
-                Status = ClearL($"წაშლა ვერ შესრულდა: {UserError.Describe(ex)}", $"Clearing failed: {UserError.Describe(ex)}");
+                Status = ClearL(_localization.Translate($"წაშლა ვერ შესრულდა: {UserError.Describe(ex)}"), $"Clearing failed: {UserError.Describe(ex)}");
                 await Shell.Current.DisplayAlertLocalizedAsync(ClearL("შეცდომა", "Error"), Status, "OK");
                 return;
             }
@@ -5044,17 +5055,17 @@ public partial class ModuleScanViewModel : BaseViewModel
                 var nowCount = now?.Count ?? 0;
                 if (!accepted && nowCount > 0)
                 {
-                    ClearResults.Add(new ClearResultRow(title, ClearL($"არ წაიშალა — {refusal}", $"Not cleared — {refusal}"), red));
+                    ClearResults.Add(new ClearResultRow(title, ClearL(_localization.Translate($"არ წაიშალა — {refusal}"), $"Not cleared — {refusal}"), red));
                 }
                 else if (nowCount == 0)
                 {
-                    ClearResults.Add(new ClearResultRow(title, ClearL($"წაიშალა ({wasCount} → 0)", $"Cleared ({wasCount} → 0)"), green));
+                    ClearResults.Add(new ClearResultRow(title, ClearL(_localization.Translate($"წაიშალა ({wasCount} → 0)"), $"Cleared ({wasCount} → 0)"), green));
                 }
                 else
                 {
                     var back = string.Join(", ", now!.Take(4));
                     ClearResults.Add(new ClearResultRow(title,
-                        ClearL($"{nowCount} კოდი დაბრუნდა: {back} — ხარვეზი ჯერ კიდევ არსებობს, საჭიროა შეკეთება.",
+                        ClearL(_localization.Translate($"{nowCount} კოდი დაბრუნდა: {back} — ხარვეზი ჯერ კიდევ არსებობს, საჭიროა შეკეთება."),
                             $"{nowCount} code(s) came back: {back} — the fault is still present and needs repair."),
                         orange));
                 }
@@ -5128,19 +5139,19 @@ public partial class ModuleScanViewModel : BaseViewModel
                 if (string.IsNullOrWhiteSpace(title))
                     title = english
                         ? "No description in the database (manufacturer-specific code)."
-                        : "ამ კოდის აღწერა ბაზაში ვერ მოიძებნა (მწარმოებლის სპეციფიკური კოდი).";
+                        : _localization.Translate("ამ კოდის აღწერა ბაზაში ვერ მოიძებნა (მწარმოებლის სპეციფიკური კოდი).");
 
                 // The letter code is the module's bytes written in SAE style; keep the bytes themselves visible.
                 if (!string.IsNullOrWhiteSpace(code.RawBytesHex))
                     title += english
                         ? $"\nModule bytes: {code.RawBytesHex} · status 0x{code.StatusByte:X2}"
-                        : $"\nმოდულის ბაიტები: {code.RawBytesHex} · სტატუსი 0x{code.StatusByte:X2}";
+                        : _localization.Translate($"\nმოდულის ბაიტები: {code.RawBytesHex} · სტატუსი 0x{code.StatusByte:X2}");
 
                 if (code.Snapshot.Count > 0)
                 {
                     var snapshot = string.Join(" · ", code.Snapshot.Select(value =>
                         $"{(english ? value.NameEn : value.NameKa)}: {value.Value}"));
-                    title += english ? $"\nAt the moment of the fault: {snapshot}" : $"\nშეცდომის მომენტში: {snapshot}";
+                    title += english ? $"\nAt the moment of the fault: {snapshot}" : _localization.Translate($"\nშეცდომის მომენტში: {snapshot}");
                 }
 
                 ModuleFaults.Add(new ModuleFaultItem
@@ -5150,11 +5161,11 @@ public partial class ModuleScanViewModel : BaseViewModel
                     Code = code.DisplayCode,
                     Description = title,
                     Status = code.Active
-                        ? (english ? "Active" : "აქტიური")
+                        ? (english ? "Active" : _localization.Translate("აქტიური"))
                         : code.Pending
-                            ? (english ? "Pending" : "მოლოდინში")
-                            : (english ? "Stored" : "შენახული"),
-                    Severity = code.Active ? (english ? "Check" : "შესამოწმებელი") : (english ? "History" : "ისტორია")
+                            ? (english ? "Pending" : _localization.Translate("მოლოდინში"))
+                            : (english ? "Stored" : _localization.Translate("შენახული")),
+                    Severity = code.Active ? (english ? "Check" : _localization.Translate("შესამოწმებელი")) : (english ? "History" : _localization.Translate("ისტორია"))
                 });
                 moduleFaultCount++;
             }
@@ -5167,12 +5178,14 @@ public partial class ModuleScanViewModel : BaseViewModel
                     // A cut-off reply is neither "no faults" nor a full list.
                     ? (english
                         ? $"answered, code list incomplete{(total == 0 ? string.Empty : $" · {total} fault(s) received")}"
-                        : $"პასუხი არასრულია{(total == 0 ? string.Empty : $" · მიღებულია {total} შეცდომა")}")
+                        : (total == 0
+                            ? _localization.Translate("პასუხი არასრულია")
+                            : _localization.Translate($"პასუხი არასრულია · {total} შეცდომა მიღებული")))
                     : module.Protocol == "—"
-                    ? (english ? "answers, no code list" : "პასუხობს, კოდებს არ აჩვენებს")
+                    ? (english ? "answers, no code list" : _localization.Translate("პასუხობს, კოდებს არ აჩვენებს"))
                     : total == 0
-                        ? (english ? "no faults" : "შეცდომა არ არის")
-                        : (english ? $"{total} fault(s)" : $"{total} შეცდომა"),
+                        ? (english ? "no faults" : _localization.Translate("შეცდომა არ არის"))
+                        : (english ? $"{total} fault(s)" : _localization.Translate($"{total} შეცდომა")),
                 StatusColor = !module.CodeListComplete
                     ? Color.FromArgb("#F59E0B")
                     : module.Protocol == "—"
@@ -5186,10 +5199,10 @@ public partial class ModuleScanViewModel : BaseViewModel
                         : null,
                     string.IsNullOrWhiteSpace(module.SoftwareVersion)
                         ? null
-                        : (english ? "Software " : "პროგრამა ") + module.SoftwareVersion,
+                        : (english ? "Software " : _localization.Translate("პროგრამა ")) + module.SoftwareVersion,
                     // The name comes from our address table, not from the module itself.
                     module.NameBasis == "address-table" && string.IsNullOrWhiteSpace(module.EcuName)
-                        ? (english ? "name from address table (not confirmed by the module)" : "სახელი მისამართების ცხრილიდანაა (მოდულს არ დაუდასტურებია)")
+                        ? (english ? "name from address table (not confirmed by the module)" : _localization.Translate("სახელი მისამართების ცხრილიდანაა (მოდულს არ დაუდასტურებია)"))
                         : null,
                     string.IsNullOrWhiteSpace(module.Diagnostics) ? null : module.Diagnostics
                 }.Where(item => !string.IsNullOrWhiteSpace(item)))
@@ -5208,14 +5221,14 @@ public partial class ModuleScanViewModel : BaseViewModel
                     or CarScanner.Services.OemDiagnostics.CoreModuleReach.NotAskedUnsupportedConnection
                     ? Color.FromArgb("#94A3B8")
                     : Color.FromArgb("#F59E0B"),
-                Detail = string.IsNullOrWhiteSpace(core.AddressText) ? string.Empty : (english ? "address " : "მისამართი ") + core.AddressText
+                Detail = string.IsNullOrWhiteSpace(core.AddressText) ? string.Empty : (english ? "address " : _localization.Translate("მისამართი ")) + core.AddressText
             });
         }
 
         HasModuleRows = ModuleRows.Count > 0;
         var summary = english
             ? $"Modules checked: {report.ModulesChecked} · answered: {responded.Count} · faults in modules: {responded.Sum(module => module.Codes.Count)}"
-            : $"შემოწმდა {report.ModulesChecked} მისამართი · უპასუხა {responded.Count} მოდულმა · შეცდომები მოდულებში: {responded.Sum(module => module.Codes.Count)}";
+            : _localization.Translate($"შემოწმდა {report.ModulesChecked} მისამართი · უპასუხა {responded.Count} მოდულმა · შეცდომები მოდულებში: {responded.Sum(module => module.Codes.Count)}");
         if (!string.IsNullOrWhiteSpace(report.ModuleScanNote))
             summary += "\n" + (english ? _localization.Translate(report.ModuleScanNote) : report.ModuleScanNote);
         ModuleSummaryText = summary;
@@ -5235,9 +5248,9 @@ public partial class ModuleScanViewModel : BaseViewModel
         var english = _localization.IsEnglish;
         foreach (var fault in ModuleFaults.ToList())
         {
-            fault.CausesHeader = english ? "Possible causes" : "შესაძლო მიზეზები";
-            fault.ChecksHeader = english ? "What to check" : "რა შევამოწმოთ";
-            fault.AiButtonText = english ? "AI explanation" : "AI ახსნა";
+            fault.CausesHeader = english ? "Possible causes" : _localization.Translate("შესაძლო მიზეზები");
+            fault.ChecksHeader = english ? "What to check" : _localization.Translate("რა შევამოწმოთ");
+            fault.AiButtonText = english ? "AI explanation" : _localization.Translate("AI ახსნა");
 
             var code = fault.Code.Trim().ToUpperInvariant();
             if (code.Length < 5)
@@ -5276,12 +5289,12 @@ public partial class ModuleScanViewModel : BaseViewModel
             return;
 
         var english = _localization.IsEnglish;
-        if (!await ProGate.EnsureAsync(_pro, "კოდის AI ახსნა", "AI code explanation"))
+        if (!await ProGate.EnsureAsync(_pro, _localization.Translate("კოდის AI ახსნა"), "AI code explanation"))
             return;
 
         var code = fault.Code.Trim().ToUpperInvariant();
         fault.IsAiBusy = true;
-        fault.AiExplanation = english ? "AI is analyzing…" : "AI აანალიზებს…";
+        fault.AiExplanation = english ? "AI is analyzing…" : _localization.Translate("AI აანალიზებს…");
         try
         {
             var errorCode = new ErrorCode
@@ -5297,7 +5310,7 @@ public partial class ModuleScanViewModel : BaseViewModel
 
             var question = english
                 ? $"Explain fault code {code} from the \"{fault.EcuName}\" module in simple words: what it means, the most likely causes for this car, whether it is safe to drive, and what to check first. Keep it short and practical."
-                : $"ახსენი შეცდომის კოდი {code} („{fault.EcuName}“ მოდულიდან) მარტივი ქართულით: რას ნიშნავს, ამ მანქანისთვის ყველაზე სავარაუდო მიზეზები, შეიძლება თუ არა მგზავრობა და რა შევამოწმოთ პირველ რიგში. მოკლედ და პრაქტიკულად.";
+                : _localization.Translate($"ახსენი შეცდომის კოდი {code} („{fault.EcuName}“ მოდულიდან) მარტივი ქართულით: რას ნიშნავს, ამ მანქანისთვის ყველაზე სავარაუდო მიზეზები, შეიძლება თუ არა მგზავრობა და რა შევამოწმოთ პირველ რიგში. მოკლედ და პრაქტიკულად.");
 
             var reply = await _ai.ChatAsync(
                 Report?.Vehicle ?? new VehicleInfo(),
@@ -5307,14 +5320,14 @@ public partial class ModuleScanViewModel : BaseViewModel
                 question);
 
             fault.AiExplanation = string.IsNullOrWhiteSpace(reply)
-                ? (english ? "The AI did not return an answer. Try again." : "AI-მ პასუხი არ დააბრუნა. სცადე თავიდან.")
+                ? (english ? "The AI did not return an answer. Try again." : _localization.Translate("AI-მ პასუხი არ დააბრუნა. სცადე თავიდან."))
                 : reply.Trim();
         }
         catch
         {
             fault.AiExplanation = english
                 ? "Could not get the AI answer. Check the internet connection and try again."
-                : "AI პასუხი ვერ მივიღეთ. შეამოწმე ინტერნეტი და სცადე თავიდან.";
+                : _localization.Translate("AI პასუხი ვერ მივიღეთ. შეამოწმე ინტერნეტი და სცადე თავიდან.");
         }
         finally
         {
@@ -5383,7 +5396,7 @@ public partial class ModuleScanViewModel : BaseViewModel
             {
                 description = _localization.IsEnglish
                     ? code.Description
-                    : "ამ კოდის აღწერა ბაზაში ვერ მოიძებნა (შესაძლოა მწარმოებლის სპეციფიკური კოდია).";
+                    : _localization.Translate("ამ კოდის აღწერა ბაზაში ვერ მოიძებნა (შესაძლოა მწარმოებლის სპეციფიკური კოდია).");
             }
 
             ModuleFaults.Add(new ModuleFaultItem
@@ -5395,13 +5408,13 @@ public partial class ModuleScanViewModel : BaseViewModel
                 Status = FaultStatusText(status),
                 Severity =
                     status == "Pending"
-                        ? "დაკვირვება საჭიროა"
-                        : "შესამოწმებელი"
+                        ? _localization.Translate("დაკვირვება საჭიროა")
+                        : _localization.Translate("შესამოწმებელი")
             });
         }
     }
 
-    private string EngineEcuText() => _localization.IsEnglish ? "Engine (ECU)" : "ძრავი (ECU)";
+    private string EngineEcuText() => _localization.IsEnglish ? "Engine (ECU)" : _localization.Translate("ძრავი (ECU)");
 
     /// <summary>The finished scan becomes the "full scan" part of the combined report.</summary>
     private void AddScanToReport()
@@ -5413,14 +5426,14 @@ public partial class ModuleScanViewModel : BaseViewModel
         var section = new CarScanner.Services.Reports.ReportSectionItem
         {
             Kind = "scan",
-            Title = english ? "Full scan" : "სრული სკანი",
+            Title = english ? "Full scan" : _localization.Translate("სრული სკანი"),
             Status = ModuleFaults.Count == 0
                 ? CarScanner.Services.Reports.ReportStatus.Ok
                 : ModuleFaults.Count >= 4 ? CarScanner.Services.Reports.ReportStatus.Bad : CarScanner.Services.Reports.ReportStatus.Warning,
             Summary = string.Join(" · ", new[]
             {
-                ModuleFaults.Count == 0 ? (english ? "No fault codes" : "შეცდომა არ არის") : (english ? $"{ModuleFaults.Count} fault codes" : $"{ModuleFaults.Count} შეცდომა"),
-                ModuleRows.Count > 0 ? (english ? $"{ModuleRows.Count + 1} modules" : $"{ModuleRows.Count + 1} მოდული") : string.Empty,
+                ModuleFaults.Count == 0 ? (english ? "No fault codes" : _localization.Translate("შეცდომა არ არის")) : (english ? $"{ModuleFaults.Count} fault codes" : _localization.Translate($"{ModuleFaults.Count} შეცდომა")),
+                ModuleRows.Count > 0 ? (english ? $"{ModuleRows.Count + 1} modules" : _localization.Translate($"{ModuleRows.Count + 1} მოდული")) : string.Empty,
                 Report.ReadinessRead && Report.Readiness is not null ? Report.Readiness.StatusText : string.Empty,
                 FreezeFrameRows.Count > 0 ? "Freeze Frame" : string.Empty
             }.Where(part => !string.IsNullOrWhiteSpace(part)))
@@ -5429,7 +5442,7 @@ public partial class ModuleScanViewModel : BaseViewModel
         foreach (var fault in ModuleFaults)
             section.Lines.Add(new() { Label = fault.Code, Value = $"{fault.Description} · {fault.MetaText}" });
         if (Report.ReadinessRead && Report.Readiness is not null)
-            section.Lines.Add(new() { Label = english ? "Readiness" : "მზადყოფნა", Value = Report.Readiness.StatusText });
+            section.Lines.Add(new() { Label = english ? "Readiness" : _localization.Translate("მზადყოფნა"), Value = Report.Readiness.StatusText });
         foreach (var row in FreezeFrameRows)
             section.Lines.Add(new() { Label = $"Freeze Frame · {row.Label}", Value = row.Value });
         foreach (var module in ModuleRows)
@@ -5441,9 +5454,9 @@ public partial class ModuleScanViewModel : BaseViewModel
     /// <summary>Stored / Pending / Permanent in plain words.</summary>
     private string FaultStatusText(string status) => (status, _localization.IsEnglish) switch
     {
-        ("Stored", false) => "შენახული",
-        ("Pending", false) => "მოლოდინში (ჯერ არ დადასტურებულა)",
-        ("Permanent", false) => "მუდმივი (წაშლით არ იშლება)",
+        ("Stored", false) => _localization.Translate("შენახული"),
+        ("Pending", false) => _localization.Translate("მოლოდინში (ჯერ არ დადასტურებულა)"),
+        ("Permanent", false) => _localization.Translate("მუდმივი (წაშლით არ იშლება)"),
         ("Pending", true) => "Pending (not confirmed yet)",
         ("Permanent", true) => "Permanent (cannot be cleared)",
         _ => status
@@ -5474,7 +5487,7 @@ public partial class ModuleScanViewModel : BaseViewModel
         try
         {
             // Coding is switched off for users for now (same message as the Home tile).
-            CarScanner.Services.Reports.ReportToast.Show(_localization.IsEnglish ? "Coming soon" : "მალე დაემატება");
+            CarScanner.Services.Reports.ReportToast.Show(_localization.Translate(_localization.IsEnglish ? "Coming soon" : "მალე დაემატება"));
         }
         catch (Exception commandException)
         {
@@ -5515,7 +5528,7 @@ public partial class ModuleScanViewModel : BaseViewModel
     {
         if (SelectedModule is null)
         {
-            SelectedDetails = "აირჩიე აღმოჩენილი მოდული.";
+            SelectedDetails = _localization.Translate("აირჩიე აღმოჩენილი მოდული.");
             return;
         }
 
@@ -5525,28 +5538,28 @@ public partial class ModuleScanViewModel : BaseViewModel
             "Faults" => !SelectedModule.IsGenericObd
                 ? $"{SelectedModule.OemDtcSummary}\n{SelectedModule.DtcCapability}\n" +
                   (ModuleFaults.Any(fault => fault.DefinitionId.Equals(SelectedModule.DefinitionId, StringComparison.OrdinalIgnoreCase))
-                      ? "ქვემოთ ნაჩვენებია ამ OEM ECU-დან რეალურად წაკითხული კოდები."
-                      : "ამ OEM ECU-სთვის საჩვენებელი DTC ჩანაწერი არ არის.")
+                      ? _localization.Translate("ქვემოთ ნაჩვენებია ამ OEM ECU-დან რეალურად წაკითხული კოდები.")
+                      : _localization.Translate("ამ OEM ECU-სთვის საჩვენებელი DTC ჩანაწერი არ არის."))
                 : Report?.DtcServicesRead == 0
-                ? "DTC მონაცემი ამ ECU-დან ვერ წაიკითხა; კოდების არარსებობა არ არის დადასტურებული."
+                ? _localization.Translate("DTC მონაცემი ამ ECU-დან ვერ წაიკითხა; კოდების არარსებობა არ არის დადასტურებული.")
                 : ModuleFaults.Count == 0
                     ? Report?.DtcServicesRead == Report?.DtcServicesExpected
-                        ? "აქტიური, შენახული, Pending ან Permanent კოდი არ აღმოჩნდა."
-                        : $"კოდი წაკითხულ სერვისებში არ აღმოჩნდა, მაგრამ DTC წაკითხვა ნაწილობრივ დასრულდა ({Report?.DtcServicesRead}/{Report?.DtcServicesExpected})."
-                : "ქვემოთ ნაჩვენებია ამ სკანის დროს ECM-დან რეალურად წაკითხული კოდები.",
+                        ? _localization.Translate("აქტიური, შენახული, Pending ან Permanent კოდი არ აღმოჩნდა.")
+                        : _localization.Translate($"კოდი წაკითხულ სერვისებში არ აღმოჩნდა, მაგრამ DTC წაკითხვა ნაწილობრივ დასრულდა ({Report?.DtcServicesRead}/{Report?.DtcServicesExpected}).")
+                : _localization.Translate("ქვემოთ ნაჩვენებია ამ სკანის დროს ECM-დან რეალურად წაკითხული კოდები."),
             "Live Data" => !SelectedModule.IsGenericObd
                 ? SelectedModule.LiveDataCapability
                 : Report?.Sensors.Count > 0
-                ? $"ამ სკანზე {Report.Sensors.Count} რეალური PID მნიშვნელობა წაკითხულია. Live Data Center-ში იხილავ პერიოდულ განახლებას მხოლოდ მხარდაჭერილი PID-ებისთვის."
-                : "ამ სკანზე ECU-მ დეკოდირებადი live მნიშვნელობა არ დააბრუნა.",
+                ? _localization.Translate($"ამ სკანზე {Report.Sensors.Count} რეალური PID მნიშვნელობა წაკითხულია. Live Data Center-ში იხილავ პერიოდულ განახლებას მხოლოდ მხარდაჭერილი PID-ებისთვის.")
+                : _localization.Translate("ამ სკანზე ECU-მ დეკოდირებადი live მნიშვნელობა არ დააბრუნა."),
             "Info" => $"{SelectedModule.IdentificationCapability}\n{SelectedModule.FreezeFrameCapability}\n{SelectedModule.OemFreezeFrameSummary}\n{SelectedModule.DataSummary}\n{SelectedModule.SourceText}\n{SelectedModule.LastScanText}",
-            _ => "მოდულის ინფორმაცია მიუწვდომელია."
+            _ => _localization.Translate("მოდულის ინფორმაცია მიუწვდომელია.")
         };
     }
 
-    private static string DisplayValue(string? value) =>
+    private string DisplayValue(string? value) =>
         string.IsNullOrWhiteSpace(value) || string.Equals(value, "Unknown", StringComparison.OrdinalIgnoreCase)
-            ? "მიუწვდომელია"
+            ? _localization.Translate("მიუწვდომელია")
             : value;
 
     private static string ProbeAvailability(OemModuleProbeState state) => state switch
@@ -5568,34 +5581,34 @@ public partial class ModuleScanViewModel : BaseViewModel
         _ => "#EF4444"
     };
 
-    private static string ProbeCommunication(OemModuleProbeState state) => state switch
+    private string ProbeCommunication(OemModuleProbeState state) => state switch
     {
-        OemModuleProbeState.Available => "Communication OK — დადებითი read-only პასუხი",
-        OemModuleProbeState.RespondedLimited => "ECU პასუხობს — მოთხოვნა უარყოფილია/შეზღუდულია",
-        OemModuleProbeState.NoResponse => "მითითებულ მისამართზე პასუხი არ დაბრუნდა",
-        OemModuleProbeState.TransportUnsupported => "Adapter/transport ამ მოთხოვნას არ უჭერს მხარს",
-        OemModuleProbeState.MalformedResponse => "პასუხი მიღებულია, მაგრამ ვერ დადასტურდა",
-        _ => "ECU probe შეცდომით დასრულდა"
+        OemModuleProbeState.Available => _localization.Translate("Communication OK — დადებითი read-only პასუხი"),
+        OemModuleProbeState.RespondedLimited => _localization.Translate("ECU პასუხობს — მოთხოვნა უარყოფილია/შეზღუდულია"),
+        OemModuleProbeState.NoResponse => _localization.Translate("მითითებულ მისამართზე პასუხი არ დაბრუნდა"),
+        OemModuleProbeState.TransportUnsupported => _localization.Translate("Adapter/transport ამ მოთხოვნას არ უჭერს მხარს"),
+        OemModuleProbeState.MalformedResponse => _localization.Translate("პასუხი მიღებულია, მაგრამ ვერ დადასტურდა"),
+        _ => _localization.Translate("ECU probe შეცდომით დასრულდა")
     };
 
     private static string CapabilityStatus(OemEcuCapabilityProfile? profile, string code) =>
         profile?.StatusFor(code) ?? $"{code}: Not Checked";
 
-    private static string OemDtcSummary(OemEcuDtcResult? result) => result switch
+    private string OemDtcSummary(OemEcuDtcResult? result) => result switch
     {
         null => "DTC: Not Checked",
-        { State: OemDtcReadState.Available, Records.Count: 0 } => "OEM DTC კოდი არ აღმოჩნდა",
-        { State: OemDtcReadState.Available } => $"OEM DTC: {result.Records.Count} კოდი",
+        { State: OemDtcReadState.Available, Records.Count: 0 } => _localization.Translate("OEM DTC კოდი არ აღმოჩნდა"),
+        { State: OemDtcReadState.Available } => _localization.Translate($"OEM DTC: {result.Records.Count} კოდი"),
         { State: OemDtcReadState.NotSupported } => "OEM DTC: Not Supported",
         { State: OemDtcReadState.NoResponse } => "OEM DTC: No Response",
         { State: OemDtcReadState.InvalidResponse } => "OEM DTC: Invalid Response",
         _ => "OEM DTC: Error"
     };
 
-    private static string OemFreezeFrameSummary(OemEcuFreezeFrameResult? result) => result switch
+    private string OemFreezeFrameSummary(OemEcuFreezeFrameResult? result) => result switch
     {
         null => "Freeze Frame: Not Configured",
-        { State: OemFreezeFrameReadState.Available, Records.Count: 0 } => "Freeze Frame მოთხოვნა შესრულდა · snapshot არ არის",
+        { State: OemFreezeFrameReadState.Available, Records.Count: 0 } => _localization.Translate("Freeze Frame მოთხოვნა შესრულდა · snapshot არ არის"),
         { State: OemFreezeFrameReadState.Available } => $"Freeze Frame: {result.Records.Count} snapshot",
         { State: OemFreezeFrameReadState.NotApplicable } => $"Freeze Frame: Not Applicable · {result.Detail}",
         { State: OemFreezeFrameReadState.NotSupported } => "Freeze Frame: Not Supported",
@@ -5604,26 +5617,26 @@ public partial class ModuleScanViewModel : BaseViewModel
         _ => "Freeze Frame: Error"
     };
 
-    private static string OemFreezeFrameCapability(
+    private string OemFreezeFrameCapability(
         OemEcuFreezeFrameResult? result,
         OemEcuCapabilityProfile? capabilityProfile) => result switch
         {
             { State: OemFreezeFrameReadState.Available } =>
-                "FREEZEFRAME.READ: Available — ECU snapshot პასუხი დადასტურებულია",
+                _localization.Translate("FREEZEFRAME.READ: Available — ECU snapshot პასუხი დადასტურებულია"),
             { State: OemFreezeFrameReadState.NotApplicable } =>
-                "FREEZEFRAME.READ: Conditional — რეალური DTC snapshot-ისთვის DTC აუცილებელია",
+                _localization.Translate("FREEZEFRAME.READ: Conditional — რეალური DTC snapshot-ისთვის DTC აუცილებელია"),
             { State: OemFreezeFrameReadState.NotSupported } => "FREEZEFRAME.READ: Not Supported",
             { State: OemFreezeFrameReadState.NoResponse } => "FREEZEFRAME.READ: No Response",
             { State: OemFreezeFrameReadState.InvalidResponse } => "FREEZEFRAME.READ: Invalid Response",
             _ => CapabilityStatus(capabilityProfile, "FREEZEFRAME.READ")
         };
 
-    private static string BuildOemFreezeFrameText(OemFreezeFrameScanResult scan) => string.Join(
+    private string BuildOemFreezeFrameText(OemFreezeFrameScanResult scan) => string.Join(
         "\n",
         scan.Ecus.SelectMany(ecu => ecu.Records.Select(record =>
             $"{ecu.EcuName} · DTC 0x{record.RawDtcHex} · Record 0x{record.SnapshotRecordNumber:X2}\n" +
             (record.Values.Count == 0
-                ? "Snapshot მნიშვნელობები არ დაბრუნებულა."
+                ? _localization.Translate("Snapshot მნიშვნელობები არ დაბრუნებულა.")
                 : string.Join(" · ", record.Values.Select(value => $"{value.Label}: {value.DisplayValue}"))))));
     [RelayCommand] public async Task Export() {
         try

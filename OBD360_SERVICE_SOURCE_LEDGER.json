@@ -1,0 +1,792 @@
+{
+  "schema": "obd360.research.service-source-ledger/1",
+  "about": "Every source consulted for the Service system, reshaped from research/source-register.json (the single combined register this project already keeps) into the field names and evidence-classification vocabulary of OBD360_SERVICE_MILEAGE_RESEARCH_BRIEF_2026-10-21.md section 7. No source, URL, evidence level or limitation was changed or added by this reshaping; research/source-register.json remains the one place a source's full original record (and its licence check) lives.",
+  "evidenceClassificationMapping": {
+    "note": "This project's own evidence scale (E0-E5, defined in research/README.md) is kept as \"tier\"; this column maps it to the brief's vocabulary. The mapping is approximate at the edges (E3 covers both GUIDED_VERIFIED and some CORROBORATED cases depending on independence of corroboration; read exactClaimSupported before trusting the mapped label alone).",
+    "E0": "UNSUPPORTED (nothing found)",
+    "E1": "COMMUNITY_LEAD (closed tool or forum claim, no protocol detail public)",
+    "E2": "RESEARCH_ONLY (a public definition says where a value is; not reviewed against a vehicle)",
+    "E3": "GUIDED_VERIFIED (the maker's own document names the exact procedure or tool function for an exact vehicle)",
+    "E4": "CORROBORATED (a reply was recorded for that model year, by OBDb's own tests or a capture of that exact vehicle)",
+    "E5": "OEM_VERIFIED (verified on that exact vehicle by this project, with hashed evidence) — reached by no source in this ledger",
+    "PARTIAL_YEAR_SUPPORT": "Not a per-source property in this ledger; it is a per-signal, per-model-year property. See Resources/Raw/obdb_year_evidence.json and research/obdb-evidence-report.md.",
+    "QUARANTINED": "Not a source property; a catalog-entry property. See the BMW/MINI/Toyota 22 DFE7 entry in Services/OemDiagnostics/KnownMislabelledDefinitions.cs and the Volt oem_operations.json candidate."
+  },
+  "generatedFrom": "research/source-register.json (unmodified)",
+  "sourceCount": 32,
+  "sources": [
+    {
+      "sourceId": "obdb-signalsets",
+      "url": "https://github.com/OBDb",
+      "title": "OBDb vehicle signal sets (GitHub organisation OBDb, one repository per vehicle)",
+      "publisher": "community data",
+      "accessDate": "2026-10-18 (default signal sets); 2026-10-19 (all 860 downloaded vehicle repositories, including tests and year-range files; the shipped catalog)",
+      "tier": "E2",
+      "evidenceClassification": "RESEARCH_ONLY",
+      "exactClaimSupported": "The default signal set of every vehicle repository, and the OBDb rows of the catalog the app ships (source id 5, revision 3fd5afe5ecf68a6d6b06beb7b4e86f23ee6df69b of 2026-10-17; the catalog's meta table records a different revision, bc13d91a..., 2026-10-03).",
+      "howUsed": "Counted, never copied: the coverage tables in this folder are derived from it. The app already bundles it with attribution (THIRD_PARTY_NOTICES.md).",
+      "knownLimitationsAndContradictions": [
+        "All commands are read services (22, 21, 01); there is no write, routine or security-access command.",
+        "About 60% of the rows in the shipped catalog are flagged debug, and 61,598 more carry a dbgfilter (debug in some model years) that the catalog dropped.",
+        "The catalog has no model-year filter; OBDb has one per command (filter) and, in four repositories, year-range signal sets.",
+        "A definition is community work. Its being listed does not mean a car answers it; a recorded reply (obdb-tests) is the evidence that one did."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "CC-BY-SA-4.0",
+        "licenceChecked": "2026-10-19 through the GitHub API: all 880 vehicle repositories report CC-BY-SA-4.0. The organisation README says the text is mostly CC BY-SA 4.0. Infrastructure repositories differ (vscode-obdb is Apache-2.0; the website and editor repositories have none) and were not used.",
+        "attributionRequired": true,
+        "shareAlike": true
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "foundational (both domains)"
+      ]
+    },
+    {
+      "sourceId": "obdb-schema",
+      "url": "https://github.com/OBDb/.schemas",
+      "title": "OBDb signal set JSON schema (OBDb/.schemas, signals.json)",
+      "publisher": "community specification",
+      "accessDate": "2026-10-19",
+      "tier": "E2",
+      "evidenceClassification": "RESEARCH_ONLY",
+      "exactClaimSupported": "The schema file (the 'dbg' flag: 'Whether to debug the signal responses'; filterObject: from, to, years) and the Python reference code: can/signals.py (Filter.matches, the year semantics), signalsets/loader.py and year_range.py (which signal set applies to a year), signals_testing.py (the layout of the tests).",
+      "howUsed": "Wording of the 'definition is still marked as under test' line; the exact year semantics implemented in Services/OemDiagnostics/ObdbYearEvidence.cs and research/tools/evidence-obdb.js.",
+      "knownLimitationsAndContradictions": [
+        "The schema does not say 'unverified'. The app words the flag as 'still marked as under test in the catalog' and no stronger."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "CC-BY-SA-4.0",
+        "licenceChecked": "2026-10-19 through the GitHub API",
+        "attributionRequired": true,
+        "shareAlike": true
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "foundational (both domains)"
+      ]
+    },
+    {
+      "sourceId": "forscan-changelog",
+      "url": "https://www.forscan.org/changes_history.html",
+      "title": "FORScan change history",
+      "publisher": "vendor changelog (closed freeware)",
+      "accessDate": "2026-10-19",
+      "tier": "E1",
+      "evidenceClassification": "COMMUNITY_LEAD",
+      "exactClaimSupported": "The whole page (284,883 characters) in three parts. The tool reported the 2.3.40 section of the first part as cut off.",
+      "howUsed": "Proof that per-vehicle PCM service procedures 'Reset oil change indicator' and 'Reset Engine Oil Deterioration Learned Value' exist for named Ford and Mazda models (2.1.14 to 2.3.67). Names the vehicles only.",
+      "knownLimitationsAndContradictions": [
+        "No request bytes are public.",
+        "Since 2.3.46 FORScan shows manual instructions when a PCM does not support the function."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "proprietary page; nothing copied",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "ross-tech-sri",
+      "url": "https://wiki.ross-tech.com/wiki/index.php/SRI_Reset_Procedure",
+      "title": "Ross-Tech Wiki, SRI Reset Procedure",
+      "publisher": "vendor documentation (closed tool)",
+      "accessDate": "2026-10-19 (the SRI Reset page, the VW Golf VII cluster page and the Audi service-interval page, each in full)",
+      "tier": "E1",
+      "evidenceClassification": "COMMUNITY_LEAD",
+      "exactClaimSupported": "In the instrument cluster (module 17, adaptation) the items 'ESI: Resetting ESI', 'FIX: Distance covered since last mileage-dependent inspection', 'FIX: Time since last time-dependent inspection', 'SID / SIA: maximum value of distance / time to service'; numbered channels 02 and 05 to 08 for older Audis. No identifier or request bytes on any of the pages.",
+      "howUsed": "Shapes the operation taxonomy (reset versus set interval; oil versus inspection). No request bytes are given and none is used.",
+      "knownLimitationsAndContradictions": [
+        "Procedure level only."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "proprietary page; nothing copied",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service",
+        "mileage"
+      ]
+    },
+    {
+      "sourceId": "gm-tsb-nhtsa",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2013/MC-10114191-9999.pdf",
+      "title": "GM service bulletins hosted by NHTSA (for example MC-10114191-9999, MC-10246678-9999)",
+      "publisher": "manufacturer document",
+      "accessDate": "2026-10-19 (search summary only; the PDFs were not opened)",
+      "tier": "E1",
+      "evidenceClassification": "COMMUNITY_LEAD",
+      "exactClaimSupported": "The search summary says that a 2013 bulletin tells the technician to use a scan tool to reset the Engine Oil Life Remaining back to the percentage recorded before an ECM reprogramming, and that a later bulletin describes how the monitor works. [Superseded on 2026-10-19: the bulletin was downloaded and read in full, see gm-bulletin-12312a.]",
+      "howUsed": "Superseded by gm-bulletin-12312a.",
+      "knownLimitationsAndContradictions": [
+        "Second-hand: confirm in the PDF before relying on the wording."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "GM copyright; nothing copied",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "gm-forum-mode22",
+      "url": "https://gmtnation.com/forums/threads/oil-life-monitor-class-2-data.24516/post-648299",
+      "title": "GM Tech forum, 'Oil life monitor class 2 data'",
+      "publisher": "forum post",
+      "accessDate": "2026-10-19 (search summary only)",
+      "tier": "E1",
+      "evidenceClassification": "COMMUNITY_LEAD",
+      "exactClaimSupported": "A post shows one Mode 22 request for oil life on a Bosch ECM; the poster saw the value fall to zero at shutdown and found the reset value in a broadcast, not in a Mode 22 reply.",
+      "howUsed": "Not used.",
+      "knownLimitationsAndContradictions": [
+        "Unverified, single module, no reset."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "forum content; nothing copied",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "gmlan-research",
+      "url": "https://github.com/l77rodeo/gmlan",
+      "title": "l77rodeo/gmlan (cited by the project's own candidate family.gm.engine-oil-life-reset)",
+      "publisher": "community capture",
+      "accessDate": "2026-10-19 (README read in full; the capture file was not opened)",
+      "tier": "E1",
+      "evidenceClassification": "COMMUNITY_LEAD",
+      "exactClaimSupported": "README: high-speed GMLAN messages from an E38 PCM and T43 TCM car. 0x1F1 (sent by the gateway) lists 'Engine oil life reset request' together with the power-takeoff and remote-start requests and the immobilizer pre-release password; 0x1F3 lists 'Transmission oil life reset request'. No bit layout is given.",
+      "howUsed": "Recorded as the mechanism of the GM dashboard reset; the app never sends 0x1F1 because the same frame carries a remote-start request and the immobilizer pre-release password.",
+      "knownLimitationsAndContradictions": [
+        "No licence: all rights reserved."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "none (the GitHub API reports no licence)",
+        "licenceChecked": "2026-10-19 through the GitHub API",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "bmw-ediabas-docs",
+      "url": "https://emdzej.github.io/ediabasx-docs-sgbd/",
+      "title": "emdzej/ediabasx-docs-sgbd (cited by the project's own candidate family.bmw-mini.cbs-reset)",
+      "publisher": "documentation of BMW diagnostic description files",
+      "accessDate": "2026-10-19 (the job index and the CBS_RESET job of the d72n47a0 page; 300,000 of 618,000 characters)",
+      "tier": "E1",
+      "evidenceClassification": "COMMUNITY_LEAD",
+      "exactClaimSupported": "Job index and the CBS_RESET job: UDS 2E; arguments CBS_KENNUNG (item: Oel, Br_v, Br_h, NOx_a, Brfl, Sic, Sic_v, TUV, AU, Ueb, Efk), availability percentage, number of services, target month and year, remaining distance with unit, forecast distance and time intervals; CBS_RESET_DATEN_LESEN reads DID 0x4050; STEUERN_CBS_DATEN_SICHERN is routine F0ED (31 01), its status 31 03 F0ED; STATUS_CBSMOTOROELHIST 22 404F; STATUS_CODIERUNG_OEL 22 3701. The identifier that CBS_RESET writes is not shown.",
+      "howUsed": "Read for research only; nothing is used. The page derives from BMW's proprietary description file and carries no licence.",
+      "knownLimitationsAndContradictions": [
+        "No licence. The content derives from BMW's proprietary description files."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "none (the GitHub API reports no licence for the repository)",
+        "licenceChecked": "2026-10-19 through the GitHub API",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service",
+        "mileage"
+      ]
+    },
+    {
+      "sourceId": "hella-cbs-bulletin",
+      "url": "https://www.techtips.ie/Hella-Ireland/bmw---service-reset-condition-based-service-cbs--brake-pads.pdf",
+      "title": "Hella / Pagid, BMW CBS brake-pad reset (techtips.ie PDF) and related workshop pages",
+      "publisher": "vendor document",
+      "accessDate": "2026-10-19 (search summary only)",
+      "tier": "E1",
+      "evidenceClassification": "COMMUNITY_LEAD",
+      "exactClaimSupported": "Search summary only: CBS brake-pad parameters can be reset with a diagnostic unit or in the cluster; a commercial tool resets CBS oil service. (BMW's own bulletins were read in full: see bmw-si-b620613.)",
+      "howUsed": "Context only: the function exists in closed tools.",
+      "knownLimitationsAndContradictions": [
+        "No routine id, no payload."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "vendor copyright; nothing copied",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "mercedes-blogs",
+      "url": "https://kfz-dietrich.com/blog/inspektion-service-anzeige-zuruecksetzen-werkstatt/",
+      "title": "Workshop blogs on the ASSYST reset (kfz-dietrich.com, blog.usro.net)",
+      "publisher": "blog",
+      "accessDate": "2026-10-19 (search summary only)",
+      "tier": "E0",
+      "evidenceClassification": "UNSUPPORTED",
+      "exactClaimSupported": "The summary: the reset is a XENTRY service function or a cluster key sequence; the blogs disagree on the menu path; a plain UDS 0x14 clear affects fault memory only.",
+      "howUsed": "Not used. No official or open routine was found.",
+      "knownLimitationsAndContradictions": [
+        "Low-quality and contradictory."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "blog content; nothing copied",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "bosch-kts250",
+      "url": "https://www.eenewseurope.com/en/diagnostic-tester-detects-mileage-manipulation/",
+      "title": "eeNews Europe, 'Diagnostic tester detects mileage manipulation' (26 January 2021)",
+      "publisher": "trade press",
+      "accessDate": "2026-10-19",
+      "tier": "E1",
+      "evidenceClassification": "COMMUNITY_LEAD",
+      "exactClaimSupported": "The article: a Bosch tester function lists the mileage stored in various control units (the seat memory and the electronic parking assistant are named) and compares it with the speedometer reading.",
+      "howUsed": "Shows that several modules store mileage and that comparison is done by commercial tools. No protocol; no module list beyond the two named.",
+      "knownLimitationsAndContradictions": [
+        "A mismatch is presented by the article as a sign of possible manipulation; this app reports it as an observation with the other explanations."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "publisher copyright; nothing copied",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service",
+        "mileage"
+      ]
+    },
+    {
+      "sourceId": "uds-generic",
+      "url": "https://en.wikipedia.org/wiki/Unified_Diagnostic_Services",
+      "title": "General UDS references (Wikipedia 'Unified Diagnostic Services', python-uds / kiso-testing documentation)",
+      "publisher": "reference",
+      "accessDate": "2026-10-19 (search summaries only)",
+      "tier": "E0",
+      "evidenceClassification": "UNSUPPORTED",
+      "exactClaimSupported": "Service ids (0x22 read, 0x2E write by identifier, 0x19 read DTC information) and the usual session / security-access sequence. Nothing names an oil-service or odometer identifier; those are manufacturer-defined (the ISO 14229-1 identifier annex is paid and was not read).",
+      "howUsed": "Context for the protocol vocabulary only.",
+      "knownLimitationsAndContradictions": [
+        "No evidence that DTC snapshots carry the odometer."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "various; nothing copied",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service",
+        "mileage"
+      ]
+    },
+    {
+      "sourceId": "project-service-procedures",
+      "url": "Resources/Raw/service_procedures.json",
+      "title": "Resources/Raw/service_procedures.json (this repository)",
+      "publisher": "project catalog",
+      "accessDate": "2026-10-19",
+      "tier": "E3",
+      "evidenceClassification": "GUIDED_VERIFIED",
+      "exactClaimSupported": "All 165 procedures (164 when first read, 165 after the Mazda CX-5 SKYACTIV-D guide of 2026-10-19): manual, SourceDocumented, dashboard verification, from owner's manuals and manufacturer documents; none VehicleVerified.",
+      "howUsed": "The guided-reset side of service-operation-coverage.json.",
+      "knownLimitationsAndContradictions": [
+        "Its own coverage notes: a missing vehicle means no sufficiently specific source has been pinned yet, not that no procedure exists."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "project",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "project-oem-operations",
+      "url": "Resources/Raw/oem_operations.json",
+      "title": "Resources/Raw/oem_operations.json (this repository)",
+      "publisher": "project catalog",
+      "accessDate": "2026-10-19",
+      "tier": "E1",
+      "evidenceClassification": "COMMUNITY_LEAD",
+      "exactClaimSupported": "operations is empty; 12 family and 73 vehicle research candidates, all non-executable, with the promotion checklist.",
+      "howUsed": "The gate this research keeps: no write operation without exact per-vehicle evidence.",
+      "knownLimitationsAndContradictions": [
+        "Generated 2026-09-20."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "project",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "foundational (both domains)"
+      ]
+    },
+    {
+      "sourceId": "project-service-reset-research",
+      "url": "SERVICE_RESET_RESEARCH.md",
+      "title": "SERVICE_RESET_RESEARCH.md (this repository, 2026-09)",
+      "publisher": "project research",
+      "accessDate": "2026-10-19",
+      "tier": "E1",
+      "evidenceClassification": "COMMUNITY_LEAD",
+      "exactClaimSupported": "The project's comparison of 14 scanner apps and its verification audit of 2026-09-28: oil/service reset is not part of SAE J1979; apps send only the verified command of the identified car; no open database of reset commands exists; the generic 22 -> 2E write for GM 4DC0, Ford 054B and Mazda 0519 and the inferred GMLAN $3B write-back were disabled. The notes also say the GM reset was done on a Volt 2013.",
+      "howUsed": "Agrees with this research, which reached the same conclusions from other sources. Its claim of a working Volt reset has no capture or evidence file, so it is not used as evidence.",
+      "knownLimitationsAndContradictions": [
+        "Dated 2026-09; the app comparison is from vendor pages, not from tests."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "project",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "project-captures-audit",
+      "url": "DIAGNOSTIC_MODULES_MILEAGE_SERVICE_AUDIT.md",
+      "title": "DIAGNOSTIC_MODULES_MILEAGE_SERVICE_AUDIT.md (this repository)",
+      "publisher": "project audit",
+      "accessDate": "2026-10-19",
+      "tier": "observation only (the audit itself says: not verification)",
+      "evidenceClassification": "UNCLASSIFIED",
+      "exactClaimSupported": "Four capture files (Volt 2013, BMW 320i 2018, Ford Escape 2012, Toyota Camry) recorded by the app: PID A6 returned NO DATA in all four; BMW 19 04 got NO DATA; vehicle identity is a label, not an established fact.",
+      "howUsed": "The only vehicle observations in the repository. Cited where they bear on a source.",
+      "knownLimitationsAndContradictions": [
+        "Observations of unreviewed captures; identity not established."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "project",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service",
+        "mileage"
+      ]
+    },
+    {
+      "sourceId": "project-overnight-report",
+      "url": "OBD360_OVERNIGHT_REPORT_2026-10-18.md",
+      "title": "OBD360_OVERNIGHT_REPORT_2026-10-18.md (this repository)",
+      "publisher": "project report",
+      "accessDate": "2026-10-19",
+      "tier": "E1",
+      "evidenceClassification": "COMMUNITY_LEAD",
+      "exactClaimSupported": "States that no automatic oil reset is enabled for any car (ReviewedGmOilLifeResets empty since the 2026-09-28 safety audit) and documents the first-generation Volt read path (22 119F, then 4DC0).",
+      "howUsed": "Baseline of the Service page before this work.",
+      "knownLimitationsAndContradictions": [],
+      "licensingAndProvenanceNotes": {
+        "licence": "project",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "foundational (both domains)"
+      ]
+    },
+    {
+      "sourceId": "obdb-tests",
+      "url": "https://github.com/OBDb",
+      "title": "OBDb recorded test replies (tests/test_cases/<model year>/commands/*.yaml and command_support.yaml in every vehicle repository)",
+      "publisher": "community data",
+      "accessDate": "2026-10-19",
+      "tier": "E4 (a reply recorded for that model year; recorded by contributors, not by OBD360)",
+      "evidenceClassification": "UNCLASSIFIED",
+      "exactClaimSupported": "All 860 downloaded repositories parsed by research/tools/evidence-obdb.js: per signal and model year, whether the command applies (filter), is still debug (dbg, dbgfilter), is listed as supported (command_support.yaml) and has recorded replies with the values OBDb expects them to decode to.",
+      "howUsed": "Derived tables only: research/obdb-evidence-*.json and .md, research/oil-life-capability-matrix.*, and the compact Resources/Raw/obdb_year_evidence.json the app reads. The raw repositories are not in this repository.",
+      "knownLimitationsAndContradictions": [
+        "The model year is the folder name; OBDb does not say how it was determined.",
+        "Replies of different commands may come from different cars.",
+        "A missing reply does not make a definition wrong."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "CC-BY-SA-4.0",
+        "licenceChecked": "2026-10-19 through the GitHub API (all 880 vehicle repositories)",
+        "attributionRequired": true,
+        "shareAlike": true
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "foundational (both domains)"
+      ]
+    },
+    {
+      "sourceId": "gm-bulletin-12312a",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2013/MC-10114191-9999.pdf",
+      "title": "GM Customer Satisfaction Program 12312A, 'Oil Life Monitor Update', August 2013 (NHTSA files MC-10114191-9999 and MC-10246678-9999, the same text)",
+      "publisher": "manufacturer bulletin",
+      "accessDate": "2026-10-19 (downloaded, converted with pdftotext, read in full)",
+      "tier": "E3 (function), E1 (request)",
+      "evidenceClassification": "UNCLASSIFIED",
+      "exactClaimSupported": "2010-2011 Buick LaCrosse, 2011-2012 Buick Regal, 2010-2012 Chevrolet Equinox and GMC Terrain with the 2.4L engine (RPO LAF, LEA, LUK): reprogram the engine control module, then 'use a scan tool to reset the Engine Oil Life Remaining back to the original percentage recorded before'.",
+      "howUsed": "The one documented case of a maker's tool setting a chosen oil-life percentage. Names the executing module (engine control module). No request is published.",
+      "knownLimitationsAndContradictions": [
+        "The scan tool is not named; a restored percentage is not proof that other engines accept a chosen value."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "GM copyright; facts only",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "gm-bulletin-18-na-125",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2024/MC-11001327-0001.pdf",
+      "title": "GM Service Bulletin 18-NA-125 (May 2024), PIP5282A (September 2016) and PIP6076 (June 2025)",
+      "publisher": "manufacturer bulletin",
+      "accessDate": "2026-10-19 (read in full; also MC-10099532-2280 and MC-11019871-0001)",
+      "tier": "E3",
+      "evidenceClassification": "GUIDED_VERIFIED",
+      "exactClaimSupported": "The oil life monitor calculates the percentage from engine revolutions, mileage since the reset (capped at 7,500 miles from model year 2013, Volt excepted) and time (one year; two for the Volt); it starts after the first 50 miles and restarts at each reset. PIP6076: the Corvette transmission fluid life has its own reset, and after it the percentage may drop quickly (under investigation).",
+      "howUsed": "What a post-reset read-back should show and why the value then falls; that transmission oil life is a separate reset item.",
+      "knownLimitationsAndContradictions": [],
+      "licensingAndProvenanceNotes": {
+        "licence": "GM copyright; facts only",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service",
+        "mileage"
+      ]
+    },
+    {
+      "sourceId": "bmw-si-b620613",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2014/MC-10147976-9999.pdf",
+      "title": "BMW SI B62 06 13, Condition Based Service due date is reset to 01/2000 (February 2014: MC-10147976-9999; May 2014: MC-10148333-9999)",
+      "publisher": "manufacturer bulletin",
+      "accessDate": "2026-10-19 (read in full)",
+      "tier": "E3 (where CBS lives and that ISTA has a test plan), E0 (request)",
+      "evidenceClassification": "UNCLASSIFIED",
+      "exactClaimSupported": "F01, F02, F04, F06, F07, F10, F12, F13, F25 and F30 cars: the CBS due dates for 'Oil Services' and 'Check Vehicle' fall back to 01/2000 because of a software error in the instrument cluster; the correction is the cluster's test function #25 'Software reset' (hold the left soft key for more than 10 seconds), then setting the date, then checking the CBS data on the CID; if still wrong, the ISTA/D test plan for resetting and adjusting the CBS data.",
+      "howUsed": "Shows that the CBS data of these cars is held in the instrument cluster and that test function #25 is a repair, not a service reset.",
+      "knownLimitationsAndContradictions": [],
+      "licensingAndProvenanceNotes": {
+        "licence": "BMW copyright; facts only",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "kia-tsb-ele209",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2022/MC-10217892-0001.pdf",
+      "title": "Kia TSB ELE209 (Rev 3, 16 August 2022), 'Service reminder setting reset procedure' (MC-10217892-0001; first issue MC-10180656-0001)",
+      "publisher": "manufacturer bulletin",
+      "accessDate": "2026-10-19 (read in full)",
+      "tier": "E3 (function), E0 (request)",
+      "evidenceClassification": "UNCLASSIFIED",
+      "exactClaimSupported": "2019MY and later Kia: with the dealer tool KDS, 'Cluster Module', 'S/W Management', 'Service Reminder Setting': change the service type from workshop to customer and enter the mileage and time.",
+      "howUsed": "The service reminder of these cars is set in the instrument cluster by a dealer tool function.",
+      "knownLimitationsAndContradictions": [
+        "Dealer tool only (KDS with a VCI-II)."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "Kia copyright; facts only",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service",
+        "mileage"
+      ]
+    },
+    {
+      "sourceId": "kia-tsb-eng241",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2022/MC-10220347-0001.pdf",
+      "title": "Kia TSB ENG241 (September 2022), 'Oil life management system (OLMS) and maintenance reminder feature' (MC-10220347-0001)",
+      "publisher": "manufacturer bulletin",
+      "accessDate": "2026-10-19 (read in full)",
+      "tier": "E3",
+      "evidenceClassification": "GUIDED_VERIFIED",
+      "exactClaimSupported": "2023MY and later with OLMS: the oil life is set to 100% at the factory; the owner resets it from the head unit ('Vehicle Settings', 'Cluster', 'Oil Change Reminder', 'Reset') after an oil change, and the remaining oil life is shown there.",
+      "howUsed": "An owner-level oil-life reset that needs no tool; consistent with the shipped Kia guides.",
+      "knownLimitationsAndContradictions": [],
+      "licensingAndProvenanceNotes": {
+        "licence": "Kia copyright; facts only",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "stellantis-star-s2309000009",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2023/MC-10247449-9999.pdf",
+      "title": "Stellantis STAR case S2309000009, 'GG/GC Oil Change Monitor Reset' (October 2023; NHTSA file MC-10247449-9999)",
+      "publisher": "manufacturer service record",
+      "accessDate": "2026-10-19 (read in full, two pages)",
+      "tier": "E3 (function), E0 (request)",
+      "evidenceClassification": "UNCLASSIFIED",
+      "exactClaimSupported": "After an oil change, with the scan tool: in the instrument panel cluster ('IPC'), 'Miscellaneous Functions', run the 'Reset Service Information' routine; and in the PCM, 'Miscellaneous Functions', run the 'Reset oil change indicator' procedure.",
+      "howUsed": "Names the two modules and the two routines the dealer tool runs for the vehicles of the case.",
+      "knownLimitationsAndContradictions": [
+        "The vehicles of the case are named only by the codes GG and GC."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "Stellantis copyright; facts only",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "mazda-owners-manual-skyactiv-d",
+      "url": "https://owners-manual.mazda.com/gen/en/cx-5/cx-5_8gj7eo18b/contents/07030404.html",
+      "title": "Mazda CX-5 owner's manual, 'Vehicle Engine Control Unit Reset Procedure (SKYACTIV-D 2.2)' (2018 and 2017 editions)",
+      "publisher": "manufacturer owner manual",
+      "accessDate": "2026-10-19 (the 2018 page read in full; the 2017 edition is a separate page of the same title, not fetched)",
+      "tier": "E3",
+      "evidenceClassification": "GUIDED_VERIFIED",
+      "exactClaimSupported": "'Engine oil data resetting' initializes the oil value recorded by the computer after an oil change; otherwise the wrench indicator may stay on or come on early. Driver method: ignition off, then on while the instrument-panel illumination knob is pressed, hold about 5 seconds until the master warning light flashes, wait for it to flash for several seconds. The manual also recommends having a repairer do it.",
+      "howUsed": "The new shipped guide mazda.cx5.2017-2018.skyactiv-d-oil-data-reset.",
+      "knownLimitationsAndContradictions": [
+        "The 2017 edition was not opened; the guide is limited to the years of the manuals found (2017-2018) and to diesel."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "Mazda copyright; facts only",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "ford-tsb-22-2484",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2021/MC-10191091-0001.pdf",
+      "title": "Ford TSB 22-2484 and SSM 49728 (2021 F-150 5.0L, PCM update and oil change reminder reset)",
+      "publisher": "manufacturer bulletin",
+      "accessDate": "2026-10-19 (search summaries only; the PDFs were not opened)",
+      "tier": "E1",
+      "evidenceClassification": "COMMUNITY_LEAD",
+      "exactClaimSupported": "The summaries say that after the PCM is reprogrammed and the oil changed the technician resets the engine oil change reminder 'referring to the vehicle Owner's Manual'.",
+      "howUsed": "Context: Ford's own bulletins treat the reminder reset as an owner's-manual step.",
+      "knownLimitationsAndContradictions": [
+        "Second-hand; confirm in the PDFs."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "Ford copyright; facts only",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "mbvans-booklets",
+      "url": "https://www.mbvans.com/content/dam/mb-vans/us/owner-manuals/2013-Mercedes-Benz-Sprinter-Maintenance-Manual.pdf",
+      "title": "Mercedes-Benz Sprinter maintenance booklets 2010-2014 (mbvans.com)",
+      "publisher": "manufacturer manual",
+      "accessDate": "2026-10-19 (search summary only)",
+      "tier": "E1",
+      "evidenceClassification": "COMMUNITY_LEAD",
+      "exactClaimSupported": "The summaries say the authorized dealer resets the ASSYST service interval display after every maintenance service and that resetting it without the service may cause engine damage.",
+      "howUsed": "Who resets ASSYST on the Sprinter.",
+      "knownLimitationsAndContradictions": [
+        "Second-hand; confirm in the booklets."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "Mercedes-Benz copyright; facts only",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "toyota-lexus-tsb",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2023/MC-10238134-9999.pdf",
+      "title": "Lexus bulletin T-SB-0022-23 (May 2023; NHTSA MC-10238134-9999)",
+      "publisher": "manufacturer bulletin",
+      "accessDate": "2026-10-19 (search summary only)",
+      "tier": "E1",
+      "evidenceClassification": "COMMUNITY_LEAD",
+      "exactClaimSupported": "The summary says the Maintenance Required reminder is cleared from the multi-information display's vehicle settings menu and that Techstream appears in such bulletins for other jobs.",
+      "howUsed": "Where the Toyota/Lexus reminder is cleared.",
+      "knownLimitationsAndContradictions": [
+        "Second-hand; confirm in the PDF."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "Toyota copyright; facts only",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "honda-tsb",
+      "url": "https://static.nhtsa.gov/odi/tsbs/2023/MC-10242219-0001.pdf",
+      "title": "Honda and Acura bulletins 23-073 (MC-10242219-0001) and 14-049 (MC-10110849-9999)",
+      "publisher": "manufacturer bulletin",
+      "accessDate": "2026-10-19 (search summaries only)",
+      "tier": "E1",
+      "evidenceClassification": "COMMUNITY_LEAD",
+      "exactClaimSupported": "The summaries name the older HDS path 'Body Electrical, Adjustment, Maintenance Minder, Reset, maintenance sub-item' and, for newer cars, i-HDS or the multi-information display depending on the item.",
+      "howUsed": "Where the Honda Maintenance Minder is reset.",
+      "knownLimitationsAndContradictions": [
+        "Second-hand; confirm in the PDFs."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "Honda copyright; facts only",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "forscan-forum",
+      "url": "https://forum.forscan.org/viewtopic.php?t=21428",
+      "title": "FORScan forum threads on oil resets (t=19160, t=21428; t=18282 and t=17187 returned HTTP 403)",
+      "publisher": "forum",
+      "accessDate": "2026-10-19 (the two readable threads read in full)",
+      "tier": "E1",
+      "evidenceClassification": "COMMUNITY_LEAD",
+      "exactClaimSupported": "No hex requests, identifiers or logs are posted. A poster says that on a Mazda 5 diesel FORScan's service procedure resets the learned oil dilution value and shows the dilution in grams.",
+      "howUsed": "The meaning of 'Reset Engine Oil Deterioration Learned Value' on Mazda diesels (oil dilution, not a percentage of oil life).",
+      "knownLimitationsAndContradictions": [
+        "Single forum posters."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "forum content; nothing copied",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "carscanner-coding",
+      "url": "https://www.carscanner.info/coding/",
+      "title": "Car Scanner ELM OBD2, coding and service functions page",
+      "publisher": "vendor page",
+      "accessDate": "2026-10-19",
+      "tier": "E1",
+      "evidenceClassification": "COMMUNITY_LEAD",
+      "exactClaimSupported": "Names a 'Reset service reminder' function for GM with CAN bus (Opel, Chevrolet, Vauxhall, Holden) and CVT oil degradation resets for some Mitsubishi and Nissan models; shows no service id, identifier or byte.",
+      "howUsed": "Existence of a GM service-reminder function in a consumer app; nothing more.",
+      "knownLimitationsAndContradictions": [
+        "No protocol detail on the page."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "vendor page; nothing copied",
+        "licenceChecked": "n/a",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Not re-derived here to avoid a second, possibly-diverging mapping. The explicit per-brand-family mapping from source to catalog entry/candidate is in research/service-operation-coverage.json (field \"sources\" of each brandFamilies[] entry) and research/primary-source-findings.md. For the Mileage domain the mapping to candidates is in research/mileage-source-catalog.json and the BMW/MINI/Toyota 22 DFE7 quarantine note in Services/OemDiagnostics/KnownMislabelledDefinitions.cs.",
+      "domainTags": [
+        "service"
+      ]
+    },
+    {
+      "sourceId": "kia-ev6-2023-owners-manual",
+      "url": "https://ownersmanual.kia.com/full_webhelp/CV1/2023/en_US/topics/t00275.html",
+      "title": "2023 Kia EV6 Owner's Manual — Service Interval (web help; \"CV1\" is Kia's internal platform code for the EV6)",
+      "publisher": "manufacturer owner manual (official)",
+      "accessDate": "2026-10-21",
+      "tier": "E3",
+      "evidenceClassification": "GUIDED_VERIFIED",
+      "exactClaimSupported": "Driver-accessible menu path to reset the Service Interval reminder: Setup > Vehicle > Cluster > Service Interval > Reset. The reminder appears once 900 mi / 1,500 km or 30 days remain. Checked against the 2024 US manual page at the same URL slug, which no longer carries this reset path there (Service Interval is only a navigation link) - so this claim is NOT extended past model year 2023 without separately checking each later year.",
+      "howUsed": "Added as Resources/Raw/service_procedures.json entry kia.ev6.2023.service-interval-reset (catalog version 11 -> 12), executionType Manual, verificationStatus SourceDocumented - the same evidentiary bar as the other 165 guides already in the catalog.",
+      "knownLimitationsAndContradictions": [
+        "Does not generalise to other Kia models or platforms: Kia's own India Seltos manual page (kia.com/content/dam/kia2/in/en/content/new-seltos-manual/topics/t00144.html) describes the same reminder with no driver reset step at all, and NHTSA-hosted Kia TSB ELE209 Rev 3 (already in this ledger) says some models need the dealer's KDS tool to switch the cluster from Workshop to Customer Mode before the interval can be set.",
+        "Does not generalise to other EV6 model years: the 2024 manual page at the same URL slug does not repeat the reset path."
+      ],
+      "licensingAndProvenanceNotes": {
+        "licence": "Manufacturer-published owner documentation; read and cited for its facts only, no bulk text reproduced into the repository.",
+        "attributionRequired": false,
+        "shareAlike": false
+      },
+      "relatedCatalogRecordNote": "Resources/Raw/service_procedures.json: kia.ev6.2023.service-interval-reset. Tests: Tests/CarScanner.Tests/ServiceCatalogContentTests.cs (Catalog12_HasTheKiaEv6ServiceIntervalGuide_SourceDocumentedAndYearScoped), Tests/CarScanner.Tests/ServiceGuideTextTests.cs (AKiaEv6_2023_GetsTheServiceIntervalGuide_ButOtherYearsDoNot).",
+      "domainTags": [
+        "service"
+      ]
+    }
+  ]
+}

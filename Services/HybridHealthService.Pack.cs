@@ -82,7 +82,8 @@ public sealed partial class HybridHealthService
         Elm327Protocol.IDtcModuleSession session,
         HvRequest request,
         StringBuilder? log,
-        CancellationToken token)
+        CancellationToken token,
+        HybridReadEvidence? evidence = null)
     {
         string raw;
         try
@@ -97,11 +98,13 @@ public sealed partial class HybridHealthService
         }
         catch (Exception ex)
         {
+            evidence?.RecordException(ex);
             log?.AppendLine($"{request.Label}: შეცდომა ({ex.GetType().Name})");
             return null;
         }
 
         var data = HvPackProtocol.ExtractData(raw, request);
+        evidence?.RecordReply(raw, request, data);
         if (log is not null)
         {
             var compact = (raw ?? string.Empty).Replace("\r", " ").Replace("\n", " ").Trim();

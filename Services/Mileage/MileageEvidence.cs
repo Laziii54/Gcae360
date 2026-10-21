@@ -102,6 +102,9 @@ public sealed record MileageEvidence(
     /// </summary>
     public bool DefinitionUnderTest { get; init; }
 
+    /// <summary>True when OBDb's own tests hold a reply to this request that was recorded for the vehicle's model year.</summary>
+    public bool RecordedReplyForModelYear { get; init; }
+
     /// <summary>The data bytes of the module's reply exactly as received (hex), kept so a value can be re-checked by hand.</summary>
     public string RawHex { get; init; } = string.Empty;
 

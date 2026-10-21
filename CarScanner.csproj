@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<!-- iOS stays visible on Windows so Visual Studio can pair to a Mac;
@@ -100,7 +100,7 @@
           Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" />
 
 		<MauiSplashScreen Include="Resources\Splash\obd360_splash.png"
-						  Color="#000000"
+						  Color="#002B69"
 						  BaseSize="240,240" />
 		<MauiImage Include="Resources\Images\**\*" />
 

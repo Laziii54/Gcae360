@@ -45,7 +45,9 @@ public sealed record HybridHealthResult(
     // Capacity estimated by the battery controller (GM), in Ah.
     double? CapacityAh = null,
     bool LoadTestSupported = true,
-    string PackNote = "");
+    string PackNote = "",
+    // Why a read that returned no pack ended, when the evidence decides it (null: nothing was decided, the status text is the old wording).
+    CarScanner.Services.HybridFailure? Failure = null);
 
 /// <summary>Live state during the Toyota load test.</summary>
 public sealed record HybridLoadProgress(

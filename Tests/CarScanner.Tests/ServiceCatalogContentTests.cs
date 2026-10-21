@@ -7,15 +7,30 @@ public sealed class ServiceCatalogContentTests
     private static readonly IReadOnlyList<CarScanner.Models.ServiceProcedureDefinition> Real = ServiceTestData.Real.Procedures;
 
     [Fact]
-    public void Catalog_KeepsEveryRecordOfVersion9_AndIsNowVersion10()
+    public void Catalog_KeepsEveryRecordOfVersion9_AndIsNowVersion12()
     {
-        Assert.Equal(10, ServiceTestData.Real.CatalogVersion);
+        Assert.Equal(12, ServiceTestData.Real.CatalogVersion);
         Assert.Contains(Real, p => p.Id == "chevrolet.volt.2012-2013.oil-life-reset");
         Assert.Contains(Real, p => p.Id == "general.mercedes.2014-2021.w205-w213");
         Assert.Contains(Real, p => p.Id == "general.toyota.2008-plus.tpms-reset-switch");
         Assert.Contains(Real, p => p.Id == "general.honda.2009-plus.tpms-calibration");
         Assert.Contains(Real, p => p.Id == "general.hyundai.2010-plus.tpms-cluster-menu-reset");
         Assert.Contains(Real, p => p.Id == "general.vwgroup.2004-plus.inspection-reset-menu");
+    }
+
+    [Fact]
+    public void Catalog12_HasTheKiaEv6ServiceIntervalGuide_SourceDocumentedAndYearScoped()
+    {
+        var guide = Assert.Single(Real, p => p.Id == "kia.ev6.2023.service-interval-reset");
+        Assert.Equal("Kia", guide.Brand);
+        Assert.Equal("EV6", guide.Model);
+        Assert.Equal(2023, guide.MinimumYear);
+        Assert.Equal(2023, guide.MaximumYear);
+        Assert.Equal(CarScanner.Models.ServiceProcedureExecutionType.Manual, guide.ExecutionType);
+        Assert.Equal("SourceDocumented", guide.VerificationStatus);
+        Assert.False(string.IsNullOrWhiteSpace(guide.Source));
+        Assert.Contains("ownersmanual.kia.com", guide.Source);
+        Assert.Equal(5, guide.Steps.Count);
     }
 
     [Fact]

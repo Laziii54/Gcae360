@@ -126,9 +126,14 @@ public sealed class MaintenanceNotificationService
                     if (Preferences.Default.Get(shownKey, string.Empty) == stamp)
                         continue;
 
+                    // The runtime part name/time-left must be substituted AFTER translation, not before: T() only
+                    // matches exact (or {0}-style template) source text, so a string that already has the real
+                    // value baked in (e.g. "Oil: overdue...") can never match a dictionary/pack row - it always
+                    // showed English/Georgian regardless of the other 7 added languages. Translating the raw
+                    // template (with its literal "{0}"/"{1}" placeholders) first, then formatting, fixes that.
                     var text = status.State == PartState.Overdue
-                        ? (english ? $"{name}: overdue. Time to replace it." : $"{name}: ვადა გავიდა, დროა შეცვალო.")
-                        : (english ? $"{name}: due soon ({ValueText(status, true)} left)." : $"{name}: მალე შესაცვლელია (დარჩა {ValueText(status, false)}).");
+                        ? string.Format(CarScanner.Services.Localization.LocalizationService.T("{0}: ვადა გავიდა, დროა შეცვალო."), name)
+                        : string.Format(CarScanner.Services.Localization.LocalizationService.T("{0}: მალე შესაცვლელია (დარჩა {1})."), name, ValueText(status, english));
                     try
                     {
                         await ShowAsync(id, title, text, DateTimeOffset.Now.AddSeconds(5)).ConfigureAwait(false);
@@ -158,7 +163,7 @@ public sealed class MaintenanceNotificationService
                 await ShowAsync(
                     id,
                     title,
-                    english ? $"{name}: due on {dueText}." : $"{name}: შეცვლის ვადაა {dueText}.",
+                    string.Format(CarScanner.Services.Localization.LocalizationService.T("{0}: შეცვლის ვადაა {1}."), name, dueText),
                     remindAt).ConfigureAwait(false);
             }
         }

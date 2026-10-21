@@ -93,6 +93,11 @@ public static class MileageWording
         ? "The public definition is still marked as under test in the catalog."
         : "საჯარო აღწერა კატალოგში ჯერ კიდევ გამოსაცდელად არის მონიშნული.";
 
+    /// <summary>Provenance line of a reading for which OBDb's own tests hold a recorded reply for the vehicle's model year.</summary>
+    public static string RecordedForModelYear(bool en) => en
+        ? "A reply to this request was recorded for this model year in OBDb's own tests."
+        : "OBDb-ის საკუთარ ტესტებში ამ მოთხოვნაზე პასუხი ჩაწერილია ამ გამოშვების წლისთვის.";
+
     public static string SourceKind(MileageSourceKind kind, bool en) => kind switch
     {
         MileageSourceKind.StandardObd => en

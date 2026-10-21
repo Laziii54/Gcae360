@@ -1,4 +1,5 @@
 using CarScanner.Models;
+using CarScanner.Services.Localization;
 using CarScanner.ViewModels;
 
 namespace CarScanner.Views;
@@ -9,6 +10,12 @@ public partial class DiagnosticReportPage : ContentPage
     {
         InitializeComponent();
         BindingContext = viewModel;
+    }
+
+    private void ApplyUiLocalization()
+    {
+        var localization = Application.Current?.Handler?.MauiContext?.Services.GetService<LocalizationService>();
+        localization?.Apply(this);
     }
 
     /// <summary>
@@ -40,6 +47,8 @@ public partial class DiagnosticReportPage : ContentPage
         base.OnAppearing();
         try
         {
+        ApplyUiLocalization();
+
         if (BindingContext is DiagnosticReportViewModel viewModel)
             await viewModel.LoadCommand.ExecuteAsync(null);
         }

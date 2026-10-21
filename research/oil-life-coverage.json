@@ -2428,6 +2428,8 @@
     "Every oil-life and oil-degradation signal in the catalog is in percent. The scale differs by family: remaining life shrinks, degradation grows.",
     "The Service page's normal refresh sends the non-debug definitions of the exact model and, for oil life, oil degradation, distance and days to service, distance since the oil change and inspection, the identifiers other models of the same make use ('brand-wide'); readings obtained that way carry the research-level evidence label. Other definitions the community flags 'dbg' are sent only on request.",
     "The catalog has no model-year filter (OBDb's 'filter' and 'dbgfilter' did not survive the import), so a row applies to the model whatever the year; a wrong year answers with a negative reply or nothing, and a value is shown only after a positive reply that decodes to a plausible figure.",
-    "There is no standard (SAE J1979) PID for oil life or a service interval; the only oil-related standard PID is 5C, engine oil temperature."
+    "There is no standard (SAE J1979) PID for oil life or a service interval; the only oil-related standard PID is 5C, engine oil temperature.",
+    "Model-year evidence: the catalog keeps one 'debug' flag per row, but OBDb also has 'dbgfilter' (debug in some years only) and 'filter' (the years a command applies to). The app now reads Resources/Raw/obdb_year_evidence.json, derived from OBDb, and for a car with a verified model year uses the flag and the filter of that year and says when OBDb has a recorded reply for it.",
+    "A definition whose recorded replies show that it holds something else than its name says is never shown under that name (KnownMislabelledDefinitions): the BMW 'Distance since last oil change' is the odometer."
   ]
 }

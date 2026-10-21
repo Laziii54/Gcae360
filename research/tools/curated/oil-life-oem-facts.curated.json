@@ -1,0 +1,98 @@
+{
+  "about": "What the makers' own documents and legitimate open data say about who executes an oil-life reset and which tool function does it. Facts only; none of these documents gives request bytes. Sources are ids of source-register.json.",
+  "brandFacts": [
+    {
+      "makes": [
+        "Chevrolet",
+        "GMC",
+        "Buick",
+        "Cadillac",
+        "Holden"
+      ],
+      "executingModule": "Engine control module (ECM). GM bulletin 12312A has dealers reprogram the ECM, which loses the oil-life value, and then restore it with a scan tool.",
+      "resetFunction": "Scan-tool function that resets the Engine Oil Life Remaining to a chosen percentage (GM bulletin 12312A, August 2013); owner-level reset from the driver information centre or pedal sequence (owner's manuals, see the guided procedures). The monitor counts down from engine revolutions, mileage since the reset (capped at 7,500 miles from model year 2013, Volt excepted), and time (1 year, Volt 2 years).",
+      "sources": [
+        "gm-bulletin-12312a",
+        "gm-bulletin-18-na-125",
+        "gmlan-research"
+      ]
+    },
+    {
+      "makes": [
+        "Ford",
+        "Lincoln"
+      ],
+      "executingModule": "PCM. FORScan lists per-vehicle PCM service procedures 'Reset oil change indicator' for named diesel models; on the dashboard path the cluster message 0x430 carries the bit EngOilLife_B_RqReset, which the PCM, ECM (diesel) and PCM_HEV receive.",
+      "resetFunction": "Dashboard menu or pedal sequence (owner's manuals); FORScan PCM service procedure on the listed models. After a reset the PCM reports the oil service message text 'ResetInProgress' then 'ResetComplete' and the oil life in percent (opendbc, MIT: EngOilSrvcMsgTxt_D_Rq, EngOilLife_Pc_Actl; diesel variants broadcast days and distance instead of percent).",
+      "sources": [
+        "forscan-changelog",
+        "opendbc",
+        "ford-tsb-22-2484"
+      ]
+    },
+    {
+      "makes": [
+        "Mazda"
+      ],
+      "executingModule": "PCM. A 2011/2012 European Mazda bulletin (seen only through a search summary) names M-MDS 'Powertrain, Service Functions, PCM, reset the oil change indicator'; FORScan lists 'Reset Engine Oil Deterioration Learned Value' for Mazda diesels.",
+      "resetFunction": "SKYACTIV-D 2.2: 'engine oil data resetting' of the learned oil value. Owner method (official owner's manual): ignition on while the instrument-panel illumination knob is pressed, held about 5 seconds until the master warning light flashes, then wait for it to flash for several seconds. The learned value is the oil dilution (fuel in oil) of the diesel, a different thing from a percentage of oil life.",
+      "sources": [
+        "mazda-owners-manual-skyactiv-d",
+        "forscan-changelog"
+      ]
+    },
+    {
+      "makes": [
+        "Jeep",
+        "Dodge",
+        "Ram",
+        "Chrysler",
+        "FIAT",
+        "Alfa"
+      ],
+      "executingModule": "Stellantis STAR case S2309000009 (October 2023) has the technician run two routines of the dealer tool, both under 'Miscellaneous Functions': 'Reset Service Information' in the instrument panel cluster (IPC) and 'Reset oil change indicator' in the PCM.",
+      "resetFunction": "Dealer-tool routine as named; owner-level oil-life reset per the owner's manual (see the guided procedures). The value OBDb publishes for this family, 'Engine oil degradation', grows with wear and is not oil life remaining.",
+      "sources": [
+        "stellantis-star-s2309000009"
+      ]
+    }
+  ],
+  "chosenPercentByMakerTool": [
+    {
+      "make": "Buick",
+      "models": [
+        "LaCrosse"
+      ],
+      "years": "2010-2011",
+      "statement": "GM bulletin 12312A tells dealers, after reprogramming the ECM of the 2.4L engines (LAF, LEA, LUK), to use a scan tool to reset the Engine Oil Life Remaining back to the original percentage recorded before. A scan tool therefore sets a chosen percentage on these engines. No request is published.",
+      "source": "gm-bulletin-12312a"
+    },
+    {
+      "make": "Buick",
+      "models": [
+        "Regal"
+      ],
+      "years": "2011-2012",
+      "statement": "GM bulletin 12312A, 2.4L engines (LAF, LEA, LUK): the scan tool restores the recorded oil-life percentage. No request is published.",
+      "source": "gm-bulletin-12312a"
+    },
+    {
+      "make": "Chevrolet",
+      "models": [
+        "Equinox"
+      ],
+      "years": "2010-2012",
+      "statement": "GM bulletin 12312A, 2.4L engines (LAF, LEA, LUK): the scan tool restores the recorded oil-life percentage. No request is published.",
+      "source": "gm-bulletin-12312a"
+    },
+    {
+      "make": "GMC",
+      "models": [
+        "Terrain"
+      ],
+      "years": "2010-2012",
+      "statement": "GM bulletin 12312A, 2.4L engines (LAF, LEA, LUK): the scan tool restores the recorded oil-life percentage. No request is published.",
+      "source": "gm-bulletin-12312a"
+    }
+  ]
+}

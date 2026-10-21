@@ -79,6 +79,51 @@ public partial class BluetoothViewModel : BaseViewModel
         "Android მხარს უჭერს BLE და Bluetooth Classic OBD-II ადაპტერებს.";
 #endif
 
+    // These texts are static on screen (not produced by a command), so XAML cannot rely on the
+    // per-platform display-translation hook alone: that hook only runs on Android/iOS
+    // (LocalizationService.RegisterDisplayTranslation has no Windows/Mac Catalyst branch) and is
+    // invisible to this project's unit tests (they run as a plain .NET library, so
+    // Microsoft.Maui.Handlers.ButtonHandler never executes). Binding to these properties instead
+    // makes the resolved text correct on every platform and directly testable.
+    [ObservableProperty]
+    private string pageTitleText = string.Empty;
+
+    [ObservableProperty]
+    private string connectionStatusLabelText = string.Empty;
+
+    [ObservableProperty]
+    private string scanButtonText = string.Empty;
+
+    [ObservableProperty]
+    private string disconnectButtonText = string.Empty;
+
+    [ObservableProperty]
+    private string connectButtonText = string.Empty;
+
+    [ObservableProperty]
+    private string searchingText = string.Empty;
+
+    [ObservableProperty]
+    private string emptyStateTitleText = string.Empty;
+
+    [ObservableProperty]
+    private string emptyStateHintText = string.Empty;
+
+    [ObservableProperty]
+    private string wifiSectionTitleText = string.Empty;
+
+    [ObservableProperty]
+    private string ipAddressLabelText = string.Empty;
+
+    [ObservableProperty]
+    private string tcpPortLabelText = string.Empty;
+
+    [ObservableProperty]
+    private string connectWifiButtonText = string.Empty;
+
+    [ObservableProperty]
+    private string disconnectWifiButtonText = string.Empty;
+
     public BluetoothViewModel(
     IBluetoothService bluetooth,
     ObdConnectionService connection,
@@ -93,6 +138,7 @@ public partial class BluetoothViewModel : BaseViewModel
         _brand = brand;
 
         Title = L("OBD Connection", "OBD კავშირი");
+        RefreshLocalizedTexts();
 
         UpdateConnectionInfo();
         SetWifiState(
@@ -126,7 +172,35 @@ public partial class BluetoothViewModel : BaseViewModel
                     });
 
         _localization.LanguageChanged += (_, __) =>
-            MainThread.BeginInvokeOnMainThread(() => SetWifiState(_wifiState));
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                RefreshLocalizedTexts();
+                SetWifiState(_wifiState);
+            });
+    }
+
+    /// <summary>
+    /// Recomputes every static on-screen text for the currently selected language. Called once from
+    /// the constructor and again on every <see cref="LocalizationService.LanguageChanged"/> event, so
+    /// a language switch while this page is open updates it immediately — the same control instance,
+    /// no navigation or app restart required.
+    /// </summary>
+    private void RefreshLocalizedTexts()
+    {
+        Title = L("OBD Connection", "OBD კავშირი");
+        PageTitleText = Title;
+        ConnectionStatusLabelText = _localization.Translate("კავშირის სტატუსი");
+        ScanButtonText = _localization.Translate("ძებნა");
+        DisconnectButtonText = _localization.Translate("გათიშვა");
+        ConnectButtonText = _localization.Translate("დაკავშირება");
+        SearchingText = _localization.Translate("ვეძებ OBD-II ადაპტერებს…");
+        EmptyStateTitleText = _localization.Translate("OBD-II ადაპტერი ვერ მოიძებნა");
+        EmptyStateHintText = _localization.Translate("ჩართე მანქანის კონტაქტი და დარწმუნდი, რომ OBD-II ადაპტერი შეერთებულია.");
+        WifiSectionTitleText = _localization.Translate("Wi-Fi OBD ადაპტერი");
+        IpAddressLabelText = _localization.Translate("IP მისამართი");
+        TcpPortLabelText = _localization.Translate("TCP პორტი");
+        ConnectWifiButtonText = ConnectButtonText;
+        DisconnectWifiButtonText = DisconnectButtonText;
     }
 
     partial void OnIsBluetoothTabChanged(bool value) =>
@@ -146,7 +220,7 @@ public partial class BluetoothViewModel : BaseViewModel
                 _bluetooth.ConnectedDeviceName;
 
             Status =
-                "დაკავშირებულია";
+                _localization.Translate("დაკავშირებულია");
 
             StatusColor =
                 "#22C55E";
@@ -155,7 +229,7 @@ public partial class BluetoothViewModel : BaseViewModel
                 ? L(
                     $"{_brand.Current.DisplayName} profile selected — Wi-Fi OBD adapter is ready.",
                     $"{_brand.Current.DisplayName} პროფილი არჩეულია — Wi-Fi OBD ადაპტერი მზად არის.")
-                : $"{_brand.Current.DisplayName} პროფილი არჩეულია — OBD-II ადაპტერი მზად არის.";
+                : _localization.Translate($"{_brand.Current.DisplayName} პროფილი არჩეულია — OBD-II ადაპტერი მზად არის.");
         }
         else
         {
@@ -163,13 +237,13 @@ public partial class BluetoothViewModel : BaseViewModel
                 "";
 
             Status =
-                "დაკავშირება არ არის";
+                _localization.Translate("დაკავშირება არ არის");
 
             StatusColor =
                 "#F59E0B";
 
             BluetoothInfoText =
-                $"{_brand.Current.DisplayName} პროფილი არჩეულია. ჩართე Bluetooth, ჩართე მანქანის კონტაქტი და მოძებნე OBD-II ადაპტერი.";
+                _localization.Translate($"{_brand.Current.DisplayName} პროფილი არჩეულია. ჩართე Bluetooth, ჩართე მანქანის კონტაქტი და მოძებნე OBD-II ადაპტერი.");
         }
     }
 
@@ -398,19 +472,18 @@ public partial class BluetoothViewModel : BaseViewModel
                     OpenBluetoothSettings();
 
                     StatusMessage =
-                        "ჩართე Bluetooth და დაბრუნდი აპში. ძებნა ავტომატურად დაიწყება.";
+                        _localization.Translate("ჩართე Bluetooth და დაბრუნდი აპში. ძებნა ავტომატურად დაიწყება.");
                 }
                 else
                 {
                     StatusMessage =
-                        "Bluetooth ჩართული არ არის.";
+                        _localization.Translate("Bluetooth ჩართული არ არის.");
                 }
 
                 return;
             }
 
-            StatusMessage =
-                "ვეძებ OBD-II ადაპტერებს…";
+            StatusMessage = SearchingText;
 
             var found =
                 new Dictionary<string, BleDeviceItem>(
@@ -454,12 +527,12 @@ public partial class BluetoothViewModel : BaseViewModel
             if (Devices.Count == 0)
             {
                 StatusMessage =
-                    "OBD-II ადაპტერი ვერ მოიძებნა. შეამოწმე ადაპტერი და მანქანის კონტაქტი.";
+                    _localization.Translate("OBD-II ადაპტერი ვერ მოიძებნა. შეამოწმე ადაპტერი და მანქანის კონტაქტი.");
             }
             else
             {
                 StatusMessage =
-                    $"ნაპოვნია {Devices.Count} OBD-II ადაპტერი.";
+                    _localization.Translate($"ნაპოვნია {Devices.Count} OBD-II ადაპტერი.");
             }
         }
         catch (UnauthorizedAccessException ex)
@@ -476,7 +549,7 @@ public partial class BluetoothViewModel : BaseViewModel
         {
             StatusMessage =
                 string.IsNullOrWhiteSpace(ex.Message)
-                    ? "Bluetooth ძებნა ვერ შესრულდა."
+                    ? _localization.Translate("Bluetooth ძებნა ვერ შესრულდა.")
                     : ex.Message;
 
             await Shell.Current.DisplayAlertLocalizedAsync(
@@ -582,8 +655,12 @@ public partial class BluetoothViewModel : BaseViewModel
 
             IsScanning = false;
 
+            // "ძებნა" (no trailing period) is the key already covered by every language pack via
+            // ["Scan stopped"]; it also matches the Scan button's own terminology. The variant with a
+            // trailing period only had an English pack entry of "Search stopped.", which was
+            // inconsistent with the "Scan" button on this same page (Phase 5 terminology check).
             StatusMessage =
-                "ძებნა შეჩერდა.";
+                _localization.Translate("ძებნა შეჩერდა");
         }
         catch (Exception ex)
         {

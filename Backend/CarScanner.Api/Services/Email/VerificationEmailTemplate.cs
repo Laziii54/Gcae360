@@ -256,11 +256,11 @@ public static class VerificationEmailTemplate
 <!DOCTYPE html>
 <html lang="{lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><meta name="referrer" content="no-referrer">
 <title>{E(title)} — OBD360</title>
-<link rel="icon" type="image/png" href="/assets/favicon.png">
+<link rel="icon" type="image/png" href="/assets/favicon.png?v=2">
 </head>
 <body style="margin:0;background:{PageBg};font-family:Arial,Helvetica,sans-serif;color:{Ink};">
 <div style="max-width:520px;margin:0 auto;padding:24px 14px;">
-<div style="background:{Navy};border-radius:20px 20px 0 0;padding:26px;text-align:center;border-bottom:4px solid {Primary};"><img src="/assets/logo.png" width="110" alt="OBD360" style="max-width:55%;height:auto;"></div>
+<div style="background:{Navy};border-radius:20px 20px 0 0;padding:26px;text-align:center;border-bottom:4px solid {Primary};"><img src="/assets/logo.png?v=2" width="110" alt="OBD360" style="max-width:55%;height:auto;"></div>
 <div style="background:#FFFFFF;border:1px solid {Border};border-top:0;border-radius:0 0 20px 20px;padding:34px 28px;text-align:center;">
 <div style="width:56px;height:56px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;border-radius:28px;background:{InfoBg};color:{markColor};">{mark}</div>
 <h1 style="margin:0 0 10px;font-size:24px;line-height:31px;">{E(title)}</h1>

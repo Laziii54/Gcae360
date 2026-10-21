@@ -1,7 +1,7 @@
 namespace CarScanner.Views;
 
 /// <summary>
-/// Opening screen: the OBD360 logo in the middle of the screen (same black as the splash screen).
+/// Opening screen: the OBD360 logo in the middle of the screen (same navy as the splash screen).
 /// The first launch shows it a little longer; later cold starts show it briefly (under one second)
 /// so the app opens quickly.
 /// </summary>

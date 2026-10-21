@@ -240,7 +240,7 @@
     "A read that fails (no reply, negative reply, a reply from another module, an implausible value) is kept in the list of attempts with its reason. It never erases a reading that succeeded."
   ],
   "obdbCatalog": {
-    "note": "Counts are over the OBDb rows of the shipped catalog (read services 22 and 21). \"Requestable\" applies the limits CatalogOdometerProvider applies: an addressable module, a distance unit, a 16 to 32 bit field. The model year is not part of a row (see next-steps.md), so a row applies to the model whatever the year.",
+    "note": "Counts are over the OBDb rows of the shipped catalog (read services 22 and 21). \"Requestable\" applies the limits CatalogOdometerProvider applies: an addressable module, a distance unit, a 16 to 32 bit field. The model year is not part of a row; the app reads the year filter and the per-year debug flag of OBDb from Resources/Raw/obdb_year_evidence.json when the vehicle's model year is known, and obdb-evidence-report.md counts the same signals by replies recorded per model year.",
     "vehiclesInCatalog": 556,
     "classes": {
       "TotalOdometer": {

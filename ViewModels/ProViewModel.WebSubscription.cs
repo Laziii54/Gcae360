@@ -198,9 +198,12 @@ public partial class ProViewModel
             {
                 NotificationId = RenewReminderId,
                 Title = "OBD360",
-                Description = CarScanner.Services.Localization.LocalizationService.T(price.Length > 0
-                    ? L($"3 დღეში {name} განახლდება: {price}.", $"{name} renews in 3 days: {price}.")
-                    : L($"3 დღეში {name} განახლდება.", $"{name} renews in 3 days.")),
+                // name/price must be substituted AFTER translation (see MaintenanceNotificationService for the
+                // same fix): T() only matches exact/{0}-template source text, so interpolating first meant this
+                // reminder could never match a dictionary/pack row and always showed English for de/fr/pl/etc.
+                Description = price.Length > 0
+                    ? string.Format(CarScanner.Services.Localization.LocalizationService.T("3 დღეში {0} განახლდება: {1}."), name, price)
+                    : string.Format(CarScanner.Services.Localization.LocalizationService.T("3 დღეში {0} განახლდება."), name),
                 Schedule = new NotificationRequestSchedule { NotifyTime = when },
                 ReturningData = "web-renewal"
             });

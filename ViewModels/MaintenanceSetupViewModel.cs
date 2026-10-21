@@ -36,9 +36,24 @@ public partial class MaintenanceSetupViewModel : BaseViewModel
     {
         _tracker = tracker;
         _localization = localization;
+
+        // Weak: this view model is created every time the page opens, LocalizationService lives for the whole run.
+        CarScanner.Services.WeakEventRelay.Attach(this, _localization,
+            static (service, handler) => service.LanguageChanged += handler,
+            static (service, handler) => service.LanguageChanged -= handler,
+            static viewModel => MainThread.BeginInvokeOnMainThread(viewModel.NotifyLocalizedTextsChanged));
     }
 
     private string L(string ka, string en) => _localization.IsEnglish ? en : ka;
+
+    private void NotifyLocalizedTextsChanged()
+    {
+        OnPropertyChanged(nameof(HeaderText));
+        OnPropertyChanged(nameof(IntroText));
+        OnPropertyChanged(nameof(DatePlaceholder));
+        OnPropertyChanged(nameof(SaveText));
+        OnPropertyChanged(nameof(NoteText));
+    }
 
     public string HeaderText => L("პირველი დაყენება", "First setup");
     public string IntroText => L(

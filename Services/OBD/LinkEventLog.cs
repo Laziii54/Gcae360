@@ -13,6 +13,12 @@ public static class LinkEventLog
     private static readonly object Gate = new();
     private static readonly Queue<string> Lines = new();
 
+    /// <summary>
+    /// Lets a test see only the lines written by its own asynchronous call chain, although the log itself is shared by every
+    /// test running in parallel. Always null in the app.
+    /// </summary>
+    internal static readonly AsyncLocal<Action<string>?> Listener = new();
+
     public static void Add(string text)
     {
         var line = $"{DateTime.Now:HH:mm:ss.fff}  {text}";
@@ -22,6 +28,8 @@ public static class LinkEventLog
             while (Lines.Count > Capacity)
                 Lines.Dequeue();
         }
+
+        Listener.Value?.Invoke(line);
     }
 
     public static string Export()

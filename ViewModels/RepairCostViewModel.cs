@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CarScanner.Models;
 using CarScanner.Services;
+using CarScanner.Services.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -10,6 +11,7 @@ public partial class RepairCostViewModel : BaseViewModel
 {
     private readonly RepairCostSession _session;
     private readonly RepairCostService _costs;
+    private readonly LocalizationService _localization;
 
     public ObservableCollection<RepairCostEstimate> Estimates { get; } = new();
 
@@ -19,22 +21,32 @@ public partial class RepairCostViewModel : BaseViewModel
     public bool HasEstimates => Estimates.Count > 0;
     public bool HasNoEstimates => !HasEstimates && !IsBusy;
 
-    public RepairCostViewModel(RepairCostSession session, RepairCostService costs)
+    public RepairCostViewModel(RepairCostSession session, RepairCostService costs, LocalizationService localization)
     {
         _session = session;
         _costs = costs;
+        _localization = localization;
+        VehicleTitle = _localization.Translate("ავტომობილი უცნობია");
+        // Weak: this view model is created every time the page opens, LocalizationService lives for the whole run.
+        WeakEventRelay.Attach(this, _localization,
+            static (service, handler) => service.LanguageChanged += handler,
+            static (service, handler) => service.LanguageChanged -= handler,
+            static viewModel => MainThread.BeginInvokeOnMainThread(() =>
+            {
+                if (!viewModel.HasEstimates)
+                    viewModel.VehicleTitle = viewModel._localization.Translate("ავტომობილი უცნობია");
+            }));
     }
 
     /// <summary>The cost estimate becomes the "repair" part of the combined report.</summary>
     private void AddCostsToReport()
     {
-        var english = CarScanner.Services.Localization.LanguageCatalog.UsesEnglishBase;
         var min = Estimates.Sum(item => item.PartMinGel + item.LaborMinGel);
         var max = Estimates.Sum(item => item.PartMaxGel + item.LaborMaxGel);
         var section = new CarScanner.Services.Reports.ReportSectionItem
         {
             Kind = "repair",
-            Title = english ? "Repair cost" : "შეკეთების ფასი",
+            Title = _localization.Translate("შეკეთების ფასი"),
             Status = Estimates.Any(item => item.Urgency == RepairUrgency.StopNow)
                 ? CarScanner.Services.Reports.ReportStatus.Bad
                 : CarScanner.Services.Reports.ReportStatus.Warning,
@@ -61,7 +73,7 @@ public partial class RepairCostViewModel : BaseViewModel
             var vehicle = _session.Vehicle;
             if (vehicle is null || _session.Codes.Count == 0)
             {
-                EmptyMessage = "ჯერ გაუშვი DTC სკანირება — ფასები მხოლოდ რეალურად ნაპოვნ კოდებზე გამოჩნდება.";
+                EmptyMessage = _localization.Translate("ჯერ გაუშვი DTC სკანირება — ფასები მხოლოდ რეალურად ნაპოვნ კოდებზე გამოჩნდება.");
                 return;
             }
 
@@ -77,14 +89,14 @@ public partial class RepairCostViewModel : BaseViewModel
                 Estimates.Add(item);
             SourceMessage = result.SourceMessage;
             if (Estimates.Count == 0)
-                EmptyMessage = "ამ კოდებისთვის ფასის დიაპაზონი ვერ მომზადდა.";
+                EmptyMessage = _localization.Translate("ამ კოდებისთვის ფასის დიაპაზონი ვერ მომზადდა.");
             else
                 AddCostsToReport();
         }
         catch (Exception ex)
         {
             EmptyMessage = string.IsNullOrWhiteSpace(ex.Message)
-                ? "ფასების შეფასება ვერ მომზადდა. სცადე ხელახლა."
+                ? _localization.Translate("ფასების შეფასება ვერ მომზადდა. სცადე ხელახლა.")
                 : ex.Message;
         }
         finally

@@ -126,6 +126,79 @@ public static class ModuleReplyAnalysis
         return result;
     }
 
+    /// <summary>One CAN frame of adapter output, as it was written: its CAN id and its text (the id and the data tokens it was made of).</summary>
+    public sealed record FrameText(string Header, string Text);
+
+    /// <summary>
+    /// Splits one run of adapter output into its frames, keeping each frame's text and its own CAN id. Use it where frames of
+    /// several modules may sit in the same text and each frame must stay tied to the id that sent it.
+    /// <para>
+    /// FORMAT (ATH1, headers on): the ELM327 prints every CAN frame on a line of its own. With ATS0 (compact) a frame is ONE token:
+    /// the id (3 hex digits, 11-bit; 8, 29-bit) followed by its data bytes, e.g. <c>7EF05624181CED8</c>. With ATS1 (spaced) the id is a
+    /// token of its own followed by two-digit byte tokens, e.g. <c>7EF 05 62 41 81 CE D8</c>. The protocol layer
+    /// (<c>Elm327Protocol.CleanResponse</c>) joins the lines with single spaces, so several frames can end up in one line:
+    /// <c>7E8 05 62 41 81 AA BB 7EF05624181CED8</c>. A frame therefore starts at a token that is exactly an id wide (spaced), or at
+    /// a token longer than an id whose remainder is whole bytes (compact); a two-digit token is data of the frame in progress. These
+    /// shapes cannot be mistaken for each other for 11-bit ids (data tokens are 2 digits, ids 3). The rules are the same as in
+    /// <see cref="Split"/>, which returns the bytes of the asked id's frames; this returns the texts and the ids of all frames.
+    /// </para>
+    /// Returns null when the text is not made of frames alone — a status word, an echoed command, a token of impossible length, or an
+    /// id without data — so that the caller keeps handling such text as it always did. Nothing is repaired or invented.
+    /// </summary>
+    public static IReadOnlyList<FrameText>? SplitFrameTexts(string? raw, bool ext29)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+
+        var width = ext29 ? 8 : 3;
+        var frames = new List<FrameText>();
+        string? header = null;
+        var parts = new List<string>();
+
+        bool Flush()
+        {
+            if (header is null)
+                return true;
+            if (parts.Count < 2)
+                return false;                                       // an id with no data
+            frames.Add(new FrameText(header, string.Join(" ", parts)));
+            header = null;
+            parts.Clear();
+            return true;
+        }
+
+        foreach (var rawToken in raw.Split(new[] { ' ', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var token = rawToken.Trim().ToUpperInvariant();
+            if (token.Length == 0 || !token.All(Uri.IsHexDigit))
+                return null;
+
+            if (token.Length == width)
+            {
+                if (!Flush())
+                    return null;
+                header = token;
+                parts.Add(token);
+            }
+            else if (token.Length == 2 && header is not null)
+            {
+                parts.Add(token);
+            }
+            else if (token.Length > width && (token.Length - width) % 2 == 0)
+            {
+                if (!Flush())
+                    return null;
+                frames.Add(new FrameText(token[..width], token));
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        return Flush() && frames.Count > 0 ? frames : null;
+    }
+
     /// <summary>
     /// ISO-TP messages from frames: single frames, first + consecutive frames. A message that never completes is
     /// returned in <see cref="IsoTpAssembly.Incomplete"/> instead of being dropped.

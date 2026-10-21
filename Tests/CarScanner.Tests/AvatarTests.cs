@@ -284,6 +284,70 @@ public sealed class AvatarTests
         Assert.Equal(AppConfig.AllowedModels.Length, handler.Calls);
     }
 
+    /// <summary>A provider that never answers within the test's budget.</summary>
+    private sealed class Hanging : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
+            return Json(HttpStatusCode.OK, Reply("SAFE"));
+        }
+    }
+
+    [Fact]
+    public async Task ASlowProvider_RunsOutOfTime_AndIsUnavailable_NeverSafe()
+    {
+        using var client = new HttpClient(new Hanging());
+
+        var started = DateTime.UtcNow;
+        var verdict = await AvatarModeration.CheckWithBudgetAsync(client, "key", Jpeg(), NullLogger.Instance, TimeSpan.FromMilliseconds(300));
+
+        Assert.Equal(AvatarVerdict.Unavailable, verdict);
+        Assert.True(DateTime.UtcNow - started < TimeSpan.FromSeconds(10), "the budget must end the wait");
+    }
+
+    [Fact]
+    public async Task TheCheckWithABudget_StillReturnsTheVerdictOfAFastProvider()
+    {
+        var handler = new Scripted(() => Json(HttpStatusCode.OK, Reply("UNSAFE")));
+        using var client = new HttpClient(handler);
+
+        Assert.Equal(AvatarVerdict.Unsafe, await AvatarModeration.CheckWithBudgetAsync(client, "key", Jpeg(), NullLogger.Instance, TimeSpan.FromSeconds(5)));
+    }
+
+    [Fact]
+    public async Task ALateVerdict_ChangesOnlyThePictureItWasAskedAbout()
+    {
+        using var sandbox = new Sandbox();
+        var avatars = new AvatarStore(sandbox.Environment, sandbox.Configuration);
+
+        var first = await avatars.SaveAsync("account-1", Jpeg(), AvatarStatus.Pending, CancellationToken.None);
+        // The person uploads a newer picture before the check of the first one finishes.
+        var second = await avatars.SaveAsync("account-1", Jpeg(300, 300), AvatarStatus.Pending, CancellationToken.None);
+
+        // The late "safe" for the old picture changes nothing; the same for a late "unsafe".
+        Assert.False(await avatars.SetStatusAsync("account-1", AvatarStatus.Approved, CancellationToken.None, onlyIfPublicId: first.PublicId));
+        await avatars.DeleteIfCurrentAsync("account-1", first.PublicId, CancellationToken.None);
+        Assert.Equal(AvatarStatus.Pending, (await avatars.GetForAccountAsync("account-1", CancellationToken.None))!.Status);
+
+        // For the current picture they do apply.
+        Assert.True(await avatars.SetStatusAsync("account-1", AvatarStatus.Approved, CancellationToken.None, onlyIfPublicId: second.PublicId));
+        Assert.NotNull(await avatars.ReadApprovedAsync(second.PublicId, CancellationToken.None));
+        await avatars.DeleteIfCurrentAsync("account-1", second.PublicId, CancellationToken.None);
+        Assert.Null(await avatars.GetForAccountAsync("account-1", CancellationToken.None));
+    }
+
+    [Fact]
+    public void TheUploadStoresThePicture_WithoutWaitingForTheWholeCheck_AndNotDependingOnThePhoneStayingConnected()
+    {
+        var program = File.ReadAllText(Path.Combine(Root(), "Backend", "CarScanner.Api", "Program.cs")).Replace("\r\n", "\n");
+        Assert.Contains("AvatarModeration.CheckWithBudgetAsync(", program);                    // the check has its own time limit
+        Assert.Contains("Task.WhenAny(checkTask, Task.Delay(AvatarModeration.FastWait))", program);   // a slow check does not hold the answer back
+        Assert.Contains("avatars.SaveAsync(identity.AccountId, jpeg, status, CancellationToken.None)", program);   // saved even if the phone leaves
+        Assert.DoesNotContain("AvatarModeration.CheckAsync(clients.CreateClient(), apiKey, jpeg, logger, ct)", program);
+        Assert.Contains("SetStatusAsync(accountId, AvatarStatus.Approved, CancellationToken.None, onlyIfPublicId: storedId)", program);   // a late "safe" publishes it
+    }
+
     [Fact]
     public void TheServer_PublishesAPictureOnlyAfterASafeVerdict_UnlessTheOwnerSwitchedThatOn()
     {

@@ -10,6 +10,8 @@
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.0.0" />
     <PackageReference Include="YamlDotNet" Version="18.1.0" />
+    <!-- The same version the app uses: its interfaces (ICharacteristic, IDevice) let the real BluetoothService run against a fake GATT characteristic. -->
+    <PackageReference Include="Plugin.BLE" Version="3.2.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../Backend/CarScanner.Api/CarScanner.Api.csproj" />
@@ -85,6 +87,8 @@
     <Compile Include="../../Models/ServiceDataModels.cs" Link="ServiceDataModels.cs" />
     <Compile Include="../../Services/OemDiagnostics/ServiceMetricClassifier.cs" Link="ServiceMetricClassifier.cs" />
     <Compile Include="../../Services/OemDiagnostics/ObdbDiagnosticAddressResolver.cs" Link="ObdbDiagnosticAddressResolver.cs" />
+    <Compile Include="../../Services/OemDiagnostics/ObdbYearEvidence.cs" Link="ObdbYearEvidence.cs" />
+    <Compile Include="../../Services/OemDiagnostics/KnownMislabelledDefinitions.cs" Link="KnownMislabelledDefinitions.cs" />
     <Compile Include="../../Models/ServiceResetVerificationModels.cs" Link="ServiceResetVerificationModels.cs" />
     <Compile Include="../../Services/OemDiagnostics/ServiceResetVerificationService.cs" Link="ServiceResetVerificationService.cs" />
     <Compile Include="../../Services/OemDiagnostics/ServiceDiagnosticTrace.cs" Link="ServiceDiagnosticTrace.cs" />
@@ -116,6 +120,16 @@
     <Compile Include="../../Services/DataCollection/StandardObdClassifier.cs" Link="DataCollection/StandardObdClassifier.cs" />
     <Compile Include="../../Services/OBD/Elm327Protocol.cs" Link="Obd/Elm327Protocol.cs" />
     <Compile Include="../../Services/OBD/LinkEventLog.cs" Link="Obd/LinkEventLog.cs" />
+    <!-- The real Bluetooth service and device model replace the test stub (the stub existed only because the plugin was not referenced). -->
+    <Compile Remove="Simulation/BleDeviceItemStub.cs" />
+    <Compile Include="../../Models/BleDeviceItem.cs" Link="Obd/BleDeviceItem.cs" />
+    <Compile Include="../../Services/Bluetooth/BluetoothService.cs" Link="Obd/BluetoothService.cs" />
+    <Compile Include="../../Models/HybridHealthModels.cs" Link="Obd/HybridHealthModels.cs" />
+    <Compile Include="../../Services/HybridHealthService.Gm.cs" Link="Obd/HybridHealthService.Gm.cs" />
+    <Compile Include="../../Services/HybridHealthService.Pack.cs" Link="Obd/HybridHealthService.Pack.cs" />
+    <Compile Include="../../Services/HybridReadDiagnosis.cs" Link="Obd/HybridReadDiagnosis.cs" />
+    <Compile Include="../../Services/OBD/AdapterExchangeClassifier.cs" Link="Obd/AdapterExchangeClassifier.cs" />
+    <Compile Include="../../Services/OBD/AdapterDiagnosticCapture.cs" Link="Obd/AdapterDiagnosticCapture.cs" />
     <Compile Include="../../Services/OBD/AdapterLoadGovernor.cs" Link="Obd/AdapterLoadGovernor.cs" />
     <Compile Include="../../Services/OBD/ObdMonitorCommand.cs" Link="Obd/ObdMonitorCommand.cs" />
     <Compile Include="../../Services/OBD/IObdTransport.cs" Link="Obd/IObdTransport.cs" />
@@ -140,7 +154,10 @@
     <Compile Include="../../Services/Mileage/MileageSourceCompatibility.cs" Link="Mileage/MileageSourceCompatibility.cs" />
     <Compile Include="../../Services/Mileage/MileageWording.cs" Link="Mileage/MileageWording.cs" />
     <Compile Include="../../Services/Mileage/ActualMileageResult.cs" Link="Mileage/ActualMileageResult.cs" />
+    <Compile Include="../../Services/Mileage/MileageManualMatch.cs" Link="Mileage/MileageManualMatch.cs" />
+    <Compile Include="../../Services/OemDiagnostics/ServiceSearchMatching.cs" Link="ServiceSearchMatching.cs" />
     <Compile Include="../../Services/Mileage/MileageTrace.cs" Link="Mileage/MileageTrace.cs" />
+    <Compile Include="../../Services/Mileage/MileageReadDiagnosis.cs" Link="Mileage/MileageReadDiagnosis.cs" />
     <Compile Include="../../Services/Mileage/IActualMileageProvider.cs" Link="Mileage/IActualMileageProvider.cs" />
     <Compile Include="../../Services/Mileage/GenericObdMileageProvider.cs" Link="Mileage/GenericObdMileageProvider.cs" />
     <Compile Include="../../Services/Mileage/GenericObdDistanceContextProvider.cs" Link="Mileage/GenericObdDistanceContextProvider.cs" />
