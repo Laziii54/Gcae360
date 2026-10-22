@@ -346,9 +346,10 @@ WHERE SubscriptionId=$id AND Status IN ('active','past_due')", ct,
             if (!await TryMarkAppliedAsync(order.OrderId, ct))
                 return;
 
-            var newEnd = sub.PeriodEnd.AddDays(PlanDays);
+            var periodDays = ProductCatalog.PeriodDaysFor(sub.ProductId);
+            var newEnd = sub.PeriodEnd.AddDays(periodDays);
             if (newEnd < now)
-                newEnd = now.AddDays(PlanDays);
+                newEnd = now.AddDays(periodDays);
 
             await store.UpsertSubscriptionAsync(
                 new EntitlementRecord(sub.UserId, true, "web", sub.ProductId, newEnd, now, "web:" + order.OrderId), ct);

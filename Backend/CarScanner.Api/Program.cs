@@ -3056,7 +3056,7 @@ app.MapPost(
                     }
                     else if (ProductCatalog.IsSubscription(order.ProductId))
                     {
-                        await store.RemoveWebPeriodAsync(order.UserId, order.ProductId, WebPaymentService.PlanDays, "web:" + order.OrderId, ct);
+                        await store.RemoveWebPeriodAsync(order.UserId, order.ProductId, ProductCatalog.PeriodDaysFor(order.ProductId), "web:" + order.OrderId, ct);
                         if (order.Recurring || order.ParentOrderId is not null)
                             await payments.CancelSubscriptionAsync(order.UserId, ct);
                     }
@@ -3925,7 +3925,7 @@ static async Task<DateTimeOffset?> ApplyWebOrderAsync(
         var now = DateTimeOffset.UtcNow;
         var current = await store.GetSubscriptionExpiryAsync(order.UserId, order.ProductId, ct);
         var start = current is { } end && end > now ? end : now;
-        var expires = start.AddDays(WebPaymentService.PlanDays);
+        var expires = start.AddDays(ProductCatalog.PeriodDaysFor(order.ProductId));
 
         await store.UpsertSubscriptionAsync(
             new EntitlementRecord(

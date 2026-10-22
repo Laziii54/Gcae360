@@ -6,10 +6,17 @@ namespace CarScanner.Api.Services;
 /// </summary>
 public static class ProductCatalog
 {
-    // Subscriptions (monthly only).
+    // Subscriptions — monthly.
     public const string ObdMonthly = "com.georgiancarscanner.pro.monthly";
     public const string VinMonthly = "com.georgiancarscanner.vin.monthly";
     public const string FullMonthly = "com.georgiancarscanner.full.monthly";
+
+    // Subscriptions — yearly (website only for now; not yet created as App
+    // Store / Play Store products — see StoreRelease notes before selling
+    // these through the native stores).
+    public const string ObdYearly = "com.georgiancarscanner.pro.yearly";
+    public const string VinYearly = "com.georgiancarscanner.vin.yearly";
+    public const string FullYearly = "com.georgiancarscanner.full.yearly";
 
     // One-time VIN credits.
     public const string VinPack5 = "com.georgiancarscanner.vin.pack5";
@@ -19,8 +26,19 @@ public static class ProductCatalog
     /// <summary>VIN reports included in one month of VIN PRO / Full PRO.</summary>
     public const int VinMonthlyQuota = 10;
 
+    /// <summary>Days one purchase of this subscription covers (web: 30 for monthly, 365 for yearly).</summary>
+    public const int MonthlyPeriodDays = 30;
+    public const int YearlyPeriodDays = 365;
+
     public static bool IsSubscription(string? productId) =>
-        productId is ObdMonthly or VinMonthly or FullMonthly;
+        productId is ObdMonthly or VinMonthly or FullMonthly or ObdYearly or VinYearly or FullYearly;
+
+    public static bool IsYearly(string? productId) =>
+        productId is ObdYearly or VinYearly or FullYearly;
+
+    /// <summary>Days of access one purchase of this subscription grants. 0 for a non-subscription product.</summary>
+    public static int PeriodDaysFor(string? productId) =>
+        IsSubscription(productId) ? (IsYearly(productId) ? YearlyPeriodDays : MonthlyPeriodDays) : 0;
 
     public static bool IsConsumable(string? productId) =>
         productId is VinPack5 or VinPack10 or VinSingle;
@@ -42,10 +60,10 @@ public static class ProductCatalog
         productId is VinPack5 or VinPack10;
 
     public static bool GrantsObd(string? productId, string? source) =>
-        IsPromo(source) || productId is ObdMonthly or FullMonthly;
+        IsPromo(source) || productId is ObdMonthly or FullMonthly or ObdYearly or FullYearly;
 
     public static bool GrantsVin(string? productId, string? source) =>
-        IsPromo(source) || productId is VinMonthly or FullMonthly;
+        IsPromo(source) || productId is VinMonthly or FullMonthly or VinYearly or FullYearly;
 
     private static bool IsPromo(string? source) =>
         string.Equals(source, "promo", StringComparison.OrdinalIgnoreCase);

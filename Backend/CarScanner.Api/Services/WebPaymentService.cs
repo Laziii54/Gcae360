@@ -19,8 +19,9 @@ namespace CarScanner.Api.Services;
 /// </summary>
 public sealed partial class WebPaymentService
 {
-    /// <summary>Days of access bought with one "monthly" web purchase.</summary>
-    public const int PlanDays = 30;
+    /// <summary>Days of access bought with one "monthly" web purchase. Kept for callers that only ever
+    /// handle monthly products; everywhere a product id is known, use <see cref="ProductCatalog.PeriodDaysFor"/>.</summary>
+    public const int PlanDays = ProductCatalog.MonthlyPeriodDays;
 
     private readonly IHttpClientFactory _clients;
     private readonly IConfiguration _config;
@@ -89,6 +90,11 @@ CREATE INDEX IF NOT EXISTS IX_WebOrders_Provider ON WebOrders(Provider, Provider
         ProductCatalog.ObdMonthly => 4.99m,
         ProductCatalog.VinMonthly => 5.99m,
         ProductCatalog.FullMonthly => 7.99m,
+        // Yearly = 12 months at a discount off the undiscounted (monthly × 12) anchor price:
+        // OBD PRO 20%, VIN PRO 20%, Full PRO 30%.
+        ProductCatalog.ObdYearly => 47.99m,
+        ProductCatalog.VinYearly => 57.99m,
+        ProductCatalog.FullYearly => 67.99m,
         ProductCatalog.VinPack5 => 3.49m,
         ProductCatalog.VinPack10 => 5.99m,
         ProductCatalog.VinSingle => 1.49m,
@@ -101,6 +107,11 @@ CREATE INDEX IF NOT EXISTS IX_WebOrders_Provider ON WebOrders(Provider, Provider
         ProductCatalog.ObdMonthly => 9m,
         ProductCatalog.VinMonthly => 10m,
         ProductCatalog.FullMonthly => 10.98m,
+        // The yearly anchor is the plan's own monthly price × 12 (no extra markup),
+        // so the shown "-N%" is exactly the yearly discount, not also the monthly promo.
+        ProductCatalog.ObdYearly => 59.88m,
+        ProductCatalog.VinYearly => 71.88m,
+        ProductCatalog.FullYearly => 95.88m,
         _ => null
     };
 
@@ -113,6 +124,9 @@ CREATE INDEX IF NOT EXISTS IX_WebOrders_Provider ON WebOrders(Provider, Provider
         ProductCatalog.ObdMonthly => 4.99m,
         ProductCatalog.VinMonthly => 5.99m,
         ProductCatalog.FullMonthly => 7.99m,
+        ProductCatalog.ObdYearly => 47.99m,
+        ProductCatalog.VinYearly => 57.99m,
+        ProductCatalog.FullYearly => 67.99m,
         ProductCatalog.VinPack5 => 3.49m,
         ProductCatalog.VinPack10 => 5.99m,
         ProductCatalog.VinSingle => 1.49m,
