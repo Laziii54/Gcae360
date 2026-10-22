@@ -13,11 +13,18 @@ public sealed class ProService
     private DateTimeOffset _lastServerRefreshAttempt = DateTimeOffset.MinValue;
     private static readonly TimeSpan ServerRefreshInterval =
         TimeSpan.FromMinutes(5);
-    // Subscriptions (monthly only).
+    // Subscriptions - monthly.
     public const string ObdProductId = "com.georgiancarscanner.pro.monthly";
     public const string VinProductId = "com.georgiancarscanner.vin.monthly";
     public const string FullProductId = "com.georgiancarscanner.full.monthly";
     public const string ProductId = ObdProductId;
+
+    // Subscriptions - yearly. Not yet created in App Store Connect; shown in
+    // the UI for pricing, but a purchase attempt will fail until the real
+    // products exist there (same PRODUCT_NOT_FOUND path as any missing id).
+    public const string ObdYearlyProductId = "com.georgiancarscanner.pro.yearly";
+    public const string VinYearlyProductId = "com.georgiancarscanner.vin.yearly";
+    public const string FullYearlyProductId = "com.georgiancarscanner.full.yearly";
 
     // One-time VIN credits.
     public const string VinPack5ProductId = "com.georgiancarscanner.vin.pack5";
@@ -37,6 +44,15 @@ public sealed class ProService
     public const decimal PriceAnchorGEL = 9m;
     public const decimal VinPriceAnchorGEL = 10m;
     public const decimal FullPriceAnchorGEL = PriceGEL + VinPriceGEL;
+
+    // Yearly prices (same figures as the website): 12 months at a discount -
+    // OBD PRO and VIN PRO 20% off, Full PRO 30% off - floored, plus .99.
+    public const decimal PriceYearlyGEL = 47.99m;
+    public const decimal VinPriceYearlyGEL = 57.99m;
+    public const decimal FullPriceYearlyGEL = 67.99m;
+    public const decimal PriceYearlyAnchorGEL = 59.88m;
+    public const decimal VinPriceYearlyAnchorGEL = 71.88m;
+    public const decimal FullPriceYearlyAnchorGEL = 95.88m;
 
     private const string HasVinKey = "pro.hasVin";
     private const string VinExpiresKey = "pro.vinExpires";

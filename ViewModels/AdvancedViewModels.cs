@@ -1131,6 +1131,45 @@ public partial class ProViewModel : BaseViewModel
     public ObservableCollection<ProPlanItem> Plans { get; } = new();
     public ObservableCollection<ProPackItem> Packs { get; } = new();
 
+    /// <summary>OBD PRO / VIN PRO / Full PRO only - the plan-picker row (no Free card).</summary>
+    public ObservableCollection<ProPlanItem> PaidPlans { get; } = new();
+
+    [ObservableProperty]
+    private ProPlanItem? selectedPlan;
+
+    [ObservableProperty]
+    private bool isYearlyBilling;
+
+    [ObservableProperty]
+    private string displayPriceText = "";
+
+    [ObservableProperty]
+    private string displayStrikeText = "";
+
+    [ObservableProperty]
+    private bool showDisplayStrike;
+
+    [ObservableProperty]
+    private string displayPeriodText = "";
+
+    [ObservableProperty]
+    private string yearlyDiscountBadgeText = "";
+
+    [ObservableProperty]
+    private string ctaButtonText = "";
+
+    [ObservableProperty]
+    private Color monthlyToggleBg = Color.FromArgb("#1D5BD6");
+
+    [ObservableProperty]
+    private Color yearlyToggleBg = Colors.Transparent;
+
+    [ObservableProperty]
+    private Color monthlyToggleText = Colors.White;
+
+    [ObservableProperty]
+    private Color yearlyToggleText = Color.FromArgb("#8CA0C4");
+
     [ObservableProperty]
     private bool isPro;
 
@@ -1196,6 +1235,12 @@ public partial class ProViewModel : BaseViewModel
     [ObservableProperty]
     private string plansTitleText = "";
 
+    [ObservableProperty]
+    private string monthlyLabelText = "";
+
+    [ObservableProperty]
+    private string yearlyLabelText = "";
+
     public ProViewModel(
         ProService pro,
         PurchaseService purchase,
@@ -1212,10 +1257,20 @@ public partial class ProViewModel : BaseViewModel
         IsPro = pro.IsPro;
         HasVin = pro.HasVin;
 
-        Plans.Add(new ProPlanItem { ProductId = ProService.ObdProductId });
-        Plans.Add(new ProPlanItem { ProductId = ProService.VinProductId });
-        Plans.Add(new ProPlanItem { ProductId = ProService.FullProductId, IsRecommended = true });
+        var obdPlan = new ProPlanItem { ProductId = ProService.ObdProductId, YearlyProductId = ProService.ObdYearlyProductId };
+        var vinPlan = new ProPlanItem { ProductId = ProService.VinProductId, YearlyProductId = ProService.VinYearlyProductId };
+        var fullPlan = new ProPlanItem { ProductId = ProService.FullProductId, YearlyProductId = ProService.FullYearlyProductId, IsRecommended = true };
+
+        Plans.Add(obdPlan);
+        Plans.Add(vinPlan);
+        Plans.Add(fullPlan);
         Plans.Add(new ProPlanItem { ProductId = ProPlanItem.FreeId });
+
+        PaidPlans.Add(obdPlan);
+        PaidPlans.Add(vinPlan);
+        PaidPlans.Add(fullPlan);
+        fullPlan.IsSelected = true;
+        SelectedPlan = fullPlan;
         Packs.Add(new ProPackItem { ProductId = ProService.VinPack5ProductId, Credits = 5 });
         Packs.Add(new ProPackItem { ProductId = ProService.VinPack10ProductId, Credits = 10 });
 
@@ -1320,6 +1375,9 @@ public partial class ProViewModel : BaseViewModel
             "ერთჯერადი შეძენა · ვადა არ გასდის",
             "One-time purchase · never expires");
 
+        MonthlyLabelText = L("თვიური", "Monthly");
+        YearlyLabelText = L("წლიური", "Yearly");
+
         Title = PageTitleText;
 
         RefreshPlans();
@@ -1364,7 +1422,7 @@ public partial class ProViewModel : BaseViewModel
                     plan.IsActive = !hasAny;
                     break;
                 case ProService.ObdProductId:
-                    plan.Title = "PRO";
+                    plan.Title = "OBD PRO";
                     plan.Subtitle = L("მანქანის სრული დიაგნოსტიკა", "Full car diagnostics");
                     plan.PriceText = $"{Price(plan.ProductId, ProService.PriceGEL)} / {month}";
                     plan.AnchorPriceText = $"{ProService.PriceAnchorGEL:0.##} ₾";
@@ -1446,6 +1504,80 @@ public partial class ProViewModel : BaseViewModel
                     $"Left this month: {_quota.Remaining} / {_quota.MonthlyLimit} · extra: {_quota.Credits}")
                 : L($"დარჩენილია ამ თვეში: {_quota.Remaining} / {_quota.MonthlyLimit}",
                     $"Left this month: {_quota.Remaining} / {_quota.MonthlyLimit}");
+
+        UpdateDisplay();
+    }
+
+    // ============================================================
+    // PLAN PICKER (Monthly / Yearly, selected plan hero)
+    // ============================================================
+
+    [RelayCommand]
+    private void SelectPlan(ProPlanItem? plan)
+    {
+        if (plan is null) return;
+        foreach (var p in PaidPlans) p.IsSelected = ReferenceEquals(p, plan);
+        SelectedPlan = plan;
+        UpdateDisplay();
+    }
+
+    [RelayCommand]
+    private void SetMonthlyBilling()
+    {
+        IsYearlyBilling = false;
+        UpdateDisplay();
+    }
+
+    [RelayCommand]
+    private void SetYearlyBilling()
+    {
+        IsYearlyBilling = true;
+        UpdateDisplay();
+    }
+
+    /// <summary>GEL monthly/yearly prices and the yearly discount percent for a plan's product id.</summary>
+    private static (decimal Monthly, decimal Yearly, decimal YearlyAnchor, int DiscountPercent) PeriodPrices(string productId) => productId switch
+    {
+        ProService.VinProductId => (ProService.VinPriceGEL, ProService.VinPriceYearlyGEL, ProService.VinPriceYearlyAnchorGEL, 20),
+        ProService.FullProductId => (ProService.FullPriceGEL, ProService.FullPriceYearlyGEL, ProService.FullPriceYearlyAnchorGEL, 30),
+        _ => (ProService.PriceGEL, ProService.PriceYearlyGEL, ProService.PriceYearlyAnchorGEL, 20),
+    };
+
+    /// <summary>The product id a purchase of the given plan should use for the selected billing period.</summary>
+    private string ActiveProductId(ProPlanItem plan) =>
+        IsYearlyBilling && !string.IsNullOrEmpty(plan.YearlyProductId) ? plan.YearlyProductId : plan.ProductId;
+
+    private void UpdateDisplay()
+    {
+        var plan = SelectedPlan;
+        if (plan is null || plan.IsFree) return;
+
+        var (monthly, yearly, yearlyAnchor, discount) = PeriodPrices(plan.ProductId);
+
+        if (IsYearlyBilling)
+        {
+            DisplayPriceText = $"{yearly.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)} ₾";
+            DisplayStrikeText = $"{yearlyAnchor.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)} ₾";
+            ShowDisplayStrike = true;
+            var perMonth = (yearly / 12).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+            DisplayPeriodText = L($"წელიწადში · {perMonth} ₾/თვე", $"per year · {perMonth} ₾/mo");
+        }
+        else
+        {
+            DisplayPriceText = Price(plan.ProductId, monthly);
+            ShowDisplayStrike = false;
+            DisplayPeriodText = L("თვეში", "per month");
+        }
+
+        YearlyDiscountBadgeText = $"-{discount}%";
+        CtaButtonText = L(
+            $"დაიწყე {plan.Title} — {(IsYearlyBilling ? "წლიური" : "თვიური")}",
+            $"Start {plan.Title} — {(IsYearlyBilling ? "Yearly" : "Monthly")}");
+
+        MonthlyToggleBg = IsYearlyBilling ? Colors.Transparent : Color.FromArgb("#1D5BD6");
+        YearlyToggleBg = IsYearlyBilling ? Color.FromArgb("#1D5BD6") : Colors.Transparent;
+        MonthlyToggleText = IsYearlyBilling ? Color.FromArgb("#8CA0C4") : Colors.White;
+        YearlyToggleText = IsYearlyBilling ? Colors.White : Color.FromArgb("#8CA0C4");
     }
 
     // ============================================================
@@ -1507,7 +1639,7 @@ public partial class ProViewModel : BaseViewModel
                 Color.FromArgb("#94A3B8");
 
             var result =
-                await _purchase.BeginSubscriptionPurchaseAsync(plan.ProductId);
+                await _purchase.BeginSubscriptionPurchaseAsync(ActiveProductId(plan));
 
             (Status, StatusColor) =
                 PurchaseStatusPresentation(result);
@@ -1889,9 +2021,17 @@ public sealed partial class ProPlanItem : ObservableObject
     public const string FreeId = "free";
 
     public string ProductId { get; init; } = "";
+    public string YearlyProductId { get; init; } = "";
     public bool IsFree => ProductId == FreeId;
     public bool IsRecommended { get; init; }
     public bool HasBadge => IsRecommended;
+
+    /// <summary>Highlighted in the Monthly/Yearly plan picker row.</summary>
+    [ObservableProperty] private bool isSelected;
+    [ObservableProperty] private Color pickerBackground = Color.FromArgb("#0CFFFFFF");
+
+    partial void OnIsSelectedChanged(bool value) =>
+        PickerBackground = value ? Color.FromArgb("#1D5BD6") : Color.FromArgb("#0CFFFFFF");
 
     [ObservableProperty] private string title = "";
     [ObservableProperty] private string subtitle = "";
