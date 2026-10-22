@@ -82,3 +82,61 @@
     publishing:
       app_store_connect:
         auth: integration
+
+  maui-android:
+    name: OBD360 Android
+    max_build_duration: 60
+    instance_type: linux_x2
+
+    environment:
+      # Create a Codemagic environment variable group named "android_signing"
+      # (Team settings -> Environment variables) with:
+      #   CM_KEYSTORE_PATH     - the .keystore/.jks file, uploaded as a "File" variable
+      #   CM_KEYSTORE_PASSWORD - the keystore password (Secure)
+      #   CM_KEY_ALIAS         - the signing key alias (Secure)
+      #   CM_KEY_PASSWORD      - the signing key password (Secure)
+      # Same values as the local StoreRelease/Publish-Android.ps1 script's
+      # -KeyStorePath / -KeyAlias / -PasswordFile parameters.
+      groups:
+        - android_signing
+
+      vars:
+        DOTNET_PATH: $HOME/.gcar360-dotnet
+        DOTNET: $HOME/.gcar360-dotnet/dotnet
+
+    scripts:
+      - name: Pull Git LFS
+        script: |
+          git lfs pull
+
+      - name: Install .NET SDK
+        script: |
+          curl -sSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh
+          chmod +x dotnet-install.sh
+          ./dotnet-install.sh \
+            --version 10.0.401 \
+            --install-dir "$DOTNET_PATH"
+
+          "$DOTNET" --version
+
+      - name: Install MAUI Android workload
+        script: |
+          "$DOTNET" workload install android maui --version 10.0.401
+          "$DOTNET" workload --info
+
+      - name: Build signed AAB
+        script: |
+          "$DOTNET" publish CarScanner.csproj \
+            -f net10.0-android \
+            -c Release \
+            -p:AndroidKeyStore=true \
+            -p:AndroidSigningKeyStore="$CM_KEYSTORE_PATH" \
+            -p:AndroidSigningKeyAlias="$CM_KEY_ALIAS" \
+            -p:AndroidSigningKeyPass="$CM_KEY_PASSWORD" \
+            -p:AndroidSigningStorePass="$CM_KEYSTORE_PASSWORD" \
+            -p:AndroidPackageFormats=aab \
+            -o "$CM_BUILD_DIR/artifacts"
+
+    artifacts:
+      - artifacts/*.aab
+      - "**/*.aab"
