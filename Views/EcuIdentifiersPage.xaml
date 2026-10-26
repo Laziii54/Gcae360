@@ -19,7 +19,7 @@
             <Label Text="ECU EXPLORER" Style="{StaticResource PageTitleStyle}" />
 
             <Button
-                Text="სკანირება"
+                Text="{Binding ScanButtonText}"
                 Command="{Binding LoadCommand}"
                 Style="{StaticResource PrimaryButtonStyle}"
                 HeightRequest="50" />

@@ -789,6 +789,7 @@ public partial class EcuIdentifiersViewModel : BaseViewModel
     private readonly OemEcuIdentificationService _oemIdentification;
     private readonly ModuleDtcScanService _modules;
     private readonly ProService _pro;
+    private readonly CarScanner.Services.Localization.LocalizationService _localization;
     private readonly SemaphoreSlim _pidRefreshGate = new(1, 1);
     private CancellationTokenSource? _pidPollingCts;
     private Task? _pidPollingTask;
@@ -804,6 +805,11 @@ public partial class EcuIdentifiersViewModel : BaseViewModel
     [ObservableProperty] private string pidRefreshStatus = "რეალური ECU მნიშვნელობების მოლოდინი…";
     [ObservableProperty] private string oemIdentificationStatus = "OEM identification ჯერ არ შემოწმებულა.";
 
+    /// <summary>The "Scan" button's own text - bound instead of a literal so the full L(ka, en) +
+    /// language-pack chain renders it in every added language, not just whatever the runtime
+    /// handler-mapper hook resolves a bare XAML literal to.</summary>
+    [ObservableProperty] private string scanButtonText = "სკანირება";
+
     // Identification of every module (PRO).
     public ObservableCollection<ModuleInfoCard> ModuleInfos { get; } = new();
     [ObservableProperty] private bool isModuleInfoUnlocked;
@@ -818,7 +824,8 @@ public partial class EcuIdentifiersViewModel : BaseViewModel
         UnitSystemService units,
         OemEcuIdentificationService oemIdentification,
         ModuleDtcScanService modules,
-        ProService pro)
+        ProService pro,
+        CarScanner.Services.Localization.LocalizationService localization)
     {
         _modules = modules;
         _pro = pro;
@@ -827,8 +834,10 @@ public partial class EcuIdentifiersViewModel : BaseViewModel
         _vehicle = vehicle;
         _units = units;
         _oemIdentification = oemIdentification;
+        _localization = localization;
         Attach();
         Title = "ECU ინფორმაცია";
+        ApplyLanguageTexts();
     }
 
     // Detached by EcuIdentifiersPage when it goes away (no leak through UnitSystemService).
@@ -839,6 +848,7 @@ public partial class EcuIdentifiersViewModel : BaseViewModel
         if (_attached) return;
         _attached = true;
         _units.UnitSystemChanged += OnUnitSystemChanged;
+        _localization.LanguageChanged += OnLanguageChanged;
     }
 
     public void Detach()
@@ -846,7 +856,14 @@ public partial class EcuIdentifiersViewModel : BaseViewModel
         if (!_attached) return;
         _attached = false;
         _units.UnitSystemChanged -= OnUnitSystemChanged;
+        _localization.LanguageChanged -= OnLanguageChanged;
     }
+
+    private void OnLanguageChanged(object? sender, EventArgs e) =>
+        MainThread.BeginInvokeOnMainThread(ApplyLanguageTexts);
+
+    private void ApplyLanguageTexts() =>
+        ScanButtonText = _localization.IsEnglish ? "Scan" : "სკანირება";
 
     private void OnUnitSystemChanged(object? sender, EventArgs e) =>
         MainThread.BeginInvokeOnMainThread(RefreshUnitPresentation);
@@ -1159,7 +1176,7 @@ public partial class ProViewModel : BaseViewModel
     private string ctaButtonText = "";
 
     [ObservableProperty]
-    private Color monthlyToggleBg = Color.FromArgb("#1D5BD6");
+    private Color monthlyToggleBg = ThemeService.Soft("#1D5BD6");
 
     [ObservableProperty]
     private Color yearlyToggleBg = Colors.Transparent;
@@ -1168,7 +1185,7 @@ public partial class ProViewModel : BaseViewModel
     private Color monthlyToggleText = Colors.White;
 
     [ObservableProperty]
-    private Color yearlyToggleText = Color.FromArgb("#8CA0C4");
+    private Color yearlyToggleText = ThemeService.Soft("#5D636B");
 
     [ObservableProperty]
     private bool isPro;
@@ -1181,7 +1198,7 @@ public partial class ProViewModel : BaseViewModel
 
     [ObservableProperty]
     private Color statusColor =
-        Color.FromArgb("#94A3B8");
+        ThemeService.Soft("#5D636B");
 
     [ObservableProperty]
     private string priceText = "";
@@ -1240,6 +1257,17 @@ public partial class ProViewModel : BaseViewModel
 
     [ObservableProperty]
     private string yearlyLabelText = "";
+
+    [ObservableProperty]
+    private string proIntroTitleText = "";
+
+    [ObservableProperty]
+    private string proIntroDescriptionText = "";
+
+    /// <summary>Sign in / create account, or "Account: email" once signed in — moved here from
+    /// ProPage code-behind so it goes through the same localization as every other PRO page text.</summary>
+    [ObservableProperty]
+    private string accountButtonText = "";
 
     public ProViewModel(
         ProService pro,
@@ -1378,10 +1406,25 @@ public partial class ProViewModel : BaseViewModel
         MonthlyLabelText = L("თვიური", "Monthly");
         YearlyLabelText = L("წლიური", "Yearly");
 
+        ProIntroTitleText = L("გადადი PRO-ზე", "Upgrade to PRO");
+        ProIntroDescriptionText = L(
+            "სრული დიაგნოსტიკა, VIN ისტორია და AI კონსულტაცია — შენს ანგარიშზე, ყველა მოწყობილობაზე.",
+            "Full diagnostics, VIN history and AI consultation — unlocked on your account, on every device.");
+
+        RefreshAccountButtonText();
+
         Title = PageTitleText;
 
         RefreshPlans();
     }
+
+    /// <summary>Sign in / create account, or "Account: {email}" once signed in. The colon-delimited
+    /// "Account" prefix is a known localization key, so the runtime translation pass still localizes it
+    /// correctly for every added language even though the email after it never matches a dictionary row.</summary>
+    public void RefreshAccountButtonText() =>
+        AccountButtonText = _account.IsSignedIn
+            ? L("ანგარიში: ", "Account: ") + _account.Email
+            : L("შესვლა / ანგარიშის შექმნა", "Sign in / create account");
 
     private string Price(string productId, decimal fallback) =>
         _prices.TryGetValue(productId, out var price) && !string.IsNullOrWhiteSpace(price)
@@ -1465,12 +1508,14 @@ public partial class ProViewModel : BaseViewModel
             plan.ShowAnchor = plan.ShowPrice;
             plan.ShowDiscountBadge = plan.ShowPrice && !string.IsNullOrEmpty(plan.DiscountBadgeText);
             plan.CanOpen = !plan.IsActive && !plan.IsFree;
+            // "Current plan", not the bare word "Current" - that English string is already a
+            // pack key for the electrical sense (Strom/Courant/Corriente) used elsewhere in the app.
             plan.TagText = plan.IsActive
-                ? L("მიმდინარე", "Current")
+                ? L("მიმდინარე", "Current plan")
                 : string.Empty;
-            plan.TagBackground = Color.FromArgb("#E8F5EE");
-            plan.TagTextColor = Color.FromArgb("#1F8A4C");
-            plan.StrokeColor = Color.FromArgb(plan.IsActive ? "#22C55E" : plan.IsRecommended ? "#1D5BD6" : "#6694A3B8");
+            plan.TagBackground = ThemeService.Soft("#E8F5EE");
+            plan.TagTextColor = ThemeService.Soft("#1F8A4C");
+            plan.StrokeColor = plan.IsActive ? ThemeService.Soft("#1F8A4C") : plan.IsRecommended ? ThemeService.Soft("#1D5BD6") : ThemeService.Soft("#DCDFE3");
         }
 
         foreach (var pack in Packs)
@@ -1574,10 +1619,10 @@ public partial class ProViewModel : BaseViewModel
             $"დაიწყე {plan.Title} — {(IsYearlyBilling ? "წლიური" : "თვიური")}",
             $"Start {plan.Title} — {(IsYearlyBilling ? "Yearly" : "Monthly")}");
 
-        MonthlyToggleBg = IsYearlyBilling ? Colors.Transparent : Color.FromArgb("#1D5BD6");
-        YearlyToggleBg = IsYearlyBilling ? Color.FromArgb("#1D5BD6") : Colors.Transparent;
-        MonthlyToggleText = IsYearlyBilling ? Color.FromArgb("#8CA0C4") : Colors.White;
-        YearlyToggleText = IsYearlyBilling ? Colors.White : Color.FromArgb("#8CA0C4");
+        MonthlyToggleBg = IsYearlyBilling ? Colors.Transparent : ThemeService.Soft("#1D5BD6");
+        YearlyToggleBg = IsYearlyBilling ? ThemeService.Soft("#1D5BD6") : Colors.Transparent;
+        MonthlyToggleText = IsYearlyBilling ? ThemeService.Soft("#5D636B") : Colors.White;
+        YearlyToggleText = IsYearlyBilling ? Colors.White : ThemeService.Soft("#5D636B");
     }
 
     // ============================================================
@@ -1622,7 +1667,7 @@ public partial class ProViewModel : BaseViewModel
                 "This plan is already active.");
 
             StatusColor =
-                Color.FromArgb("#22C55E");
+                ThemeService.Soft("#1F8A4C");
 
             return;
         }
@@ -1636,7 +1681,7 @@ public partial class ProViewModel : BaseViewModel
                 $"Opening {StoreName}…");
 
             StatusColor =
-                Color.FromArgb("#94A3B8");
+                ThemeService.Soft("#5D636B");
 
             var result =
                 await _purchase.BeginSubscriptionPurchaseAsync(ActiveProductId(plan));
@@ -1662,7 +1707,7 @@ public partial class ProViewModel : BaseViewModel
                 "Payment could not be completed. Please try again.");
 
             StatusColor =
-                Color.FromArgb("#DC2626");
+                ThemeService.Soft("#C0392B");
         }
         finally
         {
@@ -1690,7 +1735,7 @@ public partial class ProViewModel : BaseViewModel
         if (plan.IsActive)
         {
             Status = L("ეს შენი მიმდინარე გეგმაა.", "This is your current plan.");
-            StatusColor = Color.FromArgb("#22C55E");
+            StatusColor = ThemeService.Soft("#1F8A4C");
             return;
         }
 
@@ -1704,7 +1749,7 @@ public partial class ProViewModel : BaseViewModel
                 Status = L(
                     "ჯერ შედი ანგარიშზე — PRO მხოლოდ ანგარიშზე ირთვება.",
                     "Sign in first — PRO is only activated on an account.");
-                StatusColor = Color.FromArgb("#B45309");
+                StatusColor = ThemeService.Soft("#B06A00");
                 await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.AccountPage));
                 return;
             }
@@ -1728,7 +1773,7 @@ public partial class ProViewModel : BaseViewModel
         Status = L(
             "იხსნება obd360.ge — იქ გადაიხდი ბარათით ან Google Pay-ით.",
             "Opening obd360.ge — pay there by card or Google Pay.");
-        StatusColor = Color.FromArgb("#94A3B8");
+        StatusColor = ThemeService.Soft("#5D636B");
         await StoreLinks.OpenAsync(StoreLinks.ProUrlFor(_account.Email));
         }
         catch (Exception commandException)
@@ -1750,7 +1795,7 @@ public partial class ProViewModel : BaseViewModel
             Status = L(
                 "VIN პაკეტები ხელმისაწვდომია VIN PRO ან სრული PRO გამოწერით.",
                 "VIN packs are available with VIN PRO or Full PRO.");
-            StatusColor = Color.FromArgb("#B45309");
+            StatusColor = ThemeService.Soft("#B06A00");
             return;
         }
 
@@ -1759,7 +1804,7 @@ public partial class ProViewModel : BaseViewModel
             Status = L(
                 "იხსნება obd360.ge — იქ გადაიხდი ბარათით ან Google Pay-ით.",
                 "Opening obd360.ge — pay there by card or Google Pay.");
-            StatusColor = Color.FromArgb("#94A3B8");
+            StatusColor = ThemeService.Soft("#5D636B");
             await StoreLinks.OpenAsync(StoreLinks.ProUrlFor(_account.Email));
             return;
         }
@@ -1768,13 +1813,13 @@ public partial class ProViewModel : BaseViewModel
         {
             IsBusy = true;
             Status = L($"{StoreName} იტვირთება…", $"Opening {StoreName}…");
-            StatusColor = Color.FromArgb("#94A3B8");
+            StatusColor = ThemeService.Soft("#5D636B");
 
             var result = await _purchase.BuyVinCreditsAsync(pack.ProductId);
             if (result == "SUCCESS")
             {
                 Status = L($"+{pack.Credits} VIN დაემატა.", $"+{pack.Credits} VIN added.");
-                StatusColor = Color.FromArgb("#22C55E");
+                StatusColor = ThemeService.Soft("#1F8A4C");
                 _quota = await _vin.GetQuotaAsync(CancellationToken.None);
                 RefreshPlans();
             }
@@ -1788,7 +1833,7 @@ public partial class ProViewModel : BaseViewModel
             Status = L(
                 "გადახდა ვერ შესრულდა. სცადე ხელახლა.",
                 "Payment could not be completed. Please try again.");
-            StatusColor = Color.FromArgb("#DC2626");
+            StatusColor = ThemeService.Soft("#C0392B");
         }
         finally
         {
@@ -1822,7 +1867,7 @@ public partial class ProViewModel : BaseViewModel
                 "Checking your plan…");
 
             StatusColor =
-                Color.FromArgb("#94A3B8");
+                ThemeService.Soft("#5D636B");
 
             // App Store requires a real "Restore Purchases" for in-app subscriptions.
             if (CanBuyInApp)
@@ -1853,7 +1898,7 @@ public partial class ProViewModel : BaseViewModel
                     "Your plan is active.");
 
                 StatusColor =
-                    Color.FromArgb("#22C55E");
+                    ThemeService.Soft("#1F8A4C");
             }
             else
             {
@@ -1862,7 +1907,7 @@ public partial class ProViewModel : BaseViewModel
                     "No active plan was found. Make sure you are signed in with the right account.");
 
                 StatusColor =
-                    Color.FromArgb("#B45309");
+                    ThemeService.Soft("#B06A00");
             }
         }
         catch (Exception)
@@ -1872,7 +1917,7 @@ public partial class ProViewModel : BaseViewModel
                 "Could not check your plan. Check your connection and try again.");
 
             StatusColor =
-                Color.FromArgb("#DC2626");
+                ThemeService.Soft("#C0392B");
         }
         finally
         {
@@ -1913,13 +1958,13 @@ public partial class ProViewModel : BaseViewModel
             string result)
     {
         var success =
-            Color.FromArgb("#22C55E");
+            ThemeService.Soft("#1F8A4C");
 
         var warning =
-            Color.FromArgb("#B45309");
+            ThemeService.Soft("#B06A00");
 
         var error =
-            Color.FromArgb("#DC2626");
+            ThemeService.Soft("#C0392B");
 
         return result switch
         {
@@ -1984,14 +2029,17 @@ public partial class ProViewModel : BaseViewModel
                     warning
                 ),
 
+            // Reachable on iOS too - e.g. a product id that doesn't exactly match what's
+            // configured in App Store Connect - so the store name must follow the platform
+            // instead of always saying "Google Play".
             "ERROR:PRODUCT_NOT_FOUND"
             or "ERROR:ITEM_UNAVAILABLE"
             or "ERROR:SUBSCRIPTION_OFFER_NOT_FOUND"
             or "ERROR:DEVELOPER_ERROR" =>
                 (
                     L(
-                        "ეს შეთავაზება Google Play-ში ჯერ ხელმისაწვდომი არ არის.",
-                        "This offer is not available in Google Play yet."),
+                        $"ეს შეთავაზება {StoreName}-ში ჯერ ხელმისაწვდომი არ არის.",
+                        $"This offer is not available in {StoreName} yet."),
                     error
                 ),
 
@@ -2028,10 +2076,16 @@ public sealed partial class ProPlanItem : ObservableObject
 
     /// <summary>Highlighted in the Monthly/Yearly plan picker row.</summary>
     [ObservableProperty] private bool isSelected;
-    [ObservableProperty] private Color pickerBackground = Color.FromArgb("#0CFFFFFF");
+    [ObservableProperty] private Color pickerBackground = ThemeService.Soft("#FFFFFF");
+    [ObservableProperty] private Color cardTitleColor = ThemeService.Soft("#1B1D20");
+    [ObservableProperty] private Color cardSubtitleColor = ThemeService.Soft("#5D636B");
 
-    partial void OnIsSelectedChanged(bool value) =>
-        PickerBackground = value ? Color.FromArgb("#1D5BD6") : Color.FromArgb("#0CFFFFFF");
+    partial void OnIsSelectedChanged(bool value)
+    {
+        PickerBackground = value ? ThemeService.Soft("#1D5BD6") : ThemeService.Soft("#FFFFFF");
+        CardTitleColor = value ? Colors.White : ThemeService.Soft("#1B1D20");
+        CardSubtitleColor = value ? Color.FromArgb("#D9E3F5") : ThemeService.Soft("#5D636B");
+    }
 
     [ObservableProperty] private string title = "";
     [ObservableProperty] private string subtitle = "";
@@ -2046,8 +2100,8 @@ public sealed partial class ProPlanItem : ObservableObject
     [ObservableProperty] private bool showPrice;
     [ObservableProperty] private bool canOpen;
     [ObservableProperty] private string tagText = "";
-    [ObservableProperty] private Color tagBackground = Color.FromArgb("#2563EB");
-    [ObservableProperty] private Color tagTextColor = Colors.White;
+    [ObservableProperty] private Color tagBackground = ThemeService.Soft("#E8F5EE");
+    [ObservableProperty] private Color tagTextColor = ThemeService.Soft("#1F8A4C");
 
     /// <summary>One checkmark row per included feature, shown in order.</summary>
     public ObservableCollection<string> FeatureList { get; } = new();
@@ -2064,7 +2118,7 @@ public sealed partial class ProPlanItem : ObservableObject
 
     public bool HasTag => !string.IsNullOrEmpty(TagText);
     partial void OnTagTextChanged(string value) => OnPropertyChanged(nameof(HasTag));
-    [ObservableProperty] private Color strokeColor = Color.FromArgb("#6694A3B8");
+    [ObservableProperty] private Color strokeColor = ThemeService.Soft("#DCDFE3");
 
     public bool CanBuy => !IsActive;
     partial void OnIsActiveChanged(bool value) => OnPropertyChanged(nameof(CanBuy));

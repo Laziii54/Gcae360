@@ -17,12 +17,10 @@ public partial class ProPage : ContentPage
         var localization = Application.Current?.Handler?.MauiContext?.Services.GetService<LocalizationService>();
         localization?.Apply(this);
 
-        // Sign in / account button (the plan belongs to the account).
-        var account = Application.Current?.Handler?.MauiContext?.Services.GetService<AccountService>();
-        var english = localization?.IsEnglish == true;
-        AccountButton.Text = account?.IsSignedIn == true
-            ? (english ? "Account: " : "ანგარიში: ") + account.Email
-            : (english ? "Sign in / create account" : "შესვლა / ანგარიშის შექმნა");
+        // Sign in / account button text now comes from the view model (AccountButtonText,
+        // bound in XAML) so it is localized the same way as every other PRO page string.
+        if (BindingContext is ProViewModel vm)
+            vm.RefreshAccountButtonText();
     }
 
     private async void OnAccountClicked(object? sender, EventArgs e)

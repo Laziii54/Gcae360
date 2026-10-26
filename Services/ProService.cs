@@ -19,9 +19,9 @@ public sealed class ProService
     public const string FullProductId = "com.georgiancarscanner.full.monthly";
     public const string ProductId = ObdProductId;
 
-    // Subscriptions - yearly. Not yet created in App Store Connect; shown in
-    // the UI for pricing, but a purchase attempt will fail until the real
-    // products exist there (same PRODUCT_NOT_FOUND path as any missing id).
+    // Subscriptions - yearly. These ids must match App Store Connect exactly (case and all) -
+    // a mismatched id fails the same PRODUCT_NOT_FOUND path as a genuinely missing product.
+    // See docs/app-store-review/subscription-compliance-audit.md for the verification this needs.
     public const string ObdYearlyProductId = "com.georgiancarscanner.pro.yearly";
     public const string VinYearlyProductId = "com.georgiancarscanner.vin.yearly";
     public const string FullYearlyProductId = "com.georgiancarscanner.full.yearly";

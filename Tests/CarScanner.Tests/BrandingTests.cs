@@ -82,13 +82,31 @@ public sealed class BrandingTests
         Assert.DoesNotContain("Text=\"360°\"", Read("Views", "StartPage.xaml"));
     }
 
+    /// <summary>
+    /// The adaptive-icon foreground now has a real safe-zone margin (docs/image-asset-investigation.md),
+    /// so the background has to be the logo's actual navy gradient - sampled from
+    /// Resources/AppIcon/appicon.png's own corners - instead of a flat placeholder color, or the
+    /// margin would show as a plain black box around the mark.
+    /// </summary>
     [Fact]
-    public void TheAdaptiveIconBackground_IsThePureBlackOfTheLogoArt()
+    public void TheAdaptiveIconBackground_IsTheRealGradientOfTheLogoArt()
     {
-        var colors = Read("Platforms", "Android", "Resources", "values", "colors.xml");
-        Assert.Contains("name=\"ic_gcar_light_background\">#000000<", colors);
-        Assert.Contains("name=\"ic_gcar_dark_background\">#000000<", colors);
+        var background = Read("Platforms", "Android", "Resources", "drawable", "ic_gcar_background.xml");
+        Assert.Contains("android:startColor=\"#023884\"", background);
+        Assert.Contains("android:endColor=\"#002050\"", background);
+
+        foreach (var variant in new[] { "ic_gcar_light.xml", "ic_gcar_light_round.xml", "ic_gcar_dark.xml", "ic_gcar_dark_round.xml" })
+        {
+            var icon = Read("Platforms", "Android", "Resources", "mipmap-anydpi-v26", variant);
+            Assert.Contains("android:drawable=\"@drawable/ic_gcar_background\"", icon);
+        }
     }
+
+    // A pixel-level safe-zone-margin check was considered here too, but this project's PNG tests
+    // deliberately avoid System.Drawing (see PngSize above, which hand-parses the IHDR chunk) since
+    // System.Drawing.Common throws PlatformNotSupportedException off Windows; decoding PNG pixel data
+    // safely would need a real image library, which isn't justified for one test. The actual margins
+    // were measured directly when the assets were generated - see docs/image-asset-investigation.md.
 
     [Fact]
     public void BackendPagesAndEmails_NameTheProductOBD360_AndOnlyKeepTheListedTechnicalIdentifiers()

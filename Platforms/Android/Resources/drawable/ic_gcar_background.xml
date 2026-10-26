@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher icon adaptive-icon background: the same diagonal navy gradient baked into
+     Resources/AppIcon/appicon.png (top-left #023884 -> bottom-right #002050), used as a real
+     gradient instead of flat black so it reads correctly once the foreground has a safe margin. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:angle="315"
+        android:startColor="#023884"
+        android:endColor="#002050" />
+</shape>

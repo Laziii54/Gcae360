@@ -93,7 +93,10 @@ public sealed class PurchaseService
     [
         ProService.ObdProductId,
         ProService.VinProductId,
-        ProService.FullProductId
+        ProService.FullProductId,
+        ProService.ObdYearlyProductId,
+        ProService.VinYearlyProductId,
+        ProService.FullYearlyProductId
     ];
 
     public static readonly string[] VinCreditProductIds =
@@ -202,11 +205,17 @@ public sealed class PurchaseService
 #endif
     }
 
+    /// <summary>
+    /// True when the account already has the entitlement a product id would grant - monthly and
+    /// yearly ids of the same plan must answer the same way, or a yearly purchase attempt (or a
+    /// yearly id's "already active" check) silently falls through to the "_ => false" case and
+    /// starts a real purchase even though the account is already covered.
+    /// </summary>
     private bool IsCovered(string productId) => productId switch
     {
-        ProService.ObdProductId => _pro.HasObd,
-        ProService.VinProductId => _pro.HasVin,
-        ProService.FullProductId => _pro.HasObd && _pro.HasVin,
+        ProService.ObdProductId or ProService.ObdYearlyProductId => _pro.HasObd,
+        ProService.VinProductId or ProService.VinYearlyProductId => _pro.HasVin,
+        ProService.FullProductId or ProService.FullYearlyProductId => _pro.HasObd && _pro.HasVin,
         _ => false
     };
 

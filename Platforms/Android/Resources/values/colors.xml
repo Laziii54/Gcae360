@@ -3,6 +3,4 @@
     <color name="colorPrimary">#000817</color>
     <color name="colorPrimaryDark">#000817</color>
     <color name="colorAccent">#2563EB</color>
-    <color name="ic_gcar_light_background">#000000</color>
-    <color name="ic_gcar_dark_background">#000000</color>
 </resources>

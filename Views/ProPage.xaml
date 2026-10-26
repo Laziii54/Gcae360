@@ -7,56 +7,143 @@
     xmlns:vm="clr-namespace:CarScanner.ViewModels"
     x:Class="CarScanner.Views.ProPage"
     x:DataType="vm:ProViewModel"
-    Title="{Binding PageTitleText}">
-
-    <ContentPage.Background>
-        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-            <GradientStop Color="#0E1F3D" Offset="0.0" />
-            <GradientStop Color="#071327" Offset="0.55" />
-            <GradientStop Color="#03070F" Offset="1.0" />
-        </LinearGradientBrush>
-    </ContentPage.Background>
+    Title="{Binding PageTitleText}"
+    BackgroundColor="{DynamicResource PageBg}">
 
     <ScrollView>
-        <VerticalStackLayout Padding="20,16,20,28" Spacing="0">
+        <VerticalStackLayout
+            Padding="20,18,20,32"
+            Spacing="22"
+            MaximumWidthRequest="560"
+            HorizontalOptions="Center">
 
-            <Label Text="{Binding ProSubtitleText}" FontSize="12" TextColor="#8CA0C4" HorizontalTextAlignment="Center" Margin="0,0,0,16" />
+            <Label
+                Text="{Binding ProSubtitleText}"
+                FontSize="12"
+                TextColor="{DynamicResource SubTextColor}"
+                HorizontalTextAlignment="Center"
+                LineBreakMode="WordWrap" />
 
-            <!-- Plan picker: OBD PRO · VIN PRO · Full PRO -->
-            <HorizontalStackLayout Spacing="10" HorizontalOptions="Center" BindableLayout.ItemsSource="{Binding PaidPlans}">
-                <BindableLayout.ItemTemplate>
-                    <DataTemplate x:DataType="vm:ProPlanItem">
-                        <Border Padding="10" WidthRequest="112" HeightRequest="92" StrokeThickness="0" StrokeShape="RoundRectangle 18" BackgroundColor="{Binding PickerBackground}">
-                            <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding x:DataType=vm:ProViewModel, Source={RelativeSource AncestorType={x:Type vm:ProViewModel}}, Path=SelectPlanCommand}" CommandParameter="{Binding .}" />
-                            </Border.GestureRecognizers>
-                            <VerticalStackLayout Spacing="3" HorizontalOptions="Center" VerticalOptions="Center">
-                                <controls:Icon Kind="star" Tint="White" WidthRequest="15" HeightRequest="15" HorizontalOptions="Center" IsVisible="{Binding IsSelected}" />
-                                <Label Text="{Binding Title}" FontSize="14" FontAttributes="Bold" TextColor="White" HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" />
-                                <Label Text="{Binding Subtitle}" FontSize="9.5" TextColor="#B8C4DE" HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaximumWidthRequest="96" />
-                            </VerticalStackLayout>
+            <!-- PRO introduction: tasteful badge, title, short benefit line. -->
+            <VerticalStackLayout Spacing="10" HorizontalOptions="Center">
+                <Border
+                    WidthRequest="52"
+                    HeightRequest="52"
+                    Padding="0"
+                    StrokeThickness="0"
+                    StrokeShape="RoundRectangle 26"
+                    BackgroundColor="{DynamicResource ProBadgeBg}"
+                    HorizontalOptions="Center">
+                    <controls:Icon
+                        Kind="star"
+                        Tint="{DynamicResource ProBadgeText}"
+                        WidthRequest="24"
+                        HeightRequest="24"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center" />
+                </Border>
+                <Label
+                    Text="{Binding ProIntroTitleText}"
+                    FontSize="22"
+                    FontAttributes="Bold"
+                    TextColor="{DynamicResource TextColor}"
+                    HorizontalTextAlignment="Center"
+                    SemanticProperties.HeadingLevel="Level1" />
+                <Label
+                    Text="{Binding ProIntroDescriptionText}"
+                    FontSize="13.5"
+                    TextColor="{DynamicResource SubTextColor}"
+                    HorizontalTextAlignment="Center"
+                    LineBreakMode="WordWrap"
+                    MaximumWidthRequest="340" />
+            </VerticalStackLayout>
+
+            <!-- Plan selector: OBD PRO · VIN PRO · Full PRO. Equal Star columns so it
+                 never overflows on narrow phones; text wraps instead of truncating. -->
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+
+                <Border
+                    Grid.Column="0"
+                    Padding="8,14,8,12"
+                    StrokeThickness="1.5"
+                    Stroke="{Binding PaidPlans[0].StrokeColor}"
+                    BackgroundColor="{Binding PaidPlans[0].PickerBackground}"
+                    StrokeShape="RoundRectangle 16"
+                    SemanticProperties.Description="{Binding PaidPlans[0].Title}">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding SelectPlanCommand}" CommandParameter="{Binding PaidPlans[0]}" />
+                    </Border.GestureRecognizers>
+                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center" VerticalOptions="Center">
+                        <controls:Icon Kind="check" Tint="White" WidthRequest="13" HeightRequest="13" HorizontalOptions="Center" IsVisible="{Binding PaidPlans[0].IsSelected}" />
+                        <Label Text="{Binding PaidPlans[0].Title}" FontSize="13.5" FontAttributes="Bold" TextColor="{Binding PaidPlans[0].CardTitleColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                        <Label Text="{Binding PaidPlans[0].Subtitle}" FontSize="12" TextColor="{Binding PaidPlans[0].CardSubtitleColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                        <Border IsVisible="{Binding PaidPlans[0].HasTag}" BackgroundColor="{Binding PaidPlans[0].TagBackground}" StrokeThickness="0" StrokeShape="RoundRectangle 6" Padding="7,3" HorizontalOptions="Center" Margin="0,2,0,0">
+                            <Label Text="{Binding PaidPlans[0].TagText}" FontSize="12" FontAttributes="Bold" TextColor="{Binding PaidPlans[0].TagTextColor}" />
                         </Border>
-                    </DataTemplate>
-                </BindableLayout.ItemTemplate>
-            </HorizontalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border
+                    Grid.Column="1"
+                    Padding="8,14,8,12"
+                    StrokeThickness="1.5"
+                    Stroke="{Binding PaidPlans[1].StrokeColor}"
+                    BackgroundColor="{Binding PaidPlans[1].PickerBackground}"
+                    StrokeShape="RoundRectangle 16"
+                    SemanticProperties.Description="{Binding PaidPlans[1].Title}">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding SelectPlanCommand}" CommandParameter="{Binding PaidPlans[1]}" />
+                    </Border.GestureRecognizers>
+                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center" VerticalOptions="Center">
+                        <controls:Icon Kind="check" Tint="White" WidthRequest="13" HeightRequest="13" HorizontalOptions="Center" IsVisible="{Binding PaidPlans[1].IsSelected}" />
+                        <Label Text="{Binding PaidPlans[1].Title}" FontSize="13.5" FontAttributes="Bold" TextColor="{Binding PaidPlans[1].CardTitleColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                        <Label Text="{Binding PaidPlans[1].Subtitle}" FontSize="12" TextColor="{Binding PaidPlans[1].CardSubtitleColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                        <Border IsVisible="{Binding PaidPlans[1].HasTag}" BackgroundColor="{Binding PaidPlans[1].TagBackground}" StrokeThickness="0" StrokeShape="RoundRectangle 6" Padding="7,3" HorizontalOptions="Center" Margin="0,2,0,0">
+                            <Label Text="{Binding PaidPlans[1].TagText}" FontSize="12" FontAttributes="Bold" TextColor="{Binding PaidPlans[1].TagTextColor}" />
+                        </Border>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border
+                    Grid.Column="2"
+                    Padding="8,14,8,12"
+                    StrokeThickness="1.5"
+                    Stroke="{Binding PaidPlans[2].StrokeColor}"
+                    BackgroundColor="{Binding PaidPlans[2].PickerBackground}"
+                    StrokeShape="RoundRectangle 16"
+                    SemanticProperties.Description="{Binding PaidPlans[2].Title}">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding SelectPlanCommand}" CommandParameter="{Binding PaidPlans[2]}" />
+                    </Border.GestureRecognizers>
+                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center" VerticalOptions="Center">
+                        <controls:Icon Kind="check" Tint="White" WidthRequest="13" HeightRequest="13" HorizontalOptions="Center" IsVisible="{Binding PaidPlans[2].IsSelected}" />
+                        <Label Text="{Binding PaidPlans[2].Title}" FontSize="13.5" FontAttributes="Bold" TextColor="{Binding PaidPlans[2].CardTitleColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                        <Label Text="{Binding PaidPlans[2].Subtitle}" FontSize="12" TextColor="{Binding PaidPlans[2].CardSubtitleColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                        <Border IsVisible="{Binding PaidPlans[2].HasTag}" BackgroundColor="{Binding PaidPlans[2].TagBackground}" StrokeThickness="0" StrokeShape="RoundRectangle 6" Padding="7,3" HorizontalOptions="Center" Margin="0,2,0,0">
+                            <Label Text="{Binding PaidPlans[2].TagText}" FontSize="12" FontAttributes="Bold" TextColor="{Binding PaidPlans[2].TagTextColor}" />
+                        </Border>
+                    </VerticalStackLayout>
+                </Border>
+
+            </Grid>
 
             <!-- Monthly / Yearly segmented toggle -->
-            <Border Padding="3" Margin="0,16,0,0" MaximumWidthRequest="300" HorizontalOptions="Center" BackgroundColor="#0FFFFFFF" StrokeThickness="1" Stroke="#14FFFFFF" StrokeShape="RoundRectangle 12">
+            <Border Padding="4" MaximumWidthRequest="320" HorizontalOptions="Center" BackgroundColor="{DynamicResource SegTrackBg}" StrokeThickness="1" Stroke="{DynamicResource BorderColor}" StrokeShape="RoundRectangle 14">
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="0">
-                    <Border Padding="0" HeightRequest="38" StrokeThickness="0" StrokeShape="RoundRectangle 9" BackgroundColor="{Binding MonthlyToggleBg}">
+                    <Border Padding="0" HeightRequest="46" StrokeThickness="0" StrokeShape="RoundRectangle 11" BackgroundColor="{Binding MonthlyToggleBg}">
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding SetMonthlyBillingCommand}" />
                         </Border.GestureRecognizers>
-                        <Label Text="{Binding MonthlyLabelText}" TextColor="{Binding MonthlyToggleText}" FontSize="13.5" FontAttributes="Bold" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                        <Label Text="{Binding MonthlyLabelText}" TextColor="{Binding MonthlyToggleText}" FontSize="14" FontAttributes="Bold" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" LineBreakMode="NoWrap" />
                     </Border>
-                    <Border Grid.Column="1" Padding="0" HeightRequest="38" StrokeThickness="0" StrokeShape="RoundRectangle 9" BackgroundColor="{Binding YearlyToggleBg}">
+                    <Border Grid.Column="1" Padding="4,0" HeightRequest="46" StrokeThickness="0" StrokeShape="RoundRectangle 11" BackgroundColor="{Binding YearlyToggleBg}">
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding SetYearlyBillingCommand}" />
                         </Border.GestureRecognizers>
                         <HorizontalStackLayout Spacing="6" HorizontalOptions="Center" VerticalOptions="Center">
-                            <Label Text="{Binding YearlyLabelText}" TextColor="{Binding YearlyToggleText}" FontSize="13.5" FontAttributes="Bold" VerticalTextAlignment="Center" />
-                            <Border BackgroundColor="#60A5FA" StrokeThickness="0" StrokeShape="RoundRectangle 6" Padding="6,2">
-                                <Label Text="{Binding YearlyDiscountBadgeText}" FontSize="10" FontAttributes="Bold" TextColor="#071327" />
+                            <Label Text="{Binding YearlyLabelText}" TextColor="{Binding YearlyToggleText}" FontSize="14" FontAttributes="Bold" VerticalTextAlignment="Center" LineBreakMode="NoWrap" />
+                            <Border BackgroundColor="{DynamicResource ProBadgeBg}" StrokeThickness="0" StrokeShape="RoundRectangle 6" Padding="6,2">
+                                <Label Text="{Binding YearlyDiscountBadgeText}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource ProBadgeText}" LineBreakMode="NoWrap" />
                             </Border>
                         </HorizontalStackLayout>
                     </Border>
@@ -64,88 +151,94 @@
             </Border>
 
             <!-- Price -->
-            <VerticalStackLayout Spacing="2" Margin="0,18,0,0" HorizontalOptions="Center">
+            <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
                 <HorizontalStackLayout Spacing="8" HorizontalOptions="Center">
-                    <Label Text="{Binding DisplayStrikeText}" IsVisible="{Binding ShowDisplayStrike}" FontSize="17" TextColor="#5E6E8C" TextDecorations="Strikethrough" VerticalOptions="Center" />
-                    <Label Text="{Binding DisplayPriceText}" FontSize="40" FontAttributes="Bold" TextColor="White" VerticalOptions="Center" />
+                    <Label Text="{Binding DisplayStrikeText}" IsVisible="{Binding ShowDisplayStrike}" FontSize="16" TextColor="{DynamicResource SubTextColor}" TextDecorations="Strikethrough" VerticalOptions="Center" />
+                    <Label Text="{Binding DisplayPriceText}" FontSize="38" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" LineBreakMode="NoWrap" />
                 </HorizontalStackLayout>
-                <Label Text="{Binding DisplayPeriodText}" FontSize="13" TextColor="#8CA0C4" HorizontalTextAlignment="Center" />
+                <Label Text="{Binding DisplayPeriodText}" FontSize="13" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
+                <Label Text="{Binding SelectedPlan.BadgeText}" IsVisible="{Binding SelectedPlan.HasBadge}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource ProBadgeText}" HorizontalTextAlignment="Center" Margin="0,2,0,0" />
             </VerticalStackLayout>
 
-            <!-- Feature list for the selected plan -->
-            <VerticalStackLayout Spacing="12" Margin="4,20,4,0" BindableLayout.ItemsSource="{Binding SelectedPlan.FeatureList}">
-                <BindableLayout.ItemTemplate>
-                    <DataTemplate x:DataType="x:String">
-                        <HorizontalStackLayout Spacing="12">
-                            <Border WidthRequest="22" HeightRequest="22" Padding="0" StrokeThickness="0" StrokeShape="RoundRectangle 7" BackgroundColor="#29608AF5" VerticalOptions="Start">
-                                <controls:Icon Kind="check" Tint="#60A5FA" WidthRequest="12" HeightRequest="12" HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Border>
-                            <Label Text="{Binding .}" FontSize="14.5" TextColor="#D9E3F5" LineBreakMode="WordWrap" VerticalOptions="Center" MaximumWidthRequest="300" />
-                        </HorizontalStackLayout>
-                    </DataTemplate>
-                </BindableLayout.ItemTemplate>
+            <!-- Benefits for the selected plan -->
+            <VerticalStackLayout Spacing="12">
+                <Label Text="{Binding PlansTitleText}" Style="{StaticResource SectionTitleStyle}" FontSize="16" />
+                <VerticalStackLayout Spacing="11" BindableLayout.ItemsSource="{Binding SelectedPlan.FeatureList}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <HorizontalStackLayout Spacing="10">
+                                <Border WidthRequest="22" HeightRequest="22" Padding="0" StrokeThickness="0" StrokeShape="RoundRectangle 7" BackgroundColor="{DynamicResource InfoBg}" VerticalOptions="Start">
+                                    <controls:Icon Kind="check" Tint="{DynamicResource Primary}" WidthRequest="12" HeightRequest="12" HorizontalOptions="Center" VerticalOptions="Center" />
+                                </Border>
+                                <Label Text="{Binding .}" FontSize="14" TextColor="{DynamicResource TextColor}" LineBreakMode="WordWrap" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
             </VerticalStackLayout>
 
             <!-- CTA -->
-            <Button
-                Text="{Binding CtaButtonText}"
-                Command="{Binding OpenPlanCommand}"
-                CommandParameter="{Binding SelectedPlan}"
-                IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
-                Margin="0,22,0,0"
-                HeightRequest="52"
-                CornerRadius="26"
-                BackgroundColor="White"
-                TextColor="#0B1C33"
-                FontSize="16"
-                FontAttributes="Bold" />
+            <VerticalStackLayout Spacing="10">
+                <Button
+                    Text="{Binding CtaButtonText}"
+                    Command="{Binding OpenPlanCommand}"
+                    CommandParameter="{Binding SelectedPlan}"
+                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
+                    HeightRequest="54"
+                    CornerRadius="27"
+                    BackgroundColor="{DynamicResource Primary}"
+                    TextColor="White"
+                    FontSize="16.5"
+                    FontAttributes="Bold" />
 
-            <!-- Loading / status -->
-            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="#60A5FA" HorizontalOptions="Center" Margin="0,10,0,0" />
-            <Label Text="{Binding Status}" TextColor="{Binding StatusColor}" FontSize="12" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" Margin="0,8,0,0" />
+                <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" HorizontalOptions="Center" />
+                <Label Text="{Binding Status}" TextColor="{Binding StatusColor}" FontSize="12.5" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+            </VerticalStackLayout>
 
             <!-- Monthly automatic payment bought on the website (BOG): status + cancel -->
-            <Border IsVisible="{Binding ShowWebSubscription}" Padding="14,13" Margin="0,16,0,0" BackgroundColor="#0FFFFFFF" Stroke="#14FFFFFF" StrokeThickness="1" StrokeShape="RoundRectangle 16">
-                <VerticalStackLayout Spacing="8">
-                    <Border IsVisible="{Binding ShowWebSubAlert}" Padding="11,9" BackgroundColor="#2EDC2626" Stroke="#DC2626" StrokeThickness="1" StrokeShape="RoundRectangle 10">
-                        <Label Text="{Binding WebSubAlertText}" FontSize="12" TextColor="#FCA5A5" LineBreakMode="WordWrap" />
+            <Border IsVisible="{Binding ShowWebSubscription}" Style="{StaticResource CardStyle}" Padding="16,14">
+                <VerticalStackLayout Spacing="10">
+                    <Border IsVisible="{Binding ShowWebSubAlert}" Padding="12,10" BackgroundColor="{DynamicResource ErrBg}" Stroke="{DynamicResource ErrStroke}" StrokeThickness="1" StrokeShape="RoundRectangle 10">
+                        <Label Text="{Binding WebSubAlertText}" FontSize="12.5" TextColor="{DynamicResource ErrText}" LineBreakMode="WordWrap" />
                     </Border>
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                        <Label Text="{Binding WebSubTitleText}" FontSize="15" FontAttributes="Bold" TextColor="White" VerticalOptions="Center" LineBreakMode="WordWrap" />
-                        <Border Grid.Column="1" BackgroundColor="{Binding WebSubStateBackground}" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="8,2" VerticalOptions="Center">
+                        <Label Text="{Binding WebSubTitleText}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" LineBreakMode="WordWrap" />
+                        <Border Grid.Column="1" BackgroundColor="{Binding WebSubStateBackground}" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="9,3" VerticalOptions="Center">
                             <Label Text="{Binding WebSubStateText}" TextColor="{Binding WebSubStateColor}" FontSize="12" FontAttributes="Bold" />
                         </Border>
                     </Grid>
-                    <Label Text="{Binding WebSubDetailsText}" FontSize="12" LineHeight="1.3" TextColor="#8CA0C4" LineBreakMode="WordWrap" />
+                    <Label Text="{Binding WebSubDetailsText}" FontSize="12.5" LineHeight="1.3" TextColor="{DynamicResource SubTextColor}" LineBreakMode="WordWrap" />
                     <Button
                         IsVisible="{Binding CanCancelWebSub}"
                         Text="{Binding CancelWebSubText}"
                         Command="{Binding CancelWebSubscriptionCommand}"
                         BackgroundColor="Transparent"
-                        TextColor="#F87171"
-                        BorderColor="#DC2626"
+                        TextColor="{DynamicResource ErrStroke}"
+                        BorderColor="{DynamicResource ErrStroke}"
                         BorderWidth="1.5"
                         CornerRadius="10"
-                        HeightRequest="44"
+                        HeightRequest="46"
                         FontAttributes="Bold"
-                        FontSize="13" />
+                        FontSize="13.5" />
                 </VerticalStackLayout>
             </Border>
 
-            <Label Text="{Binding VinQuotaText}" FontSize="12" TextColor="#8CA0C4" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" Margin="0,12,0,0" />
+            <Label Text="{Binding VinQuotaText}" FontSize="12.5" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
 
             <!-- Extra VIN checks: iPhone only, for VIN PRO / Full PRO -->
-            <VerticalStackLayout IsVisible="{Binding ShowPacks}" Spacing="8" Margin="0,12,0,0">
-                <Label Text="{Binding PacksTitleText}" FontSize="13" FontAttributes="Bold" TextColor="#8CA0C4" />
-                <Label Text="{Binding PacksHintText}" FontSize="12" TextColor="#5E6E8C" />
+            <VerticalStackLayout IsVisible="{Binding ShowPacks}" Spacing="10">
+                <Label Text="{Binding PacksTitleText}" FontSize="13.5" FontAttributes="Bold" TextColor="{DynamicResource SubTextColor}" />
+                <Label Text="{Binding PacksHintText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" />
                 <VerticalStackLayout Spacing="8" BindableLayout.ItemsSource="{Binding Packs}">
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="vm:ProPackItem">
-                            <Button Text="{Binding ButtonText}" Command="{Binding x:DataType=vm:ProViewModel, Source={RelativeSource AncestorType={x:Type vm:ProViewModel}}, Path=BuyPackCommand}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="White" BorderColor="#1FFFFFFF" BorderWidth="1" CornerRadius="10" HeightRequest="44" FontAttributes="Bold" />
+                            <Button Text="{Binding ButtonText}" Command="{Binding x:DataType=vm:ProViewModel, Source={RelativeSource AncestorType={x:Type vm:ProViewModel}}, Path=BuyPackCommand}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="10" HeightRequest="46" FontAttributes="Bold" />
                         </DataTemplate>
                     </BindableLayout.ItemTemplate>
                 </VerticalStackLayout>
             </VerticalStackLayout>
+
+            <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" />
 
             <!-- Restore (iPhone) / refresh status (Android) -->
             <Button
@@ -153,30 +246,30 @@
                 Command="{Binding RestoreCommand}"
                 IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
                 BackgroundColor="Transparent"
-                TextColor="#60A5FA"
+                TextColor="{DynamicResource Primary}"
                 BorderWidth="0"
                 FontAttributes="Bold"
-                FontSize="13"
-                HeightRequest="40"
-                Margin="0,14,0,0" />
+                FontSize="13.5"
+                HeightRequest="46" />
 
             <!-- Account (sign in / signed-in email) -->
             <Button
                 x:Name="AccountButton"
+                Text="{Binding AccountButtonText}"
                 Clicked="OnAccountClicked"
                 BackgroundColor="Transparent"
-                TextColor="#60A5FA"
+                TextColor="{DynamicResource Primary}"
                 BorderWidth="0"
                 FontAttributes="Bold"
-                FontSize="13"
-                HeightRequest="40" />
+                FontSize="13.5"
+                HeightRequest="46" />
 
-            <Label Text="{Binding SubscriptionInfoText}" FontSize="11" TextColor="#5E6E8C" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" Margin="4,4,4,0" />
+            <Label Text="{Binding SubscriptionInfoText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
 
             <!-- Privacy / terms -->
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="8" Margin="0,8,0,0">
-                <Button Text="{Binding PrivacyPolicyText}" Command="{Binding PrivacyPolicyCommand}" BackgroundColor="Transparent" TextColor="#5E6E8C" BorderWidth="0" FontSize="12" />
-                <Button Grid.Column="1" Text="{Binding TermsOfUseText}" Command="{Binding TermsOfUseCommand}" BackgroundColor="Transparent" TextColor="#5E6E8C" BorderWidth="0" FontSize="12" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <Button Text="{Binding PrivacyPolicyText}" Command="{Binding PrivacyPolicyCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" BorderWidth="0" FontSize="12" />
+                <Button Grid.Column="1" Text="{Binding TermsOfUseText}" Command="{Binding TermsOfUseCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" BorderWidth="0" FontSize="12" />
             </Grid>
 
         </VerticalStackLayout>
