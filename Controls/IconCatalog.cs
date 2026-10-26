@@ -30,6 +30,14 @@ public static class IconCatalog
     public const string Info = "info";
     public const string Warning = "warning";
 
+    // PRO plan identity icons (OBD PRO / VIN PRO / Full PRO cards) - added because the plan name
+    // alone doesn't carry which kind of plan it is at a glance the way a small glyph does.
+    // Engine: the universal check-engine/MIL dashboard telltale - a block body with two spark-plug
+    // domes on top and a head-gasket seam line, matching the icon drivers already recognize.
+    public const string Engine = "engine";
+    public const string Document = "document";
+    public const string Crown = "crown";
+
     private static readonly Dictionary<string, string> Paths = new(StringComparer.OrdinalIgnoreCase)
     {
         [Close] = "M6,6 L18,18 M18,6 L6,18",
@@ -53,6 +61,9 @@ public static class IconCatalog
         [Send] = "M20,4 L10,14 M20,4 L14,20 L10,14 L4,10 Z",
         [Info] = "M12,3 A9,9 0 1 1 11.99,3 Z M12,11 L12,17 M12,7.5 L12,7.6",
         [Warning] = "M12,4 L21,19 L3,19 Z M12,10 L12,14 M12,16.5 L12,16.6",
+        [Engine] = "M5,19 L5,11 L7,11 C7,8 11,8 11,11 L13,11 C13,8 17,8 17,11 L19,11 L19,19 Z M5,15 L19,15",
+        [Document] = "M7,3 L15,3 L19,7 L19,21 L7,21 Z M15,3 L15,7 L19,7 M9,12 L15,12 M9,16 L15,16",
+        [Crown] = "M4,18 L4,10 L8,13 L12,6 L16,13 L20,10 L20,18 Z",
     };
 
     public static IReadOnlyCollection<string> Names => Paths.Keys;

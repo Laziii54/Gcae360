@@ -75,9 +75,12 @@ public sealed class SubscriptionProductMappingTests
     public void EachPlanItem_IsConstructedWithItsOwnYearlyProductId_NotAnotherPlansOrNone()
     {
         var source = ViewModelSource();
-        Assert.Contains("new ProPlanItem { ProductId = ProService.ObdProductId, YearlyProductId = ProService.ObdYearlyProductId }", source);
-        Assert.Contains("new ProPlanItem { ProductId = ProService.VinProductId, YearlyProductId = ProService.VinYearlyProductId }", source);
-        Assert.Contains("new ProPlanItem { ProductId = ProService.FullProductId, YearlyProductId = ProService.FullYearlyProductId, IsRecommended = true }", source);
+        // Substring prefixes, not the whole object initializer: ProPlanItem has grown more
+        // properties (IconKind) since this was written, and this check only cares that each
+        // plan's own product/yearly-id pair is wired together, not the initializer's full text.
+        Assert.Contains("new ProPlanItem { ProductId = ProService.ObdProductId, YearlyProductId = ProService.ObdYearlyProductId", source);
+        Assert.Contains("new ProPlanItem { ProductId = ProService.VinProductId, YearlyProductId = ProService.VinYearlyProductId", source);
+        Assert.Contains("new ProPlanItem { ProductId = ProService.FullProductId, YearlyProductId = ProService.FullYearlyProductId, IsRecommended = true", source);
     }
 
     [Fact]

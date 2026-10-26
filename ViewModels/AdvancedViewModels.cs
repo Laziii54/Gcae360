@@ -1285,9 +1285,9 @@ public partial class ProViewModel : BaseViewModel
         IsPro = pro.IsPro;
         HasVin = pro.HasVin;
 
-        var obdPlan = new ProPlanItem { ProductId = ProService.ObdProductId, YearlyProductId = ProService.ObdYearlyProductId };
-        var vinPlan = new ProPlanItem { ProductId = ProService.VinProductId, YearlyProductId = ProService.VinYearlyProductId };
-        var fullPlan = new ProPlanItem { ProductId = ProService.FullProductId, YearlyProductId = ProService.FullYearlyProductId, IsRecommended = true };
+        var obdPlan = new ProPlanItem { ProductId = ProService.ObdProductId, YearlyProductId = ProService.ObdYearlyProductId, IconImageBase = "icon_check_engine", IconImageSource = "icon_check_engine.png" };
+        var vinPlan = new ProPlanItem { ProductId = ProService.VinProductId, YearlyProductId = ProService.VinYearlyProductId, IconKind = CarScanner.Controls.IconCatalog.Document };
+        var fullPlan = new ProPlanItem { ProductId = ProService.FullProductId, YearlyProductId = ProService.FullYearlyProductId, IsRecommended = true, IconKind = CarScanner.Controls.IconCatalog.Crown };
 
         Plans.Add(obdPlan);
         Plans.Add(vinPlan);
@@ -1451,8 +1451,16 @@ public partial class ProViewModel : BaseViewModel
         var hasVin = _pro.HasVin;
 
         var hasAny = hasObd || hasVin;
+        // The account's one actual tier - used only for the "Current plan" tag, so a Full PRO
+        // account (hasObd AND hasVin both true) shows the tag on the Full PRO card alone, not on
+        // OBD PRO and VIN PRO too just because their individual capability flags also read true.
+        // plan.IsActive keeps its original per-capability meaning (it gates CanOpen/re-purchase),
+        // so OBD PRO/VIN PRO still correctly refuse to reopen a purchase flow when Full PRO already
+        // covers them - only which tag is drawn changes here.
+        var tier = _pro.Tier;
         foreach (var plan in Plans)
         {
+            var isCurrentTier = false;
             switch (plan.ProductId)
             {
                 case ProPlanItem.FreeId:
@@ -1473,6 +1481,7 @@ public partial class ProViewModel : BaseViewModel
                         "ყველა მოდულის სკანირება (ABS, SRS, ტრანსმისია…)\nმოდულების ცოცხალი მონაცემები და გრაფიკები\nყიდვისწინა შემოწმება\nAI დიაგნოსტიკა და კონსულტაცია",
                         "Scan every module (ABS, SRS, transmission…)\nModule live data and graphs\nPre-purchase check\nAI diagnostics and consultation"));
                     plan.IsActive = hasObd;
+                    isCurrentTier = tier == "obd";
                     break;
 
                 case ProService.VinProductId:
@@ -1484,6 +1493,7 @@ public partial class ProViewModel : BaseViewModel
                         $"VIN: სრული ისტორია, {ProService.VinMonthlyReports} ყოველთვე\nაუქციონის ფოტოები და დაზიანებები\nგარბენი და ტიტულის სტატუსი\nუკვე გახსნილი VIN თავიდან უფასოდ იხსნება",
                         $"VIN: full history, {ProService.VinMonthlyReports} every month\nAuction photos and damage\nMileage and title status\nAn opened VIN reopens for free"));
                     plan.IsActive = hasVin;
+                    isCurrentTier = tier == "vin";
                     break;
 
                 default:
@@ -1495,6 +1505,7 @@ public partial class ProViewModel : BaseViewModel
                         "PRO-ის ყველა ფუნქცია\nVIN PRO-ის ყველა ფუნქცია",
                         "Everything in PRO\nEverything in VIN PRO"));
                     plan.IsActive = hasObd && hasVin;
+                    isCurrentTier = tier == "full";
                     plan.BadgeText = L("საუკეთესო", "Best value");
                     var savedPercent = (int)Math.Round((1 - ProService.FullPriceGEL / ProService.FullPriceAnchorGEL) * 100);
                     plan.DiscountBadgeText = $"-{savedPercent}%";
@@ -1510,12 +1521,12 @@ public partial class ProViewModel : BaseViewModel
             plan.CanOpen = !plan.IsActive && !plan.IsFree;
             // "Current plan", not the bare word "Current" - that English string is already a
             // pack key for the electrical sense (Strom/Courant/Corriente) used elsewhere in the app.
-            plan.TagText = plan.IsActive
+            plan.TagText = isCurrentTier
                 ? L("მიმდინარე", "Current plan")
                 : string.Empty;
             plan.TagBackground = ThemeService.Soft("#E8F5EE");
             plan.TagTextColor = ThemeService.Soft("#1F8A4C");
-            plan.StrokeColor = plan.IsActive ? ThemeService.Soft("#1F8A4C") : plan.IsRecommended ? ThemeService.Soft("#1D5BD6") : ThemeService.Soft("#DCDFE3");
+            plan.StrokeColor = isCurrentTier ? ThemeService.Soft("#1F8A4C") : plan.IsRecommended ? ThemeService.Soft("#1D5BD6") : ThemeService.Soft("#DCDFE3");
         }
 
         foreach (var pack in Packs)
@@ -2074,17 +2085,30 @@ public sealed partial class ProPlanItem : ObservableObject
     public bool IsRecommended { get; init; }
     public bool HasBadge => IsRecommended;
 
+    /// <summary>Which IconCatalog glyph identifies this plan (document / crown). Unused when IconImageBase is set.</summary>
+    public string IconKind { get; init; } = "";
+
+    /// <summary>Base filename (no suffix) of a raster plan icon in Resources/Images, e.g. "icon_check_engine".
+    /// When set, the card shows this image instead of the IconKind vector glyph, swapping to "{base}_selected.png"
+    /// while selected so it stays visible on the blue selected-card background.</summary>
+    public string IconImageBase { get; init; } = "";
+
     /// <summary>Highlighted in the Monthly/Yearly plan picker row.</summary>
     [ObservableProperty] private bool isSelected;
     [ObservableProperty] private Color pickerBackground = ThemeService.Soft("#FFFFFF");
     [ObservableProperty] private Color cardTitleColor = ThemeService.Soft("#1B1D20");
     [ObservableProperty] private Color cardSubtitleColor = ThemeService.Soft("#5D636B");
+    [ObservableProperty] private Color iconTint = ThemeService.Soft("#1D5BD6");
+    [ObservableProperty] private string iconImageSource = "";
 
     partial void OnIsSelectedChanged(bool value)
     {
         PickerBackground = value ? ThemeService.Soft("#1D5BD6") : ThemeService.Soft("#FFFFFF");
         CardTitleColor = value ? Colors.White : ThemeService.Soft("#1B1D20");
         CardSubtitleColor = value ? Color.FromArgb("#D9E3F5") : ThemeService.Soft("#5D636B");
+        IconTint = value ? Colors.White : ThemeService.Soft("#1D5BD6");
+        if (!string.IsNullOrEmpty(IconImageBase))
+            IconImageSource = value ? $"{IconImageBase}_selected.png" : $"{IconImageBase}.png";
     }
 
     [ObservableProperty] private string title = "";

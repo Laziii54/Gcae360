@@ -74,6 +74,7 @@
                         <TapGestureRecognizer Command="{Binding SelectPlanCommand}" CommandParameter="{Binding PaidPlans[0]}" />
                     </Border.GestureRecognizers>
                     <VerticalStackLayout Spacing="4" HorizontalOptions="Center" VerticalOptions="Center">
+                        <Image Source="{Binding PaidPlans[0].IconImageSource}" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" HorizontalOptions="Center" Margin="0,0,0,2" />
                         <controls:Icon Kind="check" Tint="White" WidthRequest="13" HeightRequest="13" HorizontalOptions="Center" IsVisible="{Binding PaidPlans[0].IsSelected}" />
                         <Label Text="{Binding PaidPlans[0].Title}" FontSize="13.5" FontAttributes="Bold" TextColor="{Binding PaidPlans[0].CardTitleColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
                         <Label Text="{Binding PaidPlans[0].Subtitle}" FontSize="12" TextColor="{Binding PaidPlans[0].CardSubtitleColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
@@ -95,6 +96,7 @@
                         <TapGestureRecognizer Command="{Binding SelectPlanCommand}" CommandParameter="{Binding PaidPlans[1]}" />
                     </Border.GestureRecognizers>
                     <VerticalStackLayout Spacing="4" HorizontalOptions="Center" VerticalOptions="Center">
+                        <controls:Icon Kind="{Binding PaidPlans[1].IconKind}" Tint="{Binding PaidPlans[1].IconTint}" WidthRequest="22" HeightRequest="22" HorizontalOptions="Center" Margin="0,0,0,2" />
                         <controls:Icon Kind="check" Tint="White" WidthRequest="13" HeightRequest="13" HorizontalOptions="Center" IsVisible="{Binding PaidPlans[1].IsSelected}" />
                         <Label Text="{Binding PaidPlans[1].Title}" FontSize="13.5" FontAttributes="Bold" TextColor="{Binding PaidPlans[1].CardTitleColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
                         <Label Text="{Binding PaidPlans[1].Subtitle}" FontSize="12" TextColor="{Binding PaidPlans[1].CardSubtitleColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
@@ -116,6 +118,7 @@
                         <TapGestureRecognizer Command="{Binding SelectPlanCommand}" CommandParameter="{Binding PaidPlans[2]}" />
                     </Border.GestureRecognizers>
                     <VerticalStackLayout Spacing="4" HorizontalOptions="Center" VerticalOptions="Center">
+                        <controls:Icon Kind="{Binding PaidPlans[2].IconKind}" Tint="{Binding PaidPlans[2].IconTint}" WidthRequest="22" HeightRequest="22" HorizontalOptions="Center" Margin="0,0,0,2" />
                         <controls:Icon Kind="check" Tint="White" WidthRequest="13" HeightRequest="13" HorizontalOptions="Center" IsVisible="{Binding PaidPlans[2].IsSelected}" />
                         <Label Text="{Binding PaidPlans[2].Title}" FontSize="13.5" FontAttributes="Bold" TextColor="{Binding PaidPlans[2].CardTitleColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
                         <Label Text="{Binding PaidPlans[2].Subtitle}" FontSize="12" TextColor="{Binding PaidPlans[2].CardSubtitleColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
@@ -128,21 +131,25 @@
             </Grid>
 
             <!-- Monthly / Yearly segmented toggle -->
-            <Border Padding="4" MaximumWidthRequest="320" HorizontalOptions="Center" BackgroundColor="{DynamicResource SegTrackBg}" StrokeThickness="1" Stroke="{DynamicResource BorderColor}" StrokeShape="RoundRectangle 14">
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="0">
-                    <Border Padding="0" HeightRequest="46" StrokeThickness="0" StrokeShape="RoundRectangle 11" BackgroundColor="{Binding MonthlyToggleBg}">
+            <Border Padding="4" MaximumWidthRequest="340" HorizontalOptions="Center" BackgroundColor="{DynamicResource SegTrackBg}" StrokeThickness="1" Stroke="{DynamicResource BorderColor}" StrokeShape="RoundRectangle 14">
+                <!-- Yearly carries more content (word + discount badge) than Monthly's single word,
+                     so it gets a wider column - an even 50/50 split let "Yearly -20%" overflow into
+                     the Monthly segment on a real device (NotoSansGeorgian renders Latin text wider
+                     than the system font this was first checked against). -->
+                <Grid ColumnDefinitions="0.8*,1.2*" ColumnSpacing="0">
+                    <Border Padding="0" HorizontalOptions="Fill" HeightRequest="46" StrokeThickness="0" StrokeShape="RoundRectangle 11" BackgroundColor="{Binding MonthlyToggleBg}">
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding SetMonthlyBillingCommand}" />
                         </Border.GestureRecognizers>
                         <Label Text="{Binding MonthlyLabelText}" TextColor="{Binding MonthlyToggleText}" FontSize="14" FontAttributes="Bold" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" LineBreakMode="NoWrap" />
                     </Border>
-                    <Border Grid.Column="1" Padding="4,0" HeightRequest="46" StrokeThickness="0" StrokeShape="RoundRectangle 11" BackgroundColor="{Binding YearlyToggleBg}">
+                    <Border Grid.Column="1" Padding="2,0" HorizontalOptions="Fill" HeightRequest="46" StrokeThickness="0" StrokeShape="RoundRectangle 11" BackgroundColor="{Binding YearlyToggleBg}">
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding SetYearlyBillingCommand}" />
                         </Border.GestureRecognizers>
-                        <HorizontalStackLayout Spacing="6" HorizontalOptions="Center" VerticalOptions="Center">
+                        <HorizontalStackLayout Spacing="4" HorizontalOptions="Center" VerticalOptions="Center">
                             <Label Text="{Binding YearlyLabelText}" TextColor="{Binding YearlyToggleText}" FontSize="14" FontAttributes="Bold" VerticalTextAlignment="Center" LineBreakMode="NoWrap" />
-                            <Border BackgroundColor="{DynamicResource ProBadgeBg}" StrokeThickness="0" StrokeShape="RoundRectangle 6" Padding="6,2">
+                            <Border BackgroundColor="{DynamicResource ProBadgeBg}" StrokeThickness="0" StrokeShape="RoundRectangle 6" Padding="5,2">
                                 <Label Text="{Binding YearlyDiscountBadgeText}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource ProBadgeText}" LineBreakMode="NoWrap" />
                             </Border>
                         </HorizontalStackLayout>
