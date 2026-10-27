@@ -2053,7 +2053,8 @@ app.MapGet(
 // ============================================================
 // WEB PAYMENTS (OBD360 PRO page, Georgian bank cards)
 //   GET  /pro                               – plans + payment form
-//   POST /api/web/checkout                  – starts a bank payment
+//   POST /api/web/checkout/code             – e-mails a one-time code (no password needed)
+//   POST /api/web/checkout                  – starts a bank payment (e-mail + that code)
 //   GET  /pro/result?order=…                – result page
 //   POST /api/web/payments/{bank}/callback  – bank notification
 // ============================================================
@@ -2065,6 +2066,46 @@ app.MapGet(
             WebPages.ProPage(payments.AvailableProviders, payments.AutoRenewAvailable, WebPages.LegalInfo.From(config)),
             "text/html; charset=utf-8"));
 
+// The web checkout form has no password field (an account created via Google/Apple sign-in never has a real
+// password — see AccountStore.CreateExternalAccountAsync), so it proves the e-mail instead, the same way
+// "forgot password" does: a short-lived code, reusing LoginCodeService/Store exactly as the app's own 2FA step
+// does. Resend is just calling this again; LoginCodeStore already enforces a 60s cooldown and a 5/hour cap.
+app.MapPost(
+    "/api/web/checkout/code",
+    async (
+        WebCodeRequest request,
+        HttpContext http,
+        AccountStore accounts,
+        LoginCodeService loginCodes,
+        CancellationToken ct) =>
+    {
+        var ip = AdminService.ClientIp(http);
+        if (!RateWindow.TryConsume("web-checkout-code:" + ip, DateTimeOffset.UtcNow, 10, TimeSpan.FromMinutes(15)))
+            return Results.Json(new { success = false, code = "TOO_MANY" }, statusCode: StatusCodes.Status429TooManyRequests);
+
+        var identity = await accounts.FindByEmailAsync(request.Email ?? string.Empty, ct);
+        if (identity is null || accounts.IsBanned(identity.AccountId))
+            return Results.Json(new { success = false, code = "NO_ACCOUNT" }, statusCode: StatusCodes.Status404NotFound);
+
+        if (!loginCodes.Enabled)
+            return Results.Json(new { success = false, code = "NOT_AVAILABLE" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+        var sent = await loginCodes.SendAsync(identity.AccountId, identity.Email, http.Request.Headers["X-GCS-Language"].ToString(), ct);
+        return sent.Status switch
+        {
+            LoginCodeSendStatus.Sent => Results.Ok(new { success = true }),
+            LoginCodeSendStatus.Cooldown or LoginCodeSendStatus.HourlyLimit => Results.Json(
+                new
+                {
+                    success = false,
+                    code = sent.Status == LoginCodeSendStatus.Cooldown ? "COOLDOWN" : "HOURLY_LIMIT",
+                    retryAfterSeconds = sent.RetryAfter is { } at ? Math.Max(1, (int)Math.Ceiling((at - DateTimeOffset.UtcNow).TotalSeconds)) : 60
+                },
+                statusCode: StatusCodes.Status429TooManyRequests),
+            _ => Results.Json(new { success = false, code = "NOT_AVAILABLE" }, statusCode: StatusCodes.Status503ServiceUnavailable)
+        };
+    });
+
 app.MapPost(
     "/api/web/checkout",
     async (
@@ -2075,6 +2116,7 @@ app.MapPost(
         EntitlementStore store,
         WebPaymentService payments,
         EmailVerificationService emailVerification,
+        LoginCodeService loginCodes,
         CancellationToken ct) =>
     {
         var ip = AdminService.ClientIp(http);
@@ -2088,15 +2130,14 @@ app.MapPost(
         if (EmailThrottle.IsBlocked(request.Email))
             return Results.Json(new { success = false, code = "TOO_MANY" }, statusCode: StatusCodes.Status429TooManyRequests);
 
-        var account = await accounts.VerifyCredentialsAsync(
-            request.Email ?? string.Empty,
-            request.Password ?? string.Empty,
-            ct);
-
-        if (account is null)
+        // No password on this form (see /api/web/checkout/code above) — the e-mailed one-time code is the proof
+        // of identity instead, checked against the same LoginCodeStore the app's own 2FA step uses.
+        var account = await accounts.FindByEmailAsync(request.Email ?? string.Empty, ct);
+        if (account is null || accounts.IsBanned(account.AccountId) ||
+            await loginCodes.Store.VerifyAsync(account.AccountId, request.Code, ct) != LoginCodeVerifyResult.Verified)
         {
             EmailThrottle.Failed(request.Email);
-            return Results.Json(new { success = false, code = "INVALID_LOGIN" }, statusCode: StatusCodes.Status401Unauthorized);
+            return Results.Json(new { success = false, code = "INVALID_CODE" }, statusCode: StatusCodes.Status401Unauthorized);
         }
 
         // Starting a new payment needs a verified email. Existing subscriptions, their renewals and store purchases
@@ -4151,11 +4192,13 @@ record AccountRecordLike(string AccountId, string? Email);
 
 record WebCheckoutRequest(
     string? Email,
-    string? Password,
+    string? Code,
     string? ProductId,
     string? Provider,
     bool? AutoRenew = null,
     string? Currency = null);
+
+record WebCodeRequest(string? Email);
 
 record AiRequest(
     string Prompt,

@@ -24,9 +24,12 @@ h1{font-size:26px;margin:4px 0 2px;font-weight:800}h2{font-size:13px;margin:26px
 .card input{margin-top:5px;accent-color:var(--accent)}.card .t{font-weight:700}.card .p{margin-left:auto;font-weight:700;white-space:nowrap}
 .card.best{border-color:var(--accent)}.badge{display:inline-block;background:var(--accent);color:#fff;border-radius:8px;font-size:11px;padding:1px 8px;margin-left:6px;vertical-align:middle}
 label.f{display:block;font-size:14px;color:var(--muted);margin:12px 0 4px}
-input[type=email],input[type=password],select{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:16px}
+input[type=email],input[type=password],input[type=text],select{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:16px}
 button{width:100%;margin-top:18px;padding:14px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-size:17px;font-weight:700;cursor:pointer}
 button:disabled{opacity:.6}.msg{margin-top:12px;font-size:14px}.err{color:var(--err)}.ok{color:var(--ok)}
+.smallbtn{width:auto;margin-top:10px;padding:9px 16px;font-size:13px;border-radius:9px;background:transparent;color:var(--accent);border:1.5px solid var(--accent);font-weight:700}
+.smallbtn:disabled{opacity:.5;color:var(--muted);border-color:var(--border)}
+.codewrap{margin-top:4px}
 footer{margin-top:28px;font-size:13px;color:var(--muted);text-align:center}footer a{color:var(--muted)}
 .big{text-align:center;margin:30px 0 6px}.big svg{display:block;margin:0 auto}.center{text-align:center}
 .grow{flex:1;min-width:0}.card .t{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px}.card .t .badge{margin-left:0}
@@ -216,9 +219,15 @@ var h=document.documentElement;h.classList.add(ge?'is-ge':'is-intl');h.lang=ge?'
 {{Plan(ProductCatalog.VinPack10, "+10 VIN", "+10 VIN", "10 დამატებითი VIN ისტორია", "10 extra VIN histories")}}
 {{Plan(ProductCatalog.VinSingle, "1 VIN ანგარიში", "1 VIN report", "გეგმის გარეშე", "No plan needed")}}
 <h2>{{T("შენი ანგარიში", "Your account")}}</h2>
-<div class="muted">{{T("იგივე ელ-ფოსტა და პაროლი, რითაც აპში შედიხარ.", "The e-mail and password you use in the app.")}}</div>
+<div class="muted">{{T("იგივე ელ-ფოსტა, რომლითაც აპში ხარ რეგისტრირებული. პაროლი არ გჭირდება — ერთჯერად კოდს გამოგიგზავნით.", "The e-mail you registered in the app with. No password needed — we'll e-mail you a one-time code.")}}</div>
 <label class="f" for="email">{{T("ელ-ფოსტა", "E-mail")}}</label><input type="email" id="email" name="email" autocomplete="email" required>
-<label class="f" for="password">{{T("პაროლი", "Password")}}</label><input type="password" id="password" name="password" autocomplete="current-password" required>
+<button type="button" id="sendCode" class="smallbtn">{{T("კოდის გამოგზავნა", "Send code")}}</button>
+<div id="codeStatus" class="msg"></div>
+<div id="codeFieldWrap" class="codewrap" hidden>
+<label class="f" for="code">{{T("კოდი ელფოსტიდან", "Code from your e-mail")}}</label>
+<input type="text" id="code" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="123456">
+<button type="button" id="resendCode" class="smallbtn" disabled>{{T("ხელახლა გაგზავნა", "Resend code")}}</button>
+</div>
 {{bankSelect}}
 {{renewal}}
 <button id="pay" type="submit"{{(providers.Count == 0 ? " disabled" : "")}}>{{T("გადახდა ბარათით", "Pay by card")}}</button>
@@ -233,14 +242,51 @@ const f=document.getElementById('f'),m=document.getElementById('m'),b=document.g
 const renew=document.getElementById('renew'),bank=document.getElementById('bank');
 const intl=document.documentElement.classList.contains('is-intl');
 const tr=(ka,en)=>intl?en:ka;
-// The app links here with ?email=... so only the password is left to type.
-(function(){var e=new URLSearchParams(location.search).get('email');if(e){document.getElementById('email').value=e;document.getElementById('password').focus();} })();
-const errors={INVALID_LOGIN:tr('ელ-ფოსტა ან პაროლი არასწორია.','Wrong e-mail or password.'),
+// The app links here with ?email=... so only the code is left to request.
+(function(){var e=new URLSearchParams(location.search).get('email');if(e)document.getElementById('email').value=e;})();
+const errors={INVALID_CODE:tr('კოდი არასწორია ან ვადაგასულია. გამოაგზავნე ახალი და სცადე ისევ.','The code is wrong or has expired. Send a new one and try again.'),
 EMAIL_NOT_VERIFIED:tr('ჯერ დაადასტურე ელფოსტა OBD360 აპლიკაციაში (ანგარიში), შემდეგ სცადე ხელახლა.','Verify your email in the OBD360 app (Account) first, then try again.'),
 VIN_PLAN_REQUIRED:tr('+5 და +10 პაკეტი მხოლოდ VIN PRO ან სრული PRO გეგმითაა.','Packs need VIN PRO or Full PRO.'),
 AUTO_RENEW_UNAVAILABLE:tr('ყოველთვიური გადახდა ახლა ვერ ჩაირთო. აირჩიე „ერთჯერადი“.','Monthly payment is unavailable right now. Choose one-time.'),
 NOT_AVAILABLE:tr('გადახდა დროებით მიუწვდომელია.','Payments are temporarily unavailable.'),
+NO_ACCOUNT:tr('ამ ელფოსტაზე OBD360 ანგარიში ვერ მოიძებნა. ჯერ დარეგისტრირდი აპში.','No OBD360 account found for this e-mail. Register in the app first.'),
 TOO_MANY:tr('ძალიან ბევრი მცდელობა. სცადე 15 წუთში.','Too many attempts. Try again in 15 minutes.')};
+const sendCodeBtn=document.getElementById('sendCode'),resendCodeBtn=document.getElementById('resendCode'),
+codeStatus=document.getElementById('codeStatus'),codeFieldWrap=document.getElementById('codeFieldWrap'),
+emailInput=document.getElementById('email'),codeInput=document.getElementById('code');
+let resendTimer=null;
+function startResendCooldown(seconds){
+if(resendTimer)clearInterval(resendTimer);
+let remaining=seconds;
+const tick=()=>{if(remaining<=0){resendCodeBtn.disabled=false;resendCodeBtn.textContent=tr('ხელახლა გაგზავნა','Resend code');clearInterval(resendTimer);return;}
+resendCodeBtn.disabled=true;resendCodeBtn.textContent=tr('ხელახლა გაგზავნა (','Resend (')+remaining+tr(')',')');remaining--;};
+tick();resendTimer=setInterval(tick,1000);}
+async function requestCode(isResend){
+const email=emailInput.value.trim();
+if(!email){codeStatus.className='msg err';codeStatus.textContent=tr('ჯერ შეიყვანე ელ-ფოსტა.','Enter your e-mail first.');return;}
+const btn=isResend?resendCodeBtn:sendCodeBtn;btn.disabled=true;
+codeStatus.className='msg';codeStatus.textContent=tr('იგზავნება…','Sending…');
+try{
+const r=await fetch('/api/web/checkout/code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+const j=await r.json().catch(()=>({}));
+if(j.success){
+codeFieldWrap.hidden=false;sendCodeBtn.hidden=true;codeInput.focus();
+codeStatus.className='msg ok';codeStatus.textContent=tr('კოდი გამოგზავნილია შენს ელფოსტაზე.','Code sent to your e-mail.');
+startResendCooldown(60);
+}else if(j.code==='COOLDOWN'||j.code==='HOURLY_LIMIT'){
+codeFieldWrap.hidden=false;sendCodeBtn.hidden=true;
+codeStatus.className='msg err';
+codeStatus.textContent=j.code==='HOURLY_LIMIT'?tr('ძალიან ბევრი მცდელობა ამ საათში. სცადე მოგვიანებით.','Too many attempts this hour. Try again later.'):tr('კოდი უკვე გამოგზავნილია — დაელოდე და მერე ხელახლა სცადე.','A code was already sent — wait, then try again.');
+startResendCooldown(j.retryAfterSeconds||60);
+}else{
+btn.disabled=false;
+codeStatus.className='msg err';
+codeStatus.textContent=errors[j.code]||tr('კოდის გაგზავნა ვერ მოხერხდა. სცადე ხელახლა.','Could not send the code. Please try again.');
+}
+}catch(e){btn.disabled=false;codeStatus.className='msg err';codeStatus.textContent=tr('კავშირის შეცდომა.','Connection error.');}
+}
+sendCodeBtn.addEventListener('click',()=>requestCode(false));
+resendCodeBtn.addEventListener('click',()=>requestCode(true));
 const AUTO_RENEW_AVAILABLE={{(autoRenewAvailable ? "true" : "false")}};
 function selected(){return f.querySelector('input[name=productId]:checked');}
 function period(){const r=f.querySelector('input[name=period]:checked');return r?r.value:'month';}
@@ -282,6 +328,7 @@ if(target)document.getElementById(target.getAttribute('for')).checked=true;} }
 syncTabs();update();});
 syncTabs();update();
 f.addEventListener('submit',async e=>{e.preventDefault();
+if(codeFieldWrap.hidden||!codeInput.value.trim()){m.className='msg err';m.textContent=tr('ჯერ გამოაგზავნე და შეიყვანე კოდი ელფოსტიდან.','Send and enter the e-mail code first.');return;}
 if(auto()&&!document.getElementById('consent').checked){m.className='msg err';m.textContent=tr('მონიშნე თანხმობა ყოველთვიურ გადახდაზე.','Please tick the box to agree to the monthly payment.');return;}
 m.className='msg';m.textContent=tr('მიმდინარეობს…','Please wait…');b.disabled=true;
 const d=Object.fromEntries(new FormData(f));d.autoRenew=auto();d.currency=intl?'USD':'GEL';if(intl)d.provider='bog';delete d.mode;
