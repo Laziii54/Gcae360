@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace CarScanner.Api.Services;
@@ -639,6 +640,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
             var verify = r.Review == "verified"
                 ? $"<form class=\"inline\" method=\"post\" action=\"/admin/ecu/{r.Id}/unverify\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button class=\"ghost\">დამოწმების მოხსნა</button></form>"
                 : $"<form class=\"inline\" method=\"post\" action=\"/admin/ecu/{r.Id}/verify\"{Confirm("ამ პასუხს ვადასტურებ, როგორც დოკუმენტირებულს — ამაზე ფუნქციის გაშენება შეიძლება?")}><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button class=\"green\">დამოწმება</button></form>";
+            var delete = $"<form class=\"inline\" method=\"post\" action=\"/admin/ecu/{r.Id}/delete\"{Confirm("ეს ჩანაწერი სამუდამოდ წაიშალოს?")}><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button class=\"red\">წაშლა</button></form>";
 
             return $"""
 <tr><td class="mono">{r.TxCanId:X}→{r.RxCanId:X}{(r.Ext29 ? " ·29b" : "")}</td>
@@ -648,7 +650,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
 <td>{N(r.SourceCount)} წყარო · {N(r.SeenCount)}×</td>
 <td>{RelPill(r.Reliability)}</td>
 <td class="muted">{H(r.LastSeen)}</td>
-<td>{verify}</td></tr>
+<td>{verify} {delete}</td></tr>
 """;
         }
 
@@ -724,15 +726,23 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
 
     public static string Crashes(AdminService.Session s, IReadOnlyList<CrashGroup> groups, string? message, bool ok)
     {
+        var csrf = H(s.Csrf);
         var total = groups.Sum(g => g.Count);
         var fatal = groups.Sum(g => g.FatalCount);
         var rows = string.Concat(groups.Select(g =>
-            "<details class=\"panel\" style=\"margin-bottom:8px\"><summary>" +
+        {
+            // The route id is just a stable, debuggable label — the actual match on delete is
+            // by exact ExceptionType + Frame, sent as hidden fields (a group has no row id of its own).
+            var groupId = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(g.ExceptionType + "\u0001" + g.Frame)))[..16];
+            var delete = $"<form class=\"inline\" method=\"post\" action=\"/admin/crashes/{groupId}/delete\"{Confirm($"წაიშალოს ამ შეცდომის ყველა ჩანაწერი ({N(g.Count)}×)?")}><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><input type=\"hidden\" name=\"type\" value=\"{H(g.ExceptionType)}\"><input type=\"hidden\" name=\"frame\" value=\"{H(g.Frame)}\"><button class=\"red\">წაშლა</button></form>";
+            return "<details class=\"panel\" style=\"margin-bottom:8px\"><summary>" +
             $"<span class=\"pill {(g.FatalCount > 0 ? "p-err" : "p-acc")}\">{N(g.Count)}×</span> <b>{H(g.ExceptionType)}</b>" +
             $"<div class=\"mono muted\" style=\"margin-top:4px\">{H(g.Frame)}</div>" +
             $"<div class=\"muted\" style=\"margin-top:4px\">ბოლოს: {Tbilisi(g.LastAt)} · ვერსია: {H(string.Join(", ", g.AppVersions))} · {H(string.Join(", ", g.Platforms))} {H(g.OsVersion)} · " +
             (g.FatalCount > 0 ? "აპი დაიხურა: " + N(g.FatalCount) : "აპი არ დახურულა") + "</div></summary>" +
-            $"<pre class=\"mono\" style=\"white-space:pre-wrap;font-size:11px;margin-top:8px\">{H(g.SampleStack)}</pre></details>"));
+            $"<pre class=\"mono\" style=\"white-space:pre-wrap;font-size:11px;margin-top:8px\">{H(g.SampleStack)}</pre>" +
+            $"<div style=\"margin-top:8px\">{delete}</div></details>";
+        }));
 
         var content =
             "<div class=\"grid\" style=\"margin-bottom:12px\">" +
@@ -759,23 +769,29 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
     {
         static string At(string iso) => DateTimeOffset.TryParse(iso, CultureInfo.InvariantCulture, DateTimeStyles.None, out var at) ? Tbilisi(at) : iso;
         static string Pct(double? v) => v is { } x ? $"{x:0.#}%" : "—";
+        var csrf = H(s.Csrf);
 
         var recRows = string.Concat(recordings.Select(r =>
-            "<details class=\"panel\" style=\"margin-bottom:8px\"><summary>" +
+        {
+            var delete = $"<form class=\"inline\" method=\"post\" action=\"/admin/reset-recording/{r.Id}/delete\"{Confirm("ეს ჩანაწერი წაიშალოს?")}><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button class=\"red\">წაშლა</button></form>";
+            return "<details class=\"panel\" style=\"margin-bottom:8px\"><summary>" +
             $"<span class=\"pill {(r.Candidates.Count > 0 ? "p-acc" : "p-err")}\">{N(r.Candidates.Count)} კანდიდატი</span> " +
             $"<b>{H(r.Make)} {H(r.Model)} {H(r.Year)}</b> · {H(r.Item)} · {(r.Mode == "ToolSession" ? "აპარატით" : "მენიუდან")}" +
             $"<div class=\"muted\" style=\"margin-top:4px\">{At(r.CreatedAt)} · VIN {H(r.VinPrefix)}… · ზეთი {Pct(r.ValueBefore)} → {Pct(r.ValueAfter)} · {N(r.FrameCount)} შეტყობინება{(r.Overflow ? " · ადაპტერი ვერ ასწრებდა" : "")}</div></summary>" +
             "<div class=\"tbl\" style=\"margin-top:8px\"><table><tr><th>ID</th><th>მონაცემი</th><th>ტიპი</th><th>შენიშვნა</th></tr>" +
             string.Concat(r.Candidates.Select(c => $"<tr><td class=\"mono\">{H(c.Id)}</td><td class=\"mono\">{H(c.Data)}</td><td>{H(c.Kind)}</td><td class=\"muted\">{H(c.Note)}</td></tr>")) +
-            $"</table></div><p><a href=\"/admin/reset-recordings/{r.Id}.txt\">სრული ჩანაწერი (.txt)</a></p></details>"));
+            $"</table></div><p><a href=\"/admin/reset-recordings/{r.Id}.txt\">სრული ჩანაწერი (.txt)</a> · {delete}</p></details>";
+        }));
 
         var searchRows = string.Concat(searches.Select(r =>
         {
             int matched;
             try { matched = System.Text.Json.JsonSerializer.Deserialize<string[]>(r.MatchedKeys)?.Length ?? 0; }
             catch (System.Text.Json.JsonException) { matched = 0; }
+            var delete = $"<form class=\"inline\" method=\"post\" action=\"/admin/service-search/{r.Id}/delete\"{Confirm("ეს ჩანაწერი წაიშალოს?")}><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><button class=\"red\">წაშლა</button></form>";
             return $"<tr><td>{At(r.CreatedAt)}</td><td>{H(r.Make)} {H(r.Model)} {H(r.Year)}</td><td class=\"mono\">{H(r.VinPrefix)}</td><td>{Pct(r.DashboardPercent)}</td><td>{N(r.Answered)}/{N(r.Tried)}</td>" +
-                   $"<td><span class=\"pill {(matched > 0 ? "p-acc" : "p-err")}\">{(matched > 0 ? "" + N(matched) : "—")}</span>{(r.Trusted ? " <span class=\"pill p-acc\">ადმინი</span>" : "")}</td></tr>";
+                   $"<td><span class=\"pill {(matched > 0 ? "p-acc" : "p-err")}\">{(matched > 0 ? "" + N(matched) : "—")}</span>{(r.Trusted ? " <span class=\"pill p-acc\">ადმინი</span>" : "")}</td>" +
+                   $"<td>{delete}</td></tr>";
         }));
 
         var content =
@@ -789,7 +805,7 @@ main{padding:18px 14px 50px}.two{grid-template-columns:1fr}.grid{grid-template-c
             "<p class=\"muted\">ჩანაწერში მხოლოდ ის არის, რაც ადაპტერმა მოისმინა. ბრძანება მანქანაზე მხოლოდ შემოწმების შემდეგ, აპის ახალი ვერსიით ჩაირთვება.</p>" +
             "<h3>ზეთის ძებნა (მხოლოდ კითხვა)</h3>" +
             (searches.Count == 0 ? "<div class=\"panel muted\">ძებნა ჯერ არავის გაუშვია.</div>"
-                : $"<div class=\"tbl\"><table><tr><th>დრო</th><th>მანქანა</th><th>VIN</th><th>პანელი</th><th>უპასუხა</th><th>დაემთხვა</th></tr>{searchRows}</table></div>") +
+                : $"<div class=\"tbl\"><table><tr><th>დრო</th><th>მანქანა</th><th>VIN</th><th>პანელი</th><th>უპასუხა</th><th>დაემთხვა</th><th>მართვა</th></tr>{searchRows}</table></div>") +
             "<p class=\"muted\">წყარო მოდელისთვის „ცნობილი“ ხდება, როცა 2 სხვადასხვა ტელეფონი (ან ადმინის ანგარიში) დაადასტურებს — მერე იმავე მოდელზე აპი მას ძებნის გარეშე იყენებს.</p>";
 
         return Layout(s, "service", "სერვისის სწავლება", "ზეთის ძებნის შედეგები და რესეტის ჩანაწერები", content, message, ok);

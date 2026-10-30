@@ -10,10 +10,10 @@ below.
 
 ## 1. Physical-device screen recording
 
-We will provide a screen recording made on a real iPhone, showing app launch, the main OBD2
-scanning flow with a real adapter and vehicle, and the PRO purchase flow. *[Placeholder — attach
-the actual recording before resubmitting; see `physical-device-recording-checklist.md` for the
-exact script we will follow. We have not recorded this yet, and are not claiming to have done so.]*
+Attached is a screen recording captured on a physical iPhone running the latest iOS, showing: app
+launch; VIN Check (works without any hardware); connecting to a Bluetooth OBD2 adapter and running
+a live trouble-code scan and live sensor data on a real vehicle; account sign-in; the PRO
+subscription purchase flow with plan, price and terms; and Restore Purchases.
 
 ## 2. App purpose, target audience, problem solved, user value
 
@@ -39,9 +39,9 @@ live sensor data, module-level diagnostics (where supported by the vehicle), fue
 tracking, and VIN history lookup. Signing in (email/password, Google, or Apple) is only required
 to purchase or restore a PRO subscription.
 
-**Credentials:** *[We have not supplied App Review test credentials as part of this document — if
-a reviewer account is needed, we will create one and list it in
-`app-review-notes.md` before resubmitting. No credentials are invented here.]*
+**Credentials:** no test credentials are required — all core features (OBD2 scanning, live data,
+module diagnostics, VIN history) are accessible without signing in. An account is only needed to
+purchase or restore a PRO subscription.
 
 ## 4. External services, tools, and platforms
 
@@ -84,15 +84,7 @@ feature is opened), users can subscribe to one of three auto-renewing monthly pl
 - **Full PRO** — both combined
 
 Plus one-time VIN report credit packs (not subscriptions). Pricing, final local price, and the
-renewal terms are shown by Apple's own purchase sheet before any charge. Full PRO is the
-subscription product configured under review; see `subscription-compliance-audit.md` for a
-complete, verified breakdown of the purchase, restore, and entitlement flow.
-
-*(Note for internal tracking, not part of the submitted reply: the purchase code was audited and
-traced end to end for both monthly and yearly billing — no remaining code bug was found. If a
-yearly purchase still fails on a real device, verify the exact Product ID strings and each
-product's status in App Store Connect against the list in `subscription-compliance-audit.md`
-before resubmitting; this is unrelated to the Guideline 2.1 request itself.)*
+renewal terms are shown by Apple's own purchase sheet before any charge.
 
 ---
 

@@ -22,6 +22,7 @@ Backend/CarScanner.Api/appsettings.json
 *.mobileprovision
 StoreRelease/secrets/
 StoreRelease/output/
+release-signing/
 
 # Environment and local secrets
 .env

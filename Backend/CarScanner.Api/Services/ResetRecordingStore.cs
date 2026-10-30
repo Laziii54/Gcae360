@@ -127,6 +127,22 @@ FROM ResetRecordings ORDER BY Id DESC LIMIT $n";
         finally { _gate.Release(); }
     }
 
+    /// <summary>Owner/admin delete: removes one recording.</summary>
+    public async Task<bool> DeleteAsync(long id, CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            await using var c = new SqliteConnection(_connectionString);
+            await c.OpenAsync(ct);
+            await using var cmd = c.CreateCommand();
+            cmd.CommandText = "DELETE FROM ResetRecordings WHERE Id=$id";
+            cmd.Parameters.AddWithValue("$id", id);
+            return await cmd.ExecuteNonQueryAsync(ct) > 0;
+        }
+        finally { _gate.Release(); }
+    }
+
     public async Task<string?> FramesAsync(long id, CancellationToken ct)
     {
         await _gate.WaitAsync(ct);

@@ -610,6 +610,10 @@ ORDER BY o.CreatedAt DESC LIMIT $n";
         "unbind" => "მოწყობილობის მოხსნა",
         "ecu_verify" => "ECU პასუხის დამოწმება",
         "ecu_unverify" => "ECU დამოწმების მოხსნა",
+        "ecu_delete" => "ECU ჩანაწერის წაშლა",
+        "crash_delete" => "შეცდომის ჩანაწერების წაშლა",
+        "service_search_delete" => "ზეთის ძებნის ჩანაწერის წაშლა",
+        "reset_recording_delete" => "რესეტის ჩანაწერის წაშლა",
         _ => action
     };
 }

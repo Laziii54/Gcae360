@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pro-page-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["http-server", "C:\\Users\\zukal\\AppData\\Local\\Temp\\claude\\C--GCar360\\598cc851-6177-47bd-b409-0df80b7e6aa8\\scratchpad", "-p", "8900"],
+      "port": 8900
+    }
+  ]
+}

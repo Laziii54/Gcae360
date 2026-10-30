@@ -253,6 +253,36 @@ SELECT changes();";
         finally { _gate.Release(); }
     }
 
+    /// <summary>Owner/admin delete: removes one observation and its sources outright, verified or not.</summary>
+    public async Task<bool> DeleteByIdAsync(long id, CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            await using var c = new SqliteConnection(_connectionString);
+            await c.OpenAsync(ct);
+            await using var tx = (SqliteTransaction)await c.BeginTransactionAsync(ct);
+            await using (var sources = c.CreateCommand())
+            {
+                sources.Transaction = tx;
+                sources.CommandText = "DELETE FROM EcuObservationSources WHERE ObservationId=$id";
+                sources.Parameters.AddWithValue("$id", id);
+                await sources.ExecuteNonQueryAsync(ct);
+            }
+            int changed;
+            await using (var cmd = c.CreateCommand())
+            {
+                cmd.Transaction = tx;
+                cmd.CommandText = "DELETE FROM EcuObservations WHERE Id=$id";
+                cmd.Parameters.AddWithValue("$id", id);
+                changed = await cmd.ExecuteNonQueryAsync(ct);
+            }
+            await tx.CommitAsync(ct);
+            return changed > 0;
+        }
+        finally { _gate.Release(); }
+    }
+
     /// <summary>
     /// Owner review of one observation: "verified" means a developer has checked this request/response pair
     /// against real documentation or a real test and it is safe to build a feature on (e.g. an ABS bleed

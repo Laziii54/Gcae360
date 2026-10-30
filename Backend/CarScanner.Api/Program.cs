@@ -2079,6 +2079,12 @@ app.MapPost(
         LoginCodeService loginCodes,
         CancellationToken ct) =>
     {
+        // Honeypot first, before the rate limiter even spends a slot on what is almost always a
+        // script: pretend success without sending anything, so a bot has no signal to tell it was
+        // caught and adapt. A real visitor never has anything in this field.
+        if (!string.IsNullOrEmpty(request.Website))
+            return Results.Ok(new { success = true });
+
         var ip = AdminService.ClientIp(http);
         if (!RateWindow.TryConsume("web-checkout-code:" + ip, DateTimeOffset.UtcNow, 10, TimeSpan.FromMinutes(15)))
             return Results.Json(new { success = false, code = "TOO_MANY" }, statusCode: StatusCodes.Status429TooManyRequests);
@@ -3121,11 +3127,49 @@ app.MapPost(
 
         if (kind == "ecu")
         {
-            if (!long.TryParse(id, out var obsId) || action is not ("verify" or "unverify"))
+            if (!long.TryParse(id, out var obsId) || action is not ("verify" or "unverify" or "delete"))
                 return Results.Redirect(Back("ecu", "ჩანაწერი ვერ მოიძებნა", false));
-            var changed = await http.RequestServices.GetRequiredService<EcuObservationStore>().SetReviewAsync(obsId, action == "verify", ct);
+            var ecuStore = http.RequestServices.GetRequiredService<EcuObservationStore>();
+            if (action == "delete")
+            {
+                var removed = await ecuStore.DeleteByIdAsync(obsId, ct);
+                await admin.AuditAsync(session.Email, "ecu_delete", id, ip, ct);
+                return Results.Redirect(Back("ecu", removed ? "წაიშალა" : "ვერ მოიძებნა", removed));
+            }
+            var changed = await ecuStore.SetReviewAsync(obsId, action == "verify", ct);
             await admin.AuditAsync(session.Email, "ecu_" + action, id, ip, ct);
             return Results.Redirect(Back("ecu", changed ? (action == "verify" ? "დამოწმდა" : "დამოწმება მოიხსნა") : "ვერ შეიცვალა", changed));
+        }
+
+        if (kind == "crashes")
+        {
+            if (action != "delete")
+                return Results.Redirect(Back("crashes", "ვერ დამუშავდა", false));
+            var exceptionType = form["type"].ToString();
+            var frame = form["frame"].ToString();
+            if (exceptionType.Length == 0 || exceptionType.Length > 300 || frame.Length > 300)
+                return Results.Redirect(Back("crashes", "ჩანაწერი ვერ მოიძებნა", false));
+            var removed = await http.RequestServices.GetRequiredService<CrashReportStore>().DeleteGroupAsync(exceptionType, frame, ct);
+            await admin.AuditAsync(session.Email, "crash_delete", exceptionType + " · " + removed, ip, ct);
+            return Results.Redirect(Back("crashes", removed > 0 ? $"{removed} ჩანაწერი წაიშალა" : "ჩანაწერი ვერ მოიძებნა", removed > 0));
+        }
+
+        if (kind == "service-search")
+        {
+            if (!long.TryParse(id, out var searchId) || action != "delete")
+                return Results.Redirect(Back("service", "ჩანაწერი ვერ მოიძებნა", false));
+            var removed = await http.RequestServices.GetRequiredService<ServiceSearchStore>().DeleteAsync(searchId, ct);
+            await admin.AuditAsync(session.Email, "service_search_delete", id, ip, ct);
+            return Results.Redirect(Back("service", removed ? "წაიშალა" : "ვერ მოიძებნა", removed));
+        }
+
+        if (kind == "reset-recording")
+        {
+            if (!long.TryParse(id, out var recId) || action != "delete")
+                return Results.Redirect(Back("service", "ჩანაწერი ვერ მოიძებნა", false));
+            var removed = await http.RequestServices.GetRequiredService<ResetRecordingStore>().DeleteAsync(recId, ct);
+            await admin.AuditAsync(session.Email, "reset_recording_delete", id, ip, ct);
+            return Results.Redirect(Back("service", removed ? "წაიშალა" : "ვერ მოიძებნა", removed));
         }
 
         if (kind == "avatars")
@@ -4198,7 +4242,10 @@ record WebCheckoutRequest(
     bool? AutoRenew = null,
     string? Currency = null);
 
-record WebCodeRequest(string? Email);
+// Website is a honeypot: the real form field is hidden off-screen (see WebPages.cs's .hp class) and
+// a real browser never puts anything in it, but a script that blindly fills every input on the page
+// often does. Never documented as part of the public API contract.
+record WebCodeRequest(string? Email, string? Website);
 
 record AiRequest(
     string Prompt,

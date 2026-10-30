@@ -143,6 +143,23 @@ public sealed class EcuObservationStoreTests : IDisposable
 
     private static string UsageStoreHash(string deviceId) => UsageStore.HashDevice(deviceId);
 
+    [Fact]
+    public async Task DeleteById_RemovesTheRowOutright_EvenWhenVerified()
+    {
+        await _store.AddAsync(Batch(), DeviceA, default);
+        var row = Assert.Single(await _store.LatestAsync(10, default));
+        await _store.SetReviewAsync(row.Id, verified: true, default);
+
+        var removed = await _store.DeleteByIdAsync(row.Id, default);
+
+        Assert.True(removed);
+        Assert.Empty(await _store.LatestAsync(10, default));
+    }
+
+    [Fact]
+    public async Task DeleteById_UnknownId_ReturnsFalse() =>
+        Assert.False(await _store.DeleteByIdAsync(999_999, default));
+
     [Theory]
     [InlineData(1, "unreviewed", "single")]
     [InlineData(2, "unreviewed", "repeated")]

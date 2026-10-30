@@ -148,21 +148,37 @@ WHERE Make=$mk AND Model=$md AND Year=$y AND MatchedKeys<>'[]' ORDER BY Id DESC 
             await using var c = new SqliteConnection(_connectionString);
             await c.OpenAsync(ct);
             await using var cmd = c.CreateCommand();
-            cmd.CommandText = @"SELECT CreatedAt,Make,Model,Year,VinPrefix,DashboardPercent,Tried,Answered,MatchedKeys,Trusted
+            cmd.CommandText = @"SELECT Id,CreatedAt,Make,Model,Year,VinPrefix,DashboardPercent,Tried,Answered,MatchedKeys,Trusted
 FROM ServiceSearchReports ORDER BY Id DESC LIMIT $n";
             cmd.Parameters.AddWithValue("$n", Math.Clamp(count, 1, 500));
             await using var reader = await cmd.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {
                 rows.Add(new ServiceSearchRow(
-                    reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3),
-                    reader.IsDBNull(4) ? null : reader.GetString(4),
-                    reader.IsDBNull(5) ? null : reader.GetDouble(5),
-                    reader.GetInt32(6), reader.GetInt32(7), reader.GetString(8), reader.GetInt32(9) == 1));
+                    reader.GetInt64(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
+                    reader.IsDBNull(5) ? null : reader.GetString(5),
+                    reader.IsDBNull(6) ? null : reader.GetDouble(6),
+                    reader.GetInt32(7), reader.GetInt32(8), reader.GetString(9), reader.GetInt32(10) == 1));
             }
         }
         finally { _gate.Release(); }
         return rows;
+    }
+
+    /// <summary>Owner/admin delete: removes one search report.</summary>
+    public async Task<bool> DeleteAsync(long id, CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            await using var c = new SqliteConnection(_connectionString);
+            await c.OpenAsync(ct);
+            await using var cmd = c.CreateCommand();
+            cmd.CommandText = "DELETE FROM ServiceSearchReports WHERE Id=$id";
+            cmd.Parameters.AddWithValue("$id", id);
+            return await cmd.ExecuteNonQueryAsync(ct) > 0;
+        }
+        finally { _gate.Release(); }
     }
 }
 
@@ -187,5 +203,5 @@ public sealed record ServiceSearchReportHit(
     bool Matched);
 
 public sealed record ServiceSearchRow(
-    string CreatedAt, string Make, string Model, string Year, string? VinPrefix,
+    long Id, string CreatedAt, string Make, string Model, string Year, string? VinPrefix,
     double? DashboardPercent, int Tried, int Answered, string MatchedKeys, bool Trusted);

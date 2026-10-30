@@ -132,6 +132,40 @@ VALUES($id,$occurred,$received,$app,$platform,$os,$type,$stack,$source,$fatal);
             .ToArray();
     }
 
+    /// <summary>Owner/admin delete: removes every stored crash whose type and first app-code frame match this group.</summary>
+    public async Task<int> DeleteGroupAsync(string exceptionType, string frame, CancellationToken token)
+    {
+        await _gate.WaitAsync(token);
+        try
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync(token);
+
+            var ids = new List<string>();
+            using (var select = connection.CreateCommand())
+            {
+                select.CommandText = "SELECT ReportId, StackTrace FROM CrashReports WHERE ExceptionType=$type";
+                select.Parameters.AddWithValue("$type", exceptionType);
+                using var reader = await select.ExecuteReaderAsync(token);
+                while (await reader.ReadAsync(token))
+                {
+                    if (FirstAppFrame(reader.GetString(1)) == frame)
+                        ids.Add(reader.GetString(0));
+                }
+            }
+            if (ids.Count == 0)
+                return 0;
+
+            using var delete = connection.CreateCommand();
+            delete.CommandText = "DELETE FROM CrashReports WHERE ReportId IN (" +
+                string.Join(",", ids.Select((_, i) => "$p" + i)) + ")";
+            for (var i = 0; i < ids.Count; i++)
+                delete.Parameters.AddWithValue("$p" + i, ids[i]);
+            return await delete.ExecuteNonQueryAsync(token);
+        }
+        finally { _gate.Release(); }
+    }
+
     /// <summary>First stack frame from the app's own code (CarScanner.*), else the first frame.</summary>
     public static string FirstAppFrame(string stack)
     {

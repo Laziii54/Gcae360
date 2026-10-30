@@ -30,6 +30,7 @@ button:disabled{opacity:.6}.msg{margin-top:12px;font-size:14px}.err{color:var(--
 .smallbtn{width:auto;margin-top:10px;padding:9px 16px;font-size:13px;border-radius:9px;background:transparent;color:var(--accent);border:1.5px solid var(--accent);font-weight:700}
 .smallbtn:disabled{opacity:.5;color:var(--muted);border-color:var(--border)}
 .codewrap{margin-top:4px}
+.hp{position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden}
 footer{margin-top:28px;font-size:13px;color:var(--muted);text-align:center}footer a{color:var(--muted)}
 .big{text-align:center;margin:30px 0 6px}.big svg{display:block;margin:0 auto}.center{text-align:center}
 .grow{flex:1;min-width:0}.card .t{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px}.card .t .badge{margin-left:0}
@@ -221,6 +222,7 @@ var h=document.documentElement;h.classList.add(ge?'is-ge':'is-intl');h.lang=ge?'
 <h2>{{T("შენი ანგარიში", "Your account")}}</h2>
 <div class="muted">{{T("იგივე ელ-ფოსტა, რომლითაც აპში ხარ რეგისტრირებული. პაროლი არ გჭირდება — ერთჯერად კოდს გამოგიგზავნით.", "The e-mail you registered in the app with. No password needed — we'll e-mail you a one-time code.")}}</div>
 <label class="f" for="email">{{T("ელ-ფოსტა", "E-mail")}}</label><input type="email" id="email" name="email" autocomplete="email" required>
+<div class="hp" aria-hidden="true"><label for="hpWebsite">Website</label><input type="text" id="hpWebsite" name="website" tabindex="-1" autocomplete="off"></div>
 <button type="button" id="sendCode" class="smallbtn">{{T("კოდის გამოგზავნა", "Send code")}}</button>
 <div id="codeStatus" class="msg"></div>
 <div id="codeFieldWrap" class="codewrap" hidden>
@@ -253,7 +255,8 @@ NO_ACCOUNT:tr('ამ ელფოსტაზე OBD360 ანგარიშ�
 TOO_MANY:tr('ძალიან ბევრი მცდელობა. სცადე 15 წუთში.','Too many attempts. Try again in 15 minutes.')};
 const sendCodeBtn=document.getElementById('sendCode'),resendCodeBtn=document.getElementById('resendCode'),
 codeStatus=document.getElementById('codeStatus'),codeFieldWrap=document.getElementById('codeFieldWrap'),
-emailInput=document.getElementById('email'),codeInput=document.getElementById('code');
+emailInput=document.getElementById('email'),codeInput=document.getElementById('code'),
+hpWebsite=document.getElementById('hpWebsite');
 let resendTimer=null;
 function startResendCooldown(seconds){
 if(resendTimer)clearInterval(resendTimer);
@@ -267,7 +270,7 @@ if(!email){codeStatus.className='msg err';codeStatus.textContent=tr('ჯერ �
 const btn=isResend?resendCodeBtn:sendCodeBtn;btn.disabled=true;
 codeStatus.className='msg';codeStatus.textContent=tr('იგზავნება…','Sending…');
 try{
-const r=await fetch('/api/web/checkout/code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+const r=await fetch('/api/web/checkout/code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,website:hpWebsite.value})});
 const j=await r.json().catch(()=>({}));
 if(j.success){
 codeFieldWrap.hidden=false;sendCodeBtn.hidden=true;codeInput.focus();
