@@ -37,6 +37,9 @@ public static class IconCatalog
     public const string Engine = "engine";
     public const string Document = "document";
     public const string Crown = "crown";
+    /// <summary>An open box with an arrow breaking out its top-right corner - "this leaves the app
+    /// and opens in the browser", not just "this is 3D content".</summary>
+    public const string ExternalLink = "external-link";
 
     private static readonly Dictionary<string, string> Paths = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -64,6 +67,7 @@ public static class IconCatalog
         [Engine] = "M5,19 L5,11 L7,11 C7,8 11,8 11,11 L13,11 C13,8 17,8 17,11 L19,11 L19,19 Z M5,15 L19,15",
         [Document] = "M7,3 L15,3 L19,7 L19,21 L7,21 Z M15,3 L15,7 L19,7 M9,12 L15,12 M9,16 L15,16",
         [Crown] = "M4,18 L4,10 L8,13 L12,6 L16,13 L20,10 L20,18 Z",
+        [ExternalLink] = "M18,13 L18,19 A2,2 0 0 1 16,21 L5,21 A2,2 0 0 1 3,19 L3,8 A2,2 0 0 1 5,6 L11,6 M15,3 L21,3 L21,9 M10,14 L21,3",
     };
 
     public static IReadOnlyCollection<string> Names => Paths.Keys;

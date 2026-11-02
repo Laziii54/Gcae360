@@ -6,6 +6,18 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["http-server", "C:\\Users\\zukal\\AppData\\Local\\Temp\\claude\\C--GCar360\\598cc851-6177-47bd-b409-0df80b7e6aa8\\scratchpad", "-p", "8900"],
       "port": 8900
+    },
+    {
+      "name": "vehicle-visualizer-3d",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "http-server", "C:\\GCar360\\Georgian-Car-Scanner-Universal-MultiVehicle-FIXED\\Prototypes\\VehicleVisualizer3D", "-p", "8931", "-c-1"],
+      "port": 8931
+    },
+    {
+      "name": "carscanner-api",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "C:\\GCar360\\Georgian-Car-Scanner-Universal-MultiVehicle-FIXED\\Backend\\CarScanner.Api\\CarScanner.Api.csproj", "--urls", "http://localhost:49771"],
+      "port": 49771
     }
   ]
 }

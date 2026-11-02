@@ -379,6 +379,17 @@ public partial class DiagnosticsViewModel : BaseViewModel
         await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.RepairCostPage));
     }
 
+    /// <summary>Opens this exact code in the OBD360.ge CarView 3D viewer, in the system browser —
+    /// the same real DTC catalog this app reads, shown on the car itself instead of just as text.</summary>
+    [RelayCommand]
+    private async Task OpenInCarView(string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+            return;
+        try { await Launcher.Default.OpenAsync($"https://obd360.ge/carview/?code={Uri.EscapeDataString(code.Trim())}"); }
+        catch { /* no browser to hand the link to — nothing useful to show for it */ }
+    }
+
     private void UpdateScanProgress(int percent, string stage)
     {
         ScanProgress = Math.Clamp(percent, 0, 100);

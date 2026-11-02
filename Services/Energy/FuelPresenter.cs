@@ -18,45 +18,53 @@ public sealed record InstantDisplay(
 /// </summary>
 public static class FuelPresenter
 {
-    public static InstantDisplay Instant(InstantFuel instant, FuelEconomyUnit unit, bool english)
+    /// <summary>"kg" has no gallon/mpg equivalent, so a mass-measured fuel (CNG) is never run through the litre/gallon
+    /// unit system — it always shows in kilograms, regardless of the economy unit the user picked.</summary>
+    private const string MassPer100Unit = "kg/100 km";
+    private const string MassFlowUnit = "kg/h";
+
+    public static InstantDisplay Instant(InstantFuel instant, FuelEconomyUnit unit, bool english, FuelKind kind = FuelKind.Unknown)
     {
         var estimate = instant.Quality == FuelDataQuality.Estimated;
         var mark = estimate ? "≈ " : string.Empty;
+        var massBased = FuelKinds.IsMassMeasured(kind);
+        var per100Unit = massBased ? MassPer100Unit : FuelUnits.Label(unit);
 
         switch (instant.State)
         {
-            case InstantFuelState.Driving when instant.LitersPer100Km is { } per100 && FuelUnits.FromLPer100Km(per100, unit) is { } shown:
-                return new InstantDisplay(mark + shown.ToString("0.0", CultureInfo.InvariantCulture), FuelUnits.Label(unit),
+            case InstantFuelState.Driving when instant.LitersPer100Km is { } per100 &&
+                (massBased ? per100 : FuelUnits.FromLPer100Km(per100, unit)) is { } shown:
+                return new InstantDisplay(mark + shown.ToString("0.0", CultureInfo.InvariantCulture), per100Unit,
                     QualityLabel(instant.Quality, english), instant.Quality, true);
 
             case InstantFuelState.FuelCut:
-                // Zero fuel per distance: L/100 km can say "0.0"; for the distance-per-volume units the result would be infinite.
-                return unit == FuelEconomyUnit.LitersPer100Km
-                    ? new InstantDisplay(mark + "0.0", FuelUnits.Label(unit), english ? "Fuel cut — coasting" + (estimate ? " (inferred)" : string.Empty) : "საწვავი ითიშება — ინერცია" + (estimate ? " (დასკვნით)" : string.Empty), instant.Quality, true)
-                    : new InstantDisplay("—", FuelUnits.Label(unit), english ? "Fuel cut — coasting, no fuel used" + (estimate ? " (inferred)" : string.Empty) : "საწვავი ითიშება — ინერცია, საწვავი არ იხარჯება" + (estimate ? " (დასკვნით)" : string.Empty), instant.Quality, true);
+                // Zero fuel per distance: L/100 km (and kg/100 km) can say "0.0"; for the distance-per-volume units the result would be infinite.
+                return massBased || unit == FuelEconomyUnit.LitersPer100Km
+                    ? new InstantDisplay(mark + "0.0", per100Unit, english ? "Fuel cut — coasting" + (estimate ? " (inferred)" : string.Empty) : "საწვავი ითიშება — ინერცია" + (estimate ? " (დასკვნით)" : string.Empty), instant.Quality, true)
+                    : new InstantDisplay("—", per100Unit, english ? "Fuel cut — coasting, no fuel used" + (estimate ? " (inferred)" : string.Empty) : "საწვავი ითიშება — ინერცია, საწვავი არ იხარჯება" + (estimate ? " (დასკვნით)" : string.Empty), instant.Quality, true);
 
             case InstantFuelState.Idle when instant.LitersPerHour is { } idle:
-                return new InstantDisplay(mark + FlowNumber(idle, unit), FlowUnit(unit),
+                return new InstantDisplay(mark + FlowNumber(idle, unit, massBased), FlowUnit(unit, massBased),
                     english ? "Idle or very slow — consumption per distance is not defined, showing the flow" : "უძრავად ან ძალიან ნელა — ხარჯი მანძილზე არ განისაზღვრება, ნაჩვენებია დინება",
                     instant.Quality, true);
 
             case InstantFuelState.FlowOnly when instant.LitersPerHour is { } flow:
-                return new InstantDisplay(mark + FlowNumber(flow, unit), FlowUnit(unit),
+                return new InstantDisplay(mark + FlowNumber(flow, unit, massBased), FlowUnit(unit, massBased),
                     english ? "No current speed reading — showing the flow only" : "სიჩქარე ახლა არ მოდის — ნაჩვენებია მხოლოდ დინება",
                     instant.Quality, true);
 
             case InstantFuelState.EngineOff:
-                return new InstantDisplay("—", FuelUnits.Label(unit), english ? "Engine off — no fuel is used" : "ძრავი გამორთულია — საწვავი არ იხარჯება", instant.Quality, true);
+                return new InstantDisplay("—", per100Unit, english ? "Engine off — no fuel is used" : "ძრავი გამორთულია — საწვავი არ იხარჯება", instant.Quality, true);
 
             default:
-                return new InstantDisplay("—", FuelUnits.Label(unit), IssueText(instant.Issue, english), FuelDataQuality.None, false);
+                return new InstantDisplay("—", per100Unit, IssueText(instant.Issue, english), FuelDataQuality.None, false);
         }
     }
 
-    private static string FlowNumber(double litersPerHour, FuelEconomyUnit unit) =>
-        FuelUnits.Volume(litersPerHour, unit).Value.ToString("0.00", CultureInfo.InvariantCulture);
+    private static string FlowNumber(double litersPerHour, FuelEconomyUnit unit, bool massBased) =>
+        (massBased ? litersPerHour : FuelUnits.Volume(litersPerHour, unit).Value).ToString("0.00", CultureInfo.InvariantCulture);
 
-    private static string FlowUnit(FuelEconomyUnit unit) => FuelUnits.Volume(1, unit).Unit + "/h";
+    private static string FlowUnit(FuelEconomyUnit unit, bool massBased) => massBased ? MassFlowUnit : FuelUnits.Volume(1, unit).Unit + "/h";
 
     public static string QualityLabel(FuelDataQuality quality, bool english) => quality switch
     {
@@ -81,19 +89,28 @@ public static class FuelPresenter
     }
 
     /// <summary>Trip average as text: "≈" for an estimate, a reliability warning for partial data, "—" without enough distance or fuel.</summary>
-    public static string Average(FuelTripSnapshot trip, FuelEconomyUnit unit)
+    public static string Average(FuelTripSnapshot trip, FuelEconomyUnit unit, FuelKind kind = FuelKind.Unknown)
     {
-        if (trip.AverageLPer100Km is not { } average || FuelUnits.FromLPer100Km(average, unit) is not { } shown)
+        var massBased = FuelKinds.IsMassMeasured(kind);
+        if (trip.AverageLPer100Km is not { } average)
+            return "—";
+        var shown = massBased ? average : FuelUnits.FromLPer100Km(average, unit);
+        if (shown is not { } value)
             return "—";
 
         var mark = trip.Quality is TripFuelQuality.Estimated or TripFuelQuality.Mixed || !trip.HasReliableAverage ? "≈ " : string.Empty;
-        return $"{mark}{shown.ToString("0.0", CultureInfo.InvariantCulture)} {FuelUnits.Label(unit)}";
+        return $"{mark}{value.ToString("0.0", CultureInfo.InvariantCulture)} {(massBased ? MassPer100Unit : FuelUnits.Label(unit))}";
     }
 
-    public static string FuelUsed(FuelTripSnapshot trip, FuelEconomyUnit unit) =>
-        trip.FuelLiters > 0
-            ? FuelUnits.FormatVolume(trip.FuelLiters, unit, trip.Quality is TripFuelQuality.Estimated or TripFuelQuality.Mixed)
-            : "—";
+    public static string FuelUsed(FuelTripSnapshot trip, FuelEconomyUnit unit, FuelKind kind = FuelKind.Unknown)
+    {
+        if (trip.FuelLiters <= 0)
+            return "—";
+        var estimate = trip.Quality is TripFuelQuality.Estimated or TripFuelQuality.Mixed;
+        return FuelKinds.IsMassMeasured(kind)
+            ? $"{(estimate ? "≈ " : string.Empty)}{trip.FuelLiters.ToString("0.00", CultureInfo.InvariantCulture)} kg"
+            : FuelUnits.FormatVolume(trip.FuelLiters, unit, estimate);
+    }
 
     public static string IssueText(FuelRateIssue issue, bool english) => issue switch
     {

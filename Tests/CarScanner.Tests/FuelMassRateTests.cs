@@ -63,11 +63,20 @@ public sealed class FuelMassRateTests
     [Theory]
     [InlineData(FuelKind.Unknown)]
     [InlineData(FuelKind.Mixed)]
-    [InlineData(FuelKind.Cng)]
     public void WithoutAKnownLiquidFuel_TheMassRateIsNotConverted(FuelKind kind)
     {
         var rate = Resolve(Cache(c => c.Set(FuelSignal.EngineFuelRateGramsPerSecond, 2.0, T0)), kind);
         Assert.Null(rate.LitersPerHour);                                         // nothing is invented
+    }
+
+    [Fact]
+    public void ACngGramsPerSecondRate_BecomesKilograms_NotLitres()
+    {
+        // CNG has no liquid density, so PID 9D's g/s passes straight through to kg/h: 2.0 g/s × 3.6 = 7.2 "kg/h".
+        var rate = Resolve(Cache(c => c.Set(FuelSignal.EngineFuelRateGramsPerSecond, 2.0, T0)), FuelKind.Cng);
+        Assert.Equal(7.2, rate.LitersPerHour!.Value, 3);
+        Assert.Equal(FuelDataQuality.Direct, rate.Quality);
+        Assert.Contains("9D", rate.Source);
     }
 
     [Fact]

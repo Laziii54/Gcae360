@@ -144,7 +144,13 @@ public sealed class SeoTests
         foreach (var path in SeoPages.SitemapPaths)
         {
             var route = "\"" + path + "\"";
-            Assert.True(program.Contains("app.MapGet(" + route, StringComparison.Ordinal) || Regex.IsMatch(program, @"app\.MapGet\(\s*" + Regex.Escape(route)), "no route for " + path);
+            var hasMappedRoute = program.Contains("app.MapGet(" + route, StringComparison.Ordinal) || Regex.IsMatch(program, @"app\.MapGet\(\s*" + Regex.Escape(route));
+            // Not every public page is a MapGet handler: a trailing-slash path can instead be a
+            // static folder resolved by UseDefaultFiles — real only when its index.html is
+            // actually on disk, not just listed in the sitemap.
+            var isStaticFolder = path.EndsWith('/') &&
+                File.Exists(Path.Combine(Root, "Backend", "CarScanner.Api", "wwwroot", path.Trim('/'), "index.html"));
+            Assert.True(hasMappedRoute || isStaticFolder, "no route for " + path);
         }
 
         Assert.Contains("app.MapGet(\"/sitemap.xml\"", program);

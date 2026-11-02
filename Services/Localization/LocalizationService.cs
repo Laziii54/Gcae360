@@ -1292,6 +1292,7 @@ public sealed partial class LocalizationService
             ["ნამდვილად გსურთ DTC კოდების წაშლა? ამ მოქმედებამ შეიძლება Readiness მონიტორებიც გაანულოს."] = "Do you really want to clear DTCs? This may also reset the Readiness monitors.",
             ["ნაჩვენებია მხოლოდ ECU-ის მიერ რეალურად მხარდაჭერილი PID-ები."] = "Only PIDs really supported by the ECU are shown.",
             ["ნაწილაკების ფილტრი"] = "Particulate filter",
+            ["ნახე 3D-ში"] = "View in 3D",
             ["ნელი პასუხი — შეამოწმე adapter/კონტაქტი"] = "Slow response — check the adapter/ignition",
             ["პირველ რიგში შეასრულე სკანირება."] = "Run a scan first.",
             ["პროტოკოლი ჯერ არ არის განსაზღვრული."] = "Protocol not determined yet.",

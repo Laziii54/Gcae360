@@ -9,7 +9,9 @@ public static class BackendDataPath
 {
     private const string DatabaseFileName = "car-scanner-api.db";
 
-    public static string ResolveDatabasePath(
+    /// <summary>The durable data directory itself (for files that are not the shared operational database,
+    /// e.g. the DTC catalog unpacked from its bundled .br asset).</summary>
+    public static string ResolveDataDirectory(
         IHostEnvironment environment,
         IConfiguration configuration)
     {
@@ -51,11 +53,15 @@ public static class BackendDataPath
 
         directory = Path.GetFullPath(directory);
         Directory.CreateDirectory(directory);
-
-        return Path.Combine(
-            directory,
-            DatabaseFileName);
+        return directory;
     }
+
+    public static string ResolveDatabasePath(
+        IHostEnvironment environment,
+        IConfiguration configuration) =>
+        Path.Combine(
+            ResolveDataDirectory(environment, configuration),
+            DatabaseFileName);
 
     public static string CreateConnectionString(string databasePath) =>
         new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder

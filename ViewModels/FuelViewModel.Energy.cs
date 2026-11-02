@@ -491,7 +491,9 @@ public partial class FuelViewModel
         CostCaption = L("ღირებულება", "Cost");
         TripDistanceText = _units.FormatDistance(km);
         TripDurationText = $"{(_movingSeconds + _idleSeconds) / 60d:0} {L("წთ", "min")}";
-        double? fuelCost = _mode != EnergyMode.Electric && TryGetFuelPrice(out var litrePrice) && _fuelLiters > 0 ? _fuelLiters * litrePrice : null;
+        // A mass-measured fuel (CNG) has no "price per litre" entry — _fuelLiters holds kilograms for it, and
+        // multiplying that by a litre price would silently produce a wrong cost instead of an honest "—".
+        double? fuelCost = _mode != EnergyMode.Electric && !FuelKinds.IsMassMeasured(_fuel.Kind) && TryGetFuelPrice(out var litrePrice) && _fuelLiters > 0 ? _fuelLiters * litrePrice : null;
         var tripEnergy = _ev.HasSample ? _ev.NetKWh : ApproxKWh();
         double? energyCost = _mode != EnergyMode.Fuel && TryParsePositive(ElectricityPriceText, out var kwhPrice) && tripEnergy is { } usedKwh
             ? Math.Max(0, usedKwh) * kwhPrice

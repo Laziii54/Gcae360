@@ -101,6 +101,18 @@ public sealed class FuelRateResolverTests
     }
 
     [Fact]
+    public void Cng_UsesAirFlow_AsAKilogramMassFlow_NotLitres()
+    {
+        // CNG has no liquid density: 10 g/s air ÷ 17.2 = 0.581395 g/s fuel, and with "density" 1 that is already kg/s
+        // × 3600 = 2.09302 kg/h — no litre conversion happens.
+        var rate = Resolve(Cache(c => c.Set(FuelSignal.MafGramsPerSecond, 10.0, T0)), FuelKind.Cng);
+        Assert.Equal(2.09302, rate.LitersPerHour!.Value, 4);
+        Assert.Equal(FuelDataQuality.Estimated, rate.Quality);
+        Assert.Contains("17.2", rate.Assumption);
+        Assert.Contains("mass flow", rate.Assumption);
+    }
+
+    [Fact]
     public void Diesel_WithoutLambda_HasNoAirFlowEstimate()
     {
         var rate = Resolve(Cache(c => c.Set(FuelSignal.MafGramsPerSecond, 20.0, T0)), FuelKind.Diesel);
@@ -154,7 +166,6 @@ public sealed class FuelRateResolverTests
     [Theory]
     [InlineData(FuelKind.Unknown, FuelRateIssue.FuelTypeUnknown)]
     [InlineData(FuelKind.Mixed, FuelRateIssue.FuelTypeUnknown)]
-    [InlineData(FuelKind.Cng, FuelRateIssue.FuelTypeUnsupported)]
     [InlineData(FuelKind.Electric, FuelRateIssue.ElectricVehicle)]
     public void FuelsWithoutAnEstimate_NeverGetOne(FuelKind kind, FuelRateIssue issue)
     {

@@ -100,11 +100,22 @@ public static class FuelKinds
             case FuelKind.Lpg:
                 constants = new MafConstants(15.5, 0.55, "AFR about 15.5:1; liquid density 0.51–0.58 kg/L depends on the propane/butane mix");
                 return true;
+            case FuelKind.Cng:
+                // CNG never liquefies in the tank (methane's critical point is well below ambient temperature), so there is no
+                // liquid density to convert through — the "density" here is 1 kg per (pseudo-)litre on purpose, which makes the
+                // shared air-flow formula below return the fuel's mass directly: kilograms, not litres. IsMassMeasured() below
+                // is what tells the presentation layer to label it "kg" instead of running it through the litre/gallon unit system.
+                constants = new MafConstants(17.2, 1.0, "AFR about 17.2:1 (stoichiometric methane); mass flow in kg, not a liquid density");
+                return true;
             default:
                 constants = null!;
                 return false;
         }
     }
+
+    /// <summary>true when this fuel's own consumption is tracked in kilograms, not litres — CNG only, since it is a
+    /// compressed gas that never liquefies in the tank and so is never sold or measured by volume.</summary>
+    public static bool IsMassMeasured(FuelKind kind) => kind == FuelKind.Cng;
 
     public static string Display(FuelKind kind, bool english) => kind switch
     {
@@ -113,7 +124,7 @@ public static class FuelKinds
         FuelKind.Ethanol => english ? "Ethanol / E85" : "ეთანოლი / E85",
         FuelKind.Methanol => english ? "Methanol" : "მეთანოლი",
         FuelKind.Lpg => english ? "LPG / propane" : "აირი (LPG)",
-        FuelKind.Cng => english ? "CNG" : "CNG",
+        FuelKind.Cng => english ? "CNG" : "ბუნებრივი გაზი (CNG)",
         FuelKind.Electric => english ? "Electric" : "ელექტრო",
         FuelKind.Mixed => english ? "Hybrid / bi-fuel (fuel not stated)" : "ჰიბრიდი (საწვავი არ არის მითითებული)",
         _ => english ? "Unknown" : "უცნობია"

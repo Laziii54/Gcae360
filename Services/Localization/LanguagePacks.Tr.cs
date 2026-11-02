@@ -417,6 +417,7 @@ internal static partial class LanguagePacks
         ["Vehicle type"] = "Araç türü",
         ["Vehicle/adapter voltage is not within a safe range."] = "Araç/adaptör voltajı güvenli aralıkta değil.",
         ["Verify Repair"] = "Onarımı doğrula",
+        ["View in 3D"] = "3D'de görüntüle",
         ["VOLTAGE"] = "Voltaj",
         ["Voltage History"] = "Voltaj geçmişi",
         ["Warm-ups since clear"] = "Silmeden bu yana ısınma döngüleri",

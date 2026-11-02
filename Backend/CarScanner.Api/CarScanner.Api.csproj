@@ -18,6 +18,11 @@
     <Compile Include="../../Services/EmailAddressRules.cs" Link="Shared/EmailAddressRules.cs" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Same bundled catalog the app ships (Brotli-compressed); unpacked once on first request
+         into the durable data directory, read-only, never rewritten here. -->
+    <Content Include="../../Resources/Raw/DtcCatalog.sqlite.br" Link="DtcCatalog.sqlite.br" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <InternalsVisibleTo Include="CarScanner.Tests" />
   </ItemGroup>
 </Project>

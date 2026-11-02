@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.StaticFiles;
 using CarScanner.Api.Services;
 using CarScanner.Api.Services.Email;
 using System.Collections.Concurrent;
@@ -54,6 +55,7 @@ builder.Services.AddHostedService<WebRenewalWorker>();
 builder.Services.AddSingleton<AccelerationLeaderboardStore>();
 builder.Services.AddSingleton<AvatarStore>();
 builder.Services.AddSingleton<QrReportStore>();
+builder.Services.AddSingleton<PublicDtcCatalog>();
 
 // Azure App Service terminates TLS at its front end and forwards the
 // original scheme in X-Forwarded-Proto. Only the scheme is taken over
@@ -107,10 +109,11 @@ if (!app.Environment.IsDevelopment())
 // Security headers for every non-admin response (admin pages set their own,
 // stricter set in AdminService.SecureHeaders). The CSP is added only to HTML
 // and allows what the public pages use: inline <script>/<style>, Google Fonts,
-// same-origin fetch and images.
+// same-origin fetch and images. blob: in img-src/connect-src is for CarView's GLTFLoader,
+// which decodes an embedded model's textures through same-process blob: URLs, not a network origin.
 const string PublicCsp =
     "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-    "font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; " +
+    "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' blob:; object-src 'none'; " +
     "form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
 app.Use(async (context, next) =>
 {
@@ -133,11 +136,40 @@ app.Use(async (context, next) =>
     await next(context);
 });
 
-// Website images (logo, loader, icons) from wwwroot/assets.
+// Resolves "/carview/" (and any other wwwroot folder with an index.html) to that file.
+app.UseDefaultFiles();
+
+// Website images (logo, loader, icons) from wwwroot/assets, and the static CarView 3D app.
+// .glb isn't one of the built-in recognized types, so without this mapping the default
+// provider refuses to serve it at all (ServeUnknownFileTypes defaults to false) — a silent 404.
+var carviewContentTypes = new FileExtensionContentTypeProvider();
+carviewContentTypes.Mappings[".glb"] = "model/gltf-binary";
 app.UseStaticFiles(new StaticFileOptions
 {
+    ContentTypeProvider = carviewContentTypes,
     OnPrepareResponse = context =>
-        context.Context.Response.Headers["Cache-Control"] = "public, max-age=604800"
+        // An .html entry point (CarView's index.html, served via UseDefaultFiles above) is
+        // still actively changing — a week-long cache would leave a visitor's browser showing
+        // a stale page long after a fix ships. Everything else under wwwroot (images, the
+        // vendored Three.js build, the 3D models) only ever changes by a redeploy, so it keeps
+        // the long cache.
+        context.Context.Response.Headers["Cache-Control"] = context.File.Name.EndsWith(".html", StringComparison.OrdinalIgnoreCase)
+            ? "no-cache"
+            : "public, max-age=604800"
+});
+
+// "/carview" (no trailing slash, exactly) -> the folder, so UseDefaultFiles above can resolve
+// it. A routed MapGet("/carview", ...) would also match "/carview/" itself (route templates
+// don't treat a trailing slash as significant) and redirect that to itself, so this checks the
+// raw path instead, ahead of UseStaticFiles.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.Value == "/carview")
+    {
+        context.Response.Redirect("/carview/", permanent: true);
+        return;
+    }
+    await next(context);
 });
 
 // ============================================================
@@ -2882,6 +2914,29 @@ app.MapGet(
 // Crawler files. robots.txt keeps the public site open and points to the sitemap; sitemap.xml lists only the real public pages.
 app.MapGet("/robots.txt", () => Results.Text(SeoPages.RobotsTxt(), "text/plain; charset=utf-8"));
 app.MapGet("/sitemap.xml", () => Results.Text(SeoPages.SitemapXml(), "application/xml; charset=utf-8"));
+
+// ============================================================
+// CARVIEW — public DTC lookup (obd360.ge/carview, and the "ნახე 3D-ში" link from the app's
+// own scan results). Anonymous, no vehicle/ECU context: the same real catalog the app reads,
+// generic definitions only. Never guesses at an unrecognized or malformed code.
+// ============================================================
+
+app.MapGet(
+    "/api/public/dtc/{code}",
+    async (string code, HttpContext http, PublicDtcCatalog catalog) =>
+    {
+        var normalized = PublicDtcCatalog.NormalizeCode(code);
+        if (normalized is null)
+            return Results.BadRequest(new { error = "not a recognizable DTC code" });
+
+        if (!RateWindow.TryConsume("public-dtc:" + AdminService.ClientIp(http), DateTimeOffset.UtcNow, 60, TimeSpan.FromMinutes(1)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        http.Response.Headers["Cache-Control"] = "public, max-age=86400"; // generic definitions don't change per request
+
+        var result = await catalog.LookupAsync(normalized, http.RequestAborted);
+        return result is null ? Results.NotFound(new { error = "code not in catalog" }) : Results.Ok(result);
+    });
 
 // ============================================================
 // ADMIN (owner only: GCS_ADMIN_EMAILS [+ GCS_ADMIN_TOTP_SECRET, GCS_ADMIN_IPS])

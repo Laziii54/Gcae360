@@ -51,6 +51,20 @@ public sealed class FuelPresenterTests
         Assert.DoesNotContain("Direct", display.Note);
     }
 
+    [Fact]
+    public void Cng_ShowsKilograms_RegardlessOfTheEconomyUnitThePickedForLiquidFuels()
+    {
+        // 10 g/s air ÷ 17.2 = 2.09302 kg/h at 100 km/h = 2.093 kg/100 km — kg has no gallon or km/L equivalent, so
+        // the economy unit the user picked (for their liquid-fuel cars) never changes this number or its label.
+        var instant = Run(FuelKind.Cng, 100, 2500, maf: 10.0).Instant;
+        foreach (var unit in Enum.GetValues<FuelEconomyUnit>())
+        {
+            var display = FuelPresenter.Instant(instant, unit, true, FuelKind.Cng);
+            Assert.Equal("≈ 2.1", display.Value);
+            Assert.Equal("kg/100 km", display.Unit);
+        }
+    }
+
     [Theory]
     [InlineData(FuelEconomyUnit.LitersPer100Km, "7.0", "L/100 km")]
     [InlineData(FuelEconomyUnit.KmPerLiter, "14.3", "km/L")]
@@ -113,7 +127,6 @@ public sealed class FuelPresenterTests
 
     [Theory]
     [InlineData(FuelKind.Unknown, "Fuel type unknown")]
-    [InlineData(FuelKind.Cng, "cannot be calculated in litres")]
     [InlineData(FuelKind.Electric, "no liquid fuel")]
     public void WhenNoFuelValueCanBeGiven_TheReasonIsShown(FuelKind kind, string expected)
     {
@@ -213,6 +226,17 @@ public sealed class FuelPresenterTests
         Assert.StartsWith("≈ ", FuelPresenter.FuelUsed(Cruise(null, 10.0), FuelEconomyUnit.LitersPer100Km));
         Assert.Equal("—", FuelPresenter.FuelUsed(Cruise(null, null), FuelEconomyUnit.LitersPer100Km));
         Assert.Equal("0.26 gal (US)", FuelPresenter.FuelUsed(Cruise(6.0, null), FuelEconomyUnit.MpgUs));
+    }
+
+    [Fact]
+    public void Cng_AverageAndFuelUsed_AreInKilograms_NotLitresOrGallons()
+    {
+        // 10 min at 60 km/h with 10 g/s MAF: 2.09302 kg/h → 3.48837 kg/100 km average, 0.348837 kg used over the trip.
+        var trip = Cruise(null, 10.0, kind: FuelKind.Cng);
+        Assert.Equal("≈ 3.5 kg/100 km", FuelPresenter.Average(trip, FuelEconomyUnit.MpgUs, FuelKind.Cng));
+        Assert.StartsWith("≈ ", FuelPresenter.FuelUsed(trip, FuelEconomyUnit.MpgUs, FuelKind.Cng));
+        Assert.EndsWith(" kg", FuelPresenter.FuelUsed(trip, FuelEconomyUnit.MpgUs, FuelKind.Cng));
+        Assert.Equal("≈ 0.35 kg", FuelPresenter.FuelUsed(trip, FuelEconomyUnit.MpgUs, FuelKind.Cng));
     }
 
     [Theory]

@@ -180,8 +180,6 @@ public static class FuelRateResolver
             case FuelKind.Unknown:
             case FuelKind.Mixed:
                 return FuelRate.Unavailable(FuelRateIssue.FuelTypeUnknown);
-            case FuelKind.Cng:
-                return FuelRate.Unavailable(FuelRateIssue.FuelTypeUnsupported);
         }
 
         if (!FuelKinds.TryGetMafConstants(kind, out var constants))
@@ -227,7 +225,7 @@ public static class FuelRateResolver
     /// </summary>
     public static bool IsLikelyFuelCut(FuelSignalCache signals, DateTime now, FuelKind kind)
     {
-        if (kind is not (FuelKind.Gasoline or FuelKind.Ethanol or FuelKind.Methanol or FuelKind.Lpg))
+        if (kind is not (FuelKind.Gasoline or FuelKind.Ethanol or FuelKind.Methanol or FuelKind.Lpg or FuelKind.Cng))
             return false;
 
         var throttle = signals.Get(FuelSignal.ThrottlePercent, now, FuelLimits.DriveSignalMaxAge);

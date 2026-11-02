@@ -282,12 +282,21 @@ public sealed class EnergyCompatibilityTests
     [Theory]
     [InlineData(FuelKind.Unknown, EnergySupport.InsufficientData, EnergyReason.FuelTypeUnknown)]
     [InlineData(FuelKind.Mixed, EnergySupport.InsufficientData, EnergyReason.FuelTypeUnknown)]
-    [InlineData(FuelKind.Cng, EnergySupport.Unsupported, EnergyReason.FuelTypeUnsupported)]
     public void AirFlowWithoutAUsableFuelType_IsNeverEstimated(FuelKind kind, EnergySupport support, EnergyReason reason)
     {
         var list = EnergyCompatibility.Evaluate(Facts(EnergyMode.Fuel, kind, Pids(0x0D, 0x10)));
         Assert.Equal(support, Support(list, EnergyMetric.InstantFuel));
         Assert.Equal(reason, Reason(list, EnergyMetric.InstantFuel));
+    }
+
+    [Fact]
+    public void Cng_WithOnlyAirFlow_IsEstimated_AsAMassFlow()
+    {
+        // Unlike the other kinds AirFlowWithoutAUsableFuelType_IsNeverEstimated checks, CNG does have a usable
+        // mass-based estimate — it just never liquefies, so there is no litre conversion, only kilograms.
+        var list = EnergyCompatibility.Evaluate(Facts(EnergyMode.Fuel, FuelKind.Cng, Pids(0x0D, 0x10)));
+        Assert.Equal(EnergySupport.Estimated, Support(list, EnergyMetric.InstantFuel));
+        Assert.Equal(EnergyReason.AirFlowEstimate, Reason(list, EnergyMetric.InstantFuel));
     }
 
     [Fact]

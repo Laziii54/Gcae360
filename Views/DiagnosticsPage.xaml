@@ -188,10 +188,14 @@
                         <!-- Report style: dot + code, plain-language text, divider -->
                         <VerticalStackLayout Spacing="0">
                             <VerticalStackLayout Spacing="4" Padding="0,14">
-                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
                                     <BoxView WidthRequest="9" HeightRequest="9" CornerRadius="4.5" Color="{Binding SeverityColor}" VerticalOptions="Center" />
                                     <Label Grid.Column="1" Text="{Binding Code}" Style="{StaticResource ReportCodeStyle}" />
                                     <Label Grid.Column="2" Text="{Binding DisplayStatus}" Style="{StaticResource ReportMetaStyle}" VerticalOptions="Center" />
+                                    <controls:IconButton Grid.Column="3" Kind="external-link" Plain="True" Tint="{DynamicResource Primary}"
+                                        Command="{Binding OpenInCarViewCommand, x:DataType=vm:DiagnosticsViewModel, Source={RelativeSource AncestorType={x:Type vm:DiagnosticsViewModel}}}"
+                                        CommandParameter="{Binding Code}"
+                                        WidthRequest="30" HeightRequest="30" IconSize="16" SemanticProperties.Description="ნახე 3D-ში" />
                                 </Grid>
                                 <Label Text="{Binding DisplayTitle}" Style="{StaticResource ReportBodyStyle}" FontAttributes="Bold" />
                                 <Label Text="{Binding DisplayDescription}" Style="{StaticResource ReportBodyStyle}" FontSize="13" />

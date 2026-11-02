@@ -211,10 +211,26 @@ public sealed class FuelKindTests
             Assert.InRange(constants.StoichiometricAfr, 6, 16);
             Assert.InRange(constants.DensityKgPerLiter, 0.5, 0.9);
             Assert.False(string.IsNullOrWhiteSpace(constants.Range));
+            Assert.False(FuelKinds.IsMassMeasured(kind));
         }
 
-        foreach (var kind in new[] { FuelKind.Unknown, FuelKind.Cng, FuelKind.Electric, FuelKind.Mixed })
+        foreach (var kind in new[] { FuelKind.Unknown, FuelKind.Electric, FuelKind.Mixed })
             Assert.False(FuelKinds.TryGetMafConstants(kind, out _));
+    }
+
+    [Fact]
+    public void AirFlowConstants_ExistForCng_AsAMassFlow_NotALiquidDensity()
+    {
+        // CNG never liquefies in the tank, so its "density" is 1 on purpose — the shared formula then returns the
+        // fuel's own mass (kg), not litres. IsMassMeasured() is what tells the presentation layer to label it "kg".
+        Assert.True(FuelKinds.TryGetMafConstants(FuelKind.Cng, out var constants));
+        Assert.InRange(constants.StoichiometricAfr, 16, 18);           // stoichiometric methane ≈ 17.2:1
+        Assert.Equal(1.0, constants.DensityKgPerLiter);
+        Assert.False(string.IsNullOrWhiteSpace(constants.Range));
+        Assert.True(FuelKinds.IsMassMeasured(FuelKind.Cng));
+
+        foreach (var kind in new[] { FuelKind.Gasoline, FuelKind.Diesel, FuelKind.Ethanol, FuelKind.Methanol, FuelKind.Lpg, FuelKind.Unknown, FuelKind.Electric, FuelKind.Mixed })
+            Assert.False(FuelKinds.IsMassMeasured(kind));
     }
 
     [Fact]

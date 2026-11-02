@@ -120,6 +120,14 @@
                 </Grid>
             </Border>
 
+            <!-- Combustion fuel type (gasoline/diesel/ethanol/LPG/CNG) — drives the air-flow fuel-rate estimate -->
+            <Border Style="{StaticResource ListCardStyle}" Padding="14,4" IsVisible="{Binding ShowFuel}">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <Label Text="{Binding FuelKindCaption}" Style="{StaticResource RowTitleStyle}" LineBreakMode="WordWrap" />
+                    <Picker Grid.Column="1" ItemsSource="{Binding FuelKindOptions}" SelectedIndex="{Binding SelectedFuelKindIndex}" TextColor="{DynamicResource TextColor}" BackgroundColor="Transparent" MinimumWidthRequest="120" HorizontalTextAlignment="End" FontSize="14" VerticalOptions="Center" />
+                </Grid>
+            </Border>
+
             <!-- Electric / plug-in hero: battery ring + live state -->
             <Border Style="{StaticResource ListCardStyle}" Padding="14,12" IsVisible="{Binding ShowEnergy}">
                 <Grid ColumnDefinitions="92,*" ColumnSpacing="14">
@@ -291,7 +299,7 @@
                         <Entry Grid.Column="1" Text="{Binding ElectricityPriceText}" Keyboard="Numeric" Placeholder="0.30" WidthRequest="90" HorizontalTextAlignment="End" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
                     </Grid>
                     <BoxView Style="{StaticResource RowDividerStyle}" Margin="0" />
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,2" IsVisible="{Binding ShowFuel}">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="0,2" IsVisible="{Binding ShowFuelPriceEntry}">
                         <Label Text="ფასი 1 ლ ბენზინი (₾)" TextColor="{DynamicResource TextColor}" FontSize="13" VerticalOptions="Center" />
                         <Entry Grid.Column="1" Text="{Binding FuelPriceText}" Keyboard="Numeric" Placeholder="3.00" WidthRequest="90" HorizontalTextAlignment="End" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
                     </Grid>

@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>OBD360 — მანქანის 3D ანატომია და დიაგნოსტიკური კოდები</title>
+<meta name="description" content="ინტერაქტიული 3D მანქანა — შეისწავლეთ სისტემები, ნაწილები და დიაგნოსტიკური კოდები (DTC) ვიზუალურად.">
+<link rel="canonical" href="https://obd360.ge/carview/">
+<meta property="og:type" content="website"><meta property="og:site_name" content="OBD360">
+<meta property="og:title" content="OBD360 — მანქანის 3D ანატომია და დიაგნოსტიკური კოდები">
+<meta property="og:description" content="ინტერაქტიული 3D მანქანა — შეისწავლეთ სისტემები, ნაწილები და დიაგნოსტიკური კოდები (DTC) ვიზუალურად.">
+<meta property="og:url" content="https://obd360.ge/carview/">
+<meta property="og:locale" content="ka_GE">
+<meta property="og:image" content="https://obd360.ge/assets/icon-512.png?v=2">
+<meta name="twitter:card" content="summary">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Georgian:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/build/three.module.js",
+    "three/addons/": "./vendor/three/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app">
+
+  <header id="topbar">
+    <div class="brand">OBD360 <span>· 3D ვიზუალიზატორი (პროტოტიპი)</span></div>
+    <div class="topbar-right">
+      <div id="loading" class="loading">იტვირთება სცენა…</div>
+      <button id="model-credit-btn" class="credit-btn" type="button" title="მოდელი: sloyd.ai, &quot;A Red Mid-sized Four-door Sedan&quot; by TopoSphere · CC BY 4.0 — საჭიროა ავტორის მითითება აპში">ⓘ</button>
+    </div>
+  </header>
+
+  <div id="layout">
+
+    <nav id="mode-rail">
+      <button class="mode-btn active" data-mode="normal" title="ნორმალური">
+        <svg class="rail-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>
+        <span>ნორმ.</span>
+      </button>
+      <button class="mode-btn" data-mode="xray" title="რენტგენი">
+        <svg class="rail-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" stroke-dasharray="2.5 2.5"/></svg>
+        <span>რენტ.</span>
+      </button>
+      <button class="mode-btn" data-mode="cutaway" title="ჭრილი">
+        <svg class="rail-ico" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="4" y1="20" x2="20" y2="4"/></svg>
+        <span>ჭრილი</span>
+      </button>
+      <button class="mode-btn" data-mode="exploded" title="დაშლილი">
+        <svg class="rail-ico" viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/><rect x="9" y="15" width="6" height="6" rx="1"/></svg>
+        <span>დაშლა</span>
+      </button>
+    </nav>
+
+    <aside id="panel-left" class="panel">
+      <div class="panel-section">
+        <div class="section-title">სისტემაზე ფოკუსი</div>
+        <div id="system-nav" class="system-list"></div>
+      </div>
+
+      <div class="panel-section">
+        <div class="section-title">დიაგნოსტიკური კოდები (DTC)</div>
+        <div class="fault-input-row">
+          <input id="fault-code-input" type="text" placeholder="აკრიფეთ კოდი, მაგ. P0171" maxlength="10">
+          <button id="fault-code-btn" type="button">ძებნა</button>
+        </div>
+        <div id="fault-code-feedback" class="fault-code-feedback"></div>
+      </div>
+
+    </aside>
+
+    <main id="stage">
+      <canvas id="three-canvas"></canvas>
+      <div id="label-layer"><svg id="leader-svg"></svg></div>
+
+      <button id="toggle-left" class="panel-toggle panel-toggle-left" type="button" title="მარცხენა პანელის დამალვა/ჩვენება">‹</button>
+      <button id="toggle-right" class="panel-toggle panel-toggle-right" type="button" title="მარჯვენა პანელის დამალვა/ჩვენება">›</button>
+      <button id="toggle-bottom" class="panel-toggle panel-toggle-bottom" type="button" title="ქვედა პანელის დამალვა/ჩვენება">⌄</button>
+    </main>
+
+    <aside id="panel-right" class="panel">
+      <div id="info-empty" class="info-empty">
+        <div class="section-title">კომპონენტის ინფორმაცია</div>
+        <p>დააწკაპუნეთ ავტომობილის ნაწილზე, რომ ნახოთ მისი დეტალები.</p>
+      </div>
+
+      <div id="info-card" class="info-card" hidden>
+        <div class="card">
+          <div class="info-top">
+            <span id="info-system-chip" class="chip">სისტემა</span>
+            <span id="info-diag-chip" class="chip diag-chip"></span>
+          </div>
+          <h2 id="info-name-ka"></h2>
+          <div id="info-name-en" class="info-name-en"></div>
+        </div>
+
+        <div class="card">
+          <div class="info-row"><div class="k">ფუნქცია</div><div id="info-function" class="v"></div></div>
+          <div class="info-row"><div class="k">მდებარეობა</div><div id="info-location" class="v"></div></div>
+
+          <div class="section-title related-title">კავშირები</div>
+          <div id="info-related" class="related-list"></div>
+        </div>
+      </div>
+
+      <div id="fault-card" class="fault-card" hidden>
+        <div class="card">
+          <div class="fault-card-top">
+            <span id="fault-chip" class="chip fault-chip"></span>
+          </div>
+          <h2 id="fault-title"></h2>
+          <p class="fault-note">სტანდარტული კოდის საცნობარო განმარტება — არა თქვენი კონკრეტული მანქანის რეალურ დროში დიაგნოსტიკა.</p>
+        </div>
+
+        <div class="card">
+          <div class="section-title" id="fault-related-title">დაკავშირებული ნაწილები</div>
+          <ul class="fault-list" id="fault-related"></ul>
+
+          <div class="section-title" id="fault-causes-title">შესაძლო მიზეზები</div>
+          <ul class="fault-list" id="fault-causes"></ul>
+
+          <p class="fault-caution" id="fault-caution">კოდი მხოლოდ გაცდენას აღნიშნავს — ის არ ადასტურებს კონკრეტულად რომელი ნაწილია გაუმართავი.</p>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <footer id="bottombar">
+    <div class="cam-presets">
+      <button data-cam="reset" title="საწყისი">⟲</button>
+      <button data-cam="front" title="წინა">წინ</button>
+      <button data-cam="rear" title="უკანა">უკან</button>
+      <button data-cam="left" title="მარცხენა">მარცხ.</button>
+      <button data-cam="right" title="მარჯვენა">მარჯვ.</button>
+      <button data-cam="top" title="ზედა">ზედა</button>
+      <button data-cam="under" title="ქვედა">ქვედა</button>
+      <button data-cam="engine" title="ძრავის ნაწილი">ძრავა</button>
+    </div>
+
+    <div class="sliders">
+      <label class="slider-field">
+        <span>რენტგენის სიძლიერე</span>
+        <input id="xray-slider" type="range" min="0" max="1" step="0.01" value="0.85">
+      </label>
+      <label class="slider-field">
+        <span>დაშლის დონე</span>
+        <input id="explode-slider" type="range" min="0" max="1" step="0.01" value="0">
+      </label>
+      <label class="toggle-field">
+        <input id="labels-toggle" type="checkbox" checked>
+        <span>ნაწილების ლეიბლები</span>
+      </label>
+      <label class="toggle-field">
+        <input id="diag-view-toggle" type="checkbox">
+        <span>დიაგნოსტიკური ხედი</span>
+      </label>
+    </div>
+  </footer>
+
+</div>
+
+<script type="module" src="app.js"></script>
+<script type="module" src="app-ui.js"></script>
+</body>
+</html>

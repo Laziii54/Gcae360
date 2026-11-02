@@ -39,9 +39,17 @@ public static class SeoPages
             "OBD360 support: how to get help, what to prepare before writing, and how to send purchase or data-deletion requests.")
     };
 
-    /// <summary>Every URL that is listed in the sitemap: the two language homepages and the public legal / support pages.</summary>
+    /// <summary>The static CarView 3D app (its own index.html carries its own title/meta tags by hand, since it
+    /// is served as a static file, not rendered through <see cref="WithMeta"/>) — listed here only so the
+    /// sitemap includes it.</summary>
+    public static readonly Page CarView = new("/carview/", "ka",
+        "OBD360 — მანქანის 3D ანატომია და დიაგნოსტიკური კოდები",
+        "ინტერაქტიული 3D მანქანა — შეისწავლეთ სისტემები, ნაწილები და დიაგნოსტიკური კოდები (DTC) ვიზუალურად.");
+
+    /// <summary>Every URL that is listed in the sitemap: the two language homepages, the public legal / support
+    /// pages, and CarView.</summary>
     public static IReadOnlyList<string> SitemapPaths { get; } =
-        new[] { Georgian.Path, English.Path }.Concat(LegalPages.Select(page => page.Path)).ToArray();
+        new[] { Georgian.Path, English.Path, CarView.Path }.Concat(LegalPages.Select(page => page.Path)).ToArray();
 
     public static string Absolute(string path) => path == "/" ? CanonicalOrigin + "/" : CanonicalOrigin + path;
 

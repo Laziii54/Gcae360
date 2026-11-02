@@ -200,13 +200,14 @@ public static class EnergyCompatibility
         if (pids.Contains(PidFuelRate))
             return (EnergySupport.DirectlySupported, EnergyReason.FuelRatePid);
 
-        // PID 9D is a mass flow (g/s): it needs the density of a known liquid fuel to become litres.
+        // PID 9D is a mass flow (g/s): for a liquid fuel it needs a density to become litres; for CNG it already
+        // is the quantity we want (kilograms), so no conversion is needed, only the unit label changes.
         if (pids.Contains(PidEngineFuelRate))
         {
             if (FuelKinds.TryGetMafConstants(facts.Kind, out _))
                 return (EnergySupport.CalculatedFromAvailableData, EnergyReason.FuelMassRatePid);
             if (!pids.Contains(PidMaf))
-                return (EnergySupport.InsufficientData, facts.Kind == FuelKind.Cng ? EnergyReason.FuelTypeUnsupported : EnergyReason.FuelTypeUnknown);
+                return (EnergySupport.InsufficientData, EnergyReason.FuelTypeUnknown);
         }
 
         if (!pids.Contains(PidMaf))
@@ -218,14 +219,13 @@ public static class EnergyCompatibility
             case FuelKind.Ethanol:
             case FuelKind.Methanol:
             case FuelKind.Lpg:
+            case FuelKind.Cng:
                 return (EnergySupport.Estimated, EnergyReason.AirFlowEstimate);
             case FuelKind.Diesel:
                 // A diesel's air-fuel ratio is not fixed: without a wide-band λ there is nothing honest to calculate.
                 return facts.LambdaPidAdvertised
                     ? (EnergySupport.Estimated, EnergyReason.AirFlowEstimate)
                     : (EnergySupport.InsufficientData, EnergyReason.DieselNeedsLambda);
-            case FuelKind.Cng:
-                return (EnergySupport.Unsupported, EnergyReason.FuelTypeUnsupported);
             default:
                 return (EnergySupport.InsufficientData, EnergyReason.FuelTypeUnknown);
         }

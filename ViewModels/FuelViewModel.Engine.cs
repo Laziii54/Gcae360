@@ -45,6 +45,7 @@ public partial class FuelViewModel
     [ObservableProperty] private string interruptedTripText = "";
     [ObservableProperty] private string engineOnAverageText = "—";
     [ObservableProperty] private bool showEngineOnAverage;
+    [ObservableProperty] private bool showFuelPriceEntry = true;
 
     public int SelectedFuelUnitIndex
     {
@@ -83,7 +84,7 @@ public partial class FuelViewModel
     }
 
     private static readonly FuelKind[] UserChoosableKinds =
-        { FuelKind.Gasoline, FuelKind.Diesel, FuelKind.Ethanol, FuelKind.Lpg };
+        { FuelKind.Gasoline, FuelKind.Diesel, FuelKind.Ethanol, FuelKind.Lpg, FuelKind.Cng };
 
     private static string[] BuildFuelKindOptions() =>
         new[] { "Auto" }.Concat(UserChoosableKinds.Select(kind => FuelKinds.Display(kind, true))).ToArray();
@@ -120,7 +121,14 @@ public partial class FuelViewModel
         _fuel.Kind = resolved;
         _engine.SetFuelAnalyticsLambda(resolved == FuelKind.Diesel);
         OnPropertyChanged(nameof(SelectedFuelKindIndex));
+        RefreshFuelPriceVisibility();
     }
+
+    // CNG has no "price per litre" (FuelLiters holds kilograms for it — see FuelPresenter.FuelUsed), so the entry
+    // is hidden rather than left showing a price the app silently never uses.
+    private void RefreshFuelPriceVisibility() => ShowFuelPriceEntry = ShowFuel && !FuelKinds.IsMassMeasured(_fuel.Kind);
+
+    partial void OnShowFuelChanged(bool value) => RefreshFuelPriceVisibility();
 
     // ------------------------------------------------------------------
     // Engine bridge
@@ -179,13 +187,17 @@ public partial class FuelViewModel
         var trip = _fuel.Snapshot();
         var unit = _units.FuelEconomyUnit;
         var en = _localization.IsEnglish;
-        var instant = FuelPresenter.Instant(_fuel.Instant, unit, en);
+        var instant = FuelPresenter.Instant(_fuel.Instant, unit, en, _fuel.Kind);
 
         Instant = instant.IsAvailable && instant.Value != "—" ? $"{instant.Value} {instant.Unit}" : "—";
         InstantNote = instant.Note;
-        FuelUsed = FuelPresenter.FuelUsed(trip, unit);
+        FuelUsed = FuelPresenter.FuelUsed(trip, unit, _fuel.Kind);
         _fuelRateSensor.Value = _fuel.Instant.LitersPerHour;
-        FuelRate = _fuel.Instant.LitersPerHour is { } flow ? _units.FormatFuelRate(flow, _fuel.Instant.IsEstimate) : "—";
+        FuelRate = _fuel.Instant.LitersPerHour is { } flow
+            ? (FuelKinds.IsMassMeasured(_fuel.Kind)
+                ? $"{(_fuel.Instant.IsEstimate ? "≈ " : string.Empty)}{flow.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)} kg/h"
+                : _units.FormatFuelRate(flow, _fuel.Instant.IsEstimate))
+            : "—";
 
         var quality = _fuel.Instant.Quality;
         QualityText = FuelPresenter.QualityLabel(quality, en);
@@ -199,7 +211,7 @@ public partial class FuelViewModel
         HasQualityDetail = QualityDetail.Length > 0;
         Driving = quality == FuelDataQuality.None ? instant.Note : QualityText;
 
-        Average = Trip = FuelPresenter.Average(trip, unit);
+        Average = Trip = FuelPresenter.Average(trip, unit, _fuel.Kind);
         TripQualityText = FuelPresenter.TripQualityLabel(trip.Quality, trip.FuelCoverage, en);
 
         // A plug-in / hybrid: two different statements about the same fuel, plus what they mean.
@@ -460,7 +472,9 @@ public partial class FuelViewModel
             AverageSpeedKph = trip.AverageSpeedKph ?? 0,
             MaximumSpeedKph = trip.MaximumSpeedKph,
             AverageFuelLPer100Km = hasFuel ? trip.AverageLPer100Km : null,
-            FuelPricePerLiter = priceKnown && hasFuel ? price : null,
+            // Never saved for a mass-measured fuel (CNG): FuelLiters holds kilograms there, and this field's name
+            // promises litres — a saved "price per litre" would make history/report costs silently wrong.
+            FuelPricePerLiter = priceKnown && hasFuel && !FuelKinds.IsMassMeasured(kind) ? price : null,
             FuelDataSource = FuelPresenter.TripSource(hasFuel ? trip.Quality : TripFuelQuality.None, kind, energyQuality, interrupted),
             EnergyKWh = hasEnergy ? energyKWh : null,
             RegeneratedKWh = hasEnergy && !energyIsEstimate ? regeneratedKWh : null,

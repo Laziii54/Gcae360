@@ -412,6 +412,7 @@ internal static partial class LanguagePacks
         ["Vehicle type"] = "Typ pojazdu",
         ["Vehicle/adapter voltage is not within a safe range."] = "Napięcie pojazdu/adaptera jest poza bezpiecznym zakresem.",
         ["Verify Repair"] = "Zweryfikuj naprawę",
+        ["View in 3D"] = "Zobacz w 3D",
         ["VOLTAGE"] = "Napięcie",
         ["Voltage History"] = "Historia napięcia",
         ["Warm-ups since clear"] = "Rozgrzewania od skasowania",
