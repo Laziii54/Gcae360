@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Linq;
 using CarScanner.Database;
 using CarScanner.Services;
 using CarScanner.Services.Localization;
@@ -490,7 +491,11 @@ public class MileageViewModel : BaseViewModel
             MethodText = $"{evidence.Method} · {evidence.RetrievedAt.ToLocalTime():HH:mm:ss}" +
                          (evidence.RawHex.Length > 0 ? $"\nraw {evidence.RawHex}" : string.Empty),
             SourceText = MileageWording.SourceKind(evidence.SourceKind, en),
-            DefinitionText = evidence.DefinitionUnderTest ? MileageWording.DefinitionUnderTest(en) : string.Empty,
+            DefinitionText = string.Join("\n", new[]
+            {
+                evidence.DefinitionUnderTest ? MileageWording.DefinitionUnderTest(en) : string.Empty,
+                evidence.RecordedReplyForModelYear ? MileageWording.RecordedForModelYear(en) : string.Empty
+            }.Where(note => note.Length > 0)),
             IsHighlighted = highlighted,
             ValueColor = highlighted ? Amber : ThemeService.Soft("#1B1D20")
         };

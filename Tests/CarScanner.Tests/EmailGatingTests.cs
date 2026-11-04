@@ -161,7 +161,8 @@ public sealed class EmailGatingTests : IDisposable
     public void WebCheckout_RequiresVerification_AfterTheCredentialsAreChecked_AndBeforeAnyPaymentIsStarted()
     {
         var route = Route(Program(), "/api/web/checkout");
-        var login = route.IndexOf("VerifyCredentialsAsync", StringComparison.Ordinal);
+        // This form has no password (the e-mailed one-time code is the proof of identity instead).
+        var login = route.IndexOf("loginCodes.Store.VerifyAsync", StringComparison.Ordinal);
         var gate = route.IndexOf("EmailVerificationGate.IsSatisfiedAsync", StringComparison.Ordinal);
         var refuse = route.IndexOf("EmailVerificationGate.Refusal()", StringComparison.Ordinal);
         var pay = route.IndexOf("payments.CreateCheckoutAsync", StringComparison.Ordinal);
