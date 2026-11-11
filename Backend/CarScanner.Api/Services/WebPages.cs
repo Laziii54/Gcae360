@@ -103,7 +103,12 @@ ul.ck li:before{content:"";position:absolute;left:1px;top:.5em;width:8px;height:
     private static string Prices(string productId) =>
         $"<span class=\"gel\">{Gel(productId)}</span><span class=\"usd\">{WebPaymentService.FormatPrice(WebPaymentService.UsdPriceFor(productId) ?? 0, "USD")}</span>";
 
-    public static string ProPage(IReadOnlyList<string> providers, bool autoRenewAvailable, LegalInfo legal)
+    /// <param name="monthlyOnly">
+    /// True for a visitor arriving from the Android app (which links here to pay because
+    /// it has no in-app billing): only the monthly plans are offered, and the billing
+    /// period toggle is not rendered. An independent visitor keeps both periods.
+    /// </param>
+    public static string ProPage(IReadOnlyList<string> providers, bool autoRenewAvailable, LegalInfo legal, bool monthlyOnly = false)
     {
         string Plan(string id, string title, string titleEn, string ka, string en, bool best = false, bool check = false) => $"""
 <label class="card{(best ? " best" : "")}" data-sub="{(ProductCatalog.IsSubscription(id) ? "1" : "0")}" data-gel="{Gel(id)}" data-usd="{WebPaymentService.FormatPrice(WebPaymentService.UsdPriceFor(id) ?? 0, "USD")}"><input type="radio" name="productId" value="{id}"{(check ? " checked" : "")}>
@@ -185,6 +190,26 @@ ul.ck li:before{content:"";position:absolute;left:1px;top:.5em;width:8px;height:
         var fullTabM = PlanTab(ProductCatalog.FullMonthly, "full", "month", "სრული PRO", "Full PRO", "OBD PRO და VIN PRO ერთად", "OBD PRO and VIN PRO together", fullFeatures, check: true);
         var fullTabY = PlanTab(ProductCatalog.FullYearly, "full", "year", "სრული PRO", "Full PRO", "OBD PRO და VIN PRO ერთად", "OBD PRO and VIN PRO together", fullFeatures);
 
+        // Android-originated checkout: monthly plans only. The yearly radios, tabs and
+        // detail panels are not rendered at all, so nothing can select a yearly product;
+        // the JS below already falls back to "month" when no period radio exists.
+        var periodToggle = monthlyOnly
+            ? ""
+            : $$"""
+<div class="periodtoggle">
+<input type="radio" id="per-m" name="period" value="month" class="vh" checked><label for="per-m" id="lbl-m" class="permbtn active">{{T("თვიური", "Monthly")}}</label>
+<input type="radio" id="per-y" name="period" value="year" class="vh"><label for="per-y" id="lbl-y" class="permbtn">{{T("წლიური", "Yearly")}}</label>
+</div>
+""";
+
+        var planTabs = monthlyOnly
+            ? $"{obdTabM.Tab}{vinTabM.Tab}{fullTabM.Tab}"
+            : $"{obdTabM.Tab}{vinTabM.Tab}{fullTabM.Tab}{obdTabY.Tab}{vinTabY.Tab}{fullTabY.Tab}";
+
+        var planDetails = monthlyOnly
+            ? $"{obdTabM.Detail}{vinTabM.Detail}{fullTabM.Detail}"
+            : $"{obdTabM.Detail}{vinTabM.Detail}{fullTabM.Detail}{obdTabY.Detail}{vinTabY.Detail}{fullTabY.Detail}";
+
         var note = autoRenewAvailable
             ? T("გადახდის გაუქმება შეგიძლია ნებისმიერ დროს გვერდზე „ჩემი გამოწერა“ ან აპში. გადახდილი პერიოდი რჩება.",
                 "Cancel the payment any time on “My subscription” or in the app. The paid period is kept.")
@@ -208,12 +233,9 @@ var h=document.documentElement;h.classList.add(ge?'is-ge':'is-intl');h.lang=ge?'
 {{unavailable}}
 <form id="f">
 <h2>{{T("გეგმები", "Plans")}}</h2>
-<div class="periodtoggle">
-<input type="radio" id="per-m" name="period" value="month" class="vh" checked><label for="per-m" id="lbl-m" class="permbtn active">{{T("თვიური", "Monthly")}}</label>
-<input type="radio" id="per-y" name="period" value="year" class="vh"><label for="per-y" id="lbl-y" class="permbtn">{{T("წლიური", "Yearly")}}</label>
-</div>
-<div class="plantabs">{{obdTabM.Tab}}{{vinTabM.Tab}}{{fullTabM.Tab}}{{obdTabY.Tab}}{{vinTabY.Tab}}{{fullTabY.Tab}}</div>
-{{obdTabM.Detail}}{{vinTabM.Detail}}{{fullTabM.Detail}}{{obdTabY.Detail}}{{vinTabY.Detail}}{{fullTabY.Detail}}
+{{periodToggle}}
+<div class="plantabs">{{planTabs}}</div>
+{{planDetails}}
 <h2>{{T("დამატებითი VIN", "Extra VIN checks")}}</h2>
 <div class="muted">{{T("+5 და +10 პაკეტი VIN PRO / სრული PRO გეგმისთვისაა. ვადა არ გასდის.", "+5 and +10 packs are for VIN PRO / Full PRO and never expire.")}}</div>
 {{Plan(ProductCatalog.VinPack5, "+5 VIN", "+5 VIN", "5 დამატებითი VIN ისტორია", "5 extra VIN histories")}}
@@ -297,8 +319,10 @@ function period(){const r=f.querySelector('input[name=period]:checked');return r
 // highlighted and shows its detail panel. A VIN-pack radio (no "p-" id) clears
 // all of them, so the tabs never look "stuck" — any can still be clicked back.
 function syncTabs(){const per=period();
-document.getElementById('lbl-m').classList.toggle('active',per==='month');
-document.getElementById('lbl-y').classList.toggle('active',per==='year');
+// Absent on the monthly-only page the Android app links to, so never assume the toggle exists.
+const lblM=document.getElementById('lbl-m'),lblY=document.getElementById('lbl-y');
+if(lblM)lblM.classList.toggle('active',per==='month');
+if(lblY)lblY.classList.toggle('active',per==='year');
 document.querySelectorAll('.pmtab').forEach(s=>{s.hidden=(s.dataset.period!==per);});
 const p=selected();const key=p&&p.id.indexOf('p-')===0?p.id.slice(2):null;
 document.querySelectorAll('.plandetail').forEach(x=>{x.hidden=(x.id!=='d-'+key);});

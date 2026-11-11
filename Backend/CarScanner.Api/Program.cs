@@ -1805,6 +1805,223 @@ app.MapPost(
     });
 
 // ============================================================
+// APPLE — ACCOUNTLESS IN-APP PURCHASE (no OBD360 account)
+//   POST /api/store/apple/anonymous/verify   – verify a StoreKit transaction without an account
+//   POST /api/store/apple/anonymous/refresh  – re-ask Apple (renewal / expiry / revocation)
+//   GET  /api/store/apple/anonymous          – the entitlement behind a session token
+//
+// The verification itself is the same App Store Server API path as
+// /api/store/verify (ES256 JWT, production + sandbox, bundle id, revocation,
+// subscription state). Only the *ownership* differs: an "anon:" owner instead
+// of an OBD360 account. The client keeps an opaque 32-byte token; only its
+// SHA-256 hash is stored, so the database cannot be used to read an
+// entitlement and a token cannot be guessed from a transaction id.
+// ============================================================
+
+app.MapPost(
+    "/api/store/apple/anonymous/verify",
+    async (
+        AppleAnonymousVerifyRequest request,
+        HttpContext http,
+        StoreVerificationService verifier,
+        EntitlementStore store,
+        CancellationToken ct) =>
+    {
+        var ip = AdminService.ClientIp(http);
+        if (!RateWindow.TryConsume("apple-anon-verify-ip:" + ip, DateTimeOffset.UtcNow, 40, TimeSpan.FromMinutes(15)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        if (string.IsNullOrWhiteSpace(request.TransactionId) || request.TransactionId.Length > 4096 ||
+            (request.ProductId is { Length: > 128 }))
+        {
+            return Results.BadRequest(new { success = false, code = "INVALID_TRANSACTION" });
+        }
+
+        // A client that already holds a session keeps the same owner, so a
+        // renewal/upgrade lands on the entitlement it already has.
+        var ownerId = await store.ResolveAnonymousOwnerAsync(request.Token, ct);
+        var newSession = ownerId is null;
+        ownerId ??= EntitlementStore.NewAnonymousOwnerId();
+
+        if (!RateWindow.TryConsume("apple-anon-verify-owner:" + ownerId, DateTimeOffset.UtcNow, 30, TimeSpan.FromMinutes(15)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        var verified = await verifier.VerifyAsync(
+            "apple",
+            request.ProductId,
+            request.TransactionId.Trim(),
+            string.IsNullOrWhiteSpace(request.OriginalTransactionId) || request.OriginalTransactionId.Length > 64
+                ? null
+                : request.OriginalTransactionId.Trim(),
+            ct);
+
+        if (verified is null)
+        {
+            // Tell the app *why* nothing was granted: an expired or revoked
+            // subscription deserves a different message from a failed check.
+            var hint = string.IsNullOrWhiteSpace(request.OriginalTransactionId) || request.OriginalTransactionId.Length > 64
+                ? null
+                : request.OriginalTransactionId.Trim();
+            var state = hint is null ? null : await verifier.GetAppleSubscriptionStateAsync(hint, ct);
+            var code = state?.State switch
+            {
+                "EXPIRED" => "SUBSCRIPTION_EXPIRED",
+                "REVOKED" => "SUBSCRIPTION_REVOKED",
+                "BILLING_RETRY" => "BILLING_RETRY",
+                _ => "NOT_VERIFIED"
+            };
+            return Results.Json(new { success = false, code }, statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        // VIN report credits are counted against an OBD360 account, so they
+        // cannot be granted to an accountless owner. Subscriptions can.
+        if (ProductCatalog.IsConsumable(verified.ProductId))
+            return Results.Json(new { success = false, code = "ACCOUNT_REQUIRED" }, statusCode: StatusCodes.Status409Conflict);
+
+        // A purchase that already belongs to an OBD360 account stays with that
+        // account: this endpoint never takes it away, and never grants it to an
+        // installation that is not signed in to it.
+        var existingOwner = await store.FindClaimOwnerAsync("apple", verified.TransactionId, ct);
+        if (existingOwner is not null && !EntitlementStore.IsAnonymousOwner(existingOwner))
+            return Results.Json(new { success = false, code = "LINKED_TO_ACCOUNT" }, statusCode: StatusCodes.Status409Conflict);
+
+        // An App Store subscription belongs to the customer's Apple Account, not
+        // to one device. Every installation that can prove the same verified
+        // subscription with Apple — the device that bought it, a restore on a
+        // second iPhone/iPad, a reinstall — is linked to it and keeps its own
+        // independent session. Linking is additive: restoring on a second device
+        // must never revoke the first one.
+        //
+        // The key is Apple's originalTransactionId (VerifiedPurchase.SubscriptionKey),
+        // which is stable across renewals and restores. It is deliberately NOT the
+        // per-transaction id: a purchase and a later restore report different
+        // transaction ids, and keying by those would give each device its own
+        // "subscription" and break renewal updates. The same key is stored on the
+        // subscription row so a revocation by key matches it.
+        var subscriptionKey = verified.SubscriptionKey;
+        await store.LinkSubscriptionOwnerAsync("apple", subscriptionKey, ownerId, ct);
+
+        await store.UpsertSubscriptionAsync(
+            new EntitlementRecord(ownerId, true, "apple", verified.ProductId, verified.ExpiresAt, DateTimeOffset.UtcNow, subscriptionKey),
+            ct);
+
+        var access = await store.GetAccessAsync(ownerId, ct);
+        var token = newSession ? await store.CreateAnonymousSessionAsync(ownerId, request.InstallId, ct) : null;
+
+        return AnonymousAccessResult(ownerId, access, verified.ProductId, token, true);
+    });
+
+app.MapPost(
+    "/api/store/apple/anonymous/refresh",
+    async (
+        HttpContext http,
+        StoreVerificationService verifier,
+        EntitlementStore store,
+        CancellationToken ct) =>
+    {
+        var ownerId = await store.ResolveAnonymousOwnerAsync(
+            http.Request.Headers["X-GCS-Anon-Token"].ToString(),
+            ct);
+
+        if (ownerId is null)
+            return Results.Json(new { success = false, code = "UNKNOWN_SESSION" }, statusCode: StatusCodes.Status401Unauthorized);
+
+        if (!RateWindow.TryConsume("apple-anon-refresh:" + ownerId, DateTimeOffset.UtcNow, 30, TimeSpan.FromMinutes(5)))
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+
+        // Everything is re-read from Apple: the stored expiry is only a cache.
+        var verifiedByApple = true;
+        string? productId = null;
+
+        foreach (var row in await store.GetStoreSubscriptionsAsync(ownerId, "apple", ct))
+        {
+            productId ??= row.ProductId;
+            if (string.IsNullOrWhiteSpace(row.TransactionId))
+                continue;
+
+            var state = await verifier.GetAppleSubscriptionStateAsync(row.TransactionId, ct);
+            if (state is null)
+            {
+                // Apple could not be reached: keep the last known state rather
+                // than revoking a paying customer on a network error.
+                verifiedByApple = false;
+                continue;
+            }
+
+            if (state.Active && ProductCatalog.IsSubscription(state.ProductId ?? row.ProductId))
+                productId = state.ProductId ?? row.ProductId;
+
+            await store.UpsertSubscriptionAsync(
+                new EntitlementRecord(
+                    ownerId,
+                    state.Active,
+                    "apple",
+                    state.ProductId ?? row.ProductId,
+                    state.ExpiresAt,
+                    DateTimeOffset.UtcNow,
+                    row.TransactionId),
+                ct);
+        }
+
+        var access = await store.GetAccessAsync(ownerId, ct);
+        return AnonymousAccessResult(ownerId, access, productId, null, verifiedByApple);
+    });
+
+app.MapGet(
+    "/api/store/apple/anonymous",
+    async (
+        HttpContext http,
+        EntitlementStore store,
+        CancellationToken ct) =>
+    {
+        var ownerId = await store.ResolveAnonymousOwnerAsync(
+            http.Request.Headers["X-GCS-Anon-Token"].ToString(),
+            ct);
+
+        if (ownerId is null)
+            return Results.Json(new { success = false, code = "UNKNOWN_SESSION" }, statusCode: StatusCodes.Status401Unauthorized);
+
+        var rows = await store.GetStoreSubscriptionsAsync(ownerId, "apple", ct);
+        var access = await store.GetAccessAsync(ownerId, ct);
+        var productId = rows
+            .Where(row => row.Active)
+            .Select(row => row.ProductId)
+            .FirstOrDefault();
+
+        return AnonymousAccessResult(ownerId, access, productId, null, true);
+    });
+
+// The entitlement payload for an accountless owner. Same field names as
+// /api/entitlements/{userId}, so the app parses one shape for both, plus the
+// session token (only present on the answer that created it).
+static IResult AnonymousAccessResult(
+    string ownerId,
+    AccessInfo access,
+    string? productId,
+    string? sessionToken,
+    bool verified)
+{
+    return Results.Ok(
+        new
+        {
+            success = true,
+            userId = ownerId,
+            isPro = access.HasObd,
+            source = access.Tier == "none" ? "none" : "apple",
+            productId,
+            expiresAt = access.ObdExpiresAt ?? access.VinExpiresAt,
+            updatedAt = DateTimeOffset.UtcNow,
+            hasObd = access.HasObd,
+            hasVin = access.HasVin,
+            tier = access.Tier,
+            obdExpiresAt = access.ObdExpiresAt,
+            vinExpiresAt = access.VinExpiresAt,
+            token = sessionToken,
+            verified
+        });
+}
+
+// ============================================================
 // STORE SERVER NOTIFICATIONS
 //   POST /api/store/apple/notifications   – App Store Server Notifications V2
 //   POST /api/store/google/rtdn?token=…    – Google Play RTDN (Pub/Sub push)
@@ -1864,11 +2081,48 @@ app.MapPost(
             owner = await store.FindClaimOwnerAsync("apple", hinted.TransactionId, ct);
             legacyKey = owner is null ? null : hinted.TransactionId;
         }
-        if (owner is null)
-            return Results.Ok(); // not linked to an account yet; /api/store/verify will do it
+        var applied = 0;
 
-        await ApplyStoreStateAsync(store, owner, "apple", state, legacyKey, ct);
-        log.LogInformation("Apple {Type}: {State} for {Owner}", type, state.State, owner);
+        // An OBD360 account that owns the purchase is updated exactly as before.
+        if (owner is not null)
+        {
+            await ApplyStoreStateAsync(store, owner, "apple", state, legacyKey, ct);
+            applied++;
+        }
+
+        // Accountless installations linked to the same subscription. A
+        // subscription belongs to the customer's Apple Account, so a renewal
+        // extends access on all of their devices and an expiry/refund removes it
+        // on all of them — not just on whichever device refreshes next. These
+        // links are additive (StoreEntitlementLinks), so this loop deliberately
+        // does not touch PurchaseClaims.
+        var linked = await store.GetSubscriptionOwnersAsync("apple", original, ct);
+        if (linked.Count > 0)
+        {
+            var active = state is { Active: true, ProductId: not null, ExpiresAt: not null } &&
+                         ProductCatalog.IsSubscription(state.ProductId);
+
+            foreach (var linkedOwner in linked)
+            {
+                if (active)
+                {
+                    await store.UpsertSubscriptionAsync(
+                        new EntitlementRecord(linkedOwner, true, "apple", state.ProductId, state.ExpiresAt, DateTimeOffset.UtcNow, state.Key),
+                        ct);
+                }
+                else
+                {
+                    await store.RevokeSubscriptionAsync(linkedOwner, "apple", state.Key, ct);
+                }
+
+                applied++;
+            }
+        }
+
+        if (applied == 0)
+            return Results.Ok(); // not linked yet; /api/store/apple/anonymous/verify will do it
+
+        log.LogInformation("Apple {Type}: {State} applied to {Count} owner(s)", type, state.State, applied);
         return Results.Ok();
     });
 
@@ -2093,10 +2347,75 @@ app.MapGet(
 
 app.MapGet(
     "/pro",
-    (WebPaymentService payments, IConfiguration config) =>
-        Results.Content(
-            WebPages.ProPage(payments.AvailableProviders, payments.AutoRenewAvailable, WebPages.LegalInfo.From(config)),
-            "text/html; charset=utf-8"));
+    (HttpContext http, WebPaymentService payments, IConfiguration config) =>
+    {
+        // The Android app links here to pay for a plan because it has no in-app
+        // billing. The mobile PRO page offers monthly plans only; an independent
+        // visitor still sees both monthly and yearly.
+        var monthlyOnly = string.Equals(
+            http.Request.Query["source"].ToString(),
+            "android",
+            StringComparison.OrdinalIgnoreCase);
+
+        return Results.Content(
+            WebPages.ProPage(payments.AvailableProviders, payments.AutoRenewAvailable, WebPages.LegalInfo.From(config), monthlyOnly),
+            "text/html; charset=utf-8");
+    });
+
+// Prices the Android app shows on its PRO page. Android has no in-app billing,
+// so the website catalog is the authority for what the same visitor will be
+// charged on obd360.ge — the app displays exactly this and never invents a
+// number. Public read-only data (no account, no secrets), rate-limited.
+//
+//   GET /api/web/prices?currency=GEL|USD
+//     → { success, currency, products:[{ productId, amount, currency, formatted }] }
+app.MapGet(
+    "/api/web/prices",
+    (HttpContext http) =>
+    {
+        if (!RateWindow.TryConsume(
+                "web-prices-ip:" + AdminService.ClientIp(http),
+                DateTimeOffset.UtcNow,
+                60,
+                TimeSpan.FromMinutes(5)))
+        {
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        }
+
+        // Same rule as the website checkout: lari in Georgia, US dollars elsewhere.
+        var currency = WebPaymentService.NormalizeCurrency(
+            http.Request.Query["currency"].ToString() is { Length: > 0 } asked
+                ? asked
+                : null);
+
+        var products = new[]
+            {
+                ProductCatalog.ObdMonthly,
+                ProductCatalog.VinMonthly,
+                ProductCatalog.FullMonthly,
+                ProductCatalog.VinPack5,
+                ProductCatalog.VinPack10
+            }
+            .Select(id => new
+            {
+                productId = id,
+                amount = WebPaymentService.PriceFor(id, currency),
+                currency,
+                formatted = WebPaymentService.FormatPrice(
+                    WebPaymentService.PriceFor(id, currency) ?? 0m,
+                    currency)
+            })
+            .Where(item => item.amount is not null)
+            .ToList();
+
+        return Results.Ok(new
+        {
+            success = true,
+            currency,
+            periodDays = ProductCatalog.MonthlyPeriodDays,
+            products
+        });
+    });
 
 // The web checkout form has no password field (an account created via Google/Apple sign-in never has a real
 // password — see AccountStore.CreateExternalAccountAsync), so it proves the e-mail instead, the same way
@@ -4266,6 +4585,17 @@ record StoreVerifyRequest(
     string? ProductId,
     string? TransactionId,
     string? OriginalTransactionId = null);
+
+/// <summary>
+/// Body of POST /api/store/apple/anonymous/verify: a StoreKit transaction and,
+/// when the client already has one, its accountless session token.
+/// </summary>
+record AppleAnonymousVerifyRequest(
+    string? TransactionId,
+    string? OriginalTransactionId = null,
+    string? ProductId = null,
+    string? Token = null,
+    string? InstallId = null);
 
 record AccountRequest(string? Email, string? Password, bool? MoveDevice = null);
 

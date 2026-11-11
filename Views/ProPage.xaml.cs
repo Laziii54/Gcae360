@@ -10,6 +10,11 @@ public partial class ProPage : ContentPage
     {
         InitializeComponent();
         BindingContext = vm;
+
+        // Responsive layout: the view model decides paddings, the content column
+        // width, the type sizes and whether the plan cards stack or share a row
+        // from the real page size (phone portrait/landscape, tablet).
+        SizeChanged += (_, _) => vm.ApplyLayout(Width, Height);
     }
 
     private void ApplyUiLocalization()
@@ -42,6 +47,7 @@ public partial class ProPage : ContentPage
             // Monthly automatic payment from the website (status + cancel).
             if (BindingContext is ProViewModel vm)
             {
+                vm.ApplyLayout(Width, Height);
                 vm.Attach();
                 _ = vm.LoadWebSubscriptionAsync();
             }

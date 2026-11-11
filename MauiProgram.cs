@@ -155,6 +155,11 @@ public static class MauiProgram
         builder.Services.AddSingleton<CarScanner.Services.ExternalSignIn.ExternalSignInService>();
         builder.Services.AddSingleton<AvatarService>();
 
+        // Accountless App Store entitlements: an iOS purchase is verified against
+        // the Apple transaction and bound to this installation, so buying PRO
+        // never needs an OBD360 account (App Review 5.1.1(v)).
+        builder.Services.AddSingleton<CarScanner.Services.AppleEntitlementService>();
+
         builder.Services.AddSingleton<ProService>();
 
         builder.Services.AddSingleton<PurchaseService>();

@@ -1,17 +1,16 @@
 namespace CarScanner.Tests;
 
 /// <summary>
-/// Monthly and yearly product id selection and mapping for OBD PRO / VIN PRO / Full PRO.
-/// PurchaseService and ProViewModel both depend on MAUI Preferences/SecureStorage and are not
-/// instantiable outside a real MAUI host (same reason as ProServiceLogoutTests/ProTierTests), so
-/// this checks the actual source, the same way the rest of this codebase's service-wiring tests do.
+/// The mobile product catalog, pinned against a regression that would be very
+/// expensive at review time.
 ///
-/// Written after an App Store Connect audit found that PurchaseService.IsCovered and
-/// SubscriptionProductIds only recognized the three *monthly* product ids - a yearly id fell
-/// through to "not covered"/"not priced" even though the plan it belongs to might already be
-/// active, or might be correctly configured in App Store Connect. That did not itself cause
-/// PRODUCT_NOT_FOUND (the actual StoreKit purchase request already used the right id), but it was
-/// a real, confirmed mapping bug in the same area, so it's fixed and pinned here.
+/// The apps sell exactly three monthly plans (OBD PRO, VIN PRO, Full PRO). The
+/// yearly ids still exist in <c>ProService</c> because a yearly purchase made on
+/// obd360.ge is a real entitlement the app has to understand — but the mobile
+/// apps must never ask StoreKit for one, never show a Monthly/Yearly selector and
+/// never show a yearly card. These are source-reading tests (like the rest of
+/// this codebase's service-wiring tests) because PurchaseService and ProViewModel
+/// depend on MAUI Preferences/SecureStorage and are not instantiable here.
 /// </summary>
 public sealed class SubscriptionProductMappingTests
 {
@@ -29,71 +28,130 @@ public sealed class SubscriptionProductMappingTests
     private static string PurchaseServiceSource() => Read("Services", "PurchaseService.cs");
     private static string ProServiceSource() => Read("Services", "ProService.cs");
     private static string ViewModelSource() => Read("ViewModels", "AdvancedViewModels.cs");
+    private static string ProPageSource() => Read("Views", "ProPage.xaml");
 
     [Fact]
-    public void EveryPlan_HasBothAMonthlyAndAYearlyProductId_InProService()
+    public void TheThreeMonthlyProductIds_AreUnchanged()
     {
         var source = ProServiceSource();
         Assert.Contains("public const string ObdProductId = \"com.georgiancarscanner.pro.monthly\";", source);
         Assert.Contains("public const string VinProductId = \"com.georgiancarscanner.vin.monthly\";", source);
         Assert.Contains("public const string FullProductId = \"com.georgiancarscanner.full.monthly\";", source);
-        Assert.Contains("public const string ObdYearlyProductId = \"com.georgiancarscanner.pro.yearly\";", source);
-        Assert.Contains("public const string VinYearlyProductId = \"com.georgiancarscanner.vin.yearly\";", source);
-        Assert.Contains("public const string FullYearlyProductId = \"com.georgiancarscanner.full.yearly\";", source);
     }
 
     [Fact]
-    public void SubscriptionProductIds_ListsBothMonthlyAndYearlyIdsForEveryPlan()
+    public void SubscriptionProductIds_OffersTheThreeMonthlyPlansAndNoYearlyId()
     {
         var source = PurchaseServiceSource();
         var array = source[source.IndexOf("public static readonly string[] SubscriptionProductIds", StringComparison.Ordinal)..];
         array = array[..array.IndexOf("];", StringComparison.Ordinal)];
 
+        Assert.Contains("ProService.ObdProductId", array);
+        Assert.Contains("ProService.VinProductId", array);
+        Assert.Contains("ProService.FullProductId", array);
+
+        // Nothing annual reaches StoreKit from the app.
+        Assert.DoesNotContain("Yearly", array);
+    }
+
+    [Fact]
+    public void EveryProductIdTheAppAsksStoreKitAbout_IsMonthlyOrAConsumablePack()
+    {
+        var source = PurchaseServiceSource();
+        var all = source[source.IndexOf("public static readonly string[] AllProductIds", StringComparison.Ordinal)..];
+        all = all[..all.IndexOf("];", StringComparison.Ordinal)];
+
+        Assert.DoesNotContain("Yearly", all);
         foreach (var id in new[]
                  {
                      "ProService.ObdProductId", "ProService.VinProductId", "ProService.FullProductId",
-                     "ProService.ObdYearlyProductId", "ProService.VinYearlyProductId", "ProService.FullYearlyProductId"
+                     "ProService.VinPack5ProductId", "ProService.VinPack10ProductId", "ProService.VinSingleProductId"
                  })
         {
-            Assert.Contains(id, array);
+            Assert.Contains(id, all);
         }
     }
 
     [Fact]
-    public void IsCovered_TreatsTheYearlyIdOfAPlanTheSameAsItsMonthlyId()
+    public void IsCovered_MapsEachMonthlyPlanToItsOwnEntitlement()
     {
         var source = PurchaseServiceSource();
         var method = source[source.IndexOf("private bool IsCovered(string productId)", StringComparison.Ordinal)..];
         method = method[..(method.IndexOf("\n    }", StringComparison.Ordinal) + "\n    }".Length)];
 
-        Assert.Contains("ProService.ObdProductId or ProService.ObdYearlyProductId => _pro.HasObd", method);
-        Assert.Contains("ProService.VinProductId or ProService.VinYearlyProductId => _pro.HasVin", method);
-        Assert.Contains("ProService.FullProductId or ProService.FullYearlyProductId => _pro.HasObd && _pro.HasVin", method);
+        Assert.Contains("ProService.ObdProductId => _pro.HasObd", method);
+        Assert.Contains("ProService.VinProductId => _pro.HasVin", method);
+        Assert.Contains("ProService.FullProductId => _pro.HasObd && _pro.HasVin", method);
+        Assert.DoesNotContain("Yearly", method);
     }
 
     [Fact]
-    public void EachPlanItem_IsConstructedWithItsOwnYearlyProductId_NotAnotherPlansOrNone()
+    public void EachPlanCard_IsBuiltFromItsMonthlyProductIdOnly()
     {
         var source = ViewModelSource();
-        // Substring prefixes, not the whole object initializer: ProPlanItem has grown more
-        // properties (IconKind) since this was written, and this check only cares that each
-        // plan's own product/yearly-id pair is wired together, not the initializer's full text.
-        Assert.Contains("new ProPlanItem { ProductId = ProService.ObdProductId, YearlyProductId = ProService.ObdYearlyProductId", source);
-        Assert.Contains("new ProPlanItem { ProductId = ProService.VinProductId, YearlyProductId = ProService.VinYearlyProductId", source);
-        Assert.Contains("new ProPlanItem { ProductId = ProService.FullProductId, YearlyProductId = ProService.FullYearlyProductId, IsRecommended = true", source);
+
+        Assert.Contains("new ProPlanItem { ProductId = ProService.ObdProductId", source);
+        Assert.Contains("new ProPlanItem { ProductId = ProService.VinProductId", source);
+        Assert.Contains("new ProPlanItem { ProductId = ProService.FullProductId, IsRecommended = true", source);
+        Assert.DoesNotContain("YearlyProductId", source);
     }
 
     [Fact]
-    public void ActiveProductId_PicksTheYearlyId_OnlyWhenYearlyBillingIsOnAndThePlanHasOne()
+    public void ThePurchase_UsesTheSelectedPlansOwnProductId()
     {
         var source = ViewModelSource();
-        var method = source[source.IndexOf("private string ActiveProductId(ProPlanItem plan)", StringComparison.Ordinal)..];
-        method = method[..method.IndexOf('\n', method.IndexOf(';', StringComparison.Ordinal))];
+        Assert.Contains("await _purchase.BeginSubscriptionPurchaseAsync(plan.ProductId)", source);
+    }
 
-        Assert.Contains("IsYearlyBilling", method);
-        Assert.Contains("plan.YearlyProductId", method);
-        Assert.Contains("plan.ProductId", method);
-        // Must fall back to the monthly id when the plan has no yearly id configured, not return empty/null.
-        Assert.Contains("!string.IsNullOrEmpty(plan.YearlyProductId)", method);
+    [Fact]
+    public void TheProPage_HasNoMonthlyYearlySelector()
+    {
+        var page = ProPageSource();
+
+        Assert.DoesNotContain("SetYearlyBilling", page);
+        Assert.DoesNotContain("SetMonthlyBilling", page);
+        Assert.DoesNotContain("YearlyLabelText", page);
+        Assert.DoesNotContain("MonthlyLabelText", page);
+        Assert.DoesNotContain("YearlyDiscountBadgeText", page);
+    }
+
+    [Fact]
+    public void TheProPage_ShowsNoInventedAnchorPriceOrDiscountBadge()
+    {
+        var page = ProPageSource();
+
+        Assert.DoesNotContain("DisplayStrikeText", page);
+        Assert.DoesNotContain("ShowDisplayStrike", page);
+        Assert.DoesNotContain("Strikethrough", page);
+        Assert.DoesNotContain("AnchorPriceText", page);
+    }
+
+    [Fact]
+    public void ProService_KeepsNoHardcodedPriceConstantAtAll()
+    {
+        var source = ProServiceSource();
+
+        // A compiled-in amount is exactly what App Review 3.1.2 flagged; there
+        // must be nothing left for a fallback to reach for.
+        Assert.DoesNotContain("PriceGEL", source);
+        Assert.DoesNotContain("PriceAnchor", source);
+        Assert.DoesNotContain("YearlyPrice", source);
+    }
+
+    [Fact]
+    public void TheProViewModel_NeverUsesAFallbackPrice()
+    {
+        var source = ViewModelSource();
+        var start = source.IndexOf("public partial class ProViewModel", StringComparison.Ordinal);
+        var end = source.IndexOf("public sealed partial class ProPlanItem", StringComparison.Ordinal);
+        Assert.True(start >= 0 && end > start);
+
+        // Prices come from one place: the StoreKit answer.
+        Assert.Contains("private string? StorePrice(string productId)", source);
+        Assert.Contains("_prices.TryGetValue(productId, out var price)", source);
+
+        // ... and the Lari sign / a literal amount can no longer appear in the
+        // PRO view model as a display price.
+        Assert.DoesNotContain("₾", source[start..end]);
     }
 }

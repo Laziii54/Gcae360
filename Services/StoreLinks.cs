@@ -10,9 +10,27 @@ public static class StoreLinks
     public const string SupportUrl = Website + "/support";
     public const string ProUrl = Website + "/pro";
 
-    /// <summary>/pro with the signed-in e-mail pre-filled, so only the password is left to type.</summary>
-    public static string ProUrlFor(string? email) =>
-        string.IsNullOrWhiteSpace(email) ? ProUrl : ProUrl + "?email=" + Uri.EscapeDataString(email);
+    /// <summary>
+    /// /pro with the signed-in e-mail pre-filled, so only the code is left to
+    /// request. <paramref name="fromAndroidApp"/> adds the "source=android"
+    /// marker: the website then offers the monthly plans only, because it is
+    /// the Android app's own checkout and the mobile flow never sells a year.
+    /// Nothing secret is ever put in this URL.
+    /// </summary>
+    public static string ProUrlFor(string? email, bool fromAndroidApp = false)
+    {
+        var query = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(email))
+            query.Add("email=" + Uri.EscapeDataString(email));
+
+        if (fromAndroidApp)
+            query.Add("source=android");
+
+        return query.Count == 0
+            ? ProUrl
+            : ProUrl + "?" + string.Join("&", query);
+    }
 
     public static string ManageSubscriptionUrl => DeviceInfo.Platform == DevicePlatform.iOS
         ? "https://apps.apple.com/account/subscriptions"

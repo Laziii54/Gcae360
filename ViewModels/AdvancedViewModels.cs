@@ -1143,6 +1143,7 @@ public partial class ProViewModel : BaseViewModel
     private readonly AccountService _account;
 
     private Dictionary<string, string> _prices = new();
+    private bool _pricesRequested;
     private CarScanner.VinCheck.Models.VinQuotaInfo? _quota;
 
     public ObservableCollection<ProPlanItem> Plans { get; } = new();
@@ -1155,37 +1156,31 @@ public partial class ProViewModel : BaseViewModel
     private ProPlanItem? selectedPlan;
 
     [ObservableProperty]
-    private bool isYearlyBilling;
-
-    [ObservableProperty]
     private string displayPriceText = "";
-
-    [ObservableProperty]
-    private string displayStrikeText = "";
-
-    [ObservableProperty]
-    private bool showDisplayStrike;
 
     [ObservableProperty]
     private string displayPeriodText = "";
 
     [ObservableProperty]
-    private string yearlyDiscountBadgeText = "";
-
-    [ObservableProperty]
     private string ctaButtonText = "";
 
+    /// <summary>True while the App Store prices are being fetched.</summary>
     [ObservableProperty]
-    private Color monthlyToggleBg = ThemeService.Soft("#1D5BD6");
+    private bool isLoadingPrices;
+
+    /// <summary>
+    /// Shown instead of a price when StoreKit could not load the product. The
+    /// app never substitutes an invented price (App Review 3.1.2): a price is
+    /// either Apple's localized one or it is not shown at all.
+    /// </summary>
+    [ObservableProperty]
+    private string priceUnavailableText = "";
 
     [ObservableProperty]
-    private Color yearlyToggleBg = Colors.Transparent;
+    private bool showPriceRetry;
 
     [ObservableProperty]
-    private Color monthlyToggleText = Colors.White;
-
-    [ObservableProperty]
-    private Color yearlyToggleText = ThemeService.Soft("#5D636B");
+    private string retryPricesText = "";
 
     [ObservableProperty]
     private bool isPro;
@@ -1253,12 +1248,6 @@ public partial class ProViewModel : BaseViewModel
     private string plansTitleText = "";
 
     [ObservableProperty]
-    private string monthlyLabelText = "";
-
-    [ObservableProperty]
-    private string yearlyLabelText = "";
-
-    [ObservableProperty]
     private string proIntroTitleText = "";
 
     [ObservableProperty]
@@ -1268,6 +1257,83 @@ public partial class ProViewModel : BaseViewModel
     /// ProPage code-behind so it goes through the same localization as every other PRO page text.</summary>
     [ObservableProperty]
     private string accountButtonText = "";
+
+    // ============================================================
+    // RESPONSIVE LAYOUT
+    // ============================================================
+
+    /// <summary>
+    /// Below this page width the three plan cards stack, one readable row each.
+    /// 368pt is the point where a three-across card would fall under ~104pt,
+    /// which is where "სრული PRO" / "Full PRO" starts breaking mid-word. That
+    /// leaves 320pt iPhones stacked and every current iPhone (375pt and up) with
+    /// the familiar three-card row.
+    /// </summary>
+    public const double CompactWidth = 368;
+
+    /// <summary>At or above this width the page uses the roomier tablet / large-screen layout.</summary>
+    public const double WideWidth = 700;
+
+    /// <summary>True on a narrow phone: plan cards stack instead of sharing a row.</summary>
+    [ObservableProperty]
+    private bool isCompactLayout;
+
+    /// <summary>Width of the centered content column (grows on tablets).</summary>
+    [ObservableProperty]
+    private double pageMaxWidth = 560;
+
+    [ObservableProperty]
+    private Thickness pagePadding = new(20, 18, 20, 32);
+
+    /// <summary>Hero price size — the longest localized price must still fit.</summary>
+    [ObservableProperty]
+    private double priceFontSize = 38;
+
+    [ObservableProperty]
+    private double introTitleFontSize = 22;
+
+    [ObservableProperty]
+    private double sectionSpacing = 22;
+
+    [ObservableProperty]
+    private double ctaMinHeight = 54;
+
+    [ObservableProperty]
+    private double ctaFontSize = 16.5;
+
+    /// <summary>
+    /// Called by ProPage on every size change. All of the page's responsive
+    /// decisions are made here, in one place, from the real page width — so a
+    /// 320pt iPhone SE, a 430pt Pro Max, a landscape phone and an 820pt iPad all
+    /// get a layout that fits instead of one fixed column.
+    /// </summary>
+    public void ApplyLayout(double width, double height)
+    {
+        if (width <= 0)
+            return;
+
+        var compact = width < CompactWidth;
+
+        // A landscape phone is short: give it the wider row layout but not the
+        // tall tablet column, which would turn the page into a long scroll.
+        var shortLandscape = height > 0 && height < 430 && width < 1000;
+        var wide = width >= WideWidth && !shortLandscape;
+
+        IsCompactLayout = compact;
+
+        PageMaxWidth = compact ? 520 : wide ? 820 : 640;
+        PagePadding = compact
+            ? new Thickness(14, 12, 14, 26)
+            : wide
+                ? new Thickness(28, 22, 28, 40)
+                : new Thickness(20, 18, 20, 32);
+
+        PriceFontSize = compact ? 32 : wide ? 46 : 38;
+        IntroTitleFontSize = compact ? 19 : wide ? 26 : 22;
+        SectionSpacing = compact ? 16 : wide ? 26 : 22;
+        CtaMinHeight = compact ? 50 : 54;
+        CtaFontSize = compact ? 15 : 16.5;
+    }
 
     public ProViewModel(
         ProService pro,
@@ -1285,9 +1351,9 @@ public partial class ProViewModel : BaseViewModel
         IsPro = pro.IsPro;
         HasVin = pro.HasVin;
 
-        var obdPlan = new ProPlanItem { ProductId = ProService.ObdProductId, YearlyProductId = ProService.ObdYearlyProductId, IconImageBase = "icon_check_engine", IconImageSource = "icon_check_engine.png" };
-        var vinPlan = new ProPlanItem { ProductId = ProService.VinProductId, YearlyProductId = ProService.VinYearlyProductId, IconKind = CarScanner.Controls.IconCatalog.Document };
-        var fullPlan = new ProPlanItem { ProductId = ProService.FullProductId, YearlyProductId = ProService.FullYearlyProductId, IsRecommended = true, IconKind = CarScanner.Controls.IconCatalog.Crown };
+        var obdPlan = new ProPlanItem { ProductId = ProService.ObdProductId, IconImageBase = "icon_check_engine", IconImageSource = "icon_check_engine.png" };
+        var vinPlan = new ProPlanItem { ProductId = ProService.VinProductId, IconKind = CarScanner.Controls.IconCatalog.Document };
+        var fullPlan = new ProPlanItem { ProductId = ProService.FullProductId, IsRecommended = true, IconKind = CarScanner.Controls.IconCatalog.Crown };
 
         Plans.Add(obdPlan);
         Plans.Add(vinPlan);
@@ -1358,9 +1424,16 @@ public partial class ProViewModel : BaseViewModel
     {
         PageTitleText = "OBD360 PRO";
 
-        ProSubtitleText = L(
-            "PRO გეგმა მიბმულია შენს OBD360 ანგარიშზე",
-            "PRO plans are linked to your OBD360 account");
+        // On iPhone a PRO purchase needs no OBD360 account (App Review 5.1.1(v)),
+        // so the page must not claim it is tied to one. On Android the website is
+        // the only checkout, and that one does use the account.
+        ProSubtitleText = CanBuyInApp
+            ? L(
+                "PRO იხსნება მაშინვე — OBD360 ანგარიში საჭირო არ არის",
+                "PRO unlocks right away — no OBD360 account needed")
+            : L(
+                "PRO გეგმა მიბმულია შენს OBD360 ანგარიშზე",
+                "PRO plans are linked to your OBD360 account");
 
         CurrentPlanTitleText = L("შენი გეგმა", "Your plan");
         PlansTitleText = L("რას მოიცავს", "What is included");
@@ -1377,11 +1450,16 @@ public partial class ProViewModel : BaseViewModel
             ? L("შესყიდვების აღდგენა", "Restore Purchases")
             : L("PRO-ს აღდგენა", "Restore PRO");
 
-        SubscriptionInfoText = (CanBuyInApp
-            ? L("გამოწერა ყოველთვე ავტომატურად გრძელდება, სანამ App Store-ში არ გააუქმებ. ", "The subscription renews every month until you cancel it in the App Store. ")
-            : string.Empty) + L(
-            "PRO გეგმა და დამატებითი VIN შემოწმებები ინახება შენს ანგარიშზე და ჩაირთვება ყველა მოწყობილობაზე, სადაც ამ ანგარიშით შეხვალ.",
-            "PRO plans and extra VIN checks are stored on your account and work on every device where you sign in with it.");
+        // Apple requires the renewal terms to be stated exactly. The only
+        // period the mobile app sells is monthly, so the disclosure can never
+        // contradict the selected plan (App Review 3.1.2).
+        SubscriptionInfoText = CanBuyInApp
+            ? L(
+                "გამოწერა ყოველთვიურად ავტომატურად განახლდება, სანამ App Store-ში არ გააუქმებ (Settings → Apple Account → Subscriptions). ფასს ადასტურებს App Store გადახდამდე.",
+                "The subscription renews automatically every month until you cancel it in the App Store (Settings → Apple Account → Subscriptions). Apple shows and confirms the price before payment.")
+            : L(
+                "PRO გეგმა ინახება შენს OBD360 ანგარიშზე და ჩაირთვება ყველა მოწყობილობაზე, სადაც ამ ანგარიშით შეხვალ.",
+                "The PRO plan is stored on your OBD360 account and works on every device where you sign in with it.");
 
         PrivacyPolicyText = L(
             "კონფიდენციალურობის პოლიტიკა",
@@ -1403,13 +1481,19 @@ public partial class ProViewModel : BaseViewModel
             "ერთჯერადი შეძენა · ვადა არ გასდის",
             "One-time purchase · never expires");
 
-        MonthlyLabelText = L("თვიური", "Monthly");
-        YearlyLabelText = L("წლიური", "Yearly");
+        RetryPricesText = L("ფასის ხელახლა ჩატვირთვა", "Reload price");
+        PriceUnavailableText = L(
+            "ფასი ახლა ვერ ჩაიტვირთა App Store-იდან.",
+            "The price could not be loaded from the App Store right now.");
 
         ProIntroTitleText = L("გადადი PRO-ზე", "Upgrade to PRO");
-        ProIntroDescriptionText = L(
-            "სრული დიაგნოსტიკა, VIN ისტორია და AI კონსულტაცია — შენს ანგარიშზე, ყველა მოწყობილობაზე.",
-            "Full diagnostics, VIN history and AI consultation — unlocked on your account, on every device.");
+        ProIntroDescriptionText = CanBuyInApp
+            ? L(
+                "სრული დიაგნოსტიკა, VIN ისტორია და AI კონსულტაცია — ერთი გამოწერით, ყველა მოწყობილობაზე.",
+                "Full diagnostics, VIN history and AI consultation — one subscription, on all your devices.")
+            : L(
+                "სრული დიაგნოსტიკა, VIN ისტორია და AI კონსულტაცია — შენს ანგარიშზე, ყველა მოწყობილობაზე.",
+                "Full diagnostics, VIN history and AI consultation — unlocked on your account, on every device.");
 
         RefreshAccountButtonText();
 
@@ -1426,14 +1510,21 @@ public partial class ProViewModel : BaseViewModel
             ? L("ანგარიში: ", "Account: ") + _account.Email
             : L("შესვლა / ანგარიშის შექმნა", "Sign in / create account");
 
-    private string Price(string productId, decimal fallback) =>
+    /// <summary>
+    /// Apple's localized price for a product, or null when StoreKit did not
+    /// resolve it. There is deliberately no fallback constant anywhere: a price
+    /// that did not come from the store is never shown (App Review 3.1.2).
+    /// </summary>
+    private string? StorePrice(string productId) =>
         _prices.TryGetValue(productId, out var price) && !string.IsNullOrWhiteSpace(price)
             ? price
-            : $"{fallback.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)} ₾";
+            : null;
 
     private void RefreshPriceText()
     {
-        PriceText = $"{Price(ProService.ObdProductId, ProService.PriceGEL)} / {L("თვე", "month")}";
+        PriceText = StorePrice(ProService.ObdProductId) is { } price
+            ? $"{price} / {L("თვე", "month")}"
+            : string.Empty;
     }
 
     private void RefreshAccess()
@@ -1458,6 +1549,7 @@ public partial class ProViewModel : BaseViewModel
         // so OBD PRO/VIN PRO still correctly refuse to reopen a purchase flow when Full PRO already
         // covers them - only which tag is drawn changes here.
         var tier = _pro.Tier;
+        var missingPrice = false;
         foreach (var plan in Plans)
         {
             var isCurrentTier = false;
@@ -1475,8 +1567,7 @@ public partial class ProViewModel : BaseViewModel
                 case ProService.ObdProductId:
                     plan.Title = "OBD PRO";
                     plan.Subtitle = L("მანქანის სრული დიაგნოსტიკა", "Full car diagnostics");
-                    plan.PriceText = $"{Price(plan.ProductId, ProService.PriceGEL)} / {month}";
-                    plan.AnchorPriceText = $"{ProService.PriceAnchorGEL:0.##} ₾";
+                    plan.PriceText = DescribePrice(plan.ProductId, month);
                     plan.SetFeatures(L(
                         "ყველა მოდულის სკანირება (ABS, SRS, ტრანსმისია…)\nმოდულების ცოცხალი მონაცემები და გრაფიკები\nყიდვისწინა შემოწმება\nAI დიაგნოსტიკა და კონსულტაცია",
                         "Scan every module (ABS, SRS, transmission…)\nModule live data and graphs\nPre-purchase check\nAI diagnostics and consultation"));
@@ -1487,8 +1578,7 @@ public partial class ProViewModel : BaseViewModel
                 case ProService.VinProductId:
                     plan.Title = "VIN PRO";
                     plan.Subtitle = L("მანქანის ისტორია VIN კოდით", "Car history by VIN");
-                    plan.PriceText = $"{Price(plan.ProductId, ProService.VinPriceGEL)} / {month}";
-                    plan.AnchorPriceText = $"{ProService.VinPriceAnchorGEL:0.##} ₾";
+                    plan.PriceText = DescribePrice(plan.ProductId, month);
                     plan.SetFeatures(L(
                         $"VIN: სრული ისტორია, {ProService.VinMonthlyReports} ყოველთვე\nაუქციონის ფოტოები და დაზიანებები\nგარბენი და ტიტულის სტატუსი\nუკვე გახსნილი VIN თავიდან უფასოდ იხსნება",
                         $"VIN: full history, {ProService.VinMonthlyReports} every month\nAuction photos and damage\nMileage and title status\nAn opened VIN reopens for free"));
@@ -1499,25 +1589,21 @@ public partial class ProViewModel : BaseViewModel
                 default:
                     plan.Title = L("სრული PRO", "Full PRO");
                     plan.Subtitle = L("OBD PRO + VIN PRO ერთად", "OBD PRO + VIN PRO together");
-                    plan.PriceText = $"{Price(plan.ProductId, ProService.FullPriceGEL)} / {month}";
-                    plan.AnchorPriceText = $"{ProService.FullPriceAnchorGEL:0.##} ₾";
+                    plan.PriceText = DescribePrice(plan.ProductId, month);
                     plan.SetFeatures(L(
                         "PRO-ის ყველა ფუნქცია\nVIN PRO-ის ყველა ფუნქცია",
                         "Everything in PRO\nEverything in VIN PRO"));
                     plan.IsActive = hasObd && hasVin;
                     isCurrentTier = tier == "full";
                     plan.BadgeText = L("საუკეთესო", "Best value");
-                    var savedPercent = (int)Math.Round((1 - ProService.FullPriceGEL / ProService.FullPriceAnchorGEL) * 100);
-                    plan.DiscountBadgeText = $"-{savedPercent}%";
                     break;
             }
 
+            if (!plan.IsFree && StorePrice(plan.ProductId) is null)
+                missingPrice = true;
+
             // Card: "current" (green) for the plan you have, "best value" (blue) for Full PRO.
-            // Android shows the price too: tapping a plan opens obd360.ge/pro to pay there
-            // (Google Play Billing is still not used, so this stays off the Play Store checkout).
             plan.ShowPrice = !plan.IsFree;
-            plan.ShowAnchor = plan.ShowPrice;
-            plan.ShowDiscountBadge = plan.ShowPrice && !string.IsNullOrEmpty(plan.DiscountBadgeText);
             plan.CanOpen = !plan.IsActive && !plan.IsFree;
             // "Current plan", not the bare word "Current" - that English string is already a
             // pack key for the electrical sense (Strom/Courant/Corriente) used elsewhere in the app.
@@ -1529,16 +1615,24 @@ public partial class ProViewModel : BaseViewModel
             plan.StrokeColor = isCurrentTier ? ThemeService.Soft("#1F8A4C") : plan.IsRecommended ? ThemeService.Soft("#1D5BD6") : ThemeService.Soft("#DCDFE3");
         }
 
+        // Re-resolve the card colours for the current theme (a system dark-mode
+        // switch while the app is open otherwise leaves stale colours behind).
+        foreach (var plan in PaidPlans)
+            plan.ApplyTheme();
+
         foreach (var pack in Packs)
         {
-            var fallback = pack.Credits == 5 ? ProService.VinPack5PriceGEL : ProService.VinPack10PriceGEL;
             pack.Title = $"+{pack.Credits} VIN";
-            pack.PriceText = Price(pack.ProductId, fallback);
-            pack.ButtonText = $"+{pack.Credits} VIN — {pack.PriceText}";
+            var price = StorePrice(pack.ProductId);
+            pack.PriceText = price ?? string.Empty;
+            pack.ButtonText = price is null
+                ? $"+{pack.Credits} VIN"
+                : $"+{pack.Credits} VIN — {price}";
         }
 
-        // On Android these are bought on the website too (BuyPack opens it below).
-        ShowPacks = hasVin;
+        // Packs are bought on the website on Android and are account-scoped, so
+        // they need VIN PRO and a signed-in account to add credits.
+        ShowPacks = hasVin && (CanBuyInApp || _account.IsSignedIn);
 
         string Until(DateTime? date) =>
             date is { } d && d.Year < 2100 ? L($" · {d.ToLocalTime():dd.MM.yyyy}-მდე", $" · until {d.ToLocalTime():dd.MM.yyyy}") : string.Empty;
@@ -1561,11 +1655,16 @@ public partial class ProViewModel : BaseViewModel
                 : L($"დარჩენილია ამ თვეში: {_quota.Remaining} / {_quota.MonthlyLimit}",
                     $"Left this month: {_quota.Remaining} / {_quota.MonthlyLimit}");
 
+        ShowPriceRetry = missingPrice && _pricesRequested && !IsLoadingPrices;
         UpdateDisplay();
     }
 
+    /// <summary>The price with its billing period, or an explicit "price unavailable" marker — never a guess.</summary>
+    private string DescribePrice(string productId, string month) =>
+        StorePrice(productId) is { } price ? $"{price} / {month}" : "—";
+
     // ============================================================
-    // PLAN PICKER (Monthly / Yearly, selected plan hero)
+    // SELECTED PLAN (one monthly price, one product id)
     // ============================================================
 
     [RelayCommand]
@@ -1577,63 +1676,28 @@ public partial class ProViewModel : BaseViewModel
         UpdateDisplay();
     }
 
-    [RelayCommand]
-    private void SetMonthlyBilling()
-    {
-        IsYearlyBilling = false;
-        UpdateDisplay();
-    }
-
-    [RelayCommand]
-    private void SetYearlyBilling()
-    {
-        IsYearlyBilling = true;
-        UpdateDisplay();
-    }
-
-    /// <summary>GEL monthly/yearly prices and the yearly discount percent for a plan's product id.</summary>
-    private static (decimal Monthly, decimal Yearly, decimal YearlyAnchor, int DiscountPercent) PeriodPrices(string productId) => productId switch
-    {
-        ProService.VinProductId => (ProService.VinPriceGEL, ProService.VinPriceYearlyGEL, ProService.VinPriceYearlyAnchorGEL, 20),
-        ProService.FullProductId => (ProService.FullPriceGEL, ProService.FullPriceYearlyGEL, ProService.FullPriceYearlyAnchorGEL, 30),
-        _ => (ProService.PriceGEL, ProService.PriceYearlyGEL, ProService.PriceYearlyAnchorGEL, 20),
-    };
-
-    /// <summary>The product id a purchase of the given plan should use for the selected billing period.</summary>
-    private string ActiveProductId(ProPlanItem plan) =>
-        IsYearlyBilling && !string.IsNullOrEmpty(plan.YearlyProductId) ? plan.YearlyProductId : plan.ProductId;
-
+    /// <summary>
+    /// Re-reads Apple's price for the selected plan and rebuilds the hero price,
+    /// the CTA and the period line. The only period the app sells is monthly, so
+    /// the disclosure under the button can never contradict the selection.
+    /// </summary>
     private void UpdateDisplay()
     {
         var plan = SelectedPlan;
         if (plan is null || plan.IsFree) return;
 
-        var (monthly, yearly, yearlyAnchor, discount) = PeriodPrices(plan.ProductId);
+        var price = StorePrice(plan.ProductId);
 
-        if (IsYearlyBilling)
-        {
-            DisplayPriceText = $"{yearly.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)} ₾";
-            DisplayStrikeText = $"{yearlyAnchor.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)} ₾";
-            ShowDisplayStrike = true;
-            var perMonth = (yearly / 12).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-            DisplayPeriodText = L($"წელიწადში · {perMonth} ₾/თვე", $"per year · {perMonth} ₾/mo");
-        }
-        else
-        {
-            DisplayPriceText = Price(plan.ProductId, monthly);
-            ShowDisplayStrike = false;
-            DisplayPeriodText = L("თვეში", "per month");
-        }
+        // Never invent a price: when StoreKit has not answered, the hero shows
+        // a dash and the page offers a reload instead of a number.
+        DisplayPriceText = price ?? "—";
+        DisplayPeriodText = price is null
+            ? PriceUnavailableText
+            : L("თვეში · ავტომატური განახლება", "per month · auto-renews");
 
-        YearlyDiscountBadgeText = $"-{discount}%";
-        CtaButtonText = L(
-            $"დაიწყე {plan.Title} — {(IsYearlyBilling ? "წლიური" : "თვიური")}",
-            $"Start {plan.Title} — {(IsYearlyBilling ? "Yearly" : "Monthly")}");
-
-        MonthlyToggleBg = IsYearlyBilling ? Colors.Transparent : ThemeService.Soft("#1D5BD6");
-        YearlyToggleBg = IsYearlyBilling ? ThemeService.Soft("#1D5BD6") : Colors.Transparent;
-        MonthlyToggleText = IsYearlyBilling ? ThemeService.Soft("#5D636B") : Colors.White;
-        YearlyToggleText = IsYearlyBilling ? Colors.White : ThemeService.Soft("#5D636B");
+        CtaButtonText = price is null
+            ? L($"გაააქტიურე {plan.Title}", $"Get {plan.Title}")
+            : L($"დაიწყე {plan.Title} — {price}/თვე", $"Start {plan.Title} — {price}/month");
     }
 
     // ============================================================
@@ -1653,7 +1717,54 @@ public partial class ProViewModel : BaseViewModel
             // Store metadata ვერ ჩაიტვირთა.
             // გვერდი მაინც ჩვეულებრივ გაიხსნება.
         }
+
+        await LoadStorePricesAsync();
     }
+
+    /// <summary>
+    /// Fetches the prices the PRO page shows, from the source that will actually
+    /// charge the user:
+    ///  • iPhone — the App Store (StoreKit's localized price);
+    ///  • Android — the OBD360 website catalog, because Android has no billing.
+    /// Either way the page renders the same, and an unreadable catalog shows
+    /// "price unavailable" + retry, never a made-up amount.
+    /// </summary>
+    private async Task LoadStorePricesAsync()
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            IsLoadingPrices = true;
+            ShowPriceRetry = false;
+            _pricesRequested = true;
+        });
+
+        try
+        {
+            var prices = CanBuyInApp
+                ? await _purchase.GetPricesAsync(CancellationToken.None)
+                : await _purchase.GetWebsitePricesAsync(CancellationToken.None);
+
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                _prices = prices;
+                IsLoadingPrices = false;
+                RefreshPlans();
+            });
+        }
+        catch
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                _prices = new Dictionary<string, string>();
+                IsLoadingPrices = false;
+                RefreshPlans();
+                ShowPriceRetry = true;
+            });
+        }
+    }
+
+    [RelayCommand]
+    private Task RetryPrices() => LoadStorePricesAsync();
 
     // ============================================================
     // PURCHASE
@@ -1695,7 +1806,7 @@ public partial class ProViewModel : BaseViewModel
                 ThemeService.Soft("#5D636B");
 
             var result =
-                await _purchase.BeginSubscriptionPurchaseAsync(ActiveProductId(plan));
+                await _purchase.BeginSubscriptionPurchaseAsync(plan.ProductId);
 
             (Status, StatusColor) =
                 PurchaseStatusPresentation(result);
@@ -1732,8 +1843,11 @@ public partial class ProViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// A plan card was tapped: iPhone buys it in the App Store; Android opens
-    /// sign-in (PRO bought outside the app is linked to the account).
+    /// A plan card was tapped. On iPhone the App Store purchase starts straight
+    /// away — <b>no OBD360 account, no sign-in prompt, no registration</b>
+    /// (App Review 5.1.1(v): the subscription is not account-based). On Android
+    /// the app has no billing, so the account is needed and obd360.ge opens for
+    /// a monthly plan.
     /// </summary>
     [RelayCommand]
     public async Task OpenPlan(ProPlanItem? plan)
@@ -1752,19 +1866,6 @@ public partial class ProViewModel : BaseViewModel
 
         if (CanBuyInApp)
         {
-            // Sign in first: the App Store charge is only ever credited to a
-            // signed-in account (/api/store/verify requires it), so buying
-            // while signed out would take the user's money and grant nothing.
-            if (!_account.IsSignedIn)
-            {
-                Status = L(
-                    "ჯერ შედი ანგარიშზე — PRO მხოლოდ ანგარიშზე ირთვება.",
-                    "Sign in first — PRO is only activated on an account.");
-                StatusColor = ThemeService.Soft("#B06A00");
-                await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.AccountPage));
-                return;
-            }
-
             await BuyPlan(plan);
             return;
         }
@@ -1785,7 +1886,7 @@ public partial class ProViewModel : BaseViewModel
             "იხსნება obd360.ge — იქ გადაიხდი ბარათით ან Google Pay-ით.",
             "Opening obd360.ge — pay there by card or Google Pay.");
         StatusColor = ThemeService.Soft("#5D636B");
-        await StoreLinks.OpenAsync(StoreLinks.ProUrlFor(_account.Email));
+        await StoreLinks.OpenAsync(StoreLinks.ProUrlFor(_account.Email, fromAndroidApp: true));
         }
         catch (Exception commandException)
         {
@@ -1810,13 +1911,25 @@ public partial class ProViewModel : BaseViewModel
             return;
         }
 
+        // Packs only add report credits, and credits are counted against an
+        // OBD360 account. Subscriptions do not need one; a pack does.
+        if (!_account.IsSignedIn)
+        {
+            Status = L(
+                "დამატებითი VIN შემოწმებები ინახება ანგარიშზე — ჯერ შედი ანგარიშზე.",
+                "Extra VIN checks are stored on your account — sign in first.");
+            StatusColor = ThemeService.Soft("#B06A00");
+            await CarScanner.Services.SafeNavigation.GoToAsync(nameof(Views.AccountPage));
+            return;
+        }
+
         if (!CanBuyInApp)
         {
             Status = L(
                 "იხსნება obd360.ge — იქ გადაიხდი ბარათით ან Google Pay-ით.",
                 "Opening obd360.ge — pay there by card or Google Pay.");
             StatusColor = ThemeService.Soft("#5D636B");
-            await StoreLinks.OpenAsync(StoreLinks.ProUrlFor(_account.Email));
+            await StoreLinks.OpenAsync(StoreLinks.ProUrlFor(_account.Email, fromAndroidApp: true));
             return;
         }
 
@@ -1880,21 +1993,24 @@ public partial class ProViewModel : BaseViewModel
             StatusColor =
                 ThemeService.Soft("#5D636B");
 
-            // App Store requires a real "Restore Purchases" for in-app subscriptions.
+            // Restore Purchases works with no OBD360 account: StoreKit returns
+            // the Apple transactions and the backend verifies them. This must
+            // never send the user to sign in (App Review 5.1.1(v), 3.1.2).
             if (CanBuyInApp)
             {
-                try
-                {
-                    await _purchase.RestorePurchasesAsync();
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"App Store restore failed: {ex.GetType().Name}");
-                }
+                var restore = await _purchase.RestoreDetailedAsync();
+
+                await _pro.RefreshAsync();
+
+                _quota = await _vin.GetQuotaAsync(CancellationToken.None);
+                await LoadWebSubscriptionAsync();
+                RefreshAccess();
+
+                (Status, StatusColor) = RestorePresentation(restore);
+                return;
             }
 
-            await _pro.LoadAsync(
-                forceServerRefresh: true);
+            await _pro.RefreshAsync();
 
             _quota = await _vin.GetQuotaAsync(CancellationToken.None);
 
@@ -1941,6 +2057,55 @@ public partial class ProViewModel : BaseViewModel
         }
     }
 
+    /// <summary>One distinct, honest message per restore outcome — nothing is swallowed.</summary>
+    private (string Message, Color Color) RestorePresentation(RestoreResult result)
+    {
+        var success = ThemeService.Soft("#1F8A4C");
+        var warning = ThemeService.Soft("#B06A00");
+        var error = ThemeService.Soft("#C0392B");
+
+        return result.Status switch
+        {
+            RestoreStatus.Restored => (
+                L("გამოწერა აღდგა და PRO აქტიურია.", "Your subscription was restored and PRO is active."),
+                success),
+
+            RestoreStatus.NothingToRestore => (
+                L("ამ Apple ანგარიშზე აღსადგენი გამოწერა ვერ მოიძებნა.",
+                  "No subscription to restore was found on this Apple Account."),
+                warning),
+
+            RestoreStatus.Expired => (
+                L("ნაპოვნი გამოწერის ვადა ამოწურულია.", "The subscription found has already expired."),
+                warning),
+
+            RestoreStatus.Revoked => (
+                L("ეს გამოწერა გაუქმებული/დაბრუნებულია Apple-ში და აღდგენას არ ექვემდებარება.",
+                  "This subscription was revoked or refunded by Apple and cannot be restored."),
+                warning),
+
+            RestoreStatus.LinkedToAccount => (
+                L("ეს გამოწერა დაკავშირებულია OBD360 ანგარიშზე. აქტივაციისთვის შედი იმავე ანგარიშზე.",
+                  "This subscription is linked to an OBD360 account. Sign in to that account to activate it."),
+                warning),
+
+            RestoreStatus.VerificationFailed => (
+                L("გამოწერის დადასტურება ვერ დასრულდა. თანხა ხელახლა არ გადაიხადე — სცადე ცოტა ხანში.",
+                  "The subscription could not be verified. Do not pay again — try again shortly."),
+                error),
+
+            RestoreStatus.Unsupported => (
+                L("ამ მოწყობილობაზე აღდგენა არ არის ხელმისაწვდომი.",
+                  "Restore is not available on this device."),
+                warning),
+
+            _ => (
+                L("სერვერთან კავშირი ვერ დამყარდა. შეამოწმე ინტერნეტი და სცადე ხელახლა.",
+                  "Could not reach the server. Check your connection and try again."),
+                error)
+        };
+    }
+
     // ============================================================
     // LINKS
     // ============================================================
@@ -1982,8 +2147,8 @@ public partial class ProViewModel : BaseViewModel
             "SUCCESS" =>
                 (
                     L(
-                        "გამოწერა გააქტიურდა. ის ყოველთვიურად განახლდება გაუქმებამდე.",
-                        "Your plan is active. It renews monthly until cancelled."),
+                        "გამოწერა გააქტიურდა. ის ყოველთვიურად ავტომატურად განახლდება გაუქმებამდე.",
+                        "Your plan is active. It renews automatically every month until cancelled."),
                     success
                 ),
 
@@ -1993,6 +2158,32 @@ public partial class ProViewModel : BaseViewModel
                         "ეს გეგმა უკვე აქტიურია.",
                         "This plan is already active."),
                     success
+                ),
+
+            // The purchase belongs to an OBD360 account: signing in activates
+            // it. Nothing is taken away and nothing is charged again.
+            "ERROR:LINKED_TO_ACCOUNT" or "ERROR:ACCOUNT_REQUIRED" =>
+                (
+                    L(
+                        "ეს შეძენა დაკავშირებულია OBD360 ანგარიშზე. შედი იმავე ანგარიშზე — თანხა ხელახლა არ გადაიხდება.",
+                        "This purchase is linked to an OBD360 account. Sign in to that account — you will not be charged again."),
+                    warning
+                ),
+
+            "ERROR:SUBSCRIPTION_EXPIRED" =>
+                (
+                    L(
+                        "გამოწერის ვადა ამოწურულია. აირჩიე გეგმა ხელახლა.",
+                        "That subscription has expired. Choose a plan again."),
+                    warning
+                ),
+
+            "ERROR:SUBSCRIPTION_REVOKED" =>
+                (
+                    L(
+                        "ეს გამოწერა გაუქმებულია Apple-ში.",
+                        "That subscription was revoked by Apple."),
+                    warning
                 ),
 
             CarScanner.Services.PurchaseService.PurchasesNotAvailableOnAndroid =>
@@ -2080,7 +2271,6 @@ public sealed partial class ProPlanItem : ObservableObject
     public const string FreeId = "free";
 
     public string ProductId { get; init; } = "";
-    public string YearlyProductId { get; init; } = "";
     public bool IsFree => ProductId == FreeId;
     public bool IsRecommended { get; init; }
     public bool HasBadge => IsRecommended;
@@ -2093,6 +2283,12 @@ public sealed partial class ProPlanItem : ObservableObject
     /// while selected so it stays visible on the blue selected-card background.</summary>
     public string IconImageBase { get; init; } = "";
 
+    /// <summary>True when this plan draws a raster icon (OBD PRO) rather than a vector glyph.</summary>
+    public bool HasIconImage => !string.IsNullOrEmpty(IconImageBase);
+
+    /// <summary>True when this plan draws a vector glyph instead of a raster icon.</summary>
+    public bool HasIconGlyph => !HasIconImage && !string.IsNullOrEmpty(IconKind);
+
     /// <summary>Highlighted in the Monthly/Yearly plan picker row.</summary>
     [ObservableProperty] private bool isSelected;
     [ObservableProperty] private Color pickerBackground = ThemeService.Soft("#FFFFFF");
@@ -2101,23 +2297,33 @@ public sealed partial class ProPlanItem : ObservableObject
     [ObservableProperty] private Color iconTint = ThemeService.Soft("#1D5BD6");
     [ObservableProperty] private string iconImageSource = "";
 
-    partial void OnIsSelectedChanged(bool value)
+    partial void OnIsSelectedChanged(bool value) => ApplyTheme();
+
+    /// <summary>
+    /// Resolves this card's colours against the *current* palette. Called when
+    /// the selection changes and every time the PRO page rebuilds its plan list,
+    /// so a light/dark switch can never leave one card holding colours from the
+    /// previous theme — which is exactly how the page could end up looking
+    /// different on two phones running the same build.
+    /// </summary>
+    public void ApplyTheme()
     {
-        PickerBackground = value ? ThemeService.Soft("#1D5BD6") : ThemeService.Soft("#FFFFFF");
-        CardTitleColor = value ? Colors.White : ThemeService.Soft("#1B1D20");
-        CardSubtitleColor = value ? Color.FromArgb("#D9E3F5") : ThemeService.Soft("#5D636B");
-        IconTint = value ? Colors.White : ThemeService.Soft("#1D5BD6");
+        var selected = IsSelected;
+        PickerBackground = selected ? ThemeService.Soft("#1D5BD6") : ThemeService.Soft("#FFFFFF");
+        CardTitleColor = selected ? Colors.White : ThemeService.Soft("#1B1D20");
+        CardSubtitleColor = selected ? Color.FromArgb("#D9E3F5") : ThemeService.Soft("#5D636B");
+        IconTint = selected ? Colors.White : ThemeService.Soft("#1D5BD6");
         if (!string.IsNullOrEmpty(IconImageBase))
-            IconImageSource = value ? $"{IconImageBase}_selected.png" : $"{IconImageBase}.png";
+            IconImageSource = selected ? $"{IconImageBase}_selected.png" : $"{IconImageBase}.png";
     }
 
     [ObservableProperty] private string title = "";
     [ObservableProperty] private string subtitle = "";
+
+    /// <summary>False for the Free plan, whose subtitle is intentionally empty.</summary>
+    public bool HasSubtitle => !string.IsNullOrWhiteSpace(Subtitle);
+    partial void OnSubtitleChanged(string value) => OnPropertyChanged(nameof(HasSubtitle));
     [ObservableProperty] private string priceText = "";
-    [ObservableProperty] private string anchorPriceText = "";
-    [ObservableProperty] private bool showAnchor;
-    [ObservableProperty] private string discountBadgeText = "";
-    [ObservableProperty] private bool showDiscountBadge;
     [ObservableProperty] private string buttonText = "";
     [ObservableProperty] private string badgeText = "";
     [ObservableProperty] private bool isActive;

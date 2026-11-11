@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Data.Sqlite;
 
 namespace CarScanner.Api.Services;
@@ -71,6 +73,223 @@ TransactionId TEXT NULL,
 Active INTEGER NOT NULL,
 PRIMARY KEY(UserId, ProductId));";
         cmd.ExecuteNonQuery();
+        // Accountless (Apple In-App Purchase with no OBD360 account) store
+        // sessions. The client keeps the raw token in the iOS keychain; only
+        // its SHA-256 hash is stored here, so the database alone cannot be
+        // used to read somebody else's entitlement.
+        cmd.CommandText = @"CREATE TABLE IF NOT EXISTS AnonymousStoreSessions (
+TokenHash TEXT PRIMARY KEY,
+OwnerId TEXT NOT NULL,
+InstallId TEXT NULL,
+CreatedAt TEXT NOT NULL,
+LastSeenAt TEXT NOT NULL);";
+        cmd.ExecuteNonQuery();
+        cmd.CommandText = "CREATE INDEX IF NOT EXISTS IX_AnonymousStoreSessions_Owner ON AnonymousStoreSessions(OwnerId);";
+        cmd.ExecuteNonQuery();
+        // Which accountless installations may use one App Store subscription.
+        //
+        // A subscription belongs to the customer's Apple Account, not to a
+        // device: the same verified subscription is legitimately used on every
+        // iPhone/iPad signed in to that Apple Account, and restoring on one
+        // device must never revoke another. The link is therefore additive and
+        // many-to-many — deliberately NOT the single-owner PurchaseClaims rule,
+        // which stays reserved for OBD360-account ownership.
+        cmd.CommandText = @"CREATE TABLE IF NOT EXISTS StoreEntitlementLinks (
+Source TEXT NOT NULL,
+SubscriptionKey TEXT NOT NULL,
+OwnerId TEXT NOT NULL,
+LinkedAt TEXT NOT NULL,
+PRIMARY KEY(Source, SubscriptionKey, OwnerId));";
+        cmd.ExecuteNonQuery();
+        cmd.CommandText = "CREATE INDEX IF NOT EXISTS IX_StoreEntitlementLinks_Key ON StoreEntitlementLinks(Source, SubscriptionKey);";
+        cmd.ExecuteNonQuery();
+    }
+
+    // ============================================================
+    // ACCOUNTLESS STORE PURCHASES
+    // ============================================================
+
+    /// <summary>
+    /// Owner id of an accountless purchase. Deliberately in its own namespace
+    /// ("anon:") so it can never collide with a real OBD360 account id and can
+    /// never be resolved by an account-facing endpoint.
+    /// </summary>
+    public static string NewAnonymousOwnerId() =>
+        "anon:" + Guid.NewGuid().ToString("N");
+
+    public static bool IsAnonymousOwner(string? ownerId) =>
+        ownerId is not null &&
+        ownerId.StartsWith("anon:", StringComparison.Ordinal);
+
+    /// <summary>SHA-256 (lower-case hex) of the bearer token the client holds.</summary>
+    public static string AnonymousTokenHash(string token) =>
+        Convert
+            .ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)))
+            .ToLowerInvariant();
+
+    /// <summary>Creates a session for an accountless owner and returns the raw token (never stored).</summary>
+    public async Task<string> CreateAnonymousSessionAsync(
+        string ownerId,
+        string? installId,
+        CancellationToken token = default)
+    {
+        var raw = Convert
+            .ToBase64String(RandomNumberGenerator.GetBytes(32))
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+
+        await _gate.WaitAsync(token);
+        try
+        {
+            using var c = new SqliteConnection(_connectionString);
+            c.Open();
+            using var cmd = c.CreateCommand();
+            cmd.CommandText = @"INSERT INTO AnonymousStoreSessions(TokenHash,OwnerId,InstallId,CreatedAt,LastSeenAt)
+VALUES($h,$o,$i,$at,$at);";
+            cmd.Parameters.AddWithValue("$h", AnonymousTokenHash(raw));
+            cmd.Parameters.AddWithValue("$o", ownerId);
+            cmd.Parameters.AddWithValue(
+                "$i",
+                string.IsNullOrWhiteSpace(installId) || installId.Length > 64
+                    ? DBNull.Value
+                    : installId.Trim());
+            cmd.Parameters.AddWithValue("$at", DateTimeOffset.UtcNow.ToString("O"));
+            cmd.ExecuteNonQuery();
+        }
+        finally { _gate.Release(); }
+
+        return raw;
+    }
+
+    /// <summary>The owner behind a session token, or null when the token is unknown.</summary>
+    public async Task<string?> ResolveAnonymousOwnerAsync(
+        string? rawToken,
+        CancellationToken token = default)
+    {
+        if (string.IsNullOrWhiteSpace(rawToken) || rawToken.Length > 256)
+            return null;
+
+        var hash = AnonymousTokenHash(rawToken.Trim());
+
+        await _gate.WaitAsync(token);
+        try
+        {
+            using var c = new SqliteConnection(_connectionString);
+            c.Open();
+            using var read = c.CreateCommand();
+            read.CommandText = "SELECT OwnerId FROM AnonymousStoreSessions WHERE TokenHash=$h";
+            read.Parameters.AddWithValue("$h", hash);
+            if (read.ExecuteScalar() is not string owner)
+                return null;
+
+            using var touch = c.CreateCommand();
+            touch.CommandText = "UPDATE AnonymousStoreSessions SET LastSeenAt=$at WHERE TokenHash=$h";
+            touch.Parameters.AddWithValue("$at", DateTimeOffset.UtcNow.ToString("O"));
+            touch.Parameters.AddWithValue("$h", hash);
+            touch.ExecuteNonQuery();
+            return owner;
+        }
+        finally { _gate.Release(); }
+    }
+
+    /// <summary>
+    /// Records that one accountless installation may use a verified store
+    /// subscription. Additive and idempotent: linking a second device never
+    /// touches the first, which is what "same Apple Account, several devices"
+    /// requires. The caller must already have verified the subscription with
+    /// Apple — this method stores no trust of its own.
+    /// </summary>
+    public async Task LinkSubscriptionOwnerAsync(
+        string source,
+        string subscriptionKey,
+        string ownerId,
+        CancellationToken token = default)
+    {
+        if (string.IsNullOrWhiteSpace(source) ||
+            string.IsNullOrWhiteSpace(subscriptionKey) ||
+            string.IsNullOrWhiteSpace(ownerId))
+        {
+            return;
+        }
+
+        await _gate.WaitAsync(token);
+        try
+        {
+            using var c = new SqliteConnection(_connectionString);
+            c.Open();
+            using var cmd = c.CreateCommand();
+            cmd.CommandText = @"INSERT OR IGNORE INTO StoreEntitlementLinks(Source,SubscriptionKey,OwnerId,LinkedAt)
+VALUES($s,$k,$o,$at);";
+            cmd.Parameters.AddWithValue("$s", source.Trim().ToLowerInvariant());
+            cmd.Parameters.AddWithValue("$k", subscriptionKey.Trim());
+            cmd.Parameters.AddWithValue("$o", ownerId.Trim());
+            cmd.Parameters.AddWithValue("$at", DateTimeOffset.UtcNow.ToString("O"));
+            cmd.ExecuteNonQuery();
+        }
+        finally { _gate.Release(); }
+    }
+
+    /// <summary>Every owner linked to one store subscription (never includes an OBD360 account claim).</summary>
+    public async Task<IReadOnlyList<string>> GetSubscriptionOwnersAsync(
+        string source,
+        string subscriptionKey,
+        CancellationToken token = default)
+    {
+        var owners = new List<string>();
+        if (string.IsNullOrWhiteSpace(source) || string.IsNullOrWhiteSpace(subscriptionKey))
+            return owners;
+
+        await _gate.WaitAsync(token);
+        try
+        {
+            using var c = new SqliteConnection(_connectionString);
+            c.Open();
+            using var cmd = c.CreateCommand();
+            cmd.CommandText = @"SELECT OwnerId FROM StoreEntitlementLinks
+WHERE Source=$s AND SubscriptionKey=$k ORDER BY LinkedAt;";
+            cmd.Parameters.AddWithValue("$s", source.Trim().ToLowerInvariant());
+            cmd.Parameters.AddWithValue("$k", subscriptionKey.Trim());
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+                owners.Add(r.GetString(0));
+        }
+        finally { _gate.Release(); }
+
+        return owners;
+    }
+
+    /// <summary>Every stored subscription row of one owner that came from a store.</summary>
+    public async Task<IReadOnlyList<StoredSubscription>> GetStoreSubscriptionsAsync(
+        string userId,
+        string source,
+        CancellationToken token = default)
+    {
+        var rows = new List<StoredSubscription>();
+
+        await _gate.WaitAsync(token);
+        try
+        {
+            using var c = new SqliteConnection(_connectionString);
+            c.Open();
+            using var cmd = c.CreateCommand();
+            cmd.CommandText = @"SELECT ProductId, TransactionId, ExpiresAt, Active FROM Subscriptions
+WHERE UserId=$u AND Source=$s;";
+            cmd.Parameters.AddWithValue("$u", userId);
+            cmd.Parameters.AddWithValue("$s", source);
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                rows.Add(new StoredSubscription(
+                    r.GetString(0),
+                    r.IsDBNull(1) ? null : r.GetString(1),
+                    r.IsDBNull(2) || !DateTimeOffset.TryParse(r.GetString(2), out var exp) ? null : exp,
+                    r.GetInt32(3) != 0));
+            }
+        }
+        finally { _gate.Release(); }
+
+        return rows;
     }
 
     /// <summary>Stores one verified subscription and mirrors it into the legacy row.</summary>
@@ -462,3 +681,7 @@ LIMIT 1;";
 public sealed record EntitlementRecord(
     string UserId, bool IsPro, string Source, string? ProductId, DateTimeOffset? ExpiresAt,
     DateTimeOffset UpdatedAt, string? TransactionId);
+
+/// <summary>One stored subscription row, as needed to re-ask the store about it.</summary>
+public sealed record StoredSubscription(
+    string ProductId, string? TransactionId, DateTimeOffset? ExpiresAt, bool Active);

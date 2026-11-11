@@ -1,91 +1,97 @@
-# Response to App Review — Guideline 2.1, Information Needed
+# Response to App Review — Guideline 5.1.1(v) (build 56)
 
-**App:** OBD360 · **Bundle ID:** com.gcar360.app · **App Store Connect Apple ID:** 6817508639
-**Subscription group:** OBD360 PRO Plans
+**App:** OBD360 · **Bundle ID:** `com.gcar360.app` · **App Store Connect Apple ID:** 6817508639
+**Submission:** `1509192a-5394-44f0-8d1c-0afc68fb50e3` · **Subscription group:** OBD360 PRO Plans
 
-Thank you for the opportunity to provide more information. We address each of your seven points
-below.
+Thank you for the review. You are right, and this build changes the purchase flow rather than
+explaining it away.
+
+## The issue you raised
+
+> The application requires users to register with personal information before purchasing
+> subscriptions that are not account-based.
+
+That was correct for build 56: tapping a plan while signed out sent the user to a Create Account
+screen, and our backend only accepted a purchase tied to an OBD360 account.
+
+## What changed in this build
+
+**1. The app opens straight into its main interface.** There is no login screen, no "continue as
+guest" choice and no registration step anywhere in the purchase path.
+
+**2. An Apple subscription can be bought with no OBD360 account.** Tapping a plan opens Apple's own
+purchase sheet immediately. After the purchase completes, our backend verifies the transaction
+against the App Store Server API (transaction lookup, subscription status, bundle id, expiry,
+revocation) and unlocks the features. Registration is not a prerequisite and is never requested in
+that flow.
+
+**3. Restore Purchases works with no OBD360 account.** StoreKit returns the Apple transactions, our
+backend verifies them the same way, and PRO is reactivated. There is no sign-in prompt and no
+redirect to registration.
+
+**4. The subscription is still fully verified.** Nothing is granted from a local flag. A transaction
+is only completed after the server accepted it, and an unfinished transaction is retried on the
+next launch or resume.
+
+**4a. One subscription, all of the customer's devices.** The subscription belongs to the customer's
+Apple Account, as Apple intends. Restoring it on a second iPhone or iPad gives that device its own
+independent, verified entitlement and does **not** revoke the first — there is no device transfer
+and no "only one device at a time" rule. A reinstall restores the same way.
+
+**5. Three monthly plans only.** The Monthly/Yearly selector and the annual cards are gone from both
+the iOS and the Android app; the app offers OBD PRO, VIN PRO and Full PRO as monthly
+auto-renewable subscriptions. (Annual plans remain on our website, which is a separate product
+surface and is not offered or linked from inside the iOS app.)
+
+**6. Prices are Apple's, not ours.** Each plan shows the localized price StoreKit returns for that
+exact product in the reviewer's storefront. The previous build displayed a hard-coded amount and a
+struck-through "was" price with a percentage discount; both are removed. If StoreKit returns no
+price, the screen says so and offers a reload instead of showing any number.
+
+**7. No outside-purchase content on iOS.** The iOS PRO screen no longer shows a website price or a
+website cancel button. It may show that an existing website subscription is active (plan name,
+renewal date) — status only, no price and no call to action. Subscription management for App Store
+purchases opens Apple's own page.
+
+An OBD360 account is now genuinely optional: it exists for the separate website subscription at
+obd360.ge and for cross-device sync of that website plan.
+
+## Still true from our earlier reply (Guideline 2.1)
+
+**Purpose.** OBD360 turns a phone and a common ELM327-compatible OBD2 adapter into a diagnostic
+tool: trouble codes with explanations, live sensor data, module-level diagnostics on supported
+vehicles, AI-assisted explanation of results, VIN history lookup, and service/maintenance tracking.
+
+**Setup.** A commercially available Bluetooth LE or Wi-Fi OBD2 adapter connected to the vehicle's
+OBD2 port, ignition on. No special hardware.
+
+**Reviewing without hardware.** VIN Check works with only a VIN and an internet connection. The OBD
+scanner flow needs an adapter and a vehicle; without one it shows a clear "adapter not found"
+state.
+
+**Recording.** A physical-device screen recording was supplied with the previous reply showing
+launch, adapter pairing and connection, a live trouble-code scan, module diagnostics and live data
+on a real vehicle. Nothing about it is claimed here beyond what it shows.
+
+**External services.** Our own HTTPS backend (accounts, VIN data, AI, purchase verification,
+crash/usage telemetry — all first-party); Google Gemini called server-side only; Sign in with Apple
+and Google Sign-In; Apple StoreKit. No third-party analytics or crash SDK. Full detail with file
+citations: `external-services-inventory.md`.
+
+**Regions.** Functionality is identical worldwide. In-app purchase pricing follows the App Store's
+own per-territory localized pricing; the app does not configure it.
+
+**Licensing.** VIN history draws on licensed third-party automotive-data providers through our own
+backend. The app never calls them directly.
+
+## Accounting and disclosure on the PRO screen
+
+Plan name, the StoreKit-localized monthly price, the monthly billing period, the auto-renewal
+statement, and links to the Privacy Policy and Terms of Use are all on the purchase screen, above
+or beside the purchase button.
 
 ---
 
-## 1. Physical-device screen recording
-
-Attached is a screen recording captured on a physical iPhone running the latest iOS, showing: app
-launch; VIN Check (works without any hardware); connecting to a Bluetooth OBD2 adapter and running
-a live trouble-code scan and live sensor data on a real vehicle; account sign-in; the PRO
-subscription purchase flow with plan, price and terms; and Restore Purchases.
-
-## 2. App purpose, target audience, problem solved, user value
-
-OBD360 is a vehicle diagnostic app for drivers and car enthusiasts who want more than a basic
-check-engine-light reader. Connected to a Bluetooth LE or Wi-Fi OBD2 adapter, it reads and clears
-trouble codes, shows live sensor data and graphs, and — for supported vehicles — reaches beyond
-the generic OBD2 layer into manufacturer-specific modules (ABS, SRS, transmission, and others) for
-deeper diagnostics most consumer scan tools don't offer. It also includes an AI-assisted
-explanation of diagnostic results, a VIN history lookup (accident/damage/mileage history from
-third-party vehicle-data providers), and service/maintenance tracking.
-
-The app does not require an account to browse or use its core OBD/VIN features. An account is
-needed only to keep a PRO subscription synced across devices.
-
-## 3. Setup instructions, main features, required credentials
-
-**Setup:** the app requires a commercially available ELM327-compatible OBD2 adapter (Bluetooth LE
-or Wi-Fi) connected to the vehicle's OBD2 port, and the vehicle's ignition on. No special hardware
-beyond a standard, widely available adapter is needed.
-
-**Main features**, reachable from the home screen without signing in: trouble-code scan and clear,
-live sensor data, module-level diagnostics (where supported by the vehicle), fuel/service
-tracking, and VIN history lookup. Signing in (email/password, Google, or Apple) is only required
-to purchase or restore a PRO subscription.
-
-**Credentials:** no test credentials are required — all core features (OBD2 scanning, live data,
-module diagnostics, VIN history) are accessible without signing in. An account is only needed to
-purchase or restore a PRO subscription.
-
-## 4. External services, tools, and platforms
-
-- **OBD360's own backend** (Azure-hosted) for accounts, VIN history, AI diagnostics, purchase
-  verification, and crash/usage telemetry — all first-party, all over HTTPS.
-- **Google Gemini**, called server-side only by our backend for AI diagnostic explanations — no AI
-  provider key is ever stored in the app itself.
-- **Sign in with Apple** and **Google Sign-In**, Apple's own requirement (4.8) already implemented:
-  Google is only offered alongside Apple on iOS.
-- **Apple StoreKit** for in-app purchases.
-- No third-party analytics or crash-reporting SDK is used; crash reports and usage telemetry are
-  both first-party, sent to our own backend only.
-
-Full detail with file citations: `external-services-inventory.md`.
-
-## 5. Regional differences
-
-Core functionality (diagnostics, live data, module scanning, VIN lookup, AI explanations, PRO) is
-identical worldwide and not gated by region. The only region-aware default is the measurement unit
-system (Imperial defaults for a small number of device regions, Metric elsewhere), which the user
-can change in Settings at any time. In-app purchase pricing follows the App Store's own standard
-per-territory localized pricing; it is not something our app configures per region.
-
-## 6. Licensing / regulated services
-
-VIN history results draw on third-party automotive-data providers through our own backend (the app
-itself never calls them directly). We hold the necessary data licensing agreements for these
-providers at the backend/business level; this is not something the client app surfaces or claims
-to users beyond showing the resulting vehicle history report. No other regulated or
-rights-protected third-party material is used.
-
-## 7. In-app purchase — what can be bought and how to access it
-
-From the PRO tab (reachable from the home screen, or automatically offered when a PRO-gated
-feature is opened), users can subscribe to one of three auto-renewing monthly plans within the
-"OBD360 PRO Plans" group:
-
-- **OBD PRO** — full OBD2 diagnostics (module scanning, live data, AI explanations)
-- **VIN PRO** — VIN history reports
-- **Full PRO** — both combined
-
-Plus one-time VIN report credit packs (not subscriptions). Pricing, final local price, and the
-renewal terms are shown by Apple's own purchase sheet before any charge.
-
----
-
-We appreciate App Review's patience and are happy to provide any further detail needed.
+We would be glad to supply a dedicated reviewer account if you want to see the optional
+account-only surfaces, but it is not needed for purchasing or restoring. Thank you for your
+patience.

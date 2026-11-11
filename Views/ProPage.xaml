@@ -11,10 +11,19 @@
     BackgroundColor="{DynamicResource PageBg}">
 
     <ScrollView>
+        <!--
+            Responsive PRO page.
+
+            The breakpoints live in ProViewModel.ApplyLayout (called from the page's
+            SizeChanged): the paddings, the content column width, the price and title
+            sizes and whether the three plan cards sit in a row or stack all follow the
+            real page width. That covers a 320pt iPhone SE, a 430pt Pro Max, a 390pt
+            landscape phone and an 820pt iPad without a separate tablet XAML.
+        -->
         <VerticalStackLayout
-            Padding="20,18,20,32"
-            Spacing="22"
-            MaximumWidthRequest="560"
+            Padding="{Binding PagePadding}"
+            Spacing="{Binding SectionSpacing}"
+            MaximumWidthRequest="{Binding PageMaxWidth}"
             HorizontalOptions="Center">
 
             <Label
@@ -44,10 +53,11 @@
                 </Border>
                 <Label
                     Text="{Binding ProIntroTitleText}"
-                    FontSize="22"
+                    FontSize="{Binding IntroTitleFontSize}"
                     FontAttributes="Bold"
                     TextColor="{DynamicResource TextColor}"
                     HorizontalTextAlignment="Center"
+                    LineBreakMode="WordWrap"
                     SemanticProperties.HeadingLevel="Level1" />
                 <Label
                     Text="{Binding ProIntroDescriptionText}"
@@ -55,12 +65,23 @@
                     TextColor="{DynamicResource SubTextColor}"
                     HorizontalTextAlignment="Center"
                     LineBreakMode="WordWrap"
-                    MaximumWidthRequest="340" />
+                    MaximumWidthRequest="420" />
             </VerticalStackLayout>
 
-            <!-- Plan selector: OBD PRO · VIN PRO · Full PRO. Equal Star columns so it
-                 never overflows on narrow phones; text wraps instead of truncating. -->
-            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+            <!-- ============================================================
+                 Plan selector: VIN PRO · OBD PRO · Full PRO (three plans only,
+                 no billing-period toggle anywhere on this screen).
+
+                 Regular and wide screens: the three cards share a row.
+                 Narrow screens (below ProViewModel.CompactWidth): one full-width
+                 row per plan, icon left, name/subtitle in the middle, tick right —
+                 the same content, readable at 320pt.
+                 ============================================================ -->
+
+            <Grid
+                ColumnDefinitions="*,*,*"
+                ColumnSpacing="8"
+                IsVisible="{Binding IsCompactLayout, Converter={StaticResource InverseBoolConverter}}">
 
                 <Border
                     Grid.Column="0"
@@ -74,8 +95,9 @@
                         <TapGestureRecognizer Command="{Binding SelectPlanCommand}" CommandParameter="{Binding PaidPlans[0]}" />
                     </Border.GestureRecognizers>
                     <VerticalStackLayout Spacing="4" HorizontalOptions="Center" VerticalOptions="Center">
-                        <Image Source="{Binding PaidPlans[0].IconImageSource}" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" HorizontalOptions="Center" Margin="0,0,0,2" />
-                        <controls:Icon Kind="check" Tint="White" WidthRequest="13" HeightRequest="13" HorizontalOptions="Center" IsVisible="{Binding PaidPlans[0].IsSelected}" />
+                        <Image Source="{Binding PaidPlans[0].IconImageSource}" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" HorizontalOptions="Center" Margin="0,0,0,2" IsVisible="{Binding PaidPlans[0].HasIconImage}" />
+                        <controls:Icon Kind="{Binding PaidPlans[0].IconKind}" Tint="{Binding PaidPlans[0].IconTint}" WidthRequest="22" HeightRequest="22" HorizontalOptions="Center" Margin="0,0,0,2" IsVisible="{Binding PaidPlans[0].HasIconGlyph}" />
+                        <controls:Icon Kind="check" Tint="{Binding PaidPlans[0].IconTint}" WidthRequest="13" HeightRequest="13" HorizontalOptions="Center" IsVisible="{Binding PaidPlans[0].IsSelected}" />
                         <Label Text="{Binding PaidPlans[0].Title}" FontSize="13.5" FontAttributes="Bold" TextColor="{Binding PaidPlans[0].CardTitleColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
                         <Label Text="{Binding PaidPlans[0].Subtitle}" FontSize="12" TextColor="{Binding PaidPlans[0].CardSubtitleColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
                         <Border IsVisible="{Binding PaidPlans[0].HasTag}" BackgroundColor="{Binding PaidPlans[0].TagBackground}" StrokeThickness="0" StrokeShape="RoundRectangle 6" Padding="7,3" HorizontalOptions="Center" Margin="0,2,0,0">
@@ -96,8 +118,9 @@
                         <TapGestureRecognizer Command="{Binding SelectPlanCommand}" CommandParameter="{Binding PaidPlans[1]}" />
                     </Border.GestureRecognizers>
                     <VerticalStackLayout Spacing="4" HorizontalOptions="Center" VerticalOptions="Center">
-                        <controls:Icon Kind="{Binding PaidPlans[1].IconKind}" Tint="{Binding PaidPlans[1].IconTint}" WidthRequest="22" HeightRequest="22" HorizontalOptions="Center" Margin="0,0,0,2" />
-                        <controls:Icon Kind="check" Tint="White" WidthRequest="13" HeightRequest="13" HorizontalOptions="Center" IsVisible="{Binding PaidPlans[1].IsSelected}" />
+                        <Image Source="{Binding PaidPlans[1].IconImageSource}" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" HorizontalOptions="Center" Margin="0,0,0,2" IsVisible="{Binding PaidPlans[1].HasIconImage}" />
+                        <controls:Icon Kind="{Binding PaidPlans[1].IconKind}" Tint="{Binding PaidPlans[1].IconTint}" WidthRequest="22" HeightRequest="22" HorizontalOptions="Center" Margin="0,0,0,2" IsVisible="{Binding PaidPlans[1].HasIconGlyph}" />
+                        <controls:Icon Kind="check" Tint="{Binding PaidPlans[1].IconTint}" WidthRequest="13" HeightRequest="13" HorizontalOptions="Center" IsVisible="{Binding PaidPlans[1].IsSelected}" />
                         <Label Text="{Binding PaidPlans[1].Title}" FontSize="13.5" FontAttributes="Bold" TextColor="{Binding PaidPlans[1].CardTitleColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
                         <Label Text="{Binding PaidPlans[1].Subtitle}" FontSize="12" TextColor="{Binding PaidPlans[1].CardSubtitleColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
                         <Border IsVisible="{Binding PaidPlans[1].HasTag}" BackgroundColor="{Binding PaidPlans[1].TagBackground}" StrokeThickness="0" StrokeShape="RoundRectangle 6" Padding="7,3" HorizontalOptions="Center" Margin="0,2,0,0">
@@ -118,8 +141,9 @@
                         <TapGestureRecognizer Command="{Binding SelectPlanCommand}" CommandParameter="{Binding PaidPlans[2]}" />
                     </Border.GestureRecognizers>
                     <VerticalStackLayout Spacing="4" HorizontalOptions="Center" VerticalOptions="Center">
-                        <controls:Icon Kind="{Binding PaidPlans[2].IconKind}" Tint="{Binding PaidPlans[2].IconTint}" WidthRequest="22" HeightRequest="22" HorizontalOptions="Center" Margin="0,0,0,2" />
-                        <controls:Icon Kind="check" Tint="White" WidthRequest="13" HeightRequest="13" HorizontalOptions="Center" IsVisible="{Binding PaidPlans[2].IsSelected}" />
+                        <Image Source="{Binding PaidPlans[2].IconImageSource}" WidthRequest="22" HeightRequest="22" Aspect="AspectFit" HorizontalOptions="Center" Margin="0,0,0,2" IsVisible="{Binding PaidPlans[2].HasIconImage}" />
+                        <controls:Icon Kind="{Binding PaidPlans[2].IconKind}" Tint="{Binding PaidPlans[2].IconTint}" WidthRequest="22" HeightRequest="22" HorizontalOptions="Center" Margin="0,0,0,2" IsVisible="{Binding PaidPlans[2].HasIconGlyph}" />
+                        <controls:Icon Kind="check" Tint="{Binding PaidPlans[2].IconTint}" WidthRequest="13" HeightRequest="13" HorizontalOptions="Center" IsVisible="{Binding PaidPlans[2].IsSelected}" />
                         <Label Text="{Binding PaidPlans[2].Title}" FontSize="13.5" FontAttributes="Bold" TextColor="{Binding PaidPlans[2].CardTitleColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
                         <Label Text="{Binding PaidPlans[2].Subtitle}" FontSize="12" TextColor="{Binding PaidPlans[2].CardSubtitleColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
                         <Border IsVisible="{Binding PaidPlans[2].HasTag}" BackgroundColor="{Binding PaidPlans[2].TagBackground}" StrokeThickness="0" StrokeShape="RoundRectangle 6" Padding="7,3" HorizontalOptions="Center" Margin="0,2,0,0">
@@ -130,42 +154,104 @@
 
             </Grid>
 
-            <!-- Monthly / Yearly segmented toggle -->
-            <Border Padding="4" MaximumWidthRequest="340" HorizontalOptions="Center" BackgroundColor="{DynamicResource SegTrackBg}" StrokeThickness="1" Stroke="{DynamicResource BorderColor}" StrokeShape="RoundRectangle 14">
-                <!-- Yearly carries more content (word + discount badge) than Monthly's single word,
-                     so it gets a wider column - an even 50/50 split let "Yearly -20%" overflow into
-                     the Monthly segment on a real device (NotoSansGeorgian renders Latin text wider
-                     than the system font this was first checked against). -->
-                <Grid ColumnDefinitions="0.8*,1.2*" ColumnSpacing="0">
-                    <Border Padding="0" HorizontalOptions="Fill" HeightRequest="46" StrokeThickness="0" StrokeShape="RoundRectangle 11" BackgroundColor="{Binding MonthlyToggleBg}">
-                        <Border.GestureRecognizers>
-                            <TapGestureRecognizer Command="{Binding SetMonthlyBillingCommand}" />
-                        </Border.GestureRecognizers>
-                        <Label Text="{Binding MonthlyLabelText}" TextColor="{Binding MonthlyToggleText}" FontSize="14" FontAttributes="Bold" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" LineBreakMode="NoWrap" />
-                    </Border>
-                    <Border Grid.Column="1" Padding="2,0" HorizontalOptions="Fill" HeightRequest="46" StrokeThickness="0" StrokeShape="RoundRectangle 11" BackgroundColor="{Binding YearlyToggleBg}">
-                        <Border.GestureRecognizers>
-                            <TapGestureRecognizer Command="{Binding SetYearlyBillingCommand}" />
-                        </Border.GestureRecognizers>
-                        <HorizontalStackLayout Spacing="4" HorizontalOptions="Center" VerticalOptions="Center">
-                            <Label Text="{Binding YearlyLabelText}" TextColor="{Binding YearlyToggleText}" FontSize="14" FontAttributes="Bold" VerticalTextAlignment="Center" LineBreakMode="NoWrap" />
-                            <Border BackgroundColor="{DynamicResource ProBadgeBg}" StrokeThickness="0" StrokeShape="RoundRectangle 6" Padding="5,2">
-                                <Label Text="{Binding YearlyDiscountBadgeText}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource ProBadgeText}" LineBreakMode="NoWrap" />
-                            </Border>
-                        </HorizontalStackLayout>
-                    </Border>
-                </Grid>
-            </Border>
+            <!-- Narrow screens: the same three plans, one readable row each. -->
+            <VerticalStackLayout
+                Spacing="8"
+                IsVisible="{Binding IsCompactLayout}"
+                BindableLayout.ItemsSource="{Binding PaidPlans}">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ProPlanItem">
+                        <Border
+                            Padding="14,12"
+                            StrokeThickness="1.5"
+                            Stroke="{Binding StrokeColor}"
+                            BackgroundColor="{Binding PickerBackground}"
+                            StrokeShape="RoundRectangle 16"
+                            SemanticProperties.Description="{Binding Title}">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer
+                                    Command="{Binding x:DataType=vm:ProViewModel, Source={RelativeSource AncestorType={x:Type vm:ProViewModel}}, Path=SelectPlanCommand}"
+                                    CommandParameter="{Binding .}" />
+                            </Border.GestureRecognizers>
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" VerticalOptions="Center">
+                                <Image
+                                    Grid.Column="0"
+                                    Source="{Binding IconImageSource}"
+                                    WidthRequest="26"
+                                    HeightRequest="26"
+                                    Aspect="AspectFit"
+                                    VerticalOptions="Center"
+                                    IsVisible="{Binding HasIconImage}" />
+                                <controls:Icon
+                                    Grid.Column="0"
+                                    Kind="{Binding IconKind}"
+                                    Tint="{Binding IconTint}"
+                                    WidthRequest="26"
+                                    HeightRequest="26"
+                                    VerticalOptions="Center"
+                                    IsVisible="{Binding HasIconGlyph}" />
 
-            <!-- Price -->
-            <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
-                <HorizontalStackLayout Spacing="8" HorizontalOptions="Center">
-                    <Label Text="{Binding DisplayStrikeText}" IsVisible="{Binding ShowDisplayStrike}" FontSize="16" TextColor="{DynamicResource SubTextColor}" TextDecorations="Strikethrough" VerticalOptions="Center" />
-                    <Label Text="{Binding DisplayPriceText}" FontSize="38" FontAttributes="Bold" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" LineBreakMode="NoWrap" />
-                </HorizontalStackLayout>
-                <Label Text="{Binding DisplayPeriodText}" FontSize="13" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" />
-                <Label Text="{Binding SelectedPlan.BadgeText}" IsVisible="{Binding SelectedPlan.HasBadge}" FontSize="12" FontAttributes="Bold" TextColor="{DynamicResource ProBadgeText}" HorizontalTextAlignment="Center" Margin="0,2,0,0" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                    <Label Text="{Binding Title}" FontSize="15" FontAttributes="Bold" TextColor="{Binding CardTitleColor}" LineBreakMode="WordWrap" />
+                                    <Label Text="{Binding Subtitle}" FontSize="12" TextColor="{Binding CardSubtitleColor}" LineBreakMode="WordWrap" IsVisible="{Binding HasSubtitle}" />
+                                    <Border IsVisible="{Binding HasTag}" BackgroundColor="{Binding TagBackground}" StrokeThickness="0" StrokeShape="RoundRectangle 6" Padding="7,3" HorizontalOptions="Start" Margin="0,2,0,0">
+                                        <Label Text="{Binding TagText}" FontSize="11.5" FontAttributes="Bold" TextColor="{Binding TagTextColor}" />
+                                    </Border>
+                                </VerticalStackLayout>
+
+                                <controls:Icon
+                                    Grid.Column="2"
+                                    Kind="check"
+                                    Tint="{Binding IconTint}"
+                                    WidthRequest="18"
+                                    HeightRequest="18"
+                                    VerticalOptions="Center"
+                                    IsVisible="{Binding IsSelected}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
             </VerticalStackLayout>
+
+            <!-- Price: the App Store's own localized monthly price for the selected plan.
+                 There is no Monthly/Yearly selector, no annual card, no strike-through
+                 "was" price and no percentage discount badge on this screen. -->
+            <Border
+                Padding="18,16"
+                StrokeThickness="1"
+                Stroke="{DynamicResource BorderColor}"
+                BackgroundColor="{DynamicResource CardBg}"
+                StrokeShape="RoundRectangle 18">
+                <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                    <Label
+                        Text="{Binding DisplayPriceText}"
+                        FontSize="{Binding PriceFontSize}"
+                        FontAttributes="Bold"
+                        TextColor="{DynamicResource TextColor}"
+                        VerticalOptions="Center"
+                        LineBreakMode="WordWrap"
+                        HorizontalTextAlignment="Center"
+                        Margin="0,-2,0,-4" />
+                    <Label
+                        Text="{Binding DisplayPeriodText}"
+                        FontSize="13"
+                        TextColor="{DynamicResource SubTextColor}"
+                        HorizontalTextAlignment="Center"
+                        LineBreakMode="WordWrap"
+                        MaximumWidthRequest="360" />
+                    <Label
+                        Text="{Binding SelectedPlan.BadgeText}"
+                        IsVisible="{Binding SelectedPlan.HasBadge}"
+                        FontSize="12"
+                        FontAttributes="Bold"
+                        TextColor="{DynamicResource ProBadgeText}"
+                        HorizontalTextAlignment="Center"
+                        Margin="0,2,0,0" />
+
+                    <ActivityIndicator IsRunning="{Binding IsLoadingPrices}" IsVisible="{Binding IsLoadingPrices}" Color="{DynamicResource Primary}" HeightRequest="18" Margin="0,4,0,0" />
+                    <Button Text="{Binding RetryPricesText}" Command="{Binding RetryPricesCommand}" IsVisible="{Binding ShowPriceRetry}" BackgroundColor="Transparent" TextColor="{DynamicResource Primary}" BorderWidth="0" FontAttributes="Bold" FontSize="12.5" HeightRequest="36" />
+                </VerticalStackLayout>
+            </Border>
 
             <!-- Benefits for the selected plan -->
             <VerticalStackLayout Spacing="12">
@@ -191,11 +277,13 @@
                     Command="{Binding OpenPlanCommand}"
                     CommandParameter="{Binding SelectedPlan}"
                     IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
-                    HeightRequest="54"
+                    MinimumHeightRequest="{Binding CtaMinHeight}"
+                    Padding="16,0"
+                    LineBreakMode="WordWrap"
                     CornerRadius="27"
                     BackgroundColor="{DynamicResource Primary}"
                     TextColor="White"
-                    FontSize="16.5"
+                    FontSize="{Binding CtaFontSize}"
                     FontAttributes="Bold" />
 
                 <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{DynamicResource Primary}" HorizontalOptions="Center" />
@@ -239,7 +327,7 @@
                 <VerticalStackLayout Spacing="8" BindableLayout.ItemsSource="{Binding Packs}">
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="vm:ProPackItem">
-                            <Button Text="{Binding ButtonText}" Command="{Binding x:DataType=vm:ProViewModel, Source={RelativeSource AncestorType={x:Type vm:ProViewModel}}, Path=BuyPackCommand}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="10" HeightRequest="46" FontAttributes="Bold" />
+                            <Button Text="{Binding ButtonText}" Command="{Binding x:DataType=vm:ProViewModel, Source={RelativeSource AncestorType={x:Type vm:ProViewModel}}, Path=BuyPackCommand}" CommandParameter="{Binding .}" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderColor="{DynamicResource BorderColor}" BorderWidth="1" CornerRadius="10" HeightRequest="46" FontAttributes="Bold" LineBreakMode="WordWrap" />
                         </DataTemplate>
                     </BindableLayout.ItemTemplate>
                 </VerticalStackLayout>
@@ -273,11 +361,17 @@
 
             <Label Text="{Binding SubscriptionInfoText}" FontSize="12" TextColor="{DynamicResource SubTextColor}" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
 
-            <!-- Privacy / terms -->
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                <Button Text="{Binding PrivacyPolicyText}" Command="{Binding PrivacyPolicyCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" BorderWidth="0" FontSize="12" />
-                <Button Grid.Column="1" Text="{Binding TermsOfUseText}" Command="{Binding TermsOfUseCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" BorderWidth="0" FontSize="12" />
+            <!-- Privacy / terms: two columns normally, stacked on a narrow phone
+                 where a single Georgian word would not fit in half the width. -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding IsCompactLayout, Converter={StaticResource InverseBoolConverter}}">
+                <Button Text="{Binding PrivacyPolicyText}" Command="{Binding PrivacyPolicyCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" BorderWidth="0" FontSize="12" LineBreakMode="WordWrap" />
+                <Button Grid.Column="1" Text="{Binding TermsOfUseText}" Command="{Binding TermsOfUseCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" BorderWidth="0" FontSize="12" LineBreakMode="WordWrap" />
             </Grid>
+
+            <VerticalStackLayout Spacing="0" IsVisible="{Binding IsCompactLayout}">
+                <Button Text="{Binding PrivacyPolicyText}" Command="{Binding PrivacyPolicyCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" BorderWidth="0" FontSize="12" LineBreakMode="WordWrap" HeightRequest="34" />
+                <Button Text="{Binding TermsOfUseText}" Command="{Binding TermsOfUseCommand}" BackgroundColor="Transparent" TextColor="{DynamicResource SubTextColor}" BorderWidth="0" FontSize="12" LineBreakMode="WordWrap" HeightRequest="34" />
+            </VerticalStackLayout>
 
         </VerticalStackLayout>
     </ScrollView>

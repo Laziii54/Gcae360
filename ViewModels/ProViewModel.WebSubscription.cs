@@ -81,9 +81,14 @@ public partial class ProViewModel
             ? value.ToLocalTime().ToString("d MMM yyyy", _localization.IsEnglish ? CultureInfo.GetCultureInfo("en-US") : CultureInfo.GetCultureInfo("ka-GE"))
             : "—";
 
-        // Google Play payments policy: no prices of outside purchases on Android
-        // (status, renewal date and cancel stay so the user can manage the plan).
-        var price = CanBuyInApp && s.Amount is { } amount ? amount.ToString("0.00", CultureInfo.InvariantCulture) + " ₾" : "";
+        // App Review 3.1.1 / 3.1.3(b): on iOS this card may show the status of a
+        // subscription bought elsewhere, but never the outside price and never
+        // an outside purchase/cancel call to action. On Android the website is
+        // the only way to pay, so the details stay.
+        var externalDetailsAllowed = !CanBuyInApp;
+        var price = externalDetailsAllowed && s.Amount is { } amount
+            ? amount.ToString("0.00", CultureInfo.InvariantCulture) + " ₾"
+            : "";
         WebSubTitleText = price.Length > 0
             ? $"{name} · {price} {L("/ თვე", "/ month")}".Trim()
             : name;
@@ -121,7 +126,7 @@ public partial class ProViewModel
             lines.Add(L("ბარათი: ", "Card: ") + s.CardMask);
 
         WebSubDetailsText = string.Join("\n", lines);
-        CanCancelWebSub = s.AutoRenew;
+        CanCancelWebSub = s.AutoRenew && externalDetailsAllowed;
         ShowWebSubscription = true;
 
         _ = ScheduleRenewReminderAsync(s, name, price);

@@ -613,25 +613,43 @@ public sealed class StoreVerificationService
 
             if (ProductCatalog.IsConsumable(tx.ProductId))
             {
+                // A consumable IS one transaction: it is recorded once by its own
+                // transaction id, which is what stops a double credit grant.
                 return tx.RevokedAt is null
                     ? new VerifiedPurchase(tx.ProductId!, DateTimeOffset.UtcNow, tx.TransactionId ?? transactionId, tx.OriginalTransactionId)
                     : null;
             }
-
-            originalTransactionId ??= tx.OriginalTransactionId;
         }
         else if (originalTransactionId is null)
         {
             return null;
         }
 
+        // A subscription is identified by Apple's originalTransactionId, which is
+        // stable across renewals, restores and devices. The per-transaction id is
+        // deliberately NOT used: a purchase on one iPhone and a restore on another
+        // carry different transaction ids but must resolve to the SAME key.
+        //
+        // Apple's value always wins over the client's hint (which was accepted
+        // above only when it agreed with Apple). The final fallback is the first
+        // purchase's own transaction id, which Apple reports as its
+        // originalTransactionId — and the status lookup below only answers when
+        // Apple confirms the value really is an originalTransactionId, so this can
+        // never silently key a subscription by a per-transaction id.
+        var subscriptionKey =
+            tx?.OriginalTransactionId ??
+            originalTransactionId ??
+            tx?.TransactionId ??
+            transactionId;
+
         // Subscriptions: the newest renewal decides (status endpoint).
-        var state = await GetAppleSubscriptionStateAsync(originalTransactionId ?? transactionId, ct);
+        var state = await GetAppleSubscriptionStateAsync(subscriptionKey, ct);
         if (state is not { Active: true, ProductId: not null, ExpiresAt: not null })
             return null;
 
-        // The claim key is the original transaction id, so every renewal
-        // belongs to the same purchase and cannot be claimed twice.
+        // The claim/link key is the original transaction id, so every renewal,
+        // restore and device belongs to the same purchase and cannot be claimed
+        // twice.
         return new VerifiedPurchase(state.ProductId, state.ExpiresAt.Value, state.Key, state.Key);
     }
 
@@ -835,7 +853,19 @@ public sealed record VerifiedPurchase(
     string ProductId,
     DateTimeOffset ExpiresAt,
     string TransactionId,
-    string? OriginalTransactionId = null);
+    string? OriginalTransactionId = null)
+{
+    /// <summary>
+    /// Identity of the *subscription*: Apple's <c>originalTransactionId</c>, which
+    /// is stable across renewals, restores and devices.
+    ///
+    /// This — never a per-transaction id — is what <c>StoreEntitlementLinks</c> and
+    /// <c>Subscriptions.TransactionId</c> are keyed by, so that a purchase on one
+    /// iPhone and a restore on another share one subscription. For a one-time
+    /// purchase it is simply that single transaction, which is recorded once.
+    /// </summary>
+    public string SubscriptionKey => OriginalTransactionId ?? TransactionId;
+}
 
 /// <summary>A subscription's state as the store reports it right now. Key = purchase token / original transaction id.</summary>
 public sealed record StoreSubscriptionState(

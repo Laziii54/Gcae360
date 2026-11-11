@@ -1,120 +1,96 @@
 # OBD360 — Apple App Review Resubmission Readiness Report
 
+**Build being prepared:** 1.1.1 (csproj currently 67 — bump the build number for the upload)
+**Rejection being answered:** submission `1509192a-5394-44f0-8d1c-0afc68fb50e3`, build 56,
+Guideline **5.1.1(v)** (registration required before a non-account-based purchase).
+
+---
+
 ## Executive summary
 
-Apple rejected iOS build 52 under Guideline 2.1 (Information Needed), not for a specific bug —
-Apple's seven questions are all about *understanding* the app, which this audit's new
-documentation (`docs/app-store-review/`) now answers with verified, cited facts. Separately, this
-audit found one concrete, confirmed bug in the subscription flow that is worth fixing regardless
-of the 2.1 request, because it could cause App Review to hit a real purchase failure.
+The rejection was valid, and this change fixes the cause rather than the wording around it: an
+App Store subscription can now be bought, verified, activated, kept across restarts and restored
+**with no OBD360 account at all**. The account still exists for the website subscription; it is no
+longer a gate in front of anything Apple sells.
 
-The app itself — account system, OBD2 diagnostics, AI explanations, VIN history, and the Full PRO
-purchase flow — is substantially real and well-built. The main genuine risk for a Guideline-2.1
-style rejection is structural, not a bug: core features need a physical OBD2 adapter and often a
-real vehicle, which App Review cannot supply on its own. That's what the recording and
-documentation in this folder are for.
+Three other things that would very likely have been the next rejection were fixed in the same pass,
+because they sit in the same screen:
 
-## Critical blockers (must resolve before resubmitting)
+1. **Prices were hard-coded Lari amounts**, with a struck-through "was" price and a percentage
+   discount. The PRO page now shows only the localized price StoreKit returns, and shows "—" with a
+   reload button when it returns none.
+2. **The Monthly/Yearly selector offered three yearly products** whose App Store Connect state was
+   contradictory in the repository. Both apps now sell **three monthly plans only**.
+3. **The iOS PRO page displayed a website subscription price and a website cancel button.** On iOS
+   it now shows status and renewal date only.
 
-1. **Unverified: exact Product ID match between code and App Store Connect, for all nine
-   products.** The owner has confirmed the yearly products already exist in ASC (a stale code
-   comment claiming otherwise has been corrected). A traced, line-by-line read of the purchase
-   path found no remaining code bug that would cause a correctly-configured product to fail to
-   load — the exact id the UI implies is the exact id StoreKit is asked to resolve. If
-   `PRODUCT_NOT_FOUND` is still seen on a real device, the most likely remaining cause is outside
-   this repository: an exact string/case mismatch between a Product ID in `Services/ProService.cs`
-   and App Store Connect, or a product not yet in a "Ready to Submit"/"Approved" state. The nine
-   exact identifiers to compare are listed in `subscription-compliance-audit.md`.
-2. **Unconfirmed: whether OBD PRO and VIN PRO monthly products exist in ASC at all** — the
-   rejection context names only "Full PRO." If they don't exist, the same failure applies to two
-   of the three plan buttons. This needs your confirmation in App Store Connect; it cannot be
-   checked from the code.
-3. **No physical-device recording exists yet.** Apple explicitly asked for one;
-   `physical-device-recording-checklist.md` is the script to follow — nothing was or can be
-   recorded in this environment.
+The code is ready. What remains is manual: App Store Connect product/price/level configuration, a
+TestFlight sandbox purchase test, and the physical-device recording Apple asked for.
 
-## Confirmed issues (fixed in this engagement)
+## What changed (code)
 
-- **`ViewModels/AdvancedViewModels.cs`, `PurchaseStatusPresentation`**: the `PRODUCT_NOT_FOUND` /
-  `ITEM_UNAVAILABLE` / etc. error message unconditionally said *"This offer is not available in
-  Google Play yet"* — including on iOS, where this exact path is reachable. Now uses the
-  already-existing `StoreName` property, so it correctly says "App Store" or "Google Play"
-  depending on platform. New localized strings added to
-  `Services/Localization/LanguagePacks.Extra39.cs` for all 7 added languages (tr/de/pl/es/pt/fr/it).
-- **`Services/PurchaseService.cs`, `IsCovered(productId)`**: only recognized the three *monthly*
-  product ids; a yearly id always fell through to "not covered," so a user who already owned a
-  plan via its yearly id would never get the "already active" short-circuit and could be sent
-  through a real purchase attempt again. Fixed to recognize both ids of each plan.
-- **`Services/PurchaseService.cs`, `SubscriptionProductIds`**: listed only the three monthly ids;
-  now lists all six (monthly + yearly), so the (currently unused, see below) price-fetch path can
-  look up yearly prices too.
-- **`Services/ProService.cs`**: corrected the stale comment claiming yearly products "are not yet
-  created in App Store Connect" — the owner confirmed they exist; the comment now points at the
-  verification this still needs (exact id match) instead of asserting something false.
-- Five new regression tests added, `Tests/CarScanner.Tests/SubscriptionProductMappingTests.cs`,
-  pinning the monthly/yearly id pairing, the `IsCovered` fix, and `ActiveProductId`'s selection
-  logic, following this codebase's existing source-reading test convention for MAUI-dependent
-  services (same approach as `ProServiceLogoutTests.cs`/`ProTierTests.cs`).
+Full detail: `accountless-purchase-architecture.md`. Summary:
 
-**Noted but not fixed** (pre-existing, out of this task's scope, affects monthly and yearly
-equally): `PurchaseService.GetPricesAsync()` — which would fetch real App Store prices for
-display — is never actually called anywhere in the app. The PRO page's displayed prices are
-always the hardcoded GEL fallback, never a live store price, for every plan. This doesn't affect
-purchase safety (Apple's own purchase sheet always shows the real price before any charge), so it
-was left alone rather than wiring up a new code path under a "fix the yearly mapping" request —
-flag if you'd like it addressed separately.
+| Area | Change |
+|---|---|
+| Purchase gate | `ProViewModel.OpenPlan` no longer checks `IsSignedIn` on iOS and no longer routes to the Account page. |
+| Backend | New `/api/store/apple/anonymous/{verify,refresh}` + `GET /api/store/apple/anonymous`. Same `StoreVerificationService` (App Store Server API) as before. |
+| Ownership | `EntitlementStore.AnonymousStoreSessions` holds only SHA-256 hashes of opaque tokens; `anon:` owners cannot collide with accounts; account-linked transactions are never transferred. |
+| Restore | `PurchaseService.RestoreDetailedAsync` returns one of eight statuses; no sign-in prompt; no swallowed exceptions. |
+| Entitlement | `ProService` keeps account and Apple sources separately; sign-out clears only the account source; `DeactivateAsync` clears both. |
+| Prices | `PurchaseService.GetPricesAsync` is now actually called; one batched, cached `SKProductsRequest`; no price constant exists in `ProService` any more. |
+| Plans | Yearly selector, yearly cards and all yearly ids removed from the mobile purchase paths. |
+| iOS web card | No external price, no external cancel CTA. |
+| Website | `/pro?source=android` renders monthly plans only; the independent page is unchanged and still sells monthly + yearly. |
+| Android | Unchanged apart from the same three-monthly-plans PRO screen and the `source=android` marker. No Google Play Billing was added. |
 
-Everything else flagged during the audit (unverifiable App Store Connect product configuration,
-the lack of a recording) requires your action, not a code change, and is tracked in
-`manual-verification-checklist.md`.
+## Test and build results (actually run in this environment)
 
-## Potential issues (flagged, not changed — your call)
+| Command | Result |
+|---|---|
+| `dotnet build Backend/CarScanner.Api/CarScanner.Api.csproj` | **succeeded**, 0 errors |
+| `dotnet build CarScanner.csproj -f net10.0-android -c Debug` | **succeeded**, 0 errors, 151 warnings (pre-existing: AAPT2 merge notes, one nullable warning in `Mileage/CatalogOdometerProvider.cs`) |
+| `dotnet build CarScanner.csproj -f net10.0-ios -c Debug` | **succeeded**, 0 errors, 5 warnings — this compiles the StoreKit and Apple Sign-In code on Windows; it does **not** produce a signed IPA |
+| `dotnet test Tests/CarScanner.Tests` | **2838 passed, 0 failed, 0 skipped** (~2 min) |
 
-- The three-tier, non-strictly-nested subscription structure (OBD PRO / VIN PRO / Full PRO, each
-  with its own monthly+yearly pair) is more complex than a typical single-tier subscription. Worth
-  a deliberate check of the ASC subscription group's level/ordering configuration so
-  upgrade/downgrade behaves as intended — this is an App Store Connect setting, not app code.
-- No in-app demo/simulator mode exists for OBD2 features. This is a legitimate product decision
-  (not a bug), but it's the most likely reason App Review needs the recording in the first place.
-  Not changed here since it wasn't asked for and would be a real feature addition, not a fix.
+Previous baseline in this repository was 2779 tests. The suite grew by 59: the rewritten
+`SubscriptionProductMappingTests` and `ProServiceLogoutTests`, a new `AccountlessApplePurchaseTests`
+(real `EntitlementStore` against a throw-away SQLite database, including the multi-device and
+distinct-transaction-id cases) and a new `AccountlessIosFlowTests`.
 
-## What was inspected
+**iOS signing/archiving was not performed** — it requires macOS and Xcode. Nothing was uploaded,
+submitted, pushed to GitHub, or deployed to Azure.
 
-Full detail and file citations are in the other six documents in this folder. In summary:
-onboarding/launch, the account system (including in-app account deletion), OBD2 connectivity and
-its empty/error states, DTC scan/clear, live data and module diagnostics, the AI diagnostic
-feature and its backend, every external service and SDK the app actually calls, and the complete
-Full PRO purchase/restore/entitlement/legal-links flow.
+## New tests that matter for this rejection
 
-## Test and build results
+- Buying on iOS contains no `IsSignedIn` check and no Account-page navigation.
+- Restore contains no Account-page navigation and maps every failure to a message.
+- One Apple subscription works on several devices at once: iPhone A buys, iPhone B restores, both
+  stay active, and B's restore does not revoke A. A reinstall restores too.
+- The account-claim table still allows exactly one owning account; an accountless subscription is
+  never claimed by an account, and an account-owned one is never linked to an installation.
+- A refund/expiry notification revokes access on every linked installation.
+- The raw session token is never in the database (only its SHA-256 hash).
+- VIN PRO unlocks VIN only, OBD PRO unlocks OBD only, Full PRO unlocks both; an expired row unlocks
+  nothing; an account entitlement and an Apple entitlement do not overwrite each other.
+- `SubscriptionProductIds` / `AllProductIds` contain no yearly id; the PRO page has no period
+  toggle, no strike-through and no discount badge; `ProService` has no price constant.
 
-- `dotnet build CarScanner.csproj -f net10.0-android -c Debug` — **0 errors** (ran twice during
-  this engagement, both clean; Android, since no Mac is available here to build iOS).
-- `dotnet test Tests/CarScanner.Tests` — run repeatedly through this engagement. **Final, current
-  result: 2778 passed, 1 failed, 2779 total** (the 5-test increase from earlier runs is the new
-  `SubscriptionProductMappingTests`). The one failure,
-  `ObdbYearEvidenceTests.TheMileagePage_SaysWhenARecordedReplyExistsForTheModelYear`, predates this
-  engagement entirely and is unrelated to subscriptions, icons, or App Review.
-  One earlier full run (overlapping with other test/build commands still finishing in the
-  background at the same time) additionally reported
-  `BleTransportScenarioTests.Characterization_AtTheProtocolLayer_ALostLinkDuringACommand_SurfacesAsATimeoutAfterTheRetries`
-  failing on a retry-count assertion — a timing-sensitive test under system load, not a code
-  issue: it passed both alone (55/55) and in every other full run, including the final one above.
-  Not caused by anything changed in this session (no Bluetooth/BLE/transport code was touched).
-- iOS was not built or tested — no Mac/Xcode toolchain is available in this environment. The iOS
-  code paths (StoreKit, Apple Sign-In) were verified by reading the source, not by building or
-  running them.
+## Critical blockers before resubmitting (all manual)
 
-## What you must do manually
-
-See `manual-verification-checklist.md` for the complete list. The short version: confirm/create
-the missing App Store Connect products, record the device video, decide on a reviewer test
-account, and re-read the two reply documents to fill in their placeholders before resubmitting.
+1. **App Store Connect products** — confirm the three monthly ids exist, are auto-renewable,
+   "Ready to Submit", and priced at $1.99 / $1.99 / $2.99 (or record what they actually are; the app
+   shows Apple's number, so a wrong price is now visible rather than hidden).
+2. **Subscription levels** — FULL PRO highest, OBD PRO and VIN PRO on the same level; yearly
+   variants (if kept in the group) on the matching level. See `manual-verification-checklist.md`.
+3. **Sign in with Apple** — App ID capability + regenerated profile, so the TestFlight build shows
+   Google *and* Apple.
+4. **Physical-device recording** — `physical-device-recording-checklist.md`; nothing was recorded.
+5. **Backend credentials** — `Stores:Apple:*` on the production App Service.
+6. **Sandbox purchase + restore on a real iPhone**, signed out, including a reinstall.
 
 ## Readiness assessment
 
-**Not yet ready to resubmit.** Two things must happen first, neither of which is a code change:
-(1) resolve the App Store Connect product-configuration gap (blockers #1–2), and (2) record the
-physical-device video (blocker #3). Once those are done, the documentation in this folder directly
-answers all seven of Apple's questions with verified, specific information, which should resolve
-the Guideline 2.1 rejection itself.
+**Technically ready; not yet submittable.** Every code-side cause of the 5.1.1(v) rejection is
+fixed and covered by tests, and both platform targets compile. Submission still depends on the six
+manual items above. Nothing here guarantees Apple's approval.

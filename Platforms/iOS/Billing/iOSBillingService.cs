@@ -35,6 +35,20 @@ public sealed class iOSBillingService : IDisposable
     private readonly SemaphoreSlim _processGate =
         new(1, 1);
 
+    // Loaded SKProducts, keyed by their exact product identifier. The price the
+    // PRO page shows and the product a purchase request uses both come from
+    // this one entry, so a displayed price can never belong to a different
+    // product than the one being bought.
+    private readonly Dictionary<string, CachedProduct> _products =
+        new(StringComparer.Ordinal);
+
+    private readonly SemaphoreSlim _productGate = new(1, 1);
+
+    /// <summary>How long a loaded product (and therefore its price) is reused.</summary>
+    private static readonly TimeSpan ProductLifetime = TimeSpan.FromMinutes(10);
+
+    private sealed record CachedProduct(SKProduct Product, DateTimeOffset LoadedAt);
+
     private Func<StoreTransactionInfo, CancellationToken, Task<bool>>? _verifier;
     private bool _disposed;
 
@@ -147,17 +161,54 @@ public sealed class iOSBillingService : IDisposable
         if (!IsReady)
             return null;
 
-        var product = await LoadProductAsync(productId, cancellationToken);
-        if (product == null)
-            return null;
+        var prices = await GetLocalizedPricesAsync([productId], cancellationToken);
+        return prices.TryGetValue(productId, out var price) ? price : null;
+    }
 
-        using var formatter = new NSNumberFormatter
+    /// <summary>
+    /// The App Store's own localized prices for the given products, keyed by
+    /// product id. One SKProductsRequest is used for the whole set and the
+    /// result is cached, so opening the PRO page does not fire a request per
+    /// price. A product that StoreKit does not resolve is simply absent from
+    /// the result — the caller must show that as "price unavailable" and must
+    /// never substitute an invented price.
+    /// </summary>
+    public async Task<Dictionary<string, string>> GetLocalizedPricesAsync(
+        IReadOnlyCollection<string> productIds,
+        CancellationToken cancellationToken = default)
+    {
+        var prices = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (!IsReady || productIds.Count == 0)
+            return prices;
+
+        var products = await LoadProductsAsync(productIds, cancellationToken);
+        foreach (var (id, product) in products)
         {
-            NumberStyle = NSNumberFormatterStyle.Currency,
-            Locale = product.PriceLocale
-        };
+            var price = FormatPrice(product);
+            if (!string.IsNullOrWhiteSpace(price))
+                prices[id] = price!;
+        }
 
-        return formatter.StringFromNumber(product.Price);
+        return prices;
+    }
+
+    /// <summary>Apple's localized price string for one product (currency follows the App Store territory).</summary>
+    private static string? FormatPrice(SKProduct product)
+    {
+        try
+        {
+            using var formatter = new NSNumberFormatter
+            {
+                NumberStyle = NSNumberFormatterStyle.Currency,
+                Locale = product.PriceLocale
+            };
+
+            return formatter.StringFromNumber(product.Price);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public async Task<string> PurchaseProAsync(
@@ -187,10 +238,10 @@ public sealed class iOSBillingService : IDisposable
 
         try
         {
-            var product =
-                await LoadProductAsync(productId, cancellationToken);
-
-            if (product == null)
+            // The same cached product the price was read from, so the amount
+            // shown on the PRO page always belongs to the product bought here.
+            var loaded = await LoadProductsAsync([productId], cancellationToken);
+            if (!loaded.TryGetValue(productId, out var product) || product is null)
                 return "ERROR:PRODUCT_NOT_FOUND";
 
             var resultTask = _observer.BeginPurchase(productId);
@@ -278,25 +329,76 @@ public sealed class iOSBillingService : IDisposable
         }
     }
 
-    private static async Task<SKProduct?> LoadProductAsync(
-        string productId,
+    /// <summary>
+    /// Resolves a set of product ids to <see cref="SKProduct"/>s, reusing the
+    /// cache when it is still fresh. One request for the whole set. Products
+    /// StoreKit cannot resolve are simply missing from the result (usually a
+    /// product id that does not exist in App Store Connect yet, or is not in a
+    /// state StoreKit will return).
+    /// </summary>
+    private async Task<Dictionary<string, SKProduct>> LoadProductsAsync(
+        IReadOnlyCollection<string> productIds,
+        CancellationToken cancellationToken)
+    {
+        var result = new Dictionary<string, SKProduct>(StringComparer.Ordinal);
+        var missing = new List<string>();
+
+        await _productGate.WaitAsync(cancellationToken);
+        try
+        {
+            var now = DateTimeOffset.UtcNow;
+            foreach (var id in productIds)
+            {
+                if (string.IsNullOrWhiteSpace(id))
+                    continue;
+
+                if (_products.TryGetValue(id, out var cached) &&
+                    now - cached.LoadedAt < ProductLifetime)
+                {
+                    result[id] = cached.Product;
+                }
+                else
+                {
+                    missing.Add(id);
+                }
+            }
+
+            if (missing.Count == 0)
+                return result;
+
+            var fetched = await RequestProductsAsync(missing, cancellationToken);
+            foreach (var (id, product) in fetched)
+            {
+                _products[id] = new CachedProduct(product, now);
+                result[id] = product;
+            }
+
+            return result;
+        }
+        finally
+        {
+            _productGate.Release();
+        }
+    }
+
+    private static async Task<Dictionary<string, SKProduct>> RequestProductsAsync(
+        IReadOnlyCollection<string> productIds,
         CancellationToken cancellationToken)
     {
         var completion =
-            new TaskCompletionSource<SKProduct?>(
+            new TaskCompletionSource<Dictionary<string, SKProduct>>(
                 TaskCreationOptions.RunContinuationsAsynchronously);
 
         using var productIdentifiers =
             NSSet.MakeNSObjectSet(
-                new[] { new NSString(productId) });
+                productIds
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Select(id => (NSObject)new NSString(id))
+                    .ToArray());
 
-        using var request =
-            new SKProductsRequest(productIdentifiers);
+        using var request = new SKProductsRequest(productIdentifiers);
 
-        using var requestDelegate =
-            new ProductRequestDelegate(
-                productId,
-                completion);
+        using var requestDelegate = new ProductRequestDelegate(completion);
 
         request.Delegate = requestDelegate;
 
@@ -305,8 +407,7 @@ public sealed class iOSBillingService : IDisposable
                 () =>
                 {
                     request.Cancel();
-                    completion.TrySetCanceled(
-                        cancellationToken);
+                    completion.TrySetCanceled(cancellationToken);
                 });
 
         request.Start();
@@ -325,6 +426,8 @@ public sealed class iOSBillingService : IDisposable
 
         _observer.Dispose();
         _operationGate.Dispose();
+        _productGate.Dispose();
+        _products.Clear();
     }
 
     private sealed class ProductRequestDelegate :
@@ -332,15 +435,12 @@ public sealed class iOSBillingService : IDisposable
         ISKProductsRequestDelegate,
         ISKRequestDelegate
     {
-        private readonly string _productId;
-        private readonly TaskCompletionSource<SKProduct?>
+        private readonly TaskCompletionSource<Dictionary<string, SKProduct>>
             _completion;
 
         public ProductRequestDelegate(
-            string productId,
-            TaskCompletionSource<SKProduct?> completion)
+            TaskCompletionSource<Dictionary<string, SKProduct>> completion)
         {
-            _productId = productId;
             _completion = completion;
         }
 
@@ -349,14 +449,14 @@ public sealed class iOSBillingService : IDisposable
             SKProductsRequest request,
             SKProductsResponse response)
         {
-            var product =
-                response.Products.FirstOrDefault(
-                    item => string.Equals(
-                        item.ProductIdentifier,
-                        _productId,
-                        StringComparison.Ordinal));
+            var products = new Dictionary<string, SKProduct>(StringComparer.Ordinal);
+            foreach (var product in response.Products)
+            {
+                if (!string.IsNullOrWhiteSpace(product.ProductIdentifier))
+                    products[product.ProductIdentifier] = product;
+            }
 
-            _completion.TrySetResult(product);
+            _completion.TrySetResult(products);
         }
 
         [Export("request:didFailWithError:")]
@@ -364,9 +464,13 @@ public sealed class iOSBillingService : IDisposable
             SKRequest request,
             NSError error)
         {
-            _completion.TrySetException(
-                new InvalidOperationException(
-                    error.LocalizedDescription));
+            // A failed request is reported as "no products" rather than an
+            // exception: the UI then shows "price unavailable / retry" instead
+            // of a crash, and a genuine product that simply was not loaded is
+            // never mistaken for a wrong price.
+            System.Diagnostics.Debug.WriteLine(
+                $"SKProductsRequest failed: {error.LocalizedDescription}");
+            _completion.TrySetResult(new Dictionary<string, SKProduct>(StringComparer.Ordinal));
         }
     }
 

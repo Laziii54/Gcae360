@@ -33,28 +33,34 @@ environment. Follow this script yourself.
    scan. Show the results screen (whether it finds codes or shows "no codes found" — either is
    fine, it just needs to demonstrate the real flow).
 5. **Live data** — open Live Data or Sensors, show live values updating from the vehicle.
-6. **(Optional but recommended) AI explanation** — if you have an active entitlement or sandbox
+6. **Module diagnostics** — open the module/ECU screen and show the modules the vehicle actually
+   answers (ABS, SRS, transmission, etc. where supported). This is the part App Review said it
+   could not evaluate, so give it a few seconds of unhurried screen time.
+7. **(Optional but recommended) AI explanation** — if you have an active entitlement or sandbox
    purchase ready, open the AI diagnostic explanation for a result.
-7. **Account** — go to the Account page, show signing in (email/password, or Google/Apple — your
-   choice), *without exposing the password on screen* (type into a field where it's masked, don't
-   narrate it).
-8. **PRO / purchase flow** — navigate to the PRO page (from the tab/menu, or by opening a PRO-gated
-   feature and tapping through the upgrade prompt). Show:
-   - The three plans (OBD PRO / VIN PRO / Full PRO) and the Monthly/Yearly billing toggle. If you
-     have verified (per `subscription-compliance-audit.md`) that the product you're about to buy
-     actually resolves in your sandbox environment first, either billing period is fine to show;
-     otherwise, stick to Monthly to avoid recording a failed purchase attempt.
-   - Tapping the purchase button and completing Apple's own purchase sheet with your sandbox
+8. **PRO / purchase flow — deliberately signed out.** Do this step **before** signing in to any
+   OBD360 account, because the point is that a purchase needs no account:
+   - Stay signed out, open the PRO screen from the tab/menu (or by opening a PRO-gated feature and
+     tapping through the upgrade prompt). There is no login prompt and no registration step.
+   - Show the three monthly plans (VIN PRO / OBD PRO / Full PRO) and the price on each card. There
+     is **no Monthly/Yearly toggle and no annual card** in this build, so nothing to switch.
+   - Tap the purchase button and complete Apple's own purchase sheet with your sandbox account.
+   - Show the app reflecting the new PRO status afterwards (e.g. a PRO-gated feature now opening).
+   - Kill and relaunch the app while still signed out, to show PRO survives a restart with no
      account.
-   - The app reflecting the new PRO status afterward (e.g. a PRO-gated feature now opening).
-9. **Restore Purchases** — if practical, sign out and back in (or reinstall) and show tapping
-   "Restore Purchases" successfully reactivating PRO.
-10. **Legal links** — from the PRO page, tap through to Privacy Policy and Terms of Use, show they
-    load real content.
-11. **Account deletion (optional but strong evidence for 5.1.1(v))** — on a throwaway test account
+9. **Restore Purchases — still signed out.** Delete and reinstall the app (or use a second device
+   with the same sandbox Apple Account), stay signed out, and tap "Restore Purchases". Show it
+   reactivating PRO. It must not ask for an OBD360 account.
+10. **Account (optional)** — go to the Account page, show signing in (email/password, or
+    Google/Apple — your choice), *without exposing the password on screen* (type into a masked
+    field, don't narrate it). Then show that PRO is still active, and that signing out again keeps
+    the App Store subscription active.
+11. **Legal links** — from the PRO page, tap through to Privacy Policy and Terms of Use, and
+    Settings → Manage Subscription, and show they load real content.
+12. **Account deletion (optional but strong evidence for 5.1.1(v))** — on a throwaway test account
     only, show the Account page's "Delete account" flow through its confirmation dialogs. **Do
     not do this on an account you want to keep**, and don't do it on your sandbox purchase account
-    until after step 8–9 are captured.
+    until after steps 8–10 are captured.
 
 ## What this does NOT require
 
