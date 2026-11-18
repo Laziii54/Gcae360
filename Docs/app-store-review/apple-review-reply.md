@@ -14,7 +14,7 @@ not explained away, and the demo video you asked for is linked below.
 A demo video of the current build on a physical Apple device, paired with the OBD2 adapter, is
 available here:
 
-**▶ [DEMO VIDEO LINK — paste the shareable link here]**
+**▶ https://www.youtube.com/watch?v=PgAMLzOFN5w**
 
 It shows, in one continuous recording on a physical iPhone (not a simulator):
 

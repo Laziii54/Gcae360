@@ -24,12 +24,15 @@ Covers the two rejections on build 56: **2.1** (demo video) and **5.1.1(v)** (re
 
 ### 2.1 — the video link (only you)
 
-You said the video is recorded. Two places need it:
+Video uploaded: **https://www.youtube.com/watch?v=PgAMLzOFN5w**
+(*OBD360 demo — physical device + OBD2 adapter*, reachable without a password — verified.)
+
+Two places need it:
 
 1. **App Store Connect → App Information → App Review Information → Notes** (or the demo-video
-   field, if your ASC shows one): paste the shareable link.
-2. In `apple-review-reply.md` replace `[DEMO VIDEO LINK — paste the shareable link here]` with the
-   same link (so the written reply and the ASC field agree).
+   field, if your ASC shows one): paste the link.
+2. `apple-review-reply.md` — already contains the link; copy the whole file into
+   **Reply to App Review**.
 
 The link must be playable by the reviewer without a password. YouTube unlisted, Vimeo with a
 password written in the notes, or a direct HTTPS link all work; a Google Drive link sometimes fails
