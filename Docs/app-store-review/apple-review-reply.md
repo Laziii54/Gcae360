@@ -9,12 +9,9 @@ not explained away, and the demo video you asked for is linked below.
 
 ---
 
-## Guideline 2.1 — demo video
+## Guideline 2.1 — demo videos
 
-A demo video of the current build on a physical Apple device, paired with the OBD2 adapter, is
-available here:
-
-**▶ https://www.youtube.com/watch?v=PgAMLzOFN5w**
+**1. Physical device + OBD2 adapter:** https://www.youtube.com/watch?v=PgAMLzOFN5w
 
 It shows, in one continuous recording on a physical iPhone (not a simulator):
 
@@ -25,8 +22,11 @@ It shows, in one continuous recording on a physical iPhone (not a simulator):
 3. The full workflow with that hardware: live sensor data, a trouble-code scan on the connected
    vehicle, module-level diagnostics, and VIN read from the vehicle.
 
-The same recording also shows a purchase and a Restore Purchases with no account, which covers the
-5.1.1(v) section below.
+**2. Purchase and Restore Purchases with no account:** https://www.youtube.com/shorts/Lc1e0H8b3Q8
+
+This one covers the 5.1.1(v) section below: opening the PRO screen while signed out, tapping a
+plan, Apple's own purchase sheet appearing immediately, and Restore Purchases — with no sign-in
+prompt, no registration screen and no account step anywhere in the flow.
 
 ---
 
