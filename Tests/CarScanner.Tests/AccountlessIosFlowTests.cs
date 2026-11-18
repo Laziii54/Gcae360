@@ -112,22 +112,27 @@ public sealed class AccountlessIosFlowTests
     }
 
     [Fact]
-    public void AnUnreachableApple_DoesNotSwitchOffAPaidSubscription()
+    public void AnUnreachableOrUnsignedAppleAnswer_GrantsNothing()
     {
+        // Purchases are now proved by a signed token, not by the response's own
+        // hasObd/hasVin flags: if the backend could not sign (no key configured)
+        // or Apple was unreachable, the app must grant nothing at all.
         var pro = Read("Services", "ProService.cs");
-        var start = pro.IndexOf("private void ApplyApple(AppleEntitlement entitlement)", StringComparison.Ordinal);
+        var start = pro.IndexOf("public async Task ApplyAppleEntitlementAsync", StringComparison.Ordinal);
         Assert.True(start >= 0);
         var apply = pro[start..];
         apply = apply[..apply.IndexOf("\n    }", StringComparison.Ordinal)];
 
-        // The refresh answer carries verified:false when Apple could not be
-        // reached; the last known server-verified state must survive that.
-        Assert.Contains("if (!entitlement.Verified)", apply);
-        var guard = apply.IndexOf("if (!entitlement.Verified)", StringComparison.Ordinal);
+        Assert.Contains("EntitlementTokenVerifier.Verify(entitlement.EntitlementToken)", apply);
+        var guard = apply.IndexOf("if (claims is null)", StringComparison.Ordinal);
         var ret = apply.IndexOf("return;", guard, StringComparison.Ordinal);
-        var assign = apply.IndexOf("_appleObd =", StringComparison.Ordinal);
-        Assert.True(ret > guard && assign > ret,
-            "an unverified refresh must return before touching the cached entitlement");
+        Assert.True(guard >= 0 && ret > guard,
+            "a purchase answer without a verifiable token must return before anything is stored");
+
+        // The record still carries the token through from the backend answer.
+        var service = Read("Services", "AppleEntitlementService.cs");
+        Assert.Contains("\"entitlementToken\"", service);
+        Assert.Contains("string? EntitlementToken = null", service);
     }
 
     // ============================================================
@@ -352,22 +357,86 @@ public sealed class AccountlessIosFlowTests
     }
 
     [Fact]
-    public void TheWebsiteOffersMonthlyOnly_ForAndroid_AndBothPeriodsOtherwise()
+    public void TheWebsiteSellsMonthlyOnly_ForEveryone()
     {
         var program = Read("Backend", "CarScanner.Api", "Program.cs");
-        Assert.Contains("monthlyOnly", program);
         Assert.Contains("WebPages.ProPage(", program);
 
         var pages = Read("Backend", "CarScanner.Api", "Services", "WebPages.cs");
-        Assert.Contains("bool monthlyOnly = false", pages);
 
-        // The yearly tabs/details are only emitted when the page is not monthly-only.
-        Assert.Contains("var planTabs = monthlyOnly", pages);
-        Assert.Contains("var planDetails = monthlyOnly", pages);
+        // The yearly plans are not sold any more, so the page must not render them:
+        // no yearly tab, no yearly detail panel, and no monthly/yearly toggle.
+        Assert.DoesNotContain("ProductCatalog.ObdYearly", pages);
+        Assert.DoesNotContain("ProductCatalog.VinYearly", pages);
+        Assert.DoesNotContain("ProductCatalog.FullYearly", pages);
+        Assert.DoesNotContain("name=\"period\"", pages);
+        Assert.DoesNotContain("periodtoggle", pages);
+        Assert.DoesNotContain("monthlyOnly", pages);
+        Assert.DoesNotContain("monthlyOnly", program);
 
-        // ... and the independent website keeps both periods.
-        Assert.Contains("ProductCatalog.ObdYearly", pages);
-        Assert.Contains("ProductCatalog.VinYearly", pages);
-        Assert.Contains("ProductCatalog.FullYearly", pages);
+        // ... and the three monthly plans are all that is offered.
+        Assert.Contains("ProductCatalog.ObdMonthly", pages);
+        Assert.Contains("ProductCatalog.VinMonthly", pages);
+        Assert.Contains("ProductCatalog.FullMonthly", pages);
+    }
+
+    [Fact]
+    public void TheProPage_SwitchesBetweenPlans_AndOpensOnObd()
+    {
+        var pages = Read("Backend", "CarScanner.Api", "Services", "WebPages.cs");
+
+        // OBD | VIN | Full switch; the switch label and its panel both carry the plan.
+        Assert.Contains("class=\"planswitch\"", pages);
+        Assert.Contains("class=\"planbtn", pages);
+        Assert.Contains("data-plan=\"{plan}\"", pages);
+        Assert.Contains("ProductCatalog.ObdMonthly, \"obd\"", pages);
+        Assert.Contains("ProductCatalog.VinMonthly, \"vin\"", pages);
+        Assert.Contains("ProductCatalog.FullMonthly, \"full\"", pages);
+
+        // OBD is the preselected plan, Full is not.
+        string CallFor(string product)
+        {
+            var start = pages.IndexOf($"PlanSwitch(ProductCatalog.{product}", StringComparison.Ordinal);
+            Assert.True(start >= 0, product);
+            var end = pages.IndexOf(");", start, StringComparison.Ordinal);
+            Assert.True(end > start);
+            return pages[start..end];
+        }
+
+        Assert.Contains("check: true", CallFor("ObdMonthly"));
+        Assert.DoesNotContain("check: true", CallFor("FullMonthly"));
+
+        // VIN packs belong to the VIN / Full views only.
+        Assert.Contains("id=\"packs\" hidden", pages);
+        Assert.Contains("lastPlan==='obd'", pages);
+    }
+
+    [Fact]
+    public void TheProPage_HasNoBankPicker_OnlyBog()
+    {
+        var pages = Read("Backend", "CarScanner.Api", "Services", "WebPages.cs");
+        Assert.Contains("bankline", pages);
+        Assert.Contains("საქართველოს ბანკი", pages);
+        Assert.DoesNotContain("name=\"provider\" id=\"bank\">{bankOptions}", pages);
+        Assert.DoesNotContain("select name=\"provider\"", pages);
+
+        var service = Read("Backend", "CarScanner.Api", "Services", "WebPaymentService.cs");
+        Assert.Contains("TBC is not offered even if its keys are still present", service);
+        Assert.Contains("IsConfigured(\"bog\") ? new[] { \"bog\" } : Array.Empty<string>()", service);
+    }
+
+    [Fact]
+    public void AFailedSavedCard_DoesNotKillThePayment()
+    {
+        var service = Read("Backend", "CarScanner.Api", "Services", "WebPaymentService.cs");
+
+        // The recurring state may degrade to one-time, but the customer still goes to
+        // the bank page: an order that was already created must never be thrown away.
+        Assert.Contains("continuing as a one-time payment", service);
+        Assert.Contains("UPDATE WebOrders SET Recurring=0", service);
+
+        var failure = service[service.IndexOf("if (recurring && !await EnableBogSavedCardAsync", StringComparison.Ordinal)..];
+        failure = failure[..failure.IndexOf("return new CheckoutResult(true", StringComparison.Ordinal)];
+        Assert.DoesNotContain("CheckoutResult.Fail(\"AUTO_RENEW_UNAVAILABLE\")", failure);
     }
 }

@@ -98,29 +98,11 @@ public partial class AppShell : Shell
     }
 
     /// <summary>
-    /// Android back on the OBD main page returns to the start screen
-    /// (OBD / VIN Check) instead of closing the app.
+    /// Home is the root screen now, so Android back on it closes the app like any
+    /// other root page — it no longer bounces to a "choose OBD / VIN" screen that
+    /// is out of the flow. Anywhere deeper, the platform pops the stack as usual.
     /// </summary>
-    protected override bool OnBackButtonPressed()
-    {
-        try
-        {
-            if (CurrentPage is HomePage &&
-                Navigation.NavigationStack.Count <= 1 &&
-                Navigation.ModalStack.Count == 0)
-            {
-                // Never throws (SafeNavigation reports failures itself), so the unobserved task cannot end up as an
-                // AggregateException in the crash report.
-                _ = CarScanner.Services.SafeNavigation.GoToAsync("//StartPage");
-                return true;
-            }
-        }
-        catch
-        {
-        }
-
-        return base.OnBackButtonPressed();
-    }
+    protected override bool OnBackButtonPressed() => base.OnBackButtonPressed();
 
     // Back button / swipe / tab taps do not go through SafeNavigation. A second one while the first is still being
     // built is dropped (for at most this long), so two overlapping navigations cannot leave a blank white page.
@@ -174,11 +156,23 @@ public partial class AppShell : Shell
             await GoToAsync(nameof(ProPage));
     }
 
+    /// <summary>
+    /// Routes whose whole purpose is a PRO feature, so navigating to them is
+    /// refused before the page is even created. Pages that mix free and PRO
+    /// content (module live data, ECU identifiers, hybrid health, pre-purchase
+    /// inspection) are gated on their start button instead.
+    ///
+    /// FREE BY PRODUCT DECISION — never add these here:
+    ///   MileagePage            original mileage discovery is free
+    ///   ServicePage            service procedures are free
+    ///   (oil life 100% / 50%)  stays available under the existing compatibility rules
+    /// </summary>
     private static bool IsProFeatureRoute(string route) =>
         route.Contains(nameof(AiPage), StringComparison.Ordinal)
-        || route.Contains(nameof(MileagePage), StringComparison.Ordinal)
+        || route.Contains(nameof(FuelPage), StringComparison.Ordinal)
         || route.Contains(nameof(DiagnosticReportPage), StringComparison.Ordinal)
-        || route.Contains(nameof(FuelPage), StringComparison.Ordinal);
+        || route.Contains(nameof(ModuleScanPage), StringComparison.Ordinal)
+        || route.Contains(nameof(CodingPage), StringComparison.Ordinal);
 
     // A page must never stay invisible: a fast second navigation can cancel this animation half way, which left the
     // page at opacity 0 (a blank screen with only the background colour). Whatever happens, it ends fully visible.

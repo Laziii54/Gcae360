@@ -44,3 +44,6 @@ Backend/CarScanner.Api/Properties/launchSettings.json
 *.db-shm
 **/appsettings.Production.json
 *.pubxml.user
+
+# Entitlement signing keys (private). Never commit.
+Backend/CarScanner.Api/secrets/

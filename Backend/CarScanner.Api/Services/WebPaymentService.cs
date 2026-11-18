@@ -165,18 +165,13 @@ CREATE INDEX IF NOT EXISTS IX_WebOrders_Provider ON WebOrders(Provider, Provider
         _ => false
     };
 
-    /// <summary>Banks that are configured, the default one first.</summary>
-    public IReadOnlyList<string> AvailableProviders
-    {
-        get
-        {
-            var preferred = (Setting("Payments:Provider") ?? "tbc").ToLowerInvariant();
-            return new[] { preferred, "tbc", "bog" }
-                .Distinct()
-                .Where(IsConfigured)
-                .ToList();
-        }
-    }
+    /// <summary>
+    /// Banks a NEW payment may use. The business accepts Bank of Georgia only, so
+    /// TBC is not offered even if its keys are still present in the configuration;
+    /// the TBC code path stays for legacy orders (status checks, refunds).
+    /// </summary>
+    public IReadOnlyList<string> AvailableProviders =>
+        IsConfigured("bog") ? new[] { "bog" } : Array.Empty<string>();
 
     // ============================================================
     // CHECKOUT
@@ -222,12 +217,16 @@ CREATE INDEX IF NOT EXISTS IX_WebOrders_Provider ON WebOrders(Provider, Provider
 
             await SetProviderPaymentIdAsync(orderId, paymentId, ct);
 
-            // The card must be marked for automatic payments before the
-            // customer is sent to the bank page.
+            // The card must be marked for automatic payments before the customer is
+            // sent to the bank page. If the BOG merchant is not provisioned for
+            // saved cards this used to kill the whole order — the customer got an
+            // error even though a perfectly good payment page existed. Now the
+            // payment simply continues as a one-time one.
             if (recurring && !await EnableBogSavedCardAsync(paymentId, ct))
             {
-                await SetStatusAsync(orderId, "failed", null, ct);
-                return CheckoutResult.Fail("AUTO_RENEW_UNAVAILABLE");
+                _log.LogWarning("BOG saved card could not be enabled for {Order}; continuing as a one-time payment", orderId);
+                recurring = false;
+                await ExecuteAsync("UPDATE WebOrders SET Recurring=0 WHERE OrderId=$o", orderId, "0", ct);
             }
 
             return new CheckoutResult(true, orderId, redirect, null);
@@ -413,7 +412,10 @@ CREATE INDEX IF NOT EXISTS IX_WebOrders_Provider ON WebOrders(Provider, Provider
         var raw = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
         {
-            _log.LogWarning("BOG create order answered {Status}", (int)response.StatusCode);
+            // The body carries BOG's actual reason (bad basket, currency, callback
+            // URL, disabled product …). Status alone made this undiagnosable.
+            _log.LogWarning("BOG create order answered {Status}: {Body}", (int)response.StatusCode,
+                raw.Length > 500 ? raw[..500] : raw);
             return (null, null);
         }
 
@@ -529,7 +531,11 @@ CREATE INDEX IF NOT EXISTS IX_WebOrders_Provider ON WebOrders(Provider, Provider
             using var response = await fetch(client);
             if (!response.IsSuccessStatusCode)
             {
-                _log.LogWarning("{Provider} token request answered {Status}", provider, (int)response.StatusCode);
+                // A 401 here means the BOG client id/secret pair is wrong or the
+                // merchant is not enabled for e-commerce — the body says which.
+                var body = await response.Content.ReadAsStringAsync(ct);
+                _log.LogWarning("{Provider} token request answered {Status}: {Body}", provider,
+                    (int)response.StatusCode, body.Length > 300 ? body[..300] : body);
                 return null;
             }
 

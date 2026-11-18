@@ -1,5 +1,6 @@
 using CarScanner.Database;
 using CarScanner.Models;
+using CarScanner.Services.Entitlements;
 using System.Net.Http.Json;
 
 namespace CarScanner.Services;
@@ -7,25 +8,30 @@ namespace CarScanner.Services;
 /// <summary>
 /// The one place the app decides whether a PRO feature is unlocked.
 ///
-/// Two independent sources are combined, never overwritten:
+/// Access is granted by a <b>cryptographically signed entitlement token</b>
+/// issued by the OBD360 backend and verified locally by
+/// <see cref="EntitlementTokenVerifier"/>. Local booleans (the old
+/// <c>IsPro</c> / <c>VerifiedByServer</c> columns, or a preference file) are no
+/// longer evidence of anything: without a token signed by the backend's private
+/// key, PRO stays locked — so editing the SQLite database or the preferences on
+/// a rooted device no longer unlocks anything.
 ///
-///  1. <b>OBD360 account</b> — a website purchase, an account-linked store
-///     purchase, or a plan given by an admin. Read from
-///     <c>/api/entitlements/{accountId}</c> and only while signed in.
+/// Two independent sources are combined, each with its own token:
+///  • the OBD360 account (website purchase, account-linked store purchase,
+///    admin/promo plan) — refreshed through <c>/api/entitlements/{id}</c>;
+///  • an accountless App Store subscription bought on iOS — refreshed through
+///    <c>/api/store/apple/anonymous/refresh</c>.
+/// Signing out drops only the account token, so an Apple subscription keeps
+/// working (App Review 5.1.1(v)).
 ///
-///  2. <b>Accountless App Store purchase</b> — an iOS subscription bought
-///     without any OBD360 account (App Review 5.1.1(v)). Read from
-///     <c>/api/store/apple/anonymous</c> with the opaque session token in the
-///     keychain; the backend derived it from an Apple transaction.
-///
-/// Signing out clears only source 1, so an Apple subscription bought without
-/// an account keeps working (and the reverse: an Apple subscription does not
-/// make a signed-in account's website plan disappear). Nothing is ever granted
-/// from a local flag alone: a cached value is trusted only while it is
-/// unexpired *and* was written from a server-verified answer.
+/// Tokens are short-lived (7 days by default) and verified on every load, so an
+/// offline device keeps working only until the token it holds expires.
 /// </summary>
 public sealed class ProService
 {
+    private const string AccountTokenKey = "entitlement.token.account";
+    private const string AppleTokenKey = "entitlement.token.apple";
+
     private readonly AppDatabase _db;
     private readonly AccountService _account;
     private readonly AppleEntitlementService _appleStore;
@@ -33,6 +39,13 @@ public sealed class ProService
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private DateTimeOffset _lastRefreshAttempt = DateTimeOffset.MinValue;
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromMinutes(5);
+
+    /// <summary>Refresh proactively once a token is this close to expiring.</summary>
+    private static readonly TimeSpan RefreshBeforeExpiry = TimeSpan.FromDays(1);
+
+    private EntitlementTokenClaims? _accountClaims;
+    private EntitlementTokenClaims? _appleClaims;
+    private bool _migrationStarted;
 
     // ---- Subscriptions: monthly, the only period the mobile apps sell ----
     public const string ObdProductId = "com.georgiancarscanner.pro.monthly";
@@ -55,55 +68,39 @@ public sealed class ProService
 
     public const int VinMonthlyReports = 10;
 
-    private const string AccountVinKey = "pro.hasVin";
-    private const string AccountVinExpiresKey = "pro.vinExpires";
+    /// <summary>OBD PRO is granted by at least one verified token that says so.</summary>
+    public bool IsPro => _accountClaims?.HasObd == true || _appleClaims?.HasObd == true;
 
-    // ---- Account source (never includes the Apple source) ----
-    private bool _accountObd;
-    private DateTime? _accountObdExpiresAt;
-    private bool _accountVin;
-    private DateTime? _accountVinExpiresAt;
-    private string _accountSource = "none";
-    private string _accountProductId = string.Empty;
+    /// <summary>VIN PRO is granted by at least one verified token that says so.</summary>
+    public bool HasVin => _accountClaims?.HasVin == true || _appleClaims?.HasVin == true;
 
-    // ---- Accountless App Store source ----
-    private bool _appleObd;
-    private bool _appleVin;
-    private DateTime? _appleObdExpiresAt;
-    private DateTime? _appleVinExpiresAt;
-    private string _appleProductId = string.Empty;
-
-    private bool _accountVerified;
-    private bool _appleVerified;
-
-    /// <summary>OBD PRO is active from either source.</summary>
-    public bool IsPro => _accountObd || _appleObd;
-
-    /// <summary>Latest end date of the OBD PRO sources that are active.</summary>
-    public DateTime? ExpiresAt => Latest(
-        _accountObd ? _accountObdExpiresAt : null,
-        _appleObd ? _appleObdExpiresAt : null);
-
-    /// <summary>True when at least one source was confirmed by the backend.</summary>
-    public bool ServerVerified => _accountVerified || _appleVerified;
-
-    /// <summary>VIN PRO is active from either source.</summary>
-    public bool HasVin => _accountVin || _appleVin;
-
-    public DateTime? VinExpiresAt => Latest(
-        _accountVin ? _accountVinExpiresAt : null,
-        _appleVin ? _appleVinExpiresAt : null);
+    /// <summary>
+    /// True when at least one token verified. Kept for compatibility with the
+    /// old model; it can never be true without a valid signature.
+    /// </summary>
+    public bool ServerVerified => _accountClaims is not null || _appleClaims is not null;
 
     /// <summary>OBD PRO check used by every OBD PRO feature.</summary>
     public bool HasObd => IsPro && ServerVerified;
 
-    /// <summary>True when the current access comes from an accountless App Store subscription.</summary>
-    public bool IsAppleEntitled => _appleObd || _appleVin;
+    public DateTime? ExpiresAt => LatestExpiry(claims => claims.HasObd);
 
-    public string? AppleProductId => string.IsNullOrEmpty(_appleProductId) ? null : _appleProductId;
+    public DateTime? VinExpiresAt => LatestExpiry(claims => claims.HasVin);
+
+    /// <summary>True when the current access comes from an accountless App Store subscription.</summary>
+    public bool IsAppleEntitled => _appleClaims is not null;
+
+    /// <summary>True when an OBD360 account token is present and valid.</summary>
+    public bool IsAccountEntitled => _accountClaims is not null;
 
     /// <summary>none, obd, vin or full.</summary>
     public string Tier => HasObd && HasVin ? "full" : HasObd ? "obd" : HasVin ? "vin" : "none";
+
+    /// <summary>
+    /// True when a token exists but has expired and no refresh has succeeded —
+    /// the UI uses this to say "reconnect to verify PRO" instead of "buy PRO".
+    /// </summary>
+    public bool NeedsReconnection { get; private set; }
 
     public event EventHandler<bool>? ProChanged;
 
@@ -115,45 +112,55 @@ public sealed class ProService
         _account.AccountChanged += OnAccountChanged;
     }
 
+    // ============================================================
+    // LIFECYCLE
+    // ============================================================
+
     /// <summary>
-    /// PRO is per-account, never implied by "no session": signing out must clear
-    /// the account's cached entitlement, because the refresh attempted right
-    /// after logout has no access token any more, fails silently, and the
-    /// failure path deliberately preserves the cache to survive real outages.
-    ///
-    /// It must <b>not</b> clear an accountless App Store entitlement: that
-    /// purchase was verified against the Apple Account, not against OBD360, and
-    /// App Review requires it to keep working after a sign-out.
-    ///
-    /// AccountChanged fires only after AccountService has already cleared the
-    /// stored session, so IsSignedIn is reliable here.
+    /// Signs out: drops the account token only. A verified App Store
+    /// entitlement belongs to the Apple Account and must survive (5.1.1(v)).
+    /// Signing in again invalidates the throttle so the new token is fetched.
     /// </summary>
     private async void OnAccountChanged(object? sender, EventArgs e)
     {
-        if (_account.IsSignedIn)
-            return;
+        try
+        {
+            if (!_account.IsSignedIn)
+            {
+                await ClearAccountEntitlementAsync();
+                return;
+            }
 
-        try { await ClearAccountEntitlementAsync(); } catch { }
+            _lastRefreshAttempt = DateTimeOffset.MinValue;
+            await LoadAsync(forceServerRefresh: true);
+        }
+        catch
+        {
+            // Never let an account event crash the app.
+        }
     }
 
     public async Task LoadAsync(bool forceServerRefresh = false)
     {
-        await LoadFromCacheAsync();
+        StartLegacyMigration();
+        await LoadTokensAsync();
 
         if (!forceServerRefresh &&
             DateTimeOffset.UtcNow - _lastRefreshAttempt < RefreshInterval)
         {
+            Publish();
             return;
         }
 
         await RefreshAllAsync(forceServerRefresh);
+        Publish();
     }
 
     /// <summary>OBD PRO check used by every OBD PRO feature.</summary>
     public async Task<bool> EnsureProAsync()
     {
         await LoadAsync();
-        return IsPro && ServerVerified;
+        return HasObd;
     }
 
     /// <summary>VIN PRO check (the server still counts every report).</summary>
@@ -163,130 +170,143 @@ public sealed class ProService
         return HasVin;
     }
 
-    public bool CanUse(string feature) => IsPro && ServerVerified;
+    public bool CanUse(string feature) => HasObd;
+
+    /// <summary>Re-reads tokens from storage and, when forced, refreshes them from the backend.</summary>
+    public async Task RefreshAsync(bool forceServerRefresh = true)
+    {
+        StartLegacyMigration();
+        await LoadTokensAsync();
+        await RefreshAllAsync(forceServerRefresh);
+        Publish();
+    }
 
     /// <summary>
-    /// A verified Apple purchase, handed over by <see cref="PurchaseService"/>
-    /// right after the backend accepted it, so the UI does not need a second
-    /// round trip to show PRO.
+    /// Applies the signed token returned by the accountless Apple purchase
+    /// flow, so the UI updates without a second round trip.
     /// </summary>
     public async Task ApplyAppleEntitlementAsync(AppleEntitlement entitlement)
     {
-        ApplyApple(entitlement);
-        await SaveCacheAsync();
+        var claims = EntitlementTokenVerifier.Verify(entitlement.EntitlementToken);
+        if (claims is null)
+        {
+            // No usable token in the answer: grant nothing. The next refresh
+            // will try again; PRO is never inferred from the response flags.
+            return;
+        }
+
+        await StoreTokenAsync(AppleTokenKey, entitlement.EntitlementToken!, claims, isApple: true);
         Publish();
     }
 
-    /// <summary>Re-reads both sources, bypassing the throttle.</summary>
-    public async Task RefreshAsync(bool forceServerRefresh = true)
-    {
-        await LoadFromCacheAsync();
-        await RefreshAllAsync(forceServerRefresh);
-    }
-
-    // ============================================================
-    // ACCOUNT SOURCE
-    // ============================================================
-
-    /// <summary>Clears every cached entitlement (account *and* Apple) — a full reset.</summary>
+    /// <summary>Clears every token (account deletion / full reset).</summary>
     public async Task DeactivateAsync()
     {
-        _accountObd = false;
-        _accountObdExpiresAt = null;
-        _accountSource = "none";
-        _accountProductId = string.Empty;
-        _accountVerified = false;
-        SaveAccountVin(false, null);
-
-        _appleObd = false;
-        _appleVin = false;
-        _appleObdExpiresAt = null;
-        _appleVinExpiresAt = null;
-        _appleProductId = string.Empty;
-        _appleVerified = false;
+        _accountClaims = null;
+        _appleClaims = null;
+        await RemoveTokenAsync(AccountTokenKey);
+        await RemoveTokenAsync(AppleTokenKey);
         await _appleStore.ForgetAsync();
 
-        await _db.SaveProAsync(new ProEntitlement { Id = "local", IsPro = false, VerifiedByServer = false, UpdatedAt = DateTime.UtcNow });
+        // Leave a clean, non-authoritative record for the data export and remove
+        // every legacy value that the old build trusted.
+        try
+        {
+            await _db.SaveProAsync(new ProEntitlement { Id = "local", IsPro = false, VerifiedByServer = false, UpdatedAt = DateTime.UtcNow });
+        }
+        catch
+        {
+        }
+
         Publish();
     }
 
-    /// <summary>Sign-out: drop the account's entitlement, keep a verified Apple one.</summary>
     private async Task ClearAccountEntitlementAsync()
     {
-        _accountObd = false;
-        _accountObdExpiresAt = null;
-        _accountSource = "none";
-        _accountProductId = string.Empty;
-        _accountVerified = false;
-        SaveAccountVin(false, null);
-
-        await SaveCacheAsync();
+        _accountClaims = null;
+        await RemoveTokenAsync(AccountTokenKey);
         Publish();
     }
 
-    private async Task LoadFromCacheAsync()
+    // ============================================================
+    // TOKEN STORAGE / VALIDATION
+    // ============================================================
+
+    private async Task LoadTokensAsync()
     {
-        var local = await _db.GetProAsync();
-        var now = DateTime.UtcNow;
+        var account = await ReadVerifiedAsync(AccountTokenKey);
+        var apple = await ReadVerifiedAsync(AppleTokenKey);
 
-        _accountObd = local?.IsPro == true &&
-                      local.VerifiedByServer &&
-                      local.ExpiresAt is { } accountExpiry &&
-                      accountExpiry > now;
-        _accountObdExpiresAt = _accountObd ? local!.ExpiresAt : null;
-        _accountSource = local?.Source ?? "none";
-        _accountProductId = local?.ProductId ?? string.Empty;
-        _accountVerified = local?.VerifiedByServer == true;
+        _accountClaims = account.Claims;
+        _appleClaims = apple.Claims;
 
-        LoadAccountVin();
-
-        _appleObd = local?.AppleVerifiedByServer == true &&
-                    local.AppleHasObd &&
-                    local.AppleObdExpiresAt is { } appleExpiry &&
-                    appleExpiry > now;
-        _appleVin = local?.AppleVerifiedByServer == true &&
-                    local.AppleHasVin &&
-                    local.AppleVinExpiresAt is { } appleVinExpiry &&
-                    appleVinExpiry > now;
-        _appleObdExpiresAt = _appleObd ? local!.AppleObdExpiresAt : null;
-        _appleVinExpiresAt = _appleVin ? local!.AppleVinExpiresAt : null;
-        _appleProductId = local?.AppleProductId ?? string.Empty;
-        _appleVerified = local?.AppleVerifiedByServer == true;
-
-        Publish();
+        // A token that existed but no longer verifies (expired, or signed by a
+        // retired key) is what "reconnect to verify PRO" is about. A user who
+        // never had PRO sees the normal purchase screen instead.
+        NeedsReconnection = (account.Lost || apple.Lost) &&
+                            _accountClaims is null &&
+                            _appleClaims is null;
     }
 
-    private void LoadAccountVin()
+    private static async Task<(EntitlementTokenClaims? Claims, bool Lost)> ReadVerifiedAsync(string key)
     {
         try
         {
-            var expires = Preferences.Default.Get(AccountVinExpiresKey, 0L);
-            var at = expires > 0 ? new DateTime(expires, DateTimeKind.Utc) : (DateTime?)null;
-            _accountVin = Preferences.Default.Get(AccountVinKey, false) &&
-                          at.HasValue && at.Value > DateTime.UtcNow;
-            _accountVinExpiresAt = _accountVin ? at : null;
+            var stored = await SecureStorage.Default.GetAsync(key);
+            if (string.IsNullOrWhiteSpace(stored))
+                return (null, false);
+
+            var claims = EntitlementTokenVerifier.Verify(stored);
+            if (claims is null)
+            {
+                // Corrupt, tampered or expired: drop it rather than keep a dead token.
+                SecureStorage.Default.Remove(key);
+                return (null, true);
+            }
+
+            return (claims, false);
         }
         catch
         {
-            _accountVin = false;
-            _accountVinExpiresAt = null;
+            // Secure storage unavailable (locked keystore, restored backup, ...):
+            // behave as "no entitlement" rather than guessing.
+            return (null, false);
         }
     }
 
-    private void SaveAccountVin(bool active, DateTime? expires)
+    private async Task StoreTokenAsync(string key, string token, EntitlementTokenClaims claims, bool isApple)
     {
-        var isActive = active && expires.HasValue && expires.Value > DateTime.UtcNow;
-        _accountVin = isActive;
-        _accountVinExpiresAt = isActive ? expires : null;
         try
         {
-            Preferences.Default.Set(AccountVinKey, isActive);
-            Preferences.Default.Set(AccountVinExpiresKey, isActive ? expires!.Value.Ticks : 0L);
+            await SecureStorage.Default.SetAsync(key, token);
+        }
+        catch
+        {
+            // Storage failure must not unlock anything by accident; the claims are
+            // still kept in memory for this session only.
+        }
+
+        if (isApple)
+            _appleClaims = claims;
+        else
+            _accountClaims = claims;
+    }
+
+    private static async Task RemoveTokenAsync(string key)
+    {
+        try
+        {
+            SecureStorage.Default.Remove(key);
+            await Task.CompletedTask;
         }
         catch
         {
         }
     }
+
+    // ============================================================
+    // REFRESH
+    // ============================================================
 
     private async Task RefreshAllAsync(bool force)
     {
@@ -301,17 +321,11 @@ public sealed class ProService
 
             _lastRefreshAttempt = DateTimeOffset.UtcNow;
 
-            // The account source is only ever read while signed in: on logout
-            // there is no token, and a failed call must not wipe a valid cache.
             if (_account.IsSignedIn)
-                await LoadServerEntitlementAsync(_account.AccountId);
+                await RefreshAccountTokenAsync();
 
-            // The App Store source belongs to the installation, signed in or not.
             if (AppleEntitlementService.IsSupported)
-                await RefreshAppleEntitlementAsync();
-
-            await SaveCacheAsync();
-            Publish();
+                await RefreshAppleTokenAsync();
         }
         finally
         {
@@ -319,13 +333,23 @@ public sealed class ProService
         }
     }
 
-    private async Task LoadServerEntitlementAsync(string userId)
+    /// <summary>
+    /// Fetches a fresh token for the signed-in account. An account with no
+    /// entitlement still gets a valid token — one that says hasObd/hasVin false —
+    /// so a lapsed or revoked subscription is reflected immediately.
+    /// </summary>
+    private async Task RefreshAccountTokenAsync()
     {
-        var endpoint = AIConfig.BackendBaseUrl.Trim();
-        if (string.IsNullOrWhiteSpace(endpoint) || !Uri.TryCreate(endpoint, UriKind.Absolute, out var baseUri) || baseUri.Scheme != Uri.UriSchemeHttps)
+        var userId = _account.AccountId;
+        if (!Guid.TryParse(userId, out _))
+            return;
+
+        if (!Uri.TryCreate(AIConfig.BackendBaseUrl, UriKind.Absolute, out var baseUri) ||
+            baseUri.Scheme != Uri.UriSchemeHttps)
         {
             return;
         }
+
         try
         {
             using var request = await _account.CreateAuthorizedRequestAsync(
@@ -334,100 +358,108 @@ public sealed class ProService
             using var response = await _http.SendAsync(request);
             if (!response.IsSuccessStatusCode)
                 return;
+
             var payload = await response.Content.ReadFromJsonAsync<EntitlementResponse>();
-            if (payload is null)
+            if (string.IsNullOrWhiteSpace(payload?.EntitlementToken))
+            {
+                // The backend could not sign (no key configured). Keep whatever
+                // token we already hold until it expires; never grant from flags.
                 return;
+            }
 
-            var now = DateTimeOffset.UtcNow;
-            var obdExpires = payload.ObdExpiresAt ?? payload.ExpiresAt;
-            var obdActive = (payload.HasObd ?? payload.IsPro) && obdExpires.HasValue && obdExpires.Value > now;
-            var vinExpires = payload.VinExpiresAt;
-            var vinActive = payload.HasVin == true && vinExpires.HasValue && vinExpires.Value > now;
+            var claims = EntitlementTokenVerifier.Verify(payload!.EntitlementToken);
+            if (claims is null || !string.Equals(claims.Subject, userId, StringComparison.OrdinalIgnoreCase))
+            {
+                // A token for a different subject is never accepted for this account.
+                return;
+            }
 
-            SaveAccountVin(vinActive, vinExpires?.UtcDateTime);
-
-            _accountVerified = true;
-            _accountObd = obdActive;
-            _accountObdExpiresAt = obdActive ? obdExpires!.Value.UtcDateTime : null;
-            _accountSource = payload.Source ?? "server";
-            _accountProductId = payload.ProductId ?? string.Empty;
+            await StoreTokenAsync(AccountTokenKey, payload.EntitlementToken!, claims, isApple: false);
         }
         catch
         {
-            // Preserve only what a previous server answer already verified.
-            // No local entitlement is ever manufactured during an outage.
+            // Offline or server error: the previously verified token (if still
+            // unexpired) remains the only source of access.
+        }
+    }
+
+    private async Task RefreshAppleTokenAsync()
+    {
+        var entitlement = await _appleStore.RefreshAsync();
+        if (entitlement?.EntitlementToken is not { Length: > 0 } token)
+            return;
+
+        var claims = EntitlementTokenVerifier.Verify(token);
+        if (claims is null)
+            return;
+
+        await StoreTokenAsync(AppleTokenKey, token, claims, isApple: true);
+    }
+
+    // ============================================================
+    // MIGRATION
+    // ============================================================
+
+    /// <summary>
+    /// One-time cleanup: the previous build trusted IsPro / VerifiedByServer
+    /// straight out of SQLite. Those columns still exist (other code reads the
+    /// row for the data export), but every trusted flag is zeroed so nothing can
+    /// resurrect them, and the app now ignores them for authorization entirely.
+    /// </summary>
+    private void StartLegacyMigration()
+    {
+        if (_migrationStarted)
+            return;
+
+        _migrationStarted = true;
+        _ = MigrateLegacyTrustAsync();
+    }
+
+    private async Task MigrateLegacyTrustAsync()
+    {
+        try
+        {
+            // The old VIN flag lived in Preferences and was trusted as PRO.
+            // Only a signed token counts now.
+            Preferences.Default.Remove("pro.hasVin");
+            Preferences.Default.Remove("pro.vinExpires");
+        }
+        catch
+        {
+        }
+
+        try
+        {
+            await _db.ClearLegacyEntitlementTrustAsync();
+        }
+        catch
+        {
         }
     }
 
     // ============================================================
-    // APPLE (ACCOUNTLESS) SOURCE
+    // HELPERS
     // ============================================================
 
-    private async Task RefreshAppleEntitlementAsync()
+    private List<EntitlementTokenClaims> Granted(Func<EntitlementTokenClaims, bool> predicate)
     {
-        var entitlement = await _appleStore.RefreshAsync();
-        if (entitlement is null)
-            return;
-
-        ApplyApple(entitlement);
+        var result = new List<EntitlementTokenClaims>(2);
+        if (_accountClaims is not null && predicate(_accountClaims))
+            result.Add(_accountClaims);
+        if (_appleClaims is not null && predicate(_appleClaims))
+            result.Add(_appleClaims);
+        return result;
     }
 
-    private void ApplyApple(AppleEntitlement entitlement)
+    private DateTime? LatestExpiry(Func<EntitlementTokenClaims, bool> predicate)
     {
-        // A refresh that could not reach Apple tells us nothing. Keeping the
-        // last known server-verified state is what stops a network hiccup from
-        // switching off a subscription the customer is paying for.
-        if (!entitlement.Verified)
-            return;
-
-        var now = DateTime.UtcNow;
-
-        _appleObd = entitlement.HasObd &&
-                    entitlement.ObdExpiresAt is { } obd &&
-                    obd.UtcDateTime > now;
-        _appleVin = entitlement.HasVin &&
-                    entitlement.VinExpiresAt is { } vin &&
-                    vin.UtcDateTime > now;
-
-        _appleObdExpiresAt = _appleObd ? entitlement.ObdExpiresAt!.Value.UtcDateTime : null;
-        _appleVinExpiresAt = _appleVin ? entitlement.VinExpiresAt!.Value.UtcDateTime : null;
-        _appleProductId = entitlement.ProductId ?? string.Empty;
-        _appleVerified = true;
+        var grants = Granted(predicate);
+        return grants.Count == 0
+            ? null
+            : grants.Max(claims => claims.ExpiresAt).UtcDateTime;
     }
 
-    // ============================================================
-    // CACHE / NOTIFICATION
-    // ============================================================
-
-    private async Task SaveCacheAsync()
-    {
-        await _db.SaveProAsync(new ProEntitlement
-        {
-            Id = "local",
-            IsPro = _accountObd,
-            VerifiedByServer = _accountVerified,
-            Source = _accountSource,
-            ExpiresAt = _accountObdExpiresAt,
-            ProductId = _accountProductId,
-            AppleHasObd = _appleObd,
-            AppleHasVin = _appleVin,
-            AppleObdExpiresAt = _appleObdExpiresAt,
-            AppleVinExpiresAt = _appleVinExpiresAt,
-            AppleProductId = _appleProductId,
-            AppleVerifiedByServer = _appleVerified,
-            AppleVerifiedAt = _appleVerified ? DateTime.UtcNow : null,
-            UpdatedAt = DateTime.UtcNow
-        });
-    }
-
-    private void Publish() => ProChanged?.Invoke(this, IsPro);
-
-    private static DateTime? Latest(DateTime? first, DateTime? second)
-    {
-        if (first is null) return second;
-        if (second is null) return first;
-        return first > second ? first : second;
-    }
+    private void Publish() => ProChanged?.Invoke(this, HasObd);
 
     private sealed class EntitlementResponse
     {
@@ -440,5 +472,6 @@ public sealed class ProService
         public string? Tier { get; set; }
         public DateTimeOffset? ObdExpiresAt { get; set; }
         public DateTimeOffset? VinExpiresAt { get; set; }
+        public string? EntitlementToken { get; set; }
     }
 }

@@ -7,12 +7,17 @@ the feature was exercised on a physical device — that distinction is called ou
 ## 1. App launch and onboarding
 
 No tutorial, walkthrough, or permission-priming screen. The first screen is
-[`Views/StartPage.xaml`](../../Views/StartPage.xaml), a two-card menu:
+[`Views/HomePage.xaml`](../../Views/HomePage.xaml) — the OBD360 main screen itself. There is no
+chooser in front of it.
 
-- **OBD scanner** → `Views/HomePage.xaml` (`StartPage.xaml.cs`, `OnObdTapped`)
-- **VIN Check** → `VinCheck/Views/VinLookupPage.xaml` (`StartPage.xaml.cs`, `OnVinTapped`)
+**VIN Check** (vehicle history lookup by VIN) is a row at the end of the "TECHNICAL" section on
+Home → `VinCheck/Views/VinLookupPage.xaml` (`HomePage.xaml.cs`, `OnVinHistoryTapped`). It is the
+only car feature that works with no adapter.
 
-plus a language picker. **No account or sign-in is required to reach either path** —
+`Views/StartPage.xaml` (the old two-card menu: "OBD scanner" / "VIN Check") is still registered as
+a route but is no longer shown first, and nothing in the app navigates to it.
+
+**No account or sign-in is required to reach either path** —
 `HomePage.OnAppearing` runs its connection/VIN summary refresh with no auth check.
 
 ## 2. Account system

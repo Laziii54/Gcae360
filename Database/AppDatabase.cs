@@ -174,6 +174,47 @@ public sealed class AppDatabase
         return await _database.FindAsync<ProEntitlement>("local");
     }
 
+    /// <summary>
+    /// One-time migration to the signed-entitlement model.
+    ///
+    /// The previous build treated these columns as proof of PRO. They are no
+    /// longer read for authorization — only a cryptographically signed token is
+    /// — and every trusted flag is cleared so a stale or tampered row can never
+    /// be resurrected by an older code path. The row itself is kept: the data
+    /// export and diagnostics still read it.
+    /// </summary>
+    public async Task ClearLegacyEntitlementTrustAsync()
+    {
+        await Ready();
+
+        var marker = await GetSettingAsync(LegacyTrustClearedSetting);
+        if (marker == "1")
+            return;
+
+        var row = await _database.FindAsync<ProEntitlement>("local");
+        if (row is not null)
+        {
+            row.IsPro = false;
+            row.VerifiedByServer = false;
+            row.Source = "none";
+            row.ProductId = string.Empty;
+            row.ExpiresAt = null;
+            row.AppleHasObd = false;
+            row.AppleHasVin = false;
+            row.AppleObdExpiresAt = null;
+            row.AppleVinExpiresAt = null;
+            row.AppleProductId = string.Empty;
+            row.AppleVerifiedByServer = false;
+            row.AppleVerifiedAt = null;
+            row.UpdatedAt = DateTime.UtcNow;
+            await _database.UpdateAsync(row);
+        }
+
+        await SaveSettingAsync(LegacyTrustClearedSetting, "1");
+    }
+
+    private const string LegacyTrustClearedSetting = "entitlement_legacy_trust_cleared";
+
     public async Task<int> SaveMileageAsync(MileageRecord value)
     {
         await Ready();

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<!-- iOS stays visible on Windows so Visual Studio can pair to a Mac;
@@ -24,8 +24,8 @@
 		     purchase-verification backend (GCS_ANDROID_PACKAGE_NAME / GCS_APPLE_BUNDLE_ID). -->
 		<ApplicationId Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios' Or $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">com.gcar360.app</ApplicationId>
 
-		<ApplicationDisplayVersion>1.1.1</ApplicationDisplayVersion>
-		<ApplicationVersion>67</ApplicationVersion>
+		<ApplicationDisplayVersion>1.1.2</ApplicationDisplayVersion>
+		<ApplicationVersion>68</ApplicationVersion>
 
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
 
@@ -166,13 +166,13 @@
 
 		<AndroidUseAapt2>true</AndroidUseAapt2>
 
-		<!-- Debug-ზე მხოლოდ APK -->
+		<!-- Debug-áƒ–áƒ” áƒ›áƒ®áƒáƒšáƒáƒ“ APK -->
 		<AndroidPackageFormats>apk</AndroidPackageFormats>
 
-		<!-- Debug build უფრო სწრაფი იყოს -->
+		<!-- Debug build áƒ£áƒ¤áƒ áƒ áƒ¡áƒ¬áƒ áƒáƒ¤áƒ˜ áƒ˜áƒ§áƒáƒ¡ -->
 		<EmbedAssembliesIntoApk>false</EmbedAssembliesIntoApk>
 
-		<!-- დიდი SQLite ბაზის შეკუმშვა არ სცადოს -->
+		<!-- áƒ“áƒ˜áƒ“áƒ˜ SQLite áƒ‘áƒáƒ–áƒ˜áƒ¡ áƒ¨áƒ”áƒ™áƒ£áƒ›áƒ¨áƒ•áƒ áƒáƒ  áƒ¡áƒªáƒáƒ“áƒáƒ¡ -->
 		<AndroidStoreUncompressedFileExtensions>
 			$(AndroidStoreUncompressedFileExtensions);.sqlite
 		</AndroidStoreUncompressedFileExtensions>
@@ -225,5 +225,16 @@
 
 	<PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-maccatalyst'">
 	</PropertyGroup>
+
+	<!-- ========================================================= -->
+	<!-- Release signing (optional, secret)                        -->
+	<!-- ========================================================= -->
+
+	<!-- release-signing/ is gitignored and holds the Google Play upload key.
+	     Imported only when present, so a clean clone still builds; on the
+	     machine that has it, Android Release can no longer be signed by the
+	     wrong key by accident (which is what Play rejected with
+	     "signed with the wrong key" ). -->
+	<Import Project="release-signing\signing.props" Condition="Exists('release-signing\signing.props')" />
 
 </Project>

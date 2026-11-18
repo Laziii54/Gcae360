@@ -1,23 +1,18 @@
 namespace CarScanner.Tests;
 
 /// <summary>
-/// What a sign-out must and must not clear.
+/// PRO is derived from a signed entitlement token, never from a local flag.
 ///
-/// History: signing out used to leave the device's cached account PRO active,
-/// because the refresh attempted right after logout has no access token any
-/// more, fails silently, and <c>LoadAsync</c>'s failure path deliberately keeps
-/// the cache (to survive a real outage). ProService therefore subscribes to
-/// AccountChanged and clears the *account* source the moment IsSignedIn becomes
-/// false.
+/// History: the build before this one trusted <c>ProEntitlement.IsPro</c> and
+/// <c>VerifiedByServer</c> straight out of an unencrypted SQLite file, so on a
+/// rooted device (or with an edited preferences file) setting those values
+/// unlocked every locally gated feature for good. The tests below pin the new
+/// contract: only <c>EntitlementTokenVerifier</c> output can grant access, and a
+/// sign-out must drop the account token without touching an App Store one.
 ///
-/// Since App Review 5.1.1(v), the same event must **not** clear an accountless
-/// App Store subscription: that entitlement belongs to the Apple Account, was
-/// verified against an Apple transaction, and has to keep working after the
-/// user signs out of (or never signs into) an OBD360 account.
-///
-/// Not unit-testable end-to-end here (ProService depends on MAUI Essentials
-/// Preferences/SecureStorage, unavailable outside a real MAUI host), so — like
-/// the rest of this codebase's wiring tests — this checks the actual source.
+/// ProService itself needs MAUI Preferences/SecureStorage, so — like the rest of
+/// this codebase's wiring tests — these read the actual source. The cryptography
+/// is covered for real in EntitlementTokenTests.
 /// </summary>
 public sealed class ProServiceLogoutTests
 {
@@ -39,6 +34,54 @@ public sealed class ProServiceLogoutTests
         return source[start..];
     }
 
+    // ============================================================
+    // TOKEN-ONLY TRUST
+    // ============================================================
+
+    [Fact]
+    public void AccessComesOnlyFromVerifiedTokenClaims()
+    {
+        var source = ProServiceSource();
+
+        Assert.Contains("EntitlementTokenVerifier.Verify", source);
+        Assert.Contains("public bool IsPro => _accountClaims?.HasObd == true || _appleClaims?.HasObd == true;", source);
+        Assert.Contains("public bool HasVin => _accountClaims?.HasVin == true || _appleClaims?.HasVin == true;", source);
+        Assert.Contains("public bool HasObd => IsPro && ServerVerified;", source);
+    }
+
+    [Fact]
+    public void TheLocalDatabaseRow_IsNoLongerReadForAuthorization()
+    {
+        var source = ProServiceSource();
+
+        // The old implementation loaded local.IsPro / local.VerifiedByServer into
+        // the access flags. Nothing may read an entitlement out of SQLite again.
+        Assert.DoesNotContain("local.IsPro", source);
+        Assert.DoesNotContain("local.VerifiedByServer", source);
+        Assert.DoesNotContain("AppleVerifiedByServer", source);
+        Assert.DoesNotContain("GetProAsync", source);
+
+        // ... and the old preferences flag is gone from the authorization path.
+        Assert.DoesNotContain("pro.hasVin", source[..source.IndexOf("MigrateLegacyTrustAsync", StringComparison.Ordinal)]);
+    }
+
+    [Fact]
+    public void ACorruptOrExpiredToken_IsDroppedRatherThanTrusted()
+    {
+        var source = ProServiceSource();
+        var read = Method(source, "private static async Task<(EntitlementTokenClaims? Claims, bool Lost)> ReadVerifiedAsync");
+        read = read[..read.IndexOf("\n    }", StringComparison.Ordinal)];
+
+        Assert.Contains("EntitlementTokenVerifier.Verify(stored)", read);
+        Assert.Contains("if (claims is null)", read);
+        Assert.Contains("SecureStorage.Default.Remove(key)", read);
+        Assert.Contains("return (null, true)", read);
+    }
+
+    // ============================================================
+    // SIGN-OUT / ACCOUNT SWITCHING
+    // ============================================================
+
     [Fact]
     public void ProService_SubscribesToAccountChanged_InItsConstructor()
     {
@@ -49,61 +92,121 @@ public sealed class ProServiceLogoutTests
     }
 
     [Fact]
-    public void WhenTheAccountChangesAndNobodyIsSignedIn_TheAccountSourceIsCleared()
+    public void SigningOut_DropsOnlyTheAccountToken()
     {
         var source = ProServiceSource();
-        var handler = source[source.IndexOf("private async void OnAccountChanged", StringComparison.Ordinal)..];
+        var handler = Method(source, "private async void OnAccountChanged");
         handler = handler[..handler.IndexOf("\n    }", StringComparison.Ordinal)];
 
-        Assert.Contains("if (_account.IsSignedIn)", handler);
-        var guard = handler.IndexOf("if (_account.IsSignedIn)", StringComparison.Ordinal);
-        var ret = handler.IndexOf("return;", guard, StringComparison.Ordinal);
-        var clear = handler.IndexOf("ClearAccountEntitlementAsync()", StringComparison.Ordinal);
-        Assert.True(guard >= 0 && ret > guard && clear > ret,
-            "signed-in must return before anything is cleared — PRO must never be cleared while still signed in");
-    }
+        Assert.Contains("if (!_account.IsSignedIn)", handler);
+        Assert.Contains("ClearAccountEntitlementAsync()", handler);
 
-    [Fact]
-    public void SigningOut_KeepsAVerifiedAppleSubscription()
-    {
-        var source = ProServiceSource();
         var clear = Method(source, "private async Task ClearAccountEntitlementAsync()");
         clear = clear[..clear.IndexOf("\n    }", StringComparison.Ordinal)];
 
-        // The account fields go...
-        Assert.Contains("_accountObd = false", clear);
-        Assert.Contains("SaveAccountVin(false, null)", clear);
+        Assert.Contains("_accountClaims = null", clear);
+        Assert.Contains("RemoveTokenAsync(AccountTokenKey)", clear);
 
-        // ...the Apple fields and the Apple session must not.
-        Assert.DoesNotContain("_appleObd = false", clear);
-        Assert.DoesNotContain("_appleVin = false", clear);
-        Assert.DoesNotContain("_appleStore.ForgetAsync()", clear);
+        // An App Store entitlement belongs to the Apple Account: it survives.
+        Assert.DoesNotContain("AppleTokenKey", clear);
+        Assert.DoesNotContain("_appleClaims = null", clear);
     }
 
     [Fact]
-    public void DeactivateAsync_ClearsBothSources()
+    public void SigningIn_ForcesATokenRefresh()
+    {
+        var source = ProServiceSource();
+        var handler = Method(source, "private async void OnAccountChanged");
+        handler = handler[..handler.IndexOf("\n    }", StringComparison.Ordinal)];
+
+        // A different account must never keep the previous account's access:
+        // signing in invalidates the throttle and refetches immediately.
+        Assert.Contains("_lastRefreshAttempt = DateTimeOffset.MinValue;", handler);
+        Assert.Contains("LoadAsync(forceServerRefresh: true)", handler);
+    }
+
+    [Fact]
+    public void DeactivateAsync_ClearsBothTokensAndTheAppleSession()
     {
         var source = ProServiceSource();
         var method = Method(source, "public async Task DeactivateAsync()");
         method = method[..method.IndexOf("\n    }", StringComparison.Ordinal)];
 
-        Assert.Contains("_accountObd = false", method);
-        Assert.Contains("SaveAccountVin(false, null)", method);
-        Assert.Contains("_appleObd = false", method);
-        Assert.Contains("_appleVin = false", method);
+        Assert.Contains("_accountClaims = null", method);
+        Assert.Contains("_appleClaims = null", method);
+        Assert.Contains("RemoveTokenAsync(AccountTokenKey)", method);
+        Assert.Contains("RemoveTokenAsync(AppleTokenKey)", method);
         Assert.Contains("_appleStore.ForgetAsync()", method);
         Assert.Contains("Publish();", method);
     }
 
+    // ============================================================
+    // MIGRATION
+    // ============================================================
+
     [Fact]
-    public void NothingIsGrantedFromALocalFlagAlone()
+    public void LegacyLocallyTrustedValues_AreClearedOnce()
+    {
+        var pro = ProServiceSource();
+        var migration = Method(pro, "private async Task MigrateLegacyTrustAsync");
+        migration = migration[..migration.IndexOf("\n    }", StringComparison.Ordinal)];
+
+        Assert.Contains("Preferences.Default.Remove(\"pro.hasVin\")", migration);
+        Assert.Contains("ClearLegacyEntitlementTrustAsync", migration);
+        Assert.Contains("_migrationStarted", pro);
+
+        var database = File.ReadAllText(
+            Path.Combine(RepositoryRoot(), "Database", "AppDatabase.cs")).Replace("\r\n", "\n");
+
+        Assert.Contains("public async Task ClearLegacyEntitlementTrustAsync()", database);
+        Assert.Contains("row.IsPro = false;", database);
+        Assert.Contains("row.VerifiedByServer = false;", database);
+        Assert.Contains("row.AppleVerifiedByServer = false;", database);
+        Assert.Contains("LegacyTrustClearedSetting", database);
+    }
+
+    // ============================================================
+    // REFRESH
+    // ============================================================
+
+    [Fact]
+    public void Refresh_IsSingleFlightAndThrottled()
     {
         var source = ProServiceSource();
 
-        // Both sources require "verified by the server" AND an unexpired date.
-        Assert.Contains("local.VerifiedByServer", source);
-        Assert.Contains("AppleVerifiedByServer", source);
-        Assert.Contains("public bool HasObd => IsPro && ServerVerified;", source);
-        Assert.Contains("public bool ServerVerified => _accountVerified || _appleVerified;", source);
+        Assert.Contains("await _refreshGate.WaitAsync();", source);
+        Assert.Contains("RefreshInterval", source);
+        Assert.Contains("_lastRefreshAttempt", source);
+
+        // Tokens are refreshed proactively before they expire.
+        Assert.Contains("RefreshBeforeExpiry", source);
+    }
+
+    [Fact]
+    public void AnonymousPurchaseToken_IsAppliedOnlyWhenItVerifies()
+    {
+        var source = ProServiceSource();
+        var apply = Method(source, "public async Task ApplyAppleEntitlementAsync");
+        apply = apply[..apply.IndexOf("\n    }", StringComparison.Ordinal)];
+
+        Assert.Contains("EntitlementTokenVerifier.Verify(entitlement.EntitlementToken)", apply);
+        Assert.Contains("if (claims is null)", apply);
+        Assert.Contains("return;", apply);
+
+        // The response's own hasObd/hasVin flags are never turned into access.
+        Assert.DoesNotContain("entitlement.HasObd", apply);
+        Assert.DoesNotContain("entitlement.HasVin", apply);
+    }
+
+    [Fact]
+    public void AnAccountTokenForAnotherSubject_IsNeverStored()
+    {
+        var source = ProServiceSource();
+        var refresh = Method(source, "private async Task RefreshAccountTokenAsync");
+        refresh = refresh[..refresh.IndexOf("\n    }", StringComparison.Ordinal)];
+
+        Assert.Contains("claims.Subject", refresh);
+        Assert.Contains("userId", refresh);
+        Assert.Contains("return;", refresh);
     }
 }

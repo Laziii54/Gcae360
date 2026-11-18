@@ -16,7 +16,8 @@ public sealed record AppleEntitlement(
     DateTimeOffset? ObdExpiresAt,
     DateTimeOffset? VinExpiresAt,
     string? ProductId,
-    bool Verified);
+    bool Verified,
+    string? EntitlementToken = null);
 
 /// <summary>
 /// Result of sending one StoreKit transaction to the backend without an
@@ -243,6 +244,9 @@ public sealed class AppleEntitlementService
         [JsonPropertyName("verified")] public bool? Verified { get; set; }
         [JsonPropertyName("code")] public string? Code { get; set; }
 
+        /// <summary>Signed PRO entitlement token; the only thing that grants access.</summary>
+        [JsonPropertyName("entitlementToken")] public string? EntitlementToken { get; set; }
+
         public AppleEntitlement ToEntitlement() => new(
             HasObd == true,
             HasVin == true,
@@ -250,6 +254,7 @@ public sealed class AppleEntitlementService
             ObdExpiresAt,
             VinExpiresAt,
             ProductId,
-            Verified != false);
+            Verified != false,
+            EntitlementToken);
     }
 }

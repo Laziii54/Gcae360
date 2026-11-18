@@ -21,14 +21,15 @@ environment. Follow this script yourself.
 
 ## Recording script
 
-1. **Launch** — start from the Home Screen, tap the OBD360 icon, record the full launch to the
-   first screen (`StartPage`: "OBD scanner" / "VIN Check" cards).
-2. **VIN Check (no hardware needed)** — tap "VIN Check," enter a real or test VIN, show the lookup
-   completing and a result screen. This demonstrates a fully functional feature with no adapter
-   required.
-3. **OBD scanner — connect** — go back, tap "OBD scanner," open the Bluetooth/adapter screen, pair
-   with or connect to your OBD2 adapter. If you want to also show the "not connected" empty state
-   first (recommended — it's informative, not broken), briefly show the screen before connecting.
+1. **Launch** — start from the Home Screen, tap the OBD360 icon, record the full launch straight
+   into the main OBD360 screen (`HomePage`). There is no chooser screen and no sign-in wall.
+2. **VIN Check (no hardware needed)** — on Home, scroll to the end of the "TECHNICAL" section and
+   tap **VIN History**, enter a real or test VIN, and show the lookup completing and a result
+   screen. This demonstrates a fully functional feature with no adapter required.
+3. **OBD scanner — connect** — go back to Home, tap the connection card, open the Bluetooth/adapter
+   screen, pair with or connect to your OBD2 adapter. If you want to also show the "not connected"
+   empty state first (recommended — it's informative, not broken), briefly show the screen before
+   connecting.
 4. **Diagnostic scan** — with the adapter connected and the vehicle's ignition on, run a trouble-code
    scan. Show the results screen (whether it finds codes or shows "no codes found" — either is
    fine, it just needs to demonstrate the real flow).

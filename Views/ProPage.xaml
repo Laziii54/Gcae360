@@ -253,6 +253,12 @@
                 </VerticalStackLayout>
             </Border>
 
+            <!-- An expired licence that could not be renewed while offline: say so
+                 instead of showing the page as if PRO had never been bought. -->
+            <Border IsVisible="{Binding ShowVerificationNotice}" Padding="14,12" BackgroundColor="{DynamicResource WarnBg}" Stroke="{DynamicResource WarnStroke}" StrokeThickness="1" StrokeShape="RoundRectangle 12">
+                <Label Text="{Binding VerificationNoticeText}" FontSize="12.5" TextColor="{DynamicResource WarnText}" LineBreakMode="WordWrap" />
+            </Border>
+
             <!-- Benefits for the selected plan -->
             <VerticalStackLayout Spacing="12">
                 <Label Text="{Binding PlansTitleText}" Style="{StaticResource SectionTitleStyle}" FontSize="16" />

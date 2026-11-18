@@ -16,6 +16,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHttpClient();
 
 builder.Services.AddSingleton<EntitlementStore>();
+// Signs short-lived PRO entitlement tokens (ES256). The private key lives only in
+// configuration/environment; with none set nothing is issued and the app stays locked.
+builder.Services.AddSingleton<EntitlementTokenService>();
 builder.Services.AddSingleton<AccountStore>();
 builder.Services.AddSingleton<WebhookEventStore>();
 builder.Services.AddSingleton<StoreVerificationService>();
@@ -1340,6 +1343,7 @@ app.MapGet(
         string userId,
         EntitlementStore store,
         AccountStore accounts,
+        EntitlementTokenService tokens,
         HttpContext http,
         CancellationToken ct) =>
     {
@@ -1389,6 +1393,8 @@ app.MapGet(
                 ct));
 
         // isPro keeps its old meaning (OBD PRO) for older app versions.
+        // entitlementToken is the authoritative proof: the app verifies its
+        // signature offline and ignores the booleans above for authorization.
         return Results.Ok(
             new
             {
@@ -1402,9 +1408,31 @@ app.MapGet(
                 hasVin = access.HasVin,
                 tier = access.Tier,
                 obdExpiresAt = access.ObdExpiresAt,
-                vinExpiresAt = access.VinExpiresAt
+                vinExpiresAt = access.VinExpiresAt,
+                entitlementToken = tokens.Issue(
+                    account.AccountId,
+                    access.HasObd,
+                    access.HasVin,
+                    http.Request.Headers["X-GCS-Device-Id"].ToString())
             });
     });
+
+// The signing key's PUBLIC half, for operators and for a quick production check
+// (the app embeds it at build time and never trusts a fetched key for authorization).
+app.MapGet(
+    "/api/entitlements/key",
+    (EntitlementTokenService tokens) =>
+        tokens is { IsConfigured: true, PublicKeyBase64: { } publicKey }
+            ? Results.Ok(new
+            {
+                alg = "ES256",
+                kid = tokens.KeyId,
+                issuer = tokens.Issuer,
+                audience = tokens.Audience,
+                lifetimeDays = tokens.LifetimeDays,
+                publicKey
+            })
+            : Results.Json(new { configured = false }, statusCode: StatusCodes.Status503ServiceUnavailable));
 
 // ============================================================
 // STORE WEBHOOK
@@ -1825,6 +1853,7 @@ app.MapPost(
         HttpContext http,
         StoreVerificationService verifier,
         EntitlementStore store,
+        EntitlementTokenService tokens,
         CancellationToken ct) =>
     {
         var ip = AdminService.ClientIp(http);
@@ -1908,7 +1937,7 @@ app.MapPost(
         var access = await store.GetAccessAsync(ownerId, ct);
         var token = newSession ? await store.CreateAnonymousSessionAsync(ownerId, request.InstallId, ct) : null;
 
-        return AnonymousAccessResult(ownerId, access, verified.ProductId, token, true);
+        return AnonymousAccessResult(tokens, ownerId, access, verified.ProductId, token, true, request.InstallId);
     });
 
 app.MapPost(
@@ -1917,6 +1946,7 @@ app.MapPost(
         HttpContext http,
         StoreVerificationService verifier,
         EntitlementStore store,
+        EntitlementTokenService tokens,
         CancellationToken ct) =>
     {
         var ownerId = await store.ResolveAnonymousOwnerAsync(
@@ -1964,7 +1994,7 @@ app.MapPost(
         }
 
         var access = await store.GetAccessAsync(ownerId, ct);
-        return AnonymousAccessResult(ownerId, access, productId, null, verifiedByApple);
+        return AnonymousAccessResult(tokens, ownerId, access, productId, null, verifiedByApple);
     });
 
 app.MapGet(
@@ -1972,6 +2002,7 @@ app.MapGet(
     async (
         HttpContext http,
         EntitlementStore store,
+        EntitlementTokenService tokens,
         CancellationToken ct) =>
     {
         var ownerId = await store.ResolveAnonymousOwnerAsync(
@@ -1988,18 +2019,21 @@ app.MapGet(
             .Select(row => row.ProductId)
             .FirstOrDefault();
 
-        return AnonymousAccessResult(ownerId, access, productId, null, true);
+        return AnonymousAccessResult(tokens, ownerId, access, productId, null, true);
     });
 
 // The entitlement payload for an accountless owner. Same field names as
 // /api/entitlements/{userId}, so the app parses one shape for both, plus the
-// session token (only present on the answer that created it).
+// session token (only present on the answer that created it) and the signed
+// entitlement token the app verifies offline.
 static IResult AnonymousAccessResult(
+    EntitlementTokenService tokens,
     string ownerId,
     AccessInfo access,
     string? productId,
     string? sessionToken,
-    bool verified)
+    bool verified,
+    string? deviceId = null)
 {
     return Results.Ok(
         new
@@ -2017,6 +2051,7 @@ static IResult AnonymousAccessResult(
             obdExpiresAt = access.ObdExpiresAt,
             vinExpiresAt = access.VinExpiresAt,
             token = sessionToken,
+            entitlementToken = tokens.Issue(ownerId, access.HasObd, access.HasVin, deviceId),
             verified
         });
 }
@@ -2347,18 +2382,14 @@ app.MapGet(
 
 app.MapGet(
     "/pro",
-    (HttpContext http, WebPaymentService payments, IConfiguration config) =>
+    (WebPaymentService payments, IConfiguration config) =>
     {
-        // The Android app links here to pay for a plan because it has no in-app
-        // billing. The mobile PRO page offers monthly plans only; an independent
-        // visitor still sees both monthly and yearly.
-        var monthlyOnly = string.Equals(
-            http.Request.Query["source"].ToString(),
-            "android",
-            StringComparison.OrdinalIgnoreCase);
-
+        // Monthly only, for everyone (owner decision 2026-11): the yearly plans are
+        // no longer sold on the site, so there is nothing to switch between and the
+        // old ?source=android distinction is gone. Yearly products stay in the
+        // catalog only so existing yearly orders keep renewing/expiring correctly.
         return Results.Content(
-            WebPages.ProPage(payments.AvailableProviders, payments.AutoRenewAvailable, WebPages.LegalInfo.From(config), monthlyOnly),
+            WebPages.ProPage(payments.AvailableProviders, payments.AutoRenewAvailable, WebPages.LegalInfo.From(config)),
             "text/html; charset=utf-8");
     });
 

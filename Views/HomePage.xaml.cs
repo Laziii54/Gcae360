@@ -1,5 +1,6 @@
 using CarScanner.Services.Localization;
 using CarScanner.ViewModels;
+using CarScanner.VinCheck.Views;
 
 namespace CarScanner.Views;
 
@@ -79,13 +80,6 @@ public partial class HomePage : ContentPage
     private void OnPrePurchaseTapped(object? sender, TappedEventArgs e) =>
         OnPrePurchaseClicked(sender, e);
 
-    /// <summary>Back to the start screen (choose OBD2 diagnostics or VIN check).</summary>
-    private async void OnBackToStartTapped(object? sender, TappedEventArgs e)
-    {
-        try { await CarScanner.Services.SafeNavigation.GoToAsync("//StartPage"); }
-        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Start navigation failed: {ex.Message}"); }
-    }
-
     /// <summary>Copies the VIN; shows "copied" in green for 2 seconds.</summary>
     private async void OnCopyVinTapped(object? sender, TappedEventArgs e)
     {
@@ -139,9 +133,27 @@ public partial class HomePage : ContentPage
     private void UpdateLanguageToggle() =>
         LanguageToggleButton.Text = _localization.CurrentBadge;
 
+    /// <summary>
+    /// The VIN history row. Set here rather than in XAML so every language gets a
+    /// real translation: Georgian is the source text, everything else goes through
+    /// the English pack key ("VIN History").
+    /// </summary>
+    private void UpdateVinHistoryLabel() =>
+        VinHistoryLabel.Text = _localization.IsEnglish
+            ? LocalizationService.T("VIN History")
+            : "VIN ისტორია";
+
+    /// <summary>Opens the VIN lookup / history screen. Free, and needs no adapter.</summary>
+    private async void OnVinHistoryTapped(object? sender, TappedEventArgs e)
+    {
+        try { await CarScanner.Services.SafeNavigation.GoToAsync(nameof(VinLookupPage)); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"VIN history navigation failed: {ex.Message}"); }
+    }
+
     private void ApplyUiLocalization()
     {
         var localization = Application.Current?.Handler?.MauiContext?.Services.GetService<LocalizationService>();
         localization?.Apply(this);
+        UpdateVinHistoryLabel();
     }
 }

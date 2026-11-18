@@ -12,19 +12,14 @@
     <ScrollView>
         <VerticalStackLayout Padding="16,12,16,32" Spacing="12">
 
-            <!-- Top bar: back to start (OBD2 / VIN) · brand · PRO · language · account -->
-            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="6">
-                <Border WidthRequest="24" HeightRequest="34" BackgroundColor="Transparent" StrokeThickness="0" VerticalOptions="Center" SemanticProperties.Description="Back">
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnBackToStartTapped" />
-                    </Border.GestureRecognizers>
-                    <Path Data="M15,5 L8,12 L15,19" Stroke="{DynamicResource Primary}" StrokeThickness="2.2" StrokeLineCap="Round" StrokeLineJoin="Round" WidthRequest="18" HeightRequest="18" Aspect="Uniform" HorizontalOptions="Center" VerticalOptions="Center" InputTransparent="True" />
-                </Border>
-                <Image Grid.Column="1" Source="obd360_mark.png" WidthRequest="36" HeightRequest="36" Aspect="AspectFit" VerticalOptions="Center" SemanticProperties.Description="OBD360" />
-                <Label Grid.Column="2" Text="OBD360" FontSize="17" FontAttributes="Bold" LineBreakMode="NoWrap" MaxLines="1" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
-                <Button Grid.Column="3" Text="{Binding ProButtonText}" Command="{Binding GoToProCommand}" BackgroundColor="{DynamicResource ProBadgeBg}" TextColor="{DynamicResource ProBadgeText}" BorderWidth="0" CornerRadius="18" Padding="12,0" HeightRequest="36" MinimumHeightRequest="36" MinimumWidthRequest="0" FontAttributes="Bold" FontSize="12" LineBreakMode="NoWrap" HorizontalOptions="End" VerticalOptions="Center" />
+            <!-- Top bar: brand · PRO · language · account. Home is the root screen
+                 now, so the "back to the chooser" arrow is gone. -->
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="6">
+                <Image Grid.Column="0" Source="obd360_mark.png" WidthRequest="36" HeightRequest="36" Aspect="AspectFit" VerticalOptions="Center" SemanticProperties.Description="OBD360" />
+                <Label Grid.Column="1" Text="OBD360" FontSize="17" FontAttributes="Bold" LineBreakMode="NoWrap" MaxLines="1" TextColor="{DynamicResource TextColor}" VerticalOptions="Center" />
+                <Button Grid.Column="2" Text="{Binding ProButtonText}" Command="{Binding GoToProCommand}" BackgroundColor="{DynamicResource ProBadgeBg}" TextColor="{DynamicResource ProBadgeText}" BorderWidth="0" CornerRadius="18" Padding="12,0" HeightRequest="36" MinimumHeightRequest="36" MinimumWidthRequest="0" FontAttributes="Bold" FontSize="12" LineBreakMode="NoWrap" HorizontalOptions="End" VerticalOptions="Center" />
                 <!-- Language · Settings · Account in one capsule -->
-                <Border Grid.Column="4" StrokeShape="RoundRectangle 18" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" BackgroundColor="{DynamicResource CardBg}" Padding="0" VerticalOptions="Center">
+                <Border Grid.Column="3" StrokeShape="RoundRectangle 18" Stroke="{DynamicResource BorderColor}" StrokeThickness="1" BackgroundColor="{DynamicResource CardBg}" Padding="0" VerticalOptions="Center">
                     <HorizontalStackLayout Spacing="0">
                         <Button x:Name="LanguageToggleButton" Text="EN" Command="{Binding ToggleLanguageCommand}" SemanticProperties.Description="Language" BackgroundColor="Transparent" TextColor="{DynamicResource TextColor}" BorderWidth="0" CornerRadius="18" Padding="0" WidthRequest="36" HeightRequest="36" MinimumWidthRequest="36" MinimumHeightRequest="36" FontSize="14" FontAttributes="Bold" />
                         <Border WidthRequest="36" HeightRequest="36" BackgroundColor="Transparent" StrokeThickness="0" SemanticProperties.Description="Settings">
@@ -326,6 +321,21 @@
                         </VerticalStackLayout>
                     </Border>
             </controls:FlowGrid>
+
+            <!-- VIN history: the one car function that works with no adapter, so it is
+                 never dimmed and never gated. Deliberately a quiet text row at the end
+                 of the section rather than a sixth-colour card — it must not out-shout
+                 the diagnostics above it. -->
+            <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" Margin="2,4,2,0" />
+            <Grid ColumnDefinitions="*,Auto" Padding="4,0" HeightRequest="46" BackgroundColor="Transparent" SemanticProperties.Description="VIN ისტორია">
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnVinHistoryTapped" />
+                </Grid.GestureRecognizers>
+                <Label x:Name="VinHistoryLabel" Text="VIN History" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource Primary}" VerticalOptions="Center" LineBreakMode="TailTruncation" />
+                <controls:Icon Grid.Column="1" Kind="chevron-right" Tint="{DynamicResource Primary}" WidthRequest="14" HeightRequest="14" VerticalOptions="Center" />
+            </Grid>
+            <BoxView HeightRequest="1" Color="{DynamicResource DividerColor}" Margin="2,0,2,2" />
+
             <Label Text="სერვისი" Style="{StaticResource SectionCaptionStyle}" Margin="2,6,0,0" />
             <controls:FlowGrid Columns="3" ColumnSpacing="8" RowSpacing="8">
                     <Border Style="{StaticResource ListCardStyle}" Padding="6,12,6,10" Opacity="0.4">

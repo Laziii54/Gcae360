@@ -51,13 +51,11 @@ a.btn{display:block;text-align:center;margin-top:12px;padding:13px;border-radius
 .legal{margin-top:8px}
 [hidden]{display:none!important}
 html.is-intl .ka,html.is-ge .en,html.is-intl .ka-only,html:not(.is-intl) .en-block,html.is-intl .gel,html:not(.is-intl) .usd{display:none}
-.periodtoggle{display:flex;gap:8px;margin:0 0 12px}
-.permbtn{flex:1;text-align:center;padding:9px 6px;background:var(--card);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-size:13px;font-weight:700;color:var(--muted)}
-.permbtn.active{border-color:var(--accent);background:#eaf1fc;color:var(--accent)}
-.plantabs{display:flex;gap:8px;margin:0 0 12px;position:relative}
-.tabbtn{flex:1;min-width:0;text-align:center;padding:11px 6px;background:var(--card);border:1.5px solid var(--border);border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;color:var(--muted);position:relative;display:block}
-.tabbtn.active{border-color:var(--accent);background:#eaf1fc;color:var(--accent)}
-.tabbtn .save{position:absolute;top:-8px;right:4px;font-size:10px;font-weight:700;color:var(--amber);background:var(--amber-soft);border-radius:6px;padding:1px 6px}
+.planswitch{display:flex;gap:5px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:5px;margin:0 0 14px}
+.planbtn{flex:1;text-align:center;padding:11px 6px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;color:var(--muted);user-select:none}
+.planbtn.active{background:var(--accent);color:#fff}
+.bankline{display:flex;align-items:center;gap:8px;margin:14px 0 0;font-size:14px;color:var(--muted)}
+.bankline b{color:var(--text)}
 .plandetail{background:var(--card);border:1.5px solid var(--accent);border-radius:14px;padding:16px;margin:0 0 16px}
 .vh{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
 .pd-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
@@ -103,12 +101,16 @@ ul.ck li:before{content:"";position:absolute;left:1px;top:.5em;width:8px;height:
     private static string Prices(string productId) =>
         $"<span class=\"gel\">{Gel(productId)}</span><span class=\"usd\">{WebPaymentService.FormatPrice(WebPaymentService.UsdPriceFor(productId) ?? 0, "USD")}</span>";
 
-    /// <param name="monthlyOnly">
-    /// True for a visitor arriving from the Android app (which links here to pay because
-    /// it has no in-app billing): only the monthly plans are offered, and the billing
-    /// period toggle is not rendered. An independent visitor keeps both periods.
-    /// </param>
-    public static string ProPage(IReadOnlyList<string> providers, bool autoRenewAvailable, LegalInfo legal, bool monthlyOnly = false)
+    /// <summary>
+    /// The public PRO / checkout page.
+    ///
+    /// Monthly only: the yearly plans are not sold any more, so there is no billing
+    /// period toggle. The plan switch at the top offers OBD / VIN / Full and the page
+    /// opens on OBD — the scanner is what the page is about; VIN history is one tap
+    /// away instead of competing with it. Card payments go through Bank of Georgia
+    /// only, so there is no bank picker either.
+    /// </summary>
+    public static string ProPage(IReadOnlyList<string> providers, bool autoRenewAvailable, LegalInfo legal)
     {
         string Plan(string id, string title, string titleEn, string ka, string en, bool best = false, bool check = false) => $"""
 <label class="card{(best ? " best" : "")}" data-sub="{(ProductCatalog.IsSubscription(id) ? "1" : "0")}" data-gel="{Gel(id)}" data-usd="{WebPaymentService.FormatPrice(WebPaymentService.UsdPriceFor(id) ?? 0, "USD")}"><input type="radio" name="productId" value="{id}"{(check ? " checked" : "")}>
@@ -118,46 +120,32 @@ ul.ck li:before{content:"";position:absolute;left:1px;top:.5em;width:8px;height:
 
         string Li(string ka, string en) => $"<li>{T(ka, en)}</li>";
 
-        // A tab button (always visible, just highlighted when active) plus its
-        // own detail panel (shown only for the active one). Both stay in the DOM;
-        // JS (syncTabs, below) toggles .active / [hidden] on the form's change event.
-        // baseKey identifies the plan ("obd"/"vin"/"full") across both billing
-        // periods, so JS can keep the same plan selected when the period toggle
-        // switches ("obd"+"month" <-> "obd"+"year"); key ("obd-month") is the
-        // unique DOM id.
-        (string Tab, string Detail) PlanTab(string id, string baseKey, string period, string title, string titleEn, string subKa, string subEn, string featuresHtml, bool check = false)
+        // One plan at a time, monthly only. The switch at the top replaces the old
+        // monthly/yearly toggle: the page opens on OBD (the scanner is the product),
+        // and VIN / Full are one tap away instead of being advertised on every load.
+        (string Switch, string Detail) PlanSwitch(
+            string id, string plan, string btnKa, string btnEn,
+            string titleKa, string titleEn, string subKa, string subEn, string featuresHtml, bool check = false)
         {
-            var key = $"{baseKey}-{period}";
             var days = ProductCatalog.PeriodDaysFor(id);
-            var anchor = WebPaymentService.AnchorPriceFor(id);
-            var price = WebPaymentService.PriceFor(id);
-            var save = anchor is { } a && a > 0 && price is { } p
-                ? $"<span class=\"save\">-{(int)Math.Round((1 - p / a) * 100)}%</span>"
-                : "";
-            var anchorHtml = anchor is { } a2
-                ? $"<div class=\"anchor\">{a2.ToString("0.##", CultureInfo.InvariantCulture)} ₾</div>"
-                : "";
-            // The radio lives next to the (always-visible) tab label, never inside
-            // the collapsible detail panel — a hidden ancestor would stop label-for
-            // clicks from reaching it in some browsers.
-            var tab = $"""
-<span class="pmtab" data-period="{period}" style="display:contents"><input type="radio" id="p-{key}" name="productId" value="{id}" class="vh"{(check ? " checked" : "")}><label class="tabbtn{(check ? " active" : "")}" for="p-{key}" data-key="{key}" data-basekey="{baseKey}" data-period="{period}" data-days="{days}" data-sub="{(ProductCatalog.IsSubscription(id) ? "1" : "0")}" data-gel="{Gel(id)}" data-usd="{WebPaymentService.FormatPrice(WebPaymentService.UsdPriceFor(id) ?? 0, "USD")}">{T(title, titleEn)}{save}</label></span>
+            var sw = $"""
+<input type="radio" id="pl-{plan}" name="productId" value="{id}" class="vh"{(check ? " checked" : "")}><label class="planbtn{(check ? " active" : "")}" for="pl-{plan}" data-plan="{plan}" data-days="{days}" data-sub="{(ProductCatalog.IsSubscription(id) ? "1" : "0")}" data-gel="{Gel(id)}" data-usd="{WebPaymentService.FormatPrice(WebPaymentService.UsdPriceFor(id) ?? 0, "USD")}">{T(btnKa, btnEn)}</label>
 """;
             var detail = $"""
-<div class="plandetail" id="d-{key}"{(check ? "" : " hidden")}>
-<div class="pd-top"><div><div class="dtitle">{T(title, titleEn)}</div><div class="dsub">{T(subKa, subEn)}</div></div>
-<div class="pd-price">{anchorHtml}<div class="now">{Prices(id)}</div></div></div>
+<div class="plandetail" data-plan="{plan}"{(check ? "" : " hidden")}>
+<div class="pd-top"><div><div class="dtitle">{T(titleKa, titleEn)}</div><div class="dsub">{T(subKa, subEn)}</div></div>
+<div class="pd-price"><div class="now">{Prices(id)}</div><div class="muted">{T("/ თვე", "/ month")}</div></div></div>
 {featuresHtml}</div>
 """;
-            return (tab, detail);
+            return (sw, detail);
         }
 
         var hasBog = providers.Contains("bog");
-        var bankOptions = string.Join("", providers.Select(p =>
-            $"<option value=\"{p}\">{(p == "bog" ? "საქართველოს ბანკი (BOG)" : "თიბისი (TBC)")}</option>"));
-        var bankSelect = providers.Count > 1
-            ? $"<div class=\"ka-only\"><label class=\"f\" for=\"bank\">ბანკი</label><select name=\"provider\" id=\"bank\">{bankOptions}</select></div>"
-            : $"<input type=\"hidden\" name=\"provider\" id=\"bank\" value=\"{providers.FirstOrDefault() ?? "tbc"}\">";
+        // One bank, no choice: card payments go through Bank of Georgia only.
+        var bankLine = $"""
+<div class="bankline"><span>{T("ბანკი", "Bank")}</span><b>საქართველოს ბანკი · BOG</b></div>
+<input type="hidden" name="provider" id="bank" value="{(hasBog ? "bog" : providers.FirstOrDefault() ?? "bog")}">
+""";
 
         var unavailable = providers.Count == 0
             ? $"<p class=\"msg err\">{T("გადახდა დროებით მიუწვდომელია. სცადე მოგვიანებით.", "Payments are temporarily unavailable. Please try again later.")}</p>"
@@ -168,12 +156,12 @@ ul.ck li:before{content:"";position:absolute;left:1px;top:.5em;width:8px;height:
         var renewal = autoRenewAvailable ? $$"""
 <div id="renew">
 <h2>{{T("გადახდის სახე", "Payment type")}}</h2>
-<label class="card opt"><input type="radio" name="mode" value="auto" checked>
-<div class="grow"><div class="t">{{T("ავტომატური განახლება", "Auto-renew")}}</div><span class="badge ok">{{T("რეკომენდებული", "Recommended")}}</span>
-<div class="muted" id="autoSub"></div></div></label>
-<label class="card opt"><input type="radio" name="mode" value="once">
+<label class="card opt"><input type="radio" name="mode" value="once" checked>
 <div class="grow"><div class="t" id="onceLabel"></div>
 <div class="muted">{{T("ბარათი არ ინახება. ვადის ბოლოს თავად გაანახლებ.", "Your card is not saved. Renew it yourself when it ends.")}}</div></div></label>
+<label class="card opt"><input type="radio" name="mode" value="auto">
+<div class="grow"><div class="t">{{T("ავტომატური განახლება", "Auto-renew")}}</div><span class="badge ok">{{T("რეკომენდებული", "Recommended")}}</span>
+<div class="muted" id="autoSub"></div></div></label>
 <div class="sum" id="sum"><div><span>{{T("დღეს გადაიხდი", "Due today")}}</span><b id="sToday"></b></div><div id="sNextRow"><span>{{T("შემდეგი ჩამოჭრა", "Next charge")}}</span><b id="sNext"></b></div></div>
 <label class="consent" id="consentRow"><input type="checkbox" id="consent"> <span><span id="consentPre"></span> <b id="sAmount"></b> <span id="consentPost"></span> <a href="/terms-of-use" target="_blank">{{T("პირობები", "Terms")}}</a></span></label>
 </div>
@@ -183,32 +171,29 @@ ul.ck li:before{content:"";position:absolute;left:1px;top:.5em;width:8px;height:
         var vinFeatures = $"<ul class=\"ck\">{Li($"VIN: სრული ისტორია, {ProductCatalog.VinMonthlyQuota} ყოველთვე", $"VIN: full history, {ProductCatalog.VinMonthlyQuota} every month")}{Li("აუქციონის ფოტოები და დაზიანებები", "Auction photos and damage")}{Li("გარბენი და ტიტულის სტატუსი", "Mileage and title status")}</ul>";
         var fullFeatures = $"<ul class=\"ck\">{Li("PRO-ის ყველა ფუნქცია", "Everything in PRO")}{Li("VIN PRO-ის ყველა ფუნქცია", "Everything in VIN PRO")}</ul>";
 
-        var obdTabM = PlanTab(ProductCatalog.ObdMonthly, "obd", "month", "OBD PRO", "OBD PRO", "მანქანის სრული დიაგნოსტიკა", "Full car diagnostics", obdFeatures);
-        var obdTabY = PlanTab(ProductCatalog.ObdYearly, "obd", "year", "OBD PRO", "OBD PRO", "მანქანის სრული დიაგნოსტიკა", "Full car diagnostics", obdFeatures);
-        var vinTabM = PlanTab(ProductCatalog.VinMonthly, "vin", "month", "VIN PRO", "VIN PRO", "მანქანის ისტორია VIN კოდით", "Car history by VIN", vinFeatures);
-        var vinTabY = PlanTab(ProductCatalog.VinYearly, "vin", "year", "VIN PRO", "VIN PRO", "მანქანის ისტორია VIN კოდით", "Car history by VIN", vinFeatures);
-        var fullTabM = PlanTab(ProductCatalog.FullMonthly, "full", "month", "სრული PRO", "Full PRO", "OBD PRO და VIN PRO ერთად", "OBD PRO and VIN PRO together", fullFeatures, check: true);
-        var fullTabY = PlanTab(ProductCatalog.FullYearly, "full", "year", "სრული PRO", "Full PRO", "OBD PRO და VIN PRO ერთად", "OBD PRO and VIN PRO together", fullFeatures);
+        // Monthly only — yearly plans are no longer sold on the site, so the switch
+        // has three positions: OBD, VIN, Full.
+        var obdPlan = PlanSwitch(ProductCatalog.ObdMonthly, "obd", "OBD", "OBD",
+            "OBD PRO", "OBD PRO", "მანქანის სრული დიაგნოსტიკა", "Full car diagnostics", obdFeatures, check: true);
+        var vinPlan = PlanSwitch(ProductCatalog.VinMonthly, "vin", "VIN", "VIN",
+            "VIN PRO", "VIN PRO", "მანქანის ისტორია VIN კოდით", "Car history by VIN", vinFeatures);
+        var fullPlan = PlanSwitch(ProductCatalog.FullMonthly, "full", "სრული", "Full",
+            "სრული PRO", "Full PRO", "OBD PRO და VIN PRO ერთად", "OBD PRO and VIN PRO together", fullFeatures);
 
-        // Android-originated checkout: monthly plans only. The yearly radios, tabs and
-        // detail panels are not rendered at all, so nothing can select a yearly product;
-        // the JS below already falls back to "month" when no period radio exists.
-        var periodToggle = monthlyOnly
-            ? ""
-            : $$"""
-<div class="periodtoggle">
-<input type="radio" id="per-m" name="period" value="month" class="vh" checked><label for="per-m" id="lbl-m" class="permbtn active">{{T("თვიური", "Monthly")}}</label>
-<input type="radio" id="per-y" name="period" value="year" class="vh"><label for="per-y" id="lbl-y" class="permbtn">{{T("წლიური", "Yearly")}}</label>
+        var planSwitch = $"{obdPlan.Switch}{vinPlan.Switch}{fullPlan.Switch}";
+        var planDetails = $"{obdPlan.Detail}{vinPlan.Detail}{fullPlan.Detail}";
+
+        // VIN packs only make sense with a VIN plan, so they appear with VIN/Full
+        // and stay out of the way on the OBD view.
+        var vinPacks = $"""
+<div id="packs" hidden>
+<h2>{T("დამატებითი VIN შემოწმება", "Extra VIN checks")}</h2>
+<div class="muted">{T("+5 და +10 პაკეტი VIN PRO / სრული PRO გეგმისთვისაა. ვადა არ გასდის.", "+5 and +10 packs are for VIN PRO / Full PRO and never expire.")}</div>
+{Plan(ProductCatalog.VinPack5, "+5 VIN", "+5 VIN", "5 დამატებითი VIN ისტორია", "5 extra VIN histories")}
+{Plan(ProductCatalog.VinPack10, "+10 VIN", "+10 VIN", "10 დამატებითი VIN ისტორია", "10 extra VIN histories")}
+{Plan(ProductCatalog.VinSingle, "1 VIN ანგარიში", "1 VIN report", "გეგმის გარეშე", "No plan needed")}
 </div>
 """;
-
-        var planTabs = monthlyOnly
-            ? $"{obdTabM.Tab}{vinTabM.Tab}{fullTabM.Tab}"
-            : $"{obdTabM.Tab}{vinTabM.Tab}{fullTabM.Tab}{obdTabY.Tab}{vinTabY.Tab}{fullTabY.Tab}";
-
-        var planDetails = monthlyOnly
-            ? $"{obdTabM.Detail}{vinTabM.Detail}{fullTabM.Detail}"
-            : $"{obdTabM.Detail}{vinTabM.Detail}{fullTabM.Detail}{obdTabY.Detail}{vinTabY.Detail}{fullTabY.Detail}";
 
         var note = autoRenewAvailable
             ? T("გადახდის გაუქმება შეგიძლია ნებისმიერ დროს გვერდზე „ჩემი გამოწერა“ ან აპში. გადახდილი პერიოდი რჩება.",
@@ -226,21 +211,80 @@ var langs=(navigator.languages||[navigator.language||'']).map(function(l){return
 var ge=tz==='Asia/Tbilisi'||langs.some(function(l){return l.indexOf('ka')===0;});
 if(location.hash==='#usd')ge=false;
 var h=document.documentElement;h.classList.add(ge?'is-ge':'is-intl');h.lang=ge?'ka':'en';})();
-</script></head><body><main>
+</script>
+<style>
+/* PRO page skin only — page-scoped so the account / result pages keep their
+   simple single-column look. Overrides the shared sheet above. */
+body{background:var(--bg)}
+.pro-wrap{max-width:1080px;margin:0 auto;padding:22px 20px 56px}
+.pro-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin:4px 0 20px;flex-wrap:wrap}
+.pro-hero h1{font-size:32px;margin:0;letter-spacing:-.02em;line-height:1.15}
+.pro-hero .muted{margin-top:6px;max-width:34em}
+.pro-steps{display:flex;gap:16px;font-size:13px;color:var(--muted);font-weight:600;flex-wrap:wrap}
+.pro-steps b{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;align-items:center;justify-content:center;font-size:12px;margin-right:6px}
+.pro-steps .on b{background:var(--ok)}
+.pro-grid{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:22px;align-items:start;margin-top:14px}
+.pro-col{min-width:0}
+.pro-side{position:sticky;top:18px;min-width:0}
+.pro-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:0 1px 2px rgba(16,24,40,.05),0 10px 30px rgba(16,24,40,.07)}
+.pro-card h2:first-child{margin-top:0}
+h2{font-size:12px;letter-spacing:.05em}
+.planswitch{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:5px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.planbtn{padding:12px 8px;font-size:14px;border-radius:10px}
+.planbtn.active{box-shadow:0 4px 12px rgba(29,91,214,.28)}
+.plandetail{border-radius:18px;padding:20px;box-shadow:0 1px 2px rgba(16,24,40,.05),0 10px 30px rgba(16,24,40,.07)}
+.pd-top .dtitle{font-size:20px;letter-spacing:-.01em}
+.pd-top .dsub{font-size:13px;margin-top:4px}
+.pd-price .now{font-size:29px;line-height:1.1}
+.pd-price .muted{font-size:12px;margin-top:2px}
+ul.ck{margin-top:14px;gap:9px}
+ul.ck li{font-size:13.5px}
+.card{border-radius:14px}
+.card.opt{margin:8px 0}
+.sum{border:0;background:var(--bg);border-radius:14px;padding:12px 14px}
+.bankline{margin:18px 0 2px;padding-top:16px;border-top:1px solid var(--border);justify-content:space-between;gap:12px}
+.bankline b{white-space:nowrap;color:var(--text)}
+#renew h2{margin-top:20px}
+.pro-next{margin-top:18px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 18px}
+.pro-next h3{margin:0 0 10px;font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+.pro-next ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.pro-next li{position:relative;padding-left:22px;font-size:13.5px;line-height:1.4}
+.pro-next li:before{content:"";position:absolute;left:2px;top:.45em;width:9px;height:5px;border-left:2px solid var(--ok);border-bottom:2px solid var(--ok);transform:rotate(-45deg)}
+#pay{border-radius:14px;padding:15px;font-size:16.5px;box-shadow:0 6px 16px rgba(29,91,214,.25)}
+input[type=email],input[type=text],select{border-radius:12px}
+label.f{margin-top:14px}
+footer{max-width:1080px;margin:0 auto;padding:0 20px 36px}
+@media(max-width:900px){
+  .pro-grid{grid-template-columns:minmax(0,1fr)}
+  .pro-side{position:static}
+  .pro-hero h1{font-size:26px}
+  .pd-price .now{font-size:25px}
+  .pro-wrap{padding:16px 14px 44px}
+}
+</style></head><body><main class="pro-wrap">
 <a class="logo" href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text);font-weight:800;font-size:15px;margin-bottom:10px"><img src="/assets/logo.png?v=2" alt="" width="25" height="25"><span>OBD360</span></a>
-<h1>OBD360 PRO</h1>
-<div class="muted">{{T("აირჩიე გეგმა და ჩართე შენს OBD360 ანგარიშზე", "Choose a plan for your OBD360 account")}}</div>
+<div class="pro-hero">
+<div><h1>OBD360 PRO</h1>
+<div class="muted">{{T("აირჩიე გეგმა და ჩართე შენს OBD360 ანგარიშზე", "Choose a plan for your OBD360 account")}}</div></div>
+<div class="pro-steps"><span class="on"><b>1</b>{{T("გეგმა", "Plan")}}</span><span><b>2</b>{{T("დადასტურება", "Confirm")}}</span><span><b>3</b>{{T("გადახდა", "Pay")}}</span></div>
+</div>
 {{unavailable}}
-<form id="f">
-<h2>{{T("გეგმები", "Plans")}}</h2>
-{{periodToggle}}
-<div class="plantabs">{{planTabs}}</div>
+<form id="f" class="pro-grid">
+<section class="pro-col">
+<h2>{{T("გეგმა", "Plan")}}</h2>
+<div class="planswitch">{{planSwitch}}</div>
 {{planDetails}}
-<h2>{{T("დამატებითი VIN", "Extra VIN checks")}}</h2>
-<div class="muted">{{T("+5 და +10 პაკეტი VIN PRO / სრული PRO გეგმისთვისაა. ვადა არ გასდის.", "+5 and +10 packs are for VIN PRO / Full PRO and never expire.")}}</div>
-{{Plan(ProductCatalog.VinPack5, "+5 VIN", "+5 VIN", "5 დამატებითი VIN ისტორია", "5 extra VIN histories")}}
-{{Plan(ProductCatalog.VinPack10, "+10 VIN", "+10 VIN", "10 დამატებითი VIN ისტორია", "10 extra VIN histories")}}
-{{Plan(ProductCatalog.VinSingle, "1 VIN ანგარიში", "1 VIN report", "გეგმის გარეშე", "No plan needed")}}
+{{vinPacks}}
+<div class="pro-next">
+<h3>{{T("რა ხდება შემდეგ", "What happens next")}}</h3>
+<ul>
+<li>{{T("გადახდა ხდება ბანკის დაცულ გვერდზე — ბარათს OBD360 ვერ ხედავს", "Payment happens on the bank's secure page — OBD360 never sees the card")}}</li>
+<li>{{T("PRO ავტომატურად იხსნება აპში, ამავე ელ-ფოსტით", "PRO unlocks in the app automatically, with the same e-mail")}}</li>
+<li>{{T("ქვითარი მოგივა ელ-ფოსტაზე", "The receipt arrives by e-mail")}}</li>
+</ul>
+</div>
+</section>
+<aside class="pro-side"><div class="pro-card">
 <h2>{{T("შენი ანგარიში", "Your account")}}</h2>
 <div class="muted">{{T("იგივე ელ-ფოსტა, რომლითაც აპში ხარ რეგისტრირებული. პაროლი არ გჭირდება — ერთჯერად კოდს გამოგიგზავნით.", "The e-mail you registered in the app with. No password needed — we'll e-mail you a one-time code.")}}</div>
 <label class="f" for="email">{{T("ელ-ფოსტა", "E-mail")}}</label><input type="email" id="email" name="email" autocomplete="email" required>
@@ -252,12 +296,13 @@ var h=document.documentElement;h.classList.add(ge?'is-ge':'is-intl');h.lang=ge?'
 <input type="text" id="code" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="123456">
 <button type="button" id="resendCode" class="smallbtn" disabled>{{T("ხელახლა გაგზავნა", "Resend code")}}</button>
 </div>
-{{bankSelect}}
+{{bankLine}}
 {{renewal}}
 <button id="pay" type="submit"{{(providers.Count == 0 ? " disabled" : "")}}>{{T("გადახდა ბარათით", "Pay by card")}}</button>
 <div id="m" class="msg"></div>
 <p class="muted" id="noteP">{{note}}</p>
 <p class="muted">{{T("გადახდა ხდება საქართველოს ბანკის დაცულ გვერდზე. ბარათის ნომერს OBD360 ვერ ხედავს.", "You pay on Bank of Georgia's secure page. OBD360 never sees your card number. Prices in US dollars.")}} Visa · Mastercard · Apple Pay · Google Pay</p>
+</div></aside>
 </form>
 {{Footer}}{{legal.FooterHtml()}}</footer>
 </main>
@@ -272,6 +317,7 @@ const errors={INVALID_CODE:tr('კოდი არასწორია ან �
 EMAIL_NOT_VERIFIED:tr('ჯერ დაადასტურე ელფოსტა OBD360 აპლიკაციაში (ანგარიში), შემდეგ სცადე ხელახლა.','Verify your email in the OBD360 app (Account) first, then try again.'),
 VIN_PLAN_REQUIRED:tr('+5 და +10 პაკეტი მხოლოდ VIN PRO ან სრული PRO გეგმითაა.','Packs need VIN PRO or Full PRO.'),
 AUTO_RENEW_UNAVAILABLE:tr('ყოველთვიური გადახდა ახლა ვერ ჩაირთო. აირჩიე „ერთჯერადი“.','Monthly payment is unavailable right now. Choose one-time.'),
+BANK_UNAVAILABLE:tr('ბანკთან გადახდის გახსნა ვერ მოხერხდა. სცადე ხელახლა ან მოგვწერე მხარდაჭერაზე.','The bank could not open the payment. Try again or contact support.'),
 NOT_AVAILABLE:tr('გადახდა დროებით მიუწვდომელია.','Payments are temporarily unavailable.'),
 NO_ACCOUNT:tr('ამ ელფოსტაზე OBD360 ანგარიში ვერ მოიძებნა. ჯერ დარეგისტრირდი აპში.','No OBD360 account found for this e-mail. Register in the app first.'),
 TOO_MANY:tr('ძალიან ბევრი მცდელობა. სცადე 15 წუთში.','Too many attempts. Try again in 15 minutes.')};
@@ -314,19 +360,17 @@ sendCodeBtn.addEventListener('click',()=>requestCode(false));
 resendCodeBtn.addEventListener('click',()=>requestCode(true));
 const AUTO_RENEW_AVAILABLE={{(autoRenewAvailable ? "true" : "false")}};
 function selected(){return f.querySelector('input[name=productId]:checked');}
-function period(){const r=f.querySelector('input[name=period]:checked');return r?r.value:'month';}
-// Keeps all plan tabs for the active period visible; only the selected one is
-// highlighted and shows its detail panel. A VIN-pack radio (no "p-" id) clears
-// all of them, so the tabs never look "stuck" — any can still be clicked back.
-function syncTabs(){const per=period();
-// Absent on the monthly-only page the Android app links to, so never assume the toggle exists.
-const lblM=document.getElementById('lbl-m'),lblY=document.getElementById('lbl-y');
-if(lblM)lblM.classList.toggle('active',per==='month');
-if(lblY)lblY.classList.toggle('active',per==='year');
-document.querySelectorAll('.pmtab').forEach(s=>{s.hidden=(s.dataset.period!==per);});
-const p=selected();const key=p&&p.id.indexOf('p-')===0?p.id.slice(2):null;
-document.querySelectorAll('.plandetail').forEach(x=>{x.hidden=(x.id!=='d-'+key);});
-document.querySelectorAll('.tabbtn').forEach(t=>{t.classList.toggle('active',t.dataset.key===key);});}
+// Which plan the switch shows: read from the label of the checked product radio.
+// A VIN-pack radio has no plan, so the last plan stays on screen — picking a pack
+// must not blank the page.
+function planOf(input){if(!input||!input.id)return null;const l=document.querySelector('label[for="'+input.id+'"]');return l&&l.dataset.plan?l.dataset.plan:null;}
+let lastPlan='obd';
+// The switch replaces the old monthly/yearly toggle: exactly one plan is shown,
+// and the VIN packs appear only for the VIN / Full plans.
+function syncPlans(){const lp=planOf(selected());if(lp)lastPlan=lp;
+document.querySelectorAll('.plandetail').forEach(x=>{x.hidden=x.dataset.plan!==lastPlan;});
+document.querySelectorAll('.planbtn').forEach(t=>{t.classList.toggle('active',t.dataset.plan===lastPlan);});
+const packs=document.getElementById('packs');if(packs)packs.hidden=lastPlan==='obd';}
 function auto(){const r=f.querySelector('input[name=mode]:checked');return !!renew&&!renew.hidden&&r&&r.value==='auto';}
 function noteText(days){return AUTO_RENEW_AVAILABLE
 ?tr('გადახდის გაუქმება შეგიძლია ნებისმიერ დროს გვერდზე „ჩემი გამოწერა“ ან აპში. გადახდილი პერიოდი რჩება.','Cancel the payment any time on "My subscription" or in the app. The paid period is kept.')
@@ -346,14 +390,8 @@ const d=new Date();d.setDate(d.getDate()+(days-1));
 document.getElementById('sNext').textContent=intl?d.toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'}):String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear();
 const a=auto();document.getElementById('sNextRow').hidden=!a;document.getElementById('consentRow').hidden=!a;
 f.querySelectorAll('.opt').forEach(o=>o.classList.toggle('on',o.querySelector('input').checked));}
-f.addEventListener('change',e=>{
-if(e.target&&e.target.name==='period'){
-const cur=selected();const curLbl=cur&&cur.id.indexOf('p-')===0?document.querySelector('label[for="'+cur.id+'"]'):null;
-const baseKey=curLbl&&curLbl.dataset.basekey;
-if(baseKey){const target=document.querySelector('.tabbtn[data-basekey="'+baseKey+'"][data-period="'+period()+'"]');
-if(target)document.getElementById(target.getAttribute('for')).checked=true;} }
-syncTabs();update();});
-syncTabs();update();
+f.addEventListener('change',e=>{syncPlans();update();});
+syncPlans();update();
 f.addEventListener('submit',async e=>{e.preventDefault();
 if(codeFieldWrap.hidden||!codeInput.value.trim()){m.className='msg err';m.textContent=tr('ჯერ გამოაგზავნე და შეიყვანე კოდი ელფოსტიდან.','Send and enter the e-mail code first.');return;}
 if(auto()&&!document.getElementById('consent').checked){m.className='msg err';m.textContent=tr('მონიშნე თანხმობა ყოველთვიურ გადახდაზე.','Please tick the box to agree to the monthly payment.');return;}

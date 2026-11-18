@@ -1182,6 +1182,17 @@ public partial class ProViewModel : BaseViewModel
     [ObservableProperty]
     private string retryPricesText = "";
 
+    /// <summary>
+    /// Shown when a signed PRO token exists but has expired and the backend could
+    /// not be reached to renew it — "we know you had PRO, reconnect to verify"
+    /// rather than pretending the plan was never bought.
+    /// </summary>
+    [ObservableProperty]
+    private bool showVerificationNotice;
+
+    [ObservableProperty]
+    private string verificationNoticeText = "";
+
     [ObservableProperty]
     private bool isPro;
 
@@ -1531,6 +1542,16 @@ public partial class ProViewModel : BaseViewModel
     {
         IsPro = _pro.HasObd;
         HasVin = _pro.HasVin;
+
+        // An expired token that could not be renewed is a different state from
+        // "never subscribed": tell the user to reconnect, do not sell again.
+        ShowVerificationNotice = !IsPro && !HasVin && _pro.NeedsReconnection;
+        VerificationNoticeText = ShowVerificationNotice
+            ? L(
+                "PRO-ს ვადა ამოიწურა. დაუკავშირდი ინტერნეტს და გახსენი ეს გვერდი ხელახლა — წვდომა თვითონ აღდგება.",
+                "Your PRO verification has expired. Connect to the internet and reopen this page — access restores itself.")
+            : string.Empty;
+
         RefreshPlans();
     }
 
